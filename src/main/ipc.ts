@@ -12,6 +12,8 @@ import {
   pauseProcessing,
   resumeProcessing,
   getIsPaused,
+  cutMedia,
+  mergeMedia,
   ProcessingTask
 } from './ffmpeg/processor'
 import { killAllProcesses, getActiveProcessCount } from './ffmpeg/runner'
@@ -308,6 +310,15 @@ export function registerIPC(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('process:isPaused', () => {
     return getIsPaused()
+  })
+
+  // ─── Editor: Cut / Merge ───────────────────────
+  ipcMain.handle('editor:cut', async (_, filePath: string, inPoint: number, outPoint: number) => {
+    return cutMedia(filePath, inPoint, outPoint)
+  })
+
+  ipcMain.handle('editor:merge', async (_, segments: { path: string; inPoint: number; outPoint: number }[]) => {
+    return mergeMedia(segments)
   })
 
   // ─── Logging ──────────────────────────────────

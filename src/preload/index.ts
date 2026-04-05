@@ -36,6 +36,10 @@ const api = {
   pauseProcessing: () => ipcRenderer.invoke('process:pause'),
   resumeProcessing: () => ipcRenderer.invoke('process:resume'),
   getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
+
+  // Editor
+  cutMedia: (filePath: string, inPoint: number, outPoint: number) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint),
+  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[]) => ipcRenderer.invoke('editor:merge', segments),
   onPaused: (cb: () => void) => {
     const listener = () => cb()
     ipcRenderer.on('process:paused', listener)

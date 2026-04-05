@@ -877,3 +877,125 @@ export async function processBatch(
 
   return results
 }
+
+// ─── Cut / Trim ─────────────────────────────────
+export async function cutMedia(
+  filePath: string,
+  inPoint: number,
+  outPoint: number
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  const config = await getConfig()
+  const ext = path.extname(filePath)
+  const base = path.basename(filePath, ext)
+  const dir = config.outputDirectory || path.dirname(filePath)
+  const outputPath = path.join(dir, `${base}_cut${ext}`)
+
+  logger.info(`Cutting ${path.basename(filePath)}: ${inPoint.toFixed(2)}s → ${outPoint.toFixed(2)}s`)
+
+  const args = [
+    '-y',
+    '-ss', String(inPoint),
+    '-to', String(outPoint),
+    '-i', filePath,
+    '-c', 'copy',
+    '-avoid_negative_ts', 'make_zero',
+    outputPath
+  ]
+
+  try {
+    const { promise } = runCommand(config.ffmpegPath, args)
+    const result = await promise
+    if (result.code !== 0 && !result.killed) {
+      logger.error(`Cut failed: ${result.stderr.slice(-300)}`)
+      return { success: false, error: 'FFmpeg cut failed' }
+    }
+    logger.success(`Cut saved: ${outputPath}`)
+    return { success: true, outputPath }
+  } catch (err: any) {
+    logger.error(`Cut error: ${err.message}`)
+    return { success: false, error: err.message }
+  }
+}
+
+// ─── Merge / Concatenate ────────────────────────
+export interface MergeSegment {
+  path: string
+  inPoint: number
+  outPoint: number
+}
+
+export async function mergeMedia(
+  segments: MergeSegment[]
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  const config = await getConfig()
+
+  if (segments.length < 2) return { success: false, error: 'Need at least 2 segments' }
+
+  const ext = path.extname(segments[0].path)
+  const dir = config.outputDirectory || path.dirname(segments[0].path)
+  const outputPath = path.join(dir, `merged_${Date.now()}${ext}`)
+  const concatFile = path.join(dir, `.molexmedia_concat_${Date.now()}.txt`)
+
+  logger.info(`Merging ${segments.length} segments`)
+
+  try {
+    // First, cut each segment to a temp file
+    const tempFiles: string[] = []
+
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]
+      const tempPath = path.join(dir, `.molexmedia_seg_${Date.now()}_${i}${ext}`)
+      const args = [
+        '-y',
+        '-ss', String(seg.inPoint),
+        '-to', String(seg.outPoint),
+        '-i', seg.path,
+        '-c', 'copy',
+        '-avoid_negative_ts', 'make_zero',
+        tempPath
+      ]
+
+      const { promise } = runCommand(config.ffmpegPath, args)
+      const result = await promise
+      if (result.code !== 0 && !result.killed) {
+        // Cleanup temp files
+        for (const f of tempFiles) { try { fs.unlinkSync(f) } catch {} }
+        return { success: false, error: `Failed to cut segment ${i + 1}` }
+      }
+      tempFiles.push(tempPath)
+    }
+
+    // Write concat list
+    const concatContent = tempFiles.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n')
+    fs.writeFileSync(concatFile, concatContent, 'utf-8')
+
+    // Merge
+    const args = [
+      '-y',
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', concatFile,
+      '-c', 'copy',
+      outputPath
+    ]
+
+    const { promise } = runCommand(config.ffmpegPath, args)
+    const result = await promise
+
+    // Cleanup temp files
+    for (const f of tempFiles) { try { fs.unlinkSync(f) } catch {} }
+    try { fs.unlinkSync(concatFile) } catch {}
+
+    if (result.code !== 0 && !result.killed) {
+      logger.error(`Merge failed: ${result.stderr.slice(-300)}`)
+      return { success: false, error: 'FFmpeg merge failed' }
+    }
+
+    logger.success(`Merged ${segments.length} segments → ${outputPath}`)
+    return { success: true, outputPath }
+  } catch (err: any) {
+    try { fs.unlinkSync(concatFile) } catch {}
+    logger.error(`Merge error: ${err.message}`)
+    return { success: false, error: err.message }
+  }
+}

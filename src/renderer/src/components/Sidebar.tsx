@@ -37,6 +37,15 @@ const icons = {
       <circle cx="18" cy="16" r="3" />
     </svg>
   ),
+  editor: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="3" />
+      <path d="M8.12 8.12L12 12" />
+      <path d="M20 4L8.12 15.88" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M14.8 14.8L20 20" />
+    </svg>
+  ),
   settings: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
@@ -62,6 +71,7 @@ export default function Sidebar(): JSX.Element {
     { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard },
     { id: 'queue', label: 'Queue', icon: icons.queue, badge: files.length || undefined },
     { id: 'processing', label: 'Processing', icon: icons.processing, badge: isProcessing ? tasks.filter((t) => t.status !== 'complete' && t.status !== 'error').length : undefined },
+    { id: 'editor', label: 'Editor', icon: icons.editor },
     { id: 'player', label: 'Player', icon: icons.player },
     { id: 'settings', label: 'Settings', icon: icons.settings },
     { id: 'logs', label: 'Logs', icon: icons.logs, badge: errorCount || undefined }
