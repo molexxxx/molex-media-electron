@@ -16,4 +16,6 @@
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.web.json" }
   ]
+  ,
+  "exclude": ["out", "dist", "node_modules"]
 }
