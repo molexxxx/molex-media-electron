@@ -12,7 +12,6 @@ files:
   - '!{tailwind.config.js,postcss.config.js}'
 win:
   executableName: molexAudio
-  icon: build/icon.ico
   target:
     - target: nsis
       arch:
@@ -24,7 +23,6 @@ nsis:
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
-  icon: build/icon.icns
   target:
     - target: dmg
       arch:
