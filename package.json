@@ -40,6 +40,6 @@
     "react-dropzone": "^14.2.3",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "zustand": "^4.5.2"
+    "zustand": "^5.0.12"
   }
 }
