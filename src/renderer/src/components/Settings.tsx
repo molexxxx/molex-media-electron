@@ -187,7 +187,8 @@ export default function Settings(): JSX.Element {
       {/* Tab Content */}
       {activeTab === 'general' && (
         <div className="space-y-5">
-          <SettingGroup title="Normalization (ITU-R BS.1770-4)">
+          <SettingGroup title="Default Normalization (ITU-R BS.1770-4)">
+            <p className="text-xs text-surface-500 -mt-1 mb-2">Fallback values when no preset is selected. Presets override these.</p>
             <SettingRow label="Integrated Loudness (I)" description="Target loudness level. Broadcast: -23, Streaming: -14 to -16, Podcast: -16">
               <NumberInput value={localConfig.normalization.I} onChange={(v) => updateNorm('I', v)} min={-70} max={0} step={0.5} unit="LUFS" />
             </SettingRow>

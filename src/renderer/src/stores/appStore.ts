@@ -127,7 +127,9 @@ interface SystemInfo {
 interface AppState {
   // Navigation
   currentView: View
+  viewHistory: View[]
   setView: (view: View) => void
+  goBack: () => void
 
   // FFmpeg setup
   ffmpegReady: boolean
@@ -198,7 +200,16 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   currentView: 'dashboard',
-  setView: (view) => set({ currentView: view }),
+  viewHistory: [],
+  setView: (view) => set((s) => ({
+    currentView: view,
+    viewHistory: s.currentView !== view ? [...s.viewHistory.slice(-19), s.currentView] : s.viewHistory
+  })),
+  goBack: () => set((s) => {
+    if (s.viewHistory.length === 0) return {}
+    const prev = s.viewHistory[s.viewHistory.length - 1]
+    return { currentView: prev, viewHistory: s.viewHistory.slice(0, -1) }
+  }),
 
   ffmpegReady: false,
   ffmpegVersion: '',

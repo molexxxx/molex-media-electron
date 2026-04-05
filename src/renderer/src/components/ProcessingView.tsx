@@ -1,7 +1,9 @@
-import { useAppStore } from '../stores/appStore'
+import { useState, useCallback } from 'react'
+import { useAppStore, FileItem } from '../stores/appStore'
 
 export default function ProcessingView(): JSX.Element {
-  const { tasks, isProcessing, isPaused, activeBatchId, clearTasks } = useAppStore()
+  const { tasks, isProcessing, isPaused, activeBatchId, clearTasks, addFiles, setView } = useAppStore()
+  const [dragOver, setDragOver] = useState(false)
 
   const completed = tasks.filter((t) => t.status === 'complete').length
   const errors = tasks.filter((t) => t.status === 'error').length
@@ -22,6 +24,25 @@ export default function ProcessingView(): JSX.Element {
       await window.api.pauseProcessing()
     }
   }
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const paths: string[] = []
+    for (const file of Array.from(e.dataTransfer.files)) {
+      paths.push((file as File & { path: string }).path)
+    }
+    if (paths.length) {
+      const items: FileItem[] = paths.map((p) => ({
+        path: p,
+        name: p.split(/[\\/]/).pop() || p,
+        size: 0,
+        ext: (p.match(/\.[^.]+$/) || [''])[0].toLowerCase()
+      }))
+      addFiles(items)
+      setView('queue')
+    }
+  }, [addFiles, setView])
 
   const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
     queued: { bg: 'bg-surface-700/30', text: 'text-surface-400', dot: 'bg-surface-500' },
@@ -44,7 +65,17 @@ export default function ProcessingView(): JSX.Element {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in h-full flex flex-col">
+    <div
+      className="space-y-5 animate-fade-in h-full flex flex-col relative"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm rounded-xl border-2 border-dashed border-accent-400/40">
+          <p className="text-accent-300 font-semibold">Drop files to add to queue</p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
