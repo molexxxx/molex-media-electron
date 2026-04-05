@@ -47,8 +47,8 @@ export default function SetupWizard(): JSX.Element {
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold gradient-text mb-2">molexAudio</h1>
-          <p className="text-surface-400 text-sm">Professional Audio Normalization</p>
+          <h1 className="text-4xl font-bold gradient-text mb-2">molexMedia</h1>
+          <p className="text-surface-400 text-sm">Professional Media Processing Toolkit</p>
         </div>
 
         <div className="glass rounded-2xl p-8">
@@ -62,7 +62,7 @@ export default function SetupWizard(): JSX.Element {
                     <circle cx="18" cy="16" r="3" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-semibold text-white mb-2">Welcome to molexAudio</h2>
+                <h2 className="text-xl font-semibold text-white mb-2">Welcome to molexMedia</h2>
                 <p className="text-surface-400 text-sm leading-relaxed">
                   FFmpeg is required for audio processing. We&apos;ll download and configure it automatically — no command line needed.
                 </p>
@@ -144,7 +144,7 @@ export default function SetupWizard(): JSX.Element {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white mb-1">All Set!</h2>
-                <p className="text-surface-400 text-sm">FFmpeg is installed and ready. Let&apos;s normalize some audio.</p>
+                <p className="text-surface-400 text-sm">FFmpeg is installed and ready. Let&apos;s process some media.</p>
               </div>
               <button
                 onClick={handleDone}
@@ -190,7 +190,7 @@ export default function SetupWizard(): JSX.Element {
         </div>
 
         <p className="text-center text-2xs text-surface-600 mt-6">
-          FFmpeg is licensed under LGPL/GPL. molexAudio downloads it from trusted sources.
+          FFmpeg is licensed under LGPL/GPL. molexMedia downloads it from trusted sources.
         </p>
       </div>
     </div>

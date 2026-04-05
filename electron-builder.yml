@@ -1,5 +1,5 @@
-appId: com.molex.audio
-productName: molexAudio
+appId: com.molex.media
+productName: molexMedia
 directories:
   buildResources: build
   output: dist
@@ -11,7 +11,7 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!{tailwind.config.js,postcss.config.js}'
 win:
-  executableName: molexAudio
+  executableName: molexMedia
   target:
     - target: nsis
       arch:

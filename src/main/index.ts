@@ -60,9 +60,9 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   logger.init()
-  logger.info('molexAudio starting up...')
+  logger.info('molexMedia starting up...')
 
-  electronApp.setAppUserModelId('com.molex.audio')
+  electronApp.setAppUserModelId('com.molex.media')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

@@ -171,6 +171,102 @@ export function registerIPC(mainWindow: BrowserWindow): void {
     }
   })
 
+  ipcMain.handle('process:convert', async (_, filePaths: string[], convertOptions: any) => {
+    const config = await getConfig()
+    const tasks: ProcessingTask[] = filePaths.map((f, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      filePath: f,
+      fileName: path.basename(f),
+      operation: 'convert' as const,
+      convertOptions,
+      status: 'queued' as const,
+      progress: 0,
+      message: 'Waiting...'
+    }))
+
+    const abort = new AbortController()
+    const batchId = `batch-${Date.now()}`
+    activeTasks.set(batchId, abort)
+
+    const onProgress = (task: ProcessingTask): void => {
+      mainWindow.webContents.send('process:task-progress', task)
+    }
+
+    mainWindow.webContents.send('process:batch-started', { batchId, tasks })
+
+    try {
+      const results = await processBatch(tasks, config.maxWorkers, onProgress, abort)
+      mainWindow.webContents.send('process:batch-complete', { batchId, results })
+      return { batchId, results }
+    } finally {
+      activeTasks.delete(batchId)
+    }
+  })
+
+  ipcMain.handle('process:extract', async (_, filePaths: string[], extractOptions: any) => {
+    const config = await getConfig()
+    const tasks: ProcessingTask[] = filePaths.map((f, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      filePath: f,
+      fileName: path.basename(f),
+      operation: 'extract' as const,
+      extractOptions,
+      status: 'queued' as const,
+      progress: 0,
+      message: 'Waiting...'
+    }))
+
+    const abort = new AbortController()
+    const batchId = `batch-${Date.now()}`
+    activeTasks.set(batchId, abort)
+
+    const onProgress = (task: ProcessingTask): void => {
+      mainWindow.webContents.send('process:task-progress', task)
+    }
+
+    mainWindow.webContents.send('process:batch-started', { batchId, tasks })
+
+    try {
+      const results = await processBatch(tasks, config.maxWorkers, onProgress, abort)
+      mainWindow.webContents.send('process:batch-complete', { batchId, results })
+      return { batchId, results }
+    } finally {
+      activeTasks.delete(batchId)
+    }
+  })
+
+  ipcMain.handle('process:compress', async (_, filePaths: string[], compressOptions: any) => {
+    const config = await getConfig()
+    const tasks: ProcessingTask[] = filePaths.map((f, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      filePath: f,
+      fileName: path.basename(f),
+      operation: 'compress' as const,
+      compressOptions,
+      status: 'queued' as const,
+      progress: 0,
+      message: 'Waiting...'
+    }))
+
+    const abort = new AbortController()
+    const batchId = `batch-${Date.now()}`
+    activeTasks.set(batchId, abort)
+
+    const onProgress = (task: ProcessingTask): void => {
+      mainWindow.webContents.send('process:task-progress', task)
+    }
+
+    mainWindow.webContents.send('process:batch-started', { batchId, tasks })
+
+    try {
+      const results = await processBatch(tasks, config.maxWorkers, onProgress, abort)
+      mainWindow.webContents.send('process:batch-complete', { batchId, results })
+      return { batchId, results }
+    } finally {
+      activeTasks.delete(batchId)
+    }
+  })
+
   ipcMain.handle('process:cancel', async (_, batchId: string) => {
     const abort = activeTasks.get(batchId)
     if (abort) {

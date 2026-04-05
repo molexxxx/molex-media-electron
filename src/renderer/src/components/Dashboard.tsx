@@ -11,91 +11,79 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 }
 
 export default function Dashboard(): JSX.Element {
-  const { systemInfo, ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, tasks } = useAppStore()
+  const { systemInfo, ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, setOperation, tasks } = useAppStore()
 
   const activeTasks = tasks.filter((t) => t.status === 'processing' || t.status === 'analyzing')
+
+  const quickActions = [
+    { label: 'Normalize Audio', desc: 'ITU-R BS.1770-4 loudness normalization', op: 'normalize' as const, color: 'accent', icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-400">
+        <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+      </svg>
+    )},
+    { label: 'Boost Volume', desc: 'Amplify or reduce audio by percentage', op: 'boost' as const, color: 'emerald', icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-emerald-400">
+        <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+      </svg>
+    )},
+    { label: 'Convert Format', desc: 'Transcode between containers and codecs', op: 'convert' as const, color: 'blue', icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-blue-400">
+        <polyline points="16,3 21,3 21,8" /><line x1="4" y1="20" x2="21" y2="3" />
+        <polyline points="21,16 21,21 16,21" /><line x1="15" y1="15" x2="21" y2="21" />
+      </svg>
+    )},
+    { label: 'Extract Audio', desc: 'Rip audio tracks from video files', op: 'extract' as const, color: 'purple', icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-purple-400">
+        <circle cx="12" cy="12" r="10" /><polygon points="10,8 16,12 10,16" />
+      </svg>
+    )},
+    { label: 'Compress', desc: 'Reduce file size with quality control', op: 'compress' as const, color: 'amber', icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-amber-400">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    )},
+  ]
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-surface-400 mt-1">Overview of your audio processing workspace</p>
+        <p className="text-sm text-surface-400 mt-1">Media processing toolkit — audio, video, and everything in between</p>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-4 gap-3">
-        <StatCard
-          label="Queue"
-          value={files.length}
-          sub={files.length === 1 ? 'file ready' : 'files ready'}
-          color="text-accent-400"
-        />
-        <StatCard
-          label="Processing"
-          value={activeTasks.length}
-          sub={isProcessing ? 'active now' : 'idle'}
-          color={isProcessing ? 'text-amber-400' : 'text-surface-300'}
-        />
-        <StatCard
-          label="Completed"
-          value={totalProcessed}
-          sub="this session"
-          color="text-emerald-400"
-        />
-        <StatCard
-          label="Errors"
-          value={totalErrors}
-          sub="this session"
-          color={totalErrors > 0 ? 'text-red-400' : 'text-surface-300'}
-        />
+        <StatCard label="Queue" value={files.length} sub={files.length === 1 ? 'file ready' : 'files ready'} color="text-accent-400" />
+        <StatCard label="Processing" value={activeTasks.length} sub={isProcessing ? 'active now' : 'idle'} color={isProcessing ? 'text-amber-400' : 'text-surface-300'} />
+        <StatCard label="Completed" value={totalProcessed} sub="this session" color="text-emerald-400" />
+        <StatCard label="Errors" value={totalErrors} sub="this session" color={totalErrors > 0 ? 'text-red-400' : 'text-surface-300'} />
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => setView('queue')}
-          className="glass-hover rounded-xl p-5 text-left group"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-accent-500/10 border border-accent-500/20 flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-400">
-                <path d="M9 18V5l12-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="18" cy="16" r="3" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-surface-200 group-hover:text-white transition-colors">Normalize Audio</h3>
-              <p className="text-xs text-surface-500">ITU-R BS.1770-4 loudness standard</p>
-            </div>
-          </div>
-          <p className="text-xs text-surface-500 leading-relaxed">
-            Analyze and normalize audio to target loudness levels. Perfect for consistent volume across media files.
-          </p>
-        </button>
-
-        <button
-          onClick={() => setView('queue')}
-          className="glass-hover rounded-xl p-5 text-left group"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-emerald-400">
-                <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-surface-200 group-hover:text-white transition-colors">Boost Volume</h3>
-              <p className="text-xs text-surface-500">Amplify audio by percentage</p>
-            </div>
-          </div>
-          <p className="text-xs text-surface-500 leading-relaxed">
-            Increase or decrease volume of audio tracks by a custom percentage. Great for quiet recordings.
-          </p>
-        </button>
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Quick Actions</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {quickActions.map((action) => (
+            <button
+              key={action.op}
+              onClick={() => { setOperation(action.op); setView('queue') }}
+              className="glass-hover rounded-xl p-4 text-left group"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-9 h-9 rounded-lg bg-${action.color}-500/10 border border-${action.color}-500/20 flex items-center justify-center`}>
+                  {action.icon}
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-surface-200 group-hover:text-white transition-colors">{action.label}</h3>
+                  <p className="text-2xs text-surface-500">{action.desc}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* System Info */}
@@ -124,17 +112,13 @@ export default function Dashboard(): JSX.Element {
         <div className="glass rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500">Recent Activity</h3>
-            <button
-              onClick={() => setView('processing')}
-              className="text-2xs text-accent-400 hover:text-accent-300 font-medium transition-colors"
-            >
-              View All →
-            </button>
+            <button onClick={() => setView('processing')} className="text-2xs text-accent-400 hover:text-accent-300 font-medium transition-colors">View All →</button>
           </div>
           <div className="space-y-1.5">
             {tasks.slice(-5).reverse().map((task) => (
               <div key={task.id} className="flex items-center gap-3 py-1.5">
                 <StatusDot status={task.status} />
+                <span className="text-xs text-surface-500 font-mono w-16 shrink-0">{task.operation}</span>
                 <span className="text-sm text-surface-300 flex-1 truncate">{task.fileName}</span>
                 <span className="text-2xs text-surface-500 font-mono">{task.message}</span>
               </div>

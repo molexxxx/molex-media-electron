@@ -1,7 +1,7 @@
 {
-  "name": "molex-audio",
+  "name": "molex-media",
   "version": "3.0.0",
-  "description": "Audio normalization and processing tool powered by FFmpeg",
+  "description": "Media processing toolkit powered by FFmpeg — audio normalization, video conversion, format tools, and more",
   "main": "./out/main/index.js",
   "author": "molex",
   "license": "MIT",

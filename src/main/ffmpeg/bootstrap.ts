@@ -98,7 +98,7 @@ async function verifyBinary(binPath: string): Promise<boolean> {
 function followRedirects(url: string, onProgress?: (downloaded: number, total: number) => void): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http
-    const req = protocol.get(url, { headers: { 'User-Agent': 'molexAudio/3.0' } }, (res) => {
+    const req = protocol.get(url, { headers: { 'User-Agent': 'molexMedia/3.0' } }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         followRedirects(res.headers.location, onProgress).then(resolve).catch(reject)
         return

@@ -30,7 +30,7 @@ class Logger {
   init(): void {
     const logDir = getLogDir()
     const date = new Date().toISOString().split('T')[0]
-    this.logFile = path.join(logDir, `molex-audio-${date}.log`)
+    this.logFile = path.join(logDir, `molex-media-${date}.log`)
     this.ffmpegLogFile = path.join(logDir, `ffmpeg-debug-${date}.log`)
   }
 

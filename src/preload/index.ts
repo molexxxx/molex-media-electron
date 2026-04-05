@@ -27,6 +27,9 @@ const api = {
   // Processing
   normalize: (filePaths: string[]) => ipcRenderer.invoke('process:normalize', filePaths),
   boost: (filePaths: string[], percent: number) => ipcRenderer.invoke('process:boost', filePaths, percent),
+  convert: (filePaths: string[], options: any) => ipcRenderer.invoke('process:convert', filePaths, options),
+  extract: (filePaths: string[], options: any) => ipcRenderer.invoke('process:extract', filePaths, options),
+  compress: (filePaths: string[], options: any) => ipcRenderer.invoke('process:compress', filePaths, options),
   cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
   cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
   getActiveCount: () => ipcRenderer.invoke('process:activeCount'),

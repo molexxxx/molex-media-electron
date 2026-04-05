@@ -9,8 +9,12 @@ export interface ProcessingTask {
   id: string
   filePath: string
   fileName: string
-  operation: 'normalize' | 'boost'
+  operation: 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
   boostPercent?: number
+  preset?: string
+  convertOptions?: { outputFormat: string; videoCodec: string; audioCodec: string; videoBitrate: string; audioBitrate: string; resolution: string; framerate: string }
+  extractOptions?: { outputFormat: string; streamIndex: number }
+  compressOptions?: { targetSizeMB: number; quality: string }
   status: 'queued' | 'analyzing' | 'processing' | 'finalizing' | 'complete' | 'error' | 'cancelled'
   progress: number
   message: string
@@ -20,6 +24,7 @@ export interface ProcessingTask {
   mediaInfo?: MediaInfo
   outputSize?: number
   inputSize?: number
+  outputPath?: string
 }
 
 export type TaskProgressCallback = (task: ProcessingTask) => void
@@ -36,7 +41,7 @@ function channelLayout(channels: number): string {
 }
 
 function stripMolexTag(title: string): string {
-  return title.replace(/\[molexAudio[^\]]*\]\s*/g, '').trim()
+  return title.replace(/\[molex(?:Audio|Media)[^\]]*\]\s*/g, '').trim()
 }
 
 function createTempPath(filePath: string, suffix: string): string {
@@ -199,7 +204,7 @@ export async function normalizeFile(
       const stream = info.audioStreams[i]
       const origTitle = stream.tags?.title || stream.tags?.handler_name || `Track ${i + 1}`
       const cleanTitle = stripMolexTag(origTitle)
-      const newTitle = `[molexAudio Normalized] ${cleanTitle}`
+      const newTitle = `[molexMedia Normalized] ${cleanTitle}`
       args.push(`-metadata:s:a:${i}`, `title=${newTitle}`)
     }
 
@@ -367,7 +372,7 @@ export async function boostFile(
       const origTitle = stream.tags?.title || stream.tags?.handler_name || `Track ${i + 1}`
       const cleanTitle = stripMolexTag(origTitle)
       const sign = boostPercent > 0 ? '+' : ''
-      const newTitle = `[molexAudio Boosted ${sign}${boostPercent}%] ${cleanTitle}`
+      const newTitle = `[molexMedia Boosted ${sign}${boostPercent}%] ${cleanTitle}`
       args.push(`-metadata:s:a:${i}`, `title=${newTitle}`)
     }
 
@@ -455,6 +460,288 @@ export async function boostFile(
     logger.error(`Failed to boost ${task.fileName}: ${err.message}`)
     onProgress(task)
     return task
+  }
+}
+
+// ─── Convert File ───────────────────────────────────
+export async function convertFile(
+  task: ProcessingTask,
+  onProgress: TaskProgressCallback,
+  abortSignal?: AbortController
+): Promise<ProcessingTask> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpegPath
+  if (!ffmpegPath) { task.status = 'error'; task.error = 'FFmpeg not configured'; onProgress(task); return task }
+
+  const opts = task.convertOptions
+  if (!opts) { task.status = 'error'; task.error = 'No convert options'; onProgress(task); return task }
+
+  task.status = 'analyzing'
+  task.startedAt = Date.now()
+  task.message = 'Analyzing media...'
+  onProgress(task)
+
+  try {
+    const info = await probeMedia(task.filePath)
+    task.mediaInfo = info
+    task.inputSize = parseInt(info.format.size, 10) || 0
+    const totalDuration = parseFloat(info.format.duration) || 0
+
+    logger.info(`Converting: ${task.fileName} → .${opts.outputFormat}`)
+
+    task.status = 'processing'
+    task.message = `Converting to ${opts.outputFormat.toUpperCase()}...`
+    task.progress = 5
+    onProgress(task)
+
+    const outDir = config.outputDirectory || path.dirname(task.filePath)
+    const baseName = path.basename(task.filePath, path.extname(task.filePath))
+    const outPath = path.join(outDir, `${baseName}.${opts.outputFormat}`)
+
+    const args: string[] = ['-y', '-i', task.filePath, '-threads', '0']
+
+    // Video codec
+    if (info.isVideoFile) {
+      if (opts.videoCodec === 'copy') {
+        args.push('-c:v', 'copy')
+      } else {
+        args.push('-c:v', opts.videoCodec)
+        if (opts.videoBitrate) args.push('-b:v', opts.videoBitrate)
+      }
+      if (opts.resolution) {
+        args.push('-vf', `scale=${opts.resolution.replace('x', ':')}`)
+      }
+      if (opts.framerate) {
+        args.push('-r', opts.framerate)
+      }
+    }
+
+    // Audio codec
+    if (opts.audioCodec === 'copy') {
+      args.push('-c:a', 'copy')
+    } else {
+      args.push('-c:a', opts.audioCodec)
+      if (opts.audioBitrate && opts.audioBitrate !== '0') args.push('-b:a', opts.audioBitrate)
+    }
+
+    if (config.preserveSubtitles && info.isVideoFile) {
+      args.push('-map', '0', '-c:s', 'copy')
+    }
+
+    args.push(outPath)
+
+    const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
+      const progress = parseProgress(line)
+      if (progress && totalDuration > 0) {
+        const pct = Math.min(95, 5 + Math.round((progress.time / totalDuration) * 90))
+        task.progress = pct
+        task.message = `Converting... ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+        onProgress(task)
+      }
+    })
+
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    const result = await promise
+
+    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(outPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
+    if (result.code !== 0) { cleanupTemp(outPath); throw new Error(`FFmpeg convert failed (code ${result.code})`) }
+
+    task.status = 'complete'
+    task.progress = 100
+    task.completedAt = Date.now()
+    task.outputPath = outPath
+    task.outputSize = fs.statSync(outPath).size
+    task.message = `Converted to ${opts.outputFormat.toUpperCase()} in ${formatElapsed(task.startedAt!, task.completedAt)}`
+    logger.success(`Converted: ${task.fileName} → ${path.basename(outPath)} (${formatFileSize(task.inputSize!)} → ${formatFileSize(task.outputSize)})`)
+    onProgress(task)
+    return task
+  } catch (err: any) {
+    task.status = 'error'; task.error = err.message; task.message = `Error: ${err.message}`; task.completedAt = Date.now()
+    logger.error(`Failed to convert ${task.fileName}: ${err.message}`); onProgress(task); return task
+  }
+}
+
+// ─── Extract Audio ──────────────────────────────────
+export async function extractAudio(
+  task: ProcessingTask,
+  onProgress: TaskProgressCallback,
+  abortSignal?: AbortController
+): Promise<ProcessingTask> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpegPath
+  if (!ffmpegPath) { task.status = 'error'; task.error = 'FFmpeg not configured'; onProgress(task); return task }
+
+  const opts = task.extractOptions || { outputFormat: 'mp3', streamIndex: 0 }
+
+  task.status = 'analyzing'
+  task.startedAt = Date.now()
+  task.message = 'Analyzing media...'
+  onProgress(task)
+
+  try {
+    const info = await probeMedia(task.filePath)
+    task.mediaInfo = info
+    task.inputSize = parseInt(info.format.size, 10) || 0
+    const totalDuration = parseFloat(info.format.duration) || 0
+
+    if (info.audioStreams.length === 0) throw new Error('No audio streams found')
+
+    logger.info(`Extracting audio: ${task.fileName} stream ${opts.streamIndex} → .${opts.outputFormat}`)
+
+    task.status = 'processing'
+    task.message = `Extracting audio to ${opts.outputFormat.toUpperCase()}...`
+    task.progress = 5
+    onProgress(task)
+
+    const outDir = config.outputDirectory || path.dirname(task.filePath)
+    const baseName = path.basename(task.filePath, path.extname(task.filePath))
+    const outPath = path.join(outDir, `${baseName}_audio.${opts.outputFormat}`)
+
+    const codecMap: Record<string, string> = { mp3: 'libmp3lame', aac: 'aac', flac: 'flac', wav: 'pcm_s16le', ogg: 'libvorbis', opus: 'libopus', m4a: 'aac' }
+    const codec = codecMap[opts.outputFormat] || 'copy'
+
+    const args = ['-y', '-i', task.filePath, '-threads', '0', '-vn', '-map', `0:a:${opts.streamIndex}`, '-c:a', codec]
+    if (codec !== 'copy' && codec !== 'pcm_s16le' && codec !== 'flac') {
+      args.push('-b:a', config.audioBitrate)
+    }
+    args.push(outPath)
+
+    const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
+      const progress = parseProgress(line)
+      if (progress && totalDuration > 0) {
+        const pct = Math.min(95, 5 + Math.round((progress.time / totalDuration) * 90))
+        task.progress = pct
+        task.message = `Extracting... ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+        onProgress(task)
+      }
+    })
+
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    const result = await promise
+
+    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(outPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
+    if (result.code !== 0) { cleanupTemp(outPath); throw new Error(`Audio extraction failed (code ${result.code})`) }
+
+    task.status = 'complete'
+    task.progress = 100
+    task.completedAt = Date.now()
+    task.outputPath = outPath
+    task.outputSize = fs.statSync(outPath).size
+    task.message = `Extracted audio in ${formatElapsed(task.startedAt!, task.completedAt)}`
+    logger.success(`Extracted: ${task.fileName} → ${path.basename(outPath)} (${formatFileSize(task.outputSize)})`)
+    onProgress(task)
+    return task
+  } catch (err: any) {
+    task.status = 'error'; task.error = err.message; task.message = `Error: ${err.message}`; task.completedAt = Date.now()
+    logger.error(`Failed to extract audio from ${task.fileName}: ${err.message}`); onProgress(task); return task
+  }
+}
+
+// ─── Compress / Reduce File Size ────────────────────
+export async function compressFile(
+  task: ProcessingTask,
+  onProgress: TaskProgressCallback,
+  abortSignal?: AbortController
+): Promise<ProcessingTask> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpegPath
+  if (!ffmpegPath) { task.status = 'error'; task.error = 'FFmpeg not configured'; onProgress(task); return task }
+
+  const opts = task.compressOptions || { targetSizeMB: 0, quality: 'high' }
+
+  task.status = 'analyzing'
+  task.startedAt = Date.now()
+  task.message = 'Analyzing media...'
+  onProgress(task)
+
+  try {
+    const info = await probeMedia(task.filePath)
+    task.mediaInfo = info
+    task.inputSize = parseInt(info.format.size, 10) || 0
+    const totalDuration = parseFloat(info.format.duration) || 0
+
+    logger.info(`Compressing: ${task.fileName} (${opts.quality} quality)`)
+
+    task.status = 'processing'
+    task.message = `Compressing (${opts.quality} quality)...`
+    task.progress = 5
+    onProgress(task)
+
+    const tempPath = createTempPath(task.filePath, config.tempSuffix)
+
+    // Quality → CRF mapping for H.264
+    const crfMap: Record<string, number> = { lossless: 0, high: 18, medium: 23, low: 28 }
+    const crf = crfMap[opts.quality] ?? 23
+
+    const args = ['-y', '-i', task.filePath, '-threads', '0']
+
+    if (info.isVideoFile) {
+      args.push('-c:v', 'libx264', '-preset', opts.quality === 'lossless' ? 'veryslow' : 'medium', '-crf', String(crf))
+      if (opts.targetSizeMB > 0 && totalDuration > 0) {
+        const targetBits = opts.targetSizeMB * 8 * 1024 * 1024
+        const audioBitrate = 128000
+        const videoBitrate = Math.max(100000, Math.floor((targetBits / totalDuration) - audioBitrate))
+        args.length = 5 // reset after -threads 0
+        args.push('-c:v', 'libx264', '-b:v', String(videoBitrate), '-maxrate', String(videoBitrate * 2), '-bufsize', String(videoBitrate * 4))
+      }
+      args.push('-c:a', 'aac', '-b:a', opts.quality === 'low' ? '128k' : '256k')
+    } else {
+      // Audio-only compression
+      const audioBitrates: Record<string, string> = { lossless: '0', high: '256k', medium: '192k', low: '128k' }
+      if (opts.quality === 'lossless') {
+        args.push('-c:a', 'flac')
+      } else {
+        args.push('-c:a', 'aac', '-b:a', audioBitrates[opts.quality])
+      }
+    }
+
+    if (info.isVideoFile && config.preserveSubtitles) args.push('-c:s', 'copy')
+    args.push(tempPath)
+
+    const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
+      const progress = parseProgress(line)
+      if (progress && totalDuration > 0) {
+        const pct = Math.min(95, 5 + Math.round((progress.time / totalDuration) * 90))
+        task.progress = pct
+        task.message = `Compressing... ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+        onProgress(task)
+      }
+    })
+
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    const result = await promise
+
+    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(tempPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
+    if (result.code !== 0) { cleanupTemp(tempPath); throw new Error(`Compression failed (code ${result.code})`) }
+
+    task.status = 'finalizing'
+    task.message = 'Finalizing...'
+    task.progress = 96
+    onProgress(task)
+
+    if (config.overwriteOriginal) {
+      fs.unlinkSync(task.filePath)
+      fs.renameSync(tempPath, task.filePath)
+      task.outputPath = task.filePath
+    } else {
+      const outDir = config.outputDirectory || path.dirname(task.filePath)
+      const outPath = path.join(outDir, `compressed_${path.basename(task.filePath)}`)
+      fs.renameSync(tempPath, outPath)
+      task.outputPath = outPath
+    }
+
+    task.outputSize = fs.statSync(task.outputPath!).size
+    const ratio = task.inputSize ? Math.round((1 - task.outputSize / task.inputSize) * 100) : 0
+    task.status = 'complete'
+    task.progress = 100
+    task.completedAt = Date.now()
+    task.message = `Compressed (${ratio}% smaller) in ${formatElapsed(task.startedAt!, task.completedAt)}`
+    logger.success(`Compressed: ${task.fileName} (${formatFileSize(task.inputSize!)} → ${formatFileSize(task.outputSize)}, ${ratio}% reduction)`)
+    onProgress(task)
+    return task
+  } catch (err: any) {
+    task.status = 'error'; task.error = err.message; task.message = `Error: ${err.message}`; task.completedAt = Date.now()
+    logger.error(`Failed to compress ${task.fileName}: ${err.message}`); onProgress(task); return task
   }
 }
 
@@ -561,8 +848,16 @@ export async function processBatch(
       let result: ProcessingTask
       if (task.operation === 'normalize') {
         result = await normalizeFile(task, onProgress, abortSignal)
-      } else {
+      } else if (task.operation === 'boost') {
         result = await boostFile(task, onProgress, abortSignal)
+      } else if (task.operation === 'convert') {
+        result = await convertFile(task, onProgress, abortSignal)
+      } else if (task.operation === 'extract') {
+        result = await extractAudio(task, onProgress, abortSignal)
+      } else if (task.operation === 'compress') {
+        result = await compressFile(task, onProgress, abortSignal)
+      } else {
+        result = await normalizeFile(task, onProgress, abortSignal)
       }
       results.push(result)
     }

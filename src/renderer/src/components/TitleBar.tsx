@@ -8,7 +8,7 @@ export default function TitleBar(): JSX.Element {
       <div className="flex items-center gap-2.5 no-drag">
         <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-amber-400 pulse-ring' : 'bg-accent-500'}`} />
         <span className="text-xs font-semibold tracking-widest uppercase text-surface-300">
-          molex<span className="text-accent-400">Audio</span>
+          molex<span className="text-accent-400">Media</span>
         </span>
         <span className="text-2xs text-surface-500 font-mono">v3.0</span>
       </div>

@@ -65,7 +65,7 @@ async function getStore(): Promise<any> {
     Store = mod.default
   }
   return new Store({
-    name: 'molex-audio-config',
+    name: 'molex-media-config',
     defaults: DEFAULT_CONFIG
   })
 }

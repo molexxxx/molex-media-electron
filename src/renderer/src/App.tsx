@@ -21,7 +21,7 @@ function App(): JSX.Element {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 border-2 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-surface-300 text-sm font-medium tracking-wide">Initializing molexAudio...</p>
+            <p className="text-surface-300 text-sm font-medium tracking-wide">Initializing molexMedia...</p>
           </div>
         </div>
       </div>
