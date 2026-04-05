@@ -8,13 +8,13 @@
 
 <br/>
 
-**Professional cross-platform audio normalization & processing powered by FFmpeg**
+**Cross-platform audio normalization & processing powered by FFmpeg**
 
-[![CI](https://github.com/molex/molex-audio-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/molex/molex-audio-electron/actions/workflows/ci.yml)
-[![Build](https://github.com/molex/molex-audio-electron/actions/workflows/build.yml/badge.svg)](https://github.com/molex/molex-audio-electron/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/molex/molex-audio-electron?include_prereleases&style=flat-square&color=7c3aed)](https://github.com/molex/molex-audio-electron/releases)
-[![License](https://img.shields.io/github/license/molex/molex-audio-electron?style=flat-square&color=a78bfa)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/molex/molex-audio-electron/total?style=flat-square&color=4f46e5)](https://github.com/molex/molex-audio-electron/releases)
+[![CI](https://github.com/tonywied17/molex-audio-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/molex-audio-electron/actions/workflows/ci.yml)
+[![Build](https://github.com/tonywied17/molex-audio-electron/actions/workflows/build.yml/badge.svg)](https://github.com/tonywied17/molex-audio-electron/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/tonywied17/molex-audio-electron?include_prereleases&style=flat-square&color=7c3aed)](https://github.com/tonywied17/molex-audio-electron/releases)
+[![License](https://img.shields.io/github/license/tonywied17/molex-audio-electron?style=flat-square&color=a78bfa)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/tonywied17/molex-audio-electron/total?style=flat-square&color=4f46e5)](https://github.com/tonywied17/molex-audio-electron/releases)
 
 <br/>
 
@@ -91,7 +91,7 @@ Grab the latest release for your platform:
 
 ```bash
 # Clone & install
-git clone https://github.com/molex/molex-audio-electron.git
+git clone https://github.com/tonywied17/molex-audio-electron.git
 cd molex-audio-electron
 npm install
 
