@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useAppStore } from '../stores/appStore'
 
 declare global {
@@ -8,7 +8,6 @@ declare global {
 }
 
 export function useIPC(): void {
-  const mounted = useRef(false)
   const {
     setConfig,
     setFFmpegReady,
@@ -26,11 +25,11 @@ export function useIPC(): void {
   } = useAppStore()
 
   useEffect(() => {
-    if (mounted.current) return
-    mounted.current = true
+    let cancelled = false
 
     const init = async () => {
       try {
+        if (cancelled) return
         // Load config
         const config = await window.api.loadConfig()
         setConfig(config)
@@ -92,6 +91,7 @@ export function useIPC(): void {
     })
 
     return () => {
+      cancelled = true
       unsubLog?.()
       unsubTaskProgress?.()
       unsubBatchStarted?.()
