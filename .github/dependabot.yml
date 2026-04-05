@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore(deps):"
+    groups:
+      electron:
+        patterns:
+          - "electron"
+          - "electron-builder"
+          - "electron-vite"
+          - "@electron-toolkit/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+          - "@vitejs/plugin-react"
+      dev-tooling:
+        patterns:
+          - "typescript"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - ci
+    commit-message:
+      prefix: "chore(ci):"
