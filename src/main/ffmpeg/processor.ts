@@ -58,7 +58,8 @@ async function analyzeLoudness(
   ffmpegPath: string,
   filePath: string,
   streamIndex: number,
-  config: AppConfig
+  config: AppConfig,
+  onStderrLine?: (line: string) => void
 ): Promise<LoudnessMetrics> {
   const { I, TP, LRA } = config.normalization
   const args = [
@@ -72,7 +73,7 @@ async function analyzeLoudness(
 
   logger.ffmpeg('ANALYZE', `Stream ${streamIndex} of ${path.basename(filePath)}`)
 
-  const { promise } = runCommand(ffmpegPath, args)
+  const { promise } = runCommand(ffmpegPath, args, onStderrLine)
   const result = await promise
 
   if (result.code !== 0 && !result.killed) {
@@ -132,7 +133,8 @@ export async function normalizeFile(
     // Analysis pass — measure all streams
     const metrics: LoudnessMetrics[] = []
     for (let i = 0; i < info.audioStreams.length; i++) {
-      task.message = `Analyzing stream ${i + 1}/${info.audioStreams.length}...`
+      const streamLabel = `Analyzing stream ${i + 1}/${info.audioStreams.length}`
+      task.message = `${streamLabel}...`
       task.progress = Math.round(((i) / info.audioStreams.length) * 30)
       onProgress(task)
 
@@ -143,7 +145,17 @@ export async function normalizeFile(
         return task
       }
 
-      const m = await analyzeLoudness(ffmpegPath, task.filePath, i, config)
+      const m = await analyzeLoudness(ffmpegPath, task.filePath, i, config, (line) => {
+        const progress = parseProgress(line)
+        if (progress && totalDuration > 0) {
+          const streamBase = Math.round((i / info.audioStreams.length) * 30)
+          const streamSlice = 30 / info.audioStreams.length
+          const pct = Math.min(streamBase + Math.round((progress.time / totalDuration) * streamSlice), 29)
+          task.progress = pct
+          task.message = `${streamLabel} — ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+          onProgress(task)
+        }
+      })
       metrics.push(m)
     }
 

@@ -12,6 +12,11 @@ export interface FileItem {
   duration?: string
   audioStreams?: number
   videoStreams?: number
+  audioCodec?: string
+  videoCodec?: string
+  channels?: number
+  sampleRate?: string
+  bitrate?: string
 }
 
 export interface ProcessingTask {
@@ -90,6 +95,7 @@ interface AppState {
   // Files
   files: FileItem[]
   addFiles: (files: FileItem[]) => void
+  updateFile: (path: string, data: Partial<FileItem>) => void
   removeFile: (path: string) => void
   clearFiles: () => void
 
@@ -153,6 +159,10 @@ export const useAppStore = create<AppState>((set) => ({
       const unique = newFiles.filter((f) => !existingPaths.has(f.path))
       return { files: [...state.files, ...unique] }
     }),
+  updateFile: (filePath, data) =>
+    set((state) => ({
+      files: state.files.map((f) => (f.path === filePath ? { ...f, ...data } : f))
+    })),
   removeFile: (filePath) =>
     set((state) => ({ files: state.files.filter((f) => f.path !== filePath) })),
   clearFiles: () => set({ files: [] }),

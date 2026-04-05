@@ -1,14 +1,39 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useAppStore, FileItem } from '../stores/appStore'
 
 export default function FileQueue(): JSX.Element {
   const {
-    files, addFiles, removeFile, clearFiles,
+    files, addFiles, updateFile, removeFile, clearFiles,
     operation, setOperation, boostPercent, setBoostPercent,
     isProcessing, setView
   } = useAppStore()
   const [dragOver, setDragOver] = useState(false)
   const [scanning, setScanning] = useState(false)
+
+  // Auto-probe newly added files for metadata
+  useEffect(() => {
+    const unprobed = files.filter((f) => !f.probed)
+    if (unprobed.length === 0) return
+
+    for (const file of unprobed) {
+      updateFile(file.path, { probed: true })
+      window.api.probeFile(file.path).then((info: any) => {
+        if (!info) return
+        const audio = info.audioStreams?.[0]
+        updateFile(file.path, {
+          size: parseInt(info.format?.size, 10) || 0,
+          duration: info.format?.duration || '0',
+          audioStreams: info.audioStreams?.length || 0,
+          videoStreams: info.videoStreams?.length || 0,
+          audioCodec: audio?.codec_name,
+          channels: audio?.channels,
+          sampleRate: audio?.sample_rate,
+          videoCodec: info.videoStreams?.[0]?.codec_name,
+          bitrate: info.format?.bit_rate
+        })
+      }).catch(() => { /* probe failed, leave defaults */ })
+    }
+  }, [files, updateFile])
 
   const handleAddFiles = async () => {
     const paths = await window.api.openFiles()
@@ -68,7 +93,30 @@ export default function FileQueue(): JSX.Element {
   const formatSize = (bytes: number): string => {
     if (!bytes) return '—'
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  }
+
+  const formatDuration = (sec: string | undefined): string => {
+    if (!sec) return '—'
+    const s = parseFloat(sec)
+    if (!s || s <= 0) return '—'
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const ss = Math.floor(s % 60)
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`
+    return `${m}:${ss.toString().padStart(2, '0')}`
+  }
+
+  const formatCodecInfo = (file: FileItem): string => {
+    const parts: string[] = []
+    if (file.audioCodec) {
+      let codec = file.audioCodec.toUpperCase()
+      if (file.channels) codec += ` ${file.channels}ch`
+      parts.push(codec)
+    }
+    if (file.videoCodec) parts.push(file.videoCodec.toUpperCase())
+    return parts.join(' · ') || '—'
   }
 
   const extColor = (ext: string): string => {
@@ -204,6 +252,8 @@ export default function FileQueue(): JSX.Element {
                   <th className="py-2 px-3 w-8">#</th>
                   <th className="py-2 px-3">File</th>
                   <th className="py-2 px-3 w-20">Type</th>
+                  <th className="py-2 px-3 w-36">Codec</th>
+                  <th className="py-2 px-3 w-20 text-right">Duration</th>
                   <th className="py-2 px-3 w-24 text-right">Size</th>
                   <th className="py-2 px-3 w-10"></th>
                 </tr>
@@ -225,6 +275,10 @@ export default function FileQueue(): JSX.Element {
                         {file.ext.replace('.', '')}
                       </span>
                     </td>
+                    <td className="py-2 px-3">
+                      <span className="text-2xs font-mono text-surface-400">{formatCodecInfo(file)}</span>
+                    </td>
+                    <td className="py-2 px-3 text-right text-xs text-surface-500 font-mono">{formatDuration(file.duration)}</td>
                     <td className="py-2 px-3 text-right text-xs text-surface-500 font-mono">{formatSize(file.size)}</td>
                     <td className="py-2 px-3">
                       <button
