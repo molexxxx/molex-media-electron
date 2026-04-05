@@ -7,6 +7,7 @@ import FileQueue from './components/FileQueue'
 import ProcessingView from './components/ProcessingView'
 import Settings from './components/Settings'
 import LogViewer from './components/LogViewer'
+import MediaPlayer from './components/MediaPlayer'
 import SetupWizard from './components/SetupWizard'
 
 function App(): JSX.Element {
@@ -41,6 +42,7 @@ function App(): JSX.Element {
     dashboard: <Dashboard />,
     queue: <FileQueue />,
     processing: <ProcessingView />,
+    player: <MediaPlayer />,
     settings: <Settings />,
     logs: <LogViewer />
   }[currentView]

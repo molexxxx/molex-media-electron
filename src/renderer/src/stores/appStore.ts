@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type View = 'dashboard' | 'queue' | 'processing' | 'settings' | 'logs'
+export type View = 'dashboard' | 'queue' | 'processing' | 'player' | 'settings' | 'logs'
 export type Operation = 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
 
 export interface Preset {

@@ -30,6 +30,13 @@ const icons = {
       <polygon points="5,3 19,12 5,21" />
     </svg>
   ),
+  player: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  ),
   settings: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
@@ -55,6 +62,7 @@ export default function Sidebar(): JSX.Element {
     { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard },
     { id: 'queue', label: 'Queue', icon: icons.queue, badge: files.length || undefined },
     { id: 'processing', label: 'Processing', icon: icons.processing, badge: isProcessing ? tasks.filter((t) => t.status !== 'complete' && t.status !== 'error').length : undefined },
+    { id: 'player', label: 'Player', icon: icons.player },
     { id: 'settings', label: 'Settings', icon: icons.settings },
     { id: 'logs', label: 'Logs', icon: icons.logs, badge: errorCount || undefined }
   ]
