@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import * as path from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIPC } from './ipc'
@@ -8,7 +8,6 @@ import { killAllProcesses } from './ffmpeg/runner'
 import { ipcMain } from 'electron'
 
 let mainWindow: BrowserWindow | null = null
-let tray: Tray | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({

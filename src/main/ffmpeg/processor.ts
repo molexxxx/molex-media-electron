@@ -1,9 +1,8 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import * as os from 'os'
 import { getConfig, AppConfig } from '../config'
 import { logger } from '../logger'
-import { probeMedia, AudioStream, MediaInfo, formatDuration, formatFileSize } from './probe'
+import { probeMedia, MediaInfo, formatDuration, formatFileSize } from './probe'
 import { runCommand, parseProgress } from './runner'
 
 export interface ProcessingTask {

@@ -13,8 +13,6 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 export default function Dashboard(): JSX.Element {
   const { systemInfo, ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, tasks } = useAppStore()
 
-  const completedTasks = tasks.filter((t) => t.status === 'complete')
-  const errorTasks = tasks.filter((t) => t.status === 'error')
   const activeTasks = tasks.filter((t) => t.status === 'processing' || t.status === 'analyzing')
 
   return (

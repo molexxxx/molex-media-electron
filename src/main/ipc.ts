@@ -7,8 +7,6 @@ import { logger, LogEntry } from './logger'
 import { findSystemFFmpeg, downloadFFmpeg, getFFmpegVersion, BootstrapProgress } from './ffmpeg/bootstrap'
 import { probeMedia } from './ffmpeg/probe'
 import {
-  normalizeFile,
-  boostFile,
   processBatch,
   findMediaFiles,
   ProcessingTask
@@ -182,7 +180,7 @@ export function registerIPC(mainWindow: BrowserWindow): void {
   })
 
   ipcMain.handle('process:cancelAll', async () => {
-    for (const [id, abort] of activeTasks) {
+    for (const [, abort] of activeTasks) {
       abort.abort()
     }
     killAllProcesses()

@@ -9,9 +9,8 @@
     "composite": true,
     "outDir": "./out",
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["./src/renderer/src/*"]
     }
   }
 }

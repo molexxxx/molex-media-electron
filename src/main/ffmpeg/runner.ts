@@ -1,5 +1,4 @@
 import { ChildProcess, spawn } from 'child_process'
-import { getConfig } from '../config'
 import { logger } from '../logger'
 
 const activeProcesses = new Set<ChildProcess>()

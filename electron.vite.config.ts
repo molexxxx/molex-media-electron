@@ -13,7 +13,7 @@ export default defineConfig({
           index: resolve(__dirname, 'src/main/index.ts')
         }
       }
-    }
+    } as object
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
@@ -23,7 +23,7 @@ export default defineConfig({
           index: resolve(__dirname, 'src/preload/index.ts')
         }
       }
-    }
+    } as object
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
@@ -33,7 +33,7 @@ export default defineConfig({
           index: resolve(__dirname, 'src/renderer/index.html')
         }
       }
-    },
+    } as object,
     plugins: [react()],
     css: {
       postcss: {

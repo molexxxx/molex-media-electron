@@ -40,7 +40,7 @@ export default function FileQueue(): JSX.Element {
     setDragOver(false)
     const paths: string[] = []
     for (const file of Array.from(e.dataTransfer.files)) {
-      paths.push(file.path)
+      paths.push((file as File & { path: string }).path)
     }
     if (paths.length) {
       const items: FileItem[] = paths.map((p) => ({
