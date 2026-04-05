@@ -5,6 +5,7 @@
     "src/main/**/*",
     "src/preload/**/*"
   ],
+  "exclude": ["out", "dist", "node_modules"],
   "compilerOptions": {
     "composite": true,
     "outDir": "./out",

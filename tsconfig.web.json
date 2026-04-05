@@ -4,6 +4,7 @@
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx"
   ],
+  "exclude": ["out", "dist", "node_modules"],
   "compilerOptions": {
     "composite": true,
     "outDir": "./out",
