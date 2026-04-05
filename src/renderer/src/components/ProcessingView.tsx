@@ -1,7 +1,7 @@
 import { useAppStore } from '../stores/appStore'
 
 export default function ProcessingView(): JSX.Element {
-  const { tasks, isProcessing, activeBatchId, clearTasks } = useAppStore()
+  const { tasks, isProcessing, isPaused, activeBatchId, clearTasks } = useAppStore()
 
   const completed = tasks.filter((t) => t.status === 'complete').length
   const errors = tasks.filter((t) => t.status === 'error').length
@@ -12,6 +12,14 @@ export default function ProcessingView(): JSX.Element {
   const handleCancel = async () => {
     if (activeBatchId) {
       await window.api.cancelBatch(activeBatchId)
+    }
+  }
+
+  const handlePauseResume = async () => {
+    if (isPaused) {
+      await window.api.resumeProcessing()
+    } else {
+      await window.api.pauseProcessing()
     }
   }
 
@@ -43,7 +51,9 @@ export default function ProcessingView(): JSX.Element {
           <h1 className="text-2xl font-bold text-white">Processing</h1>
           <p className="text-sm text-surface-400 mt-0.5">
             {isProcessing
-              ? `${active.length} active · ${completed}/${total} complete`
+              ? isPaused
+                ? `Paused · ${completed}/${total} complete`
+                : `${active.length} active · ${completed}/${total} complete`
               : total > 0
                 ? `Finished — ${completed} succeeded, ${errors} failed`
                 : 'No active tasks'
@@ -52,12 +62,24 @@ export default function ProcessingView(): JSX.Element {
         </div>
         <div className="flex items-center gap-2">
           {isProcessing && (
-            <button
-              onClick={handleCancel}
-              className="px-4 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-all"
-            >
-              Cancel All
-            </button>
+            <>
+              <button
+                onClick={handlePauseResume}
+                className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                  isPaused
+                    ? 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20'
+                    : 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20'
+                }`}
+              >
+                {isPaused ? 'Resume' : 'Pause'}
+              </button>
+              <button
+                onClick={handleCancel}
+                className="px-4 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-all"
+              >
+                Cancel All
+              </button>
+            </>
           )}
           {!isProcessing && tasks.length > 0 && (
             <button

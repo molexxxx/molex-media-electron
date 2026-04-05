@@ -503,6 +503,34 @@ export function findMediaFiles(dirPath: string, extensions: string[]): string[] 
 }
 
 // Batch concurrent processor
+let pauseResolve: (() => void) | null = null
+let pausePromise: Promise<void> | null = null
+let isPaused = false
+
+export function pauseProcessing(): void {
+  if (isPaused) return
+  isPaused = true
+  pausePromise = new Promise<void>((resolve) => {
+    pauseResolve = resolve
+  })
+  logger.info('Processing paused')
+}
+
+export function resumeProcessing(): void {
+  if (!isPaused) return
+  isPaused = false
+  if (pauseResolve) {
+    pauseResolve()
+    pauseResolve = null
+    pausePromise = null
+  }
+  logger.info('Processing resumed')
+}
+
+export function getIsPaused(): boolean {
+  return isPaused
+}
+
 export async function processBatch(
   tasks: ProcessingTask[],
   maxConcurrency: number,
@@ -518,6 +546,13 @@ export async function processBatch(
   async function worker(): Promise<void> {
     while (index < total) {
       if (abortSignal?.signal.aborted) break
+
+      // Wait if paused
+      if (pausePromise) {
+        await pausePromise
+      }
+      if (abortSignal?.signal.aborted) break
+
       const i = index++
       const task = tasks[i]
       task.message = `Queued (${i + 1}/${total})`
@@ -535,6 +570,11 @@ export async function processBatch(
 
   const workers = Array.from({ length: Math.min(maxConcurrency, total) }, () => worker())
   await Promise.all(workers)
+
+  // Reset pause state when batch ends
+  isPaused = false
+  pauseResolve = null
+  pausePromise = null
 
   const succeeded = results.filter((r) => r.status === 'complete').length
   const failed = results.filter((r) => r.status === 'error').length

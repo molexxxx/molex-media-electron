@@ -30,6 +30,19 @@ const api = {
   cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
   cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
   getActiveCount: () => ipcRenderer.invoke('process:activeCount'),
+  pauseProcessing: () => ipcRenderer.invoke('process:pause'),
+  resumeProcessing: () => ipcRenderer.invoke('process:resume'),
+  getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
+  onPaused: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('process:paused', listener)
+    return () => ipcRenderer.removeListener('process:paused', listener)
+  },
+  onResumed: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('process:resumed', listener)
+    return () => ipcRenderer.removeListener('process:resumed', listener)
+  },
 
   onBatchStarted: (cb: (data: any) => void) => {
     const listener = (_: any, data: any) => cb(data)

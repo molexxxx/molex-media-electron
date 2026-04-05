@@ -112,6 +112,8 @@ interface AppState {
   updateTask: (task: ProcessingTask) => void
   setActiveBatch: (id: string | null) => void
   setIsProcessing: (processing: boolean) => void
+  isPaused: boolean
+  setIsPaused: (paused: boolean) => void
   clearTasks: () => void
 
   // Stats
@@ -182,7 +184,9 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setActiveBatch: (id) => set({ activeBatchId: id }),
   setIsProcessing: (processing) => set({ isProcessing: processing }),
-  clearTasks: () => set({ tasks: [], activeBatchId: null }),
+  isPaused: false,
+  setIsPaused: (paused) => set({ isPaused: paused }),
+  clearTasks: () => set({ tasks: [], activeBatchId: null, isPaused: false }),
 
   totalProcessed: 0,
   totalErrors: 0,

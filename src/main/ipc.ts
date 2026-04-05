@@ -9,6 +9,9 @@ import { probeMedia } from './ffmpeg/probe'
 import {
   processBatch,
   findMediaFiles,
+  pauseProcessing,
+  resumeProcessing,
+  getIsPaused,
   ProcessingTask
 } from './ffmpeg/processor'
 import { killAllProcesses, getActiveProcessCount } from './ffmpeg/runner'
@@ -191,6 +194,24 @@ export function registerIPC(mainWindow: BrowserWindow): void {
 
   ipcMain.handle('process:activeCount', () => {
     return getActiveProcessCount()
+  })
+
+  ipcMain.handle('process:pause', () => {
+    pauseProcessing()
+    mainWindow.webContents.send('process:paused')
+    logger.info('Processing paused by user')
+    return true
+  })
+
+  ipcMain.handle('process:resume', () => {
+    resumeProcessing()
+    mainWindow.webContents.send('process:resumed')
+    logger.info('Processing resumed by user')
+    return true
+  })
+
+  ipcMain.handle('process:isPaused', () => {
+    return getIsPaused()
   })
 
   // ─── Logging ──────────────────────────────────

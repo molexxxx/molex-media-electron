@@ -19,6 +19,7 @@ export function useIPC(): void {
     setTasks,
     setActiveBatch,
     setIsProcessing,
+    setIsPaused,
     setDownloadProgress,
     incrementProcessed,
     incrementErrors
@@ -84,6 +85,15 @@ export function useIPC(): void {
     const unsubBatchComplete = window.api.onBatchComplete(() => {
       setIsProcessing(false)
       setActiveBatch(null)
+      setIsPaused(false)
+    })
+
+    const unsubPaused = window.api.onPaused(() => {
+      setIsPaused(true)
+    })
+
+    const unsubResumed = window.api.onResumed(() => {
+      setIsPaused(false)
     })
 
     const unsubDownload = window.api.onDownloadProgress((progress: any) => {
@@ -96,6 +106,8 @@ export function useIPC(): void {
       unsubTaskProgress?.()
       unsubBatchStarted?.()
       unsubBatchComplete?.()
+      unsubPaused?.()
+      unsubResumed?.()
       unsubDownload?.()
     }
   }, [])
