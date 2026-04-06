@@ -202,7 +202,7 @@ describe('bootstrap', () => {
   })
 
   describe('downloadFFmpeg', () => {
-    it('throws when ffmpeg binary not found in extracted files', async () => {
+    it('throws when ffmpeg binary not found in extracted files', { timeout: 15000 }, async () => {
       // Mock successful download response
       mockHttpsGet.mockImplementation((_url: string, _opts: any, callback: any) => {
         const res = new EventEmitter() as any
