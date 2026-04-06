@@ -91,8 +91,17 @@ Write-Host "        Tagged v$next"
 
 # --- Push ---
 Write-Host "  [3/5] Pushing to origin..." -ForegroundColor Cyan
-git push --quiet
-git push --tags --quiet
+git push 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR: Push failed. Run 'git pull --rebase' first, then retry." -ForegroundColor Red
+    git tag -d "v$next" 2>&1 | Out-Null
+    exit 1
+}
+git push --tags 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR: Tag push failed." -ForegroundColor Red
+    exit 1
+}
 Write-Host "        Pushed commits + tags"
 
 # --- Build ---
