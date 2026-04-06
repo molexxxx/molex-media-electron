@@ -44,13 +44,6 @@ export function PopoutTransport({
     <div className="shrink-0 space-y-1 px-1 pb-0.5">
       {/* Track name + vis + add */}
       <div className="flex items-center gap-1.5 min-w-0">
-        {track && (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-accent-400 shrink-0">
-            <path d="M9 18V5l12-2v13" />
-            <circle cx="6" cy="18" r="3" />
-            <circle cx="18" cy="16" r="3" />
-          </svg>
-        )}
         <span className="flex-1 text-[11px] text-surface-300 font-medium truncate min-w-0">
           {track ? track.name : 'No track loaded'}
         </span>
