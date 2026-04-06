@@ -56,7 +56,7 @@ export default function Dashboard(): React.JSX.Element {
       {/* Header */}
       <div className="mb-4">
         <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-xs text-surface-400 mt-0.5">Media processing toolkit â€” audio, video, and everything in between</p>
+        <p className="text-xs text-surface-400 mt-0.5">Media processing toolkit — audio, video, and everything in between</p>
       </div>
 
       {/* Quick Stats */}
