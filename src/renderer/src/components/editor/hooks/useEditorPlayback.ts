@@ -109,12 +109,12 @@ export function useEditorPlayback(clip: EditorClip | null) {
   useEffect(() => {
     const el = clip?.isVideo ? videoRef.current : audioRef.current
     if (el) el.volume = clipMuted ? 0 : volume * clipVolume
-  }, [clip?.isVideo, volume, clipVolume, clipMuted])
+  }, [clip?.id, clip?.isVideo, volume, clipVolume, clipMuted])
 
   useEffect(() => {
     const el = clip?.isVideo ? videoRef.current : audioRef.current
     if (el) el.playbackRate = playbackRate
-  }, [clip?.isVideo, playbackRate])
+  }, [clip?.id, clip?.isVideo, playbackRate])
 
   // -- A2 audio source loading --
   const a2Url = clip?.audioReplacement?.objectUrl
@@ -279,12 +279,21 @@ export function useEditorPlayback(clip: EditorClip | null) {
         el.currentTime = clip.inPoint
         setCurrentTime(clip.inPoint)
       }
+      // Read latest clip state from the store so mute/volume changes are
+      // respected even when the callback reference hasn't been recreated.
+      const store = useEditorStore.getState()
+      const fresh = store.clips.find((c) => c.id === clip.id)
+      const isMuted = fresh?.clipMuted ?? clip.clipMuted
+      const vol = fresh?.clipVolume ?? clip.clipVolume
+      el.volume = isMuted ? 0 : store.volume * vol
       // Browser handles play-after-pending-seek correctly; no need to await seeked
       el.play().catch(() => setPlaying(false))
       // Start A2 if in range
       const a2 = a2AudioRef.current
-      const ar = clip.audioReplacement
+      const ar = fresh?.audioReplacement ?? clip.audioReplacement
       if (a2 && ar && a2.src) {
+        a2.volume = ar.muted ? 0 : store.volume * ar.volume
+        a2.playbackRate = store.playbackRate
         const rel = el.currentTime - clip.inPoint
         const a2Time = rel - ar.offset
         if (a2Time >= 0 && a2Time < ar.duration) {

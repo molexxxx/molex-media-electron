@@ -261,6 +261,35 @@ export default function MediaEditor(): React.JSX.Element {
     input.click()
   }, [])
 
+  // -- Replace A1 source audio (opens file picker → sets A2 + mutes A1) --
+  const handleReplaceA1Audio = useCallback((clipId: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.mp3,.wav,.flac,.ogg,.m4a,.aac,.opus,.wma'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const filePath = window.api.getFilePath(file)
+      const objectUrl = URL.createObjectURL(file)
+      const info = await window.api.probeFile(filePath).catch(() => null)
+      const dur = parseFloat(info?.format?.duration)
+      const s = useEditorStore.getState()
+      s.setAudioReplacement(clipId, {
+        path: filePath,
+        name: file.name,
+        duration: isFinite(dur) ? dur : 0,
+        offset: 0,
+        volume: 1,
+        muted: false,
+        objectUrl
+      })
+      // Auto-mute source audio so replacement takes over
+      const clip = s.clips.find((c) => c.id === clipId)
+      if (clip && !clip.clipMuted) s.toggleClipMute(clipId)
+    }
+    input.click()
+  }, [])
+
   // -- Export with audio replacement (single clip) --
   const handleExportWithAudioReplace = useCallback(async () => {
     if (!clip || !clip.audioReplacement) return
@@ -326,6 +355,7 @@ export default function MediaEditor(): React.JSX.Element {
             onCut={clip?.audioReplacement ? handleExportWithAudioReplace : handleCut}
             onMerge={handleMerge}
             onReplaceAudio={handleReplaceAudio}
+            onReplaceA1={handleReplaceA1Audio}
             onBrowseOutputDir={browseOutputDir}
             onImportFile={handleImportFile}
           />

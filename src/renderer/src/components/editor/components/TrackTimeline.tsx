@@ -19,6 +19,7 @@ interface TrackTimelineProps {
   onCut: () => void
   onMerge: () => void
   onReplaceAudio: (clipId: string) => void
+  onReplaceA1: (clipId: string) => void
   onBrowseOutputDir: () => void
   onImportFile: () => void
 }
@@ -44,7 +45,7 @@ function rulerMarks(totalDur: number): { pct: number; label: string }[] {
 
 export function TrackTimeline({
   currentTime, playing, onSeek, onTogglePlay, onSetIn, onSetOut, onCut,
-  onMerge, onReplaceAudio, onBrowseOutputDir, onImportFile
+  onMerge, onReplaceAudio, onReplaceA1, onBrowseOutputDir, onImportFile
 }: TrackTimelineProps): React.JSX.Element {
   const {
     clips, activeIdx, processing, exportProgress, message, cutMode, outputFormat,
@@ -250,8 +251,8 @@ export function TrackTimeline({
       {/* ========== TRACK AREA ========== */}
       <div className="flex">
         {/* Track labels */}
-        <div className="w-11 shrink-0 bg-surface-900/40 border-r border-white/5">
-          <div className="h-5" />
+        <div className="w-11 shrink-0 bg-surface-900/50 border-r border-white/[0.08]">
+          <div className="h-6" />
           <div className="h-11 flex items-center justify-center border-t border-white/5">
             <div className="flex flex-col items-center gap-0.5">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400/70">
@@ -287,14 +288,14 @@ export function TrackTimeline({
         <div ref={trackAreaRef} className="relative" style={{ width: zoom > 1 ? `${zoom * 100}%` : '100%' }}>
           {/* Timecode ruler — clickable for scrubbing */}
           <div
-            className="h-5 relative border-b border-white/5 bg-surface-950/40 cursor-pointer"
+            className="h-6 relative border-b border-white/[0.08] bg-surface-950/60 cursor-pointer"
             onMouseDown={handleRulerMouseDown}
           >
             {marks.map((m, i) => (
               <div key={i} className="absolute top-0 bottom-0 flex flex-col justify-end pointer-events-none" style={{ left: `${m.pct}%` }}>
-                <div className="w-px h-2 bg-surface-600/60" />
+                <div className="w-px h-2.5 bg-surface-500/50" />
                 {i < marks.length - 1 && (
-                  <span className="absolute bottom-0.5 left-1 text-[7px] text-surface-600 font-mono whitespace-nowrap">
+                  <span className="absolute bottom-1 left-1.5 text-[8px] text-surface-400 font-mono whitespace-nowrap select-none">
                     {m.label}
                   </span>
                 )}
@@ -336,25 +337,39 @@ export function TrackTimeline({
                   {/* Left trim handle */}
                   <div
                     onMouseDown={(e) => handleTrimStart(e, clip.id, 'left', i)}
-                    className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/trim ${
-                      trimEdge === `${clip.id}-left` ? 'bg-blue-400/40' : 'hover:bg-blue-400/25'
+                    className={`absolute left-0 top-0 bottom-0 w-2 cursor-col-resize z-10 transition-all group/trim flex items-center justify-center ${
+                      trimEdge === `${clip.id}-left` ? 'bg-blue-400/30' : 'hover:bg-blue-400/15'
                     }`}
                   >
-                    <div className={`absolute left-0 top-0 bottom-0 w-0.5 transition-colors ${
-                      trimEdge === `${clip.id}-left` ? 'bg-blue-400' : 'bg-transparent group-hover/trim:bg-blue-400/50'
+                    <div className={`absolute left-0 top-0 bottom-0 w-[2px] transition-colors rounded-r ${
+                      trimEdge === `${clip.id}-left` ? 'bg-blue-400' : 'bg-transparent group-hover/trim:bg-blue-400/60'
                     }`} />
+                    <div className={`flex flex-col gap-0.5 pointer-events-none transition-opacity ${
+                      trimEdge === `${clip.id}-left` ? 'opacity-80' : 'opacity-0 group-hover/trim:opacity-50'
+                    }`}>
+                      <div className="w-0.5 h-1 bg-blue-300 rounded-full" />
+                      <div className="w-0.5 h-1 bg-blue-300 rounded-full" />
+                      <div className="w-0.5 h-1 bg-blue-300 rounded-full" />
+                    </div>
                   </div>
 
                   {/* Right trim handle */}
                   <div
                     onMouseDown={(e) => handleTrimStart(e, clip.id, 'right', i)}
-                    className={`absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/trimr ${
-                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400/40' : 'hover:bg-emerald-400/25'
+                    className={`absolute right-0 top-0 bottom-0 w-2 cursor-col-resize z-10 transition-all group/trimr flex items-center justify-center ${
+                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400/30' : 'hover:bg-emerald-400/15'
                     }`}
                   >
-                    <div className={`absolute right-0 top-0 bottom-0 w-0.5 transition-colors ${
-                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400' : 'bg-transparent group-hover/trimr:bg-emerald-400/50'
+                    <div className={`absolute right-0 top-0 bottom-0 w-[2px] transition-colors rounded-l ${
+                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400' : 'bg-transparent group-hover/trimr:bg-emerald-400/60'
                     }`} />
+                    <div className={`flex flex-col gap-0.5 pointer-events-none transition-opacity ${
+                      trimEdge === `${clip.id}-right` ? 'opacity-80' : 'opacity-0 group-hover/trimr:opacity-50'
+                    }`}>
+                      <div className="w-0.5 h-1 bg-emerald-300 rounded-full" />
+                      <div className="w-0.5 h-1 bg-emerald-300 rounded-full" />
+                      <div className="w-0.5 h-1 bg-emerald-300 rounded-full" />
+                    </div>
                   </div>
 
                   <div className="h-full flex flex-col justify-center px-2 py-1 min-w-0">
@@ -491,13 +506,31 @@ export function TrackTimeline({
                           className="w-10 h-0.5 accent-green-500 cursor-pointer"
                           title={`A1 Volume: ${Math.round(clip.clipVolume * 100)}%`}
                         />
-                        {clip.isVideo && clip.loadingState === 'ready' && (
+                        {clip.isVideo && clip.loadingState === 'ready' && !clip.audioReplacement && (
                           <button
                             onClick={() => onReplaceAudio(clip.id)}
                             className="px-1 py-0.5 text-[7px] rounded font-medium text-surface-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-                            title="Add replacement audio"
+                            title="Add replacement audio (A2)"
                           >
                             +A2
+                          </button>
+                        )}
+                        {clip.isVideo && clip.loadingState === 'ready' && (
+                          <button
+                            onClick={() => onReplaceA1(clip.id)}
+                            className="w-4 h-4 rounded flex items-center justify-center text-surface-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            title="Replace source audio"
+                          >
+                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+                          </button>
+                        )}
+                        {clip.isVideo && clip.loadingState === 'ready' && !clip.clipMuted && (
+                          <button
+                            onClick={() => { toggleClipMute(clip.id) }}
+                            className="w-4 h-4 rounded flex items-center justify-center text-surface-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Remove source audio"
+                          >
+                            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                           </button>
                         )}
                       </div>
@@ -549,42 +582,58 @@ export function TrackTimeline({
           {/* In/Out bracket markers — span all tracks */}
           {active && totalDur > 0 && (
             <>
-              {/* In-point needle (blue) */}
+              {/* In-point bracket (blue) */}
               <div
                 className="absolute top-0 bottom-0 z-10 pointer-events-none"
                 style={{ left: `${inBracketPct}%` }}
               >
-                <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-400/30" />
+                <div className="absolute top-0 left-0 w-[2px] h-full bg-blue-400/25" />
+                {/* Top handle — rounded pill grip */}
                 <div
-                  className="absolute -top-0.5 -left-[3px] w-[7px] h-[7px] pointer-events-auto cursor-col-resize"
+                  className="absolute -top-0.5 -left-[5px] w-3 h-4 pointer-events-auto cursor-col-resize group/inhandle"
                   onMouseDown={(e) => handleTrimStart(e, active.id, 'left', activeIdx)}
                 >
-                  <div className="w-0 h-0 border-l-[4px] border-l-blue-400 border-y-[3px] border-y-transparent mt-px" />
+                  <div className="w-full h-full rounded-sm bg-blue-500/80 group-hover/inhandle:bg-blue-400 transition-colors shadow-[0_0_6px_rgba(59,130,246,0.3)] flex items-center justify-center">
+                    <div className="flex gap-px">
+                      <div className="w-px h-2 bg-blue-200/60 rounded-full" />
+                      <div className="w-px h-2 bg-blue-200/60 rounded-full" />
+                    </div>
+                  </div>
                 </div>
                 {/* Bottom bracket foot */}
-                <div className="absolute bottom-0 left-0 w-2 h-0.5 bg-blue-400/40" />
+                <div className="absolute bottom-0 left-0 w-3 h-[2px] bg-blue-400/50 rounded-r" />
+                {/* Vertical glow on active drag */}
+                <div className="absolute top-4 bottom-0 left-0 w-[2px] bg-gradient-to-b from-blue-400/40 to-transparent" />
               </div>
-              {/* Out-point needle (emerald) */}
+              {/* Out-point bracket (emerald) */}
               <div
                 className="absolute top-0 bottom-0 z-10 pointer-events-none"
                 style={{ left: `${outBracketPct}%` }}
               >
-                <div className="absolute top-0 right-0 w-0.5 h-full bg-emerald-400/30" />
+                <div className="absolute top-0 right-0 w-[2px] h-full bg-emerald-400/25" />
+                {/* Top handle — rounded pill grip */}
                 <div
-                  className="absolute -top-0.5 -left-[3px] w-[7px] h-[7px] pointer-events-auto cursor-col-resize"
+                  className="absolute -top-0.5 -right-[5px] w-3 h-4 pointer-events-auto cursor-col-resize group/outhandle"
                   onMouseDown={(e) => handleTrimStart(e, active.id, 'right', activeIdx)}
                 >
-                  <div className="w-0 h-0 border-r-[4px] border-r-emerald-400 border-y-[3px] border-y-transparent mt-px ml-auto" />
+                  <div className="w-full h-full rounded-sm bg-emerald-500/80 group-hover/outhandle:bg-emerald-400 transition-colors shadow-[0_0_6px_rgba(16,185,129,0.3)] flex items-center justify-center">
+                    <div className="flex gap-px">
+                      <div className="w-px h-2 bg-emerald-200/60 rounded-full" />
+                      <div className="w-px h-2 bg-emerald-200/60 rounded-full" />
+                    </div>
+                  </div>
                 </div>
                 {/* Bottom bracket foot */}
-                <div className="absolute bottom-0 right-0 w-2 h-0.5 bg-emerald-400/40" />
+                <div className="absolute bottom-0 right-0 w-3 h-[2px] bg-emerald-400/50 rounded-l" />
+                {/* Vertical glow on active drag */}
+                <div className="absolute top-4 bottom-0 right-0 w-[2px] bg-gradient-to-b from-emerald-400/40 to-transparent" />
               </div>
-              {/* Shaded region between in/out */}
+              {/* Dimmed regions outside in/out */}
               {inBracketPct > 0.1 && (
-                <div className="absolute top-0 bottom-0 bg-blue-400/[0.03] pointer-events-none" style={{ left: 0, width: `${inBracketPct}%` }} />
+                <div className="absolute top-0 bottom-0 bg-black/15 pointer-events-none" style={{ left: 0, width: `${inBracketPct}%` }} />
               )}
               {outBracketPct < 99.9 && (
-                <div className="absolute top-0 bottom-0 bg-emerald-400/[0.03] pointer-events-none" style={{ left: `${outBracketPct}%`, right: 0 }} />
+                <div className="absolute top-0 bottom-0 bg-black/15 pointer-events-none" style={{ left: `${outBracketPct}%`, right: 0 }} />
               )}
             </>
           )}
@@ -594,10 +643,18 @@ export function TrackTimeline({
             className="absolute top-0 bottom-0 z-20 pointer-events-none"
             style={{ left: `${playheadPct}%` }}
           >
-            <div className="absolute top-0 left-0 w-px h-full bg-white/80" />
-            <div className="absolute -top-0.5 -left-1 w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.5)] pointer-events-auto cursor-col-resize"
+            <div className="absolute top-0 left-[-0.5px] w-px h-full bg-white/90" />
+            {/* Top playhead triangle */}
+            <div
+              className="absolute -top-[1px] -left-[5px] pointer-events-auto cursor-col-resize"
               onMouseDown={(e) => { e.stopPropagation(); handleRulerMouseDown(e) }}
-            />
+            >
+              <svg width="11" height="8" viewBox="0 0 11 8" className="drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]">
+                <path d="M5.5 8L0 0h11L5.5 8z" fill="white" />
+              </svg>
+            </div>
+            {/* Bottom playhead marker */}
+            <div className="absolute -bottom-[1px] -left-[2px] w-[5px] h-[3px] bg-white/80 rounded-t" />
           </div>
         </div>
         </div>
@@ -605,7 +662,7 @@ export function TrackTimeline({
 
       {/* ========== TRANSPORT + IN/OUT ========== */}
       {clip && clip.loadingState === 'ready' && (
-        <div className="border-t border-white/5 px-3 sm:px-4 py-2.5 space-y-2">
+        <div className="border-t border-white/[0.08] px-3 sm:px-4 py-2.5 space-y-2 bg-surface-950/30">
           {/* Row 1: transport + in/out + export */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
@@ -673,13 +730,13 @@ export function TrackTimeline({
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
-              <button onClick={onSetIn} className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/15 transition-all" title="Set In (I)">
+              <button onClick={onSetIn} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/20 transition-all shadow-sm" title="Set In (I)">
                 In [{formatTime(clip.inPoint)}]
               </button>
-              <button onClick={onSetOut} className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/15 transition-all" title="Set Out (O)">
+              <button onClick={onSetOut} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/20 transition-all shadow-sm" title="Set Out (O)">
                 Out [{formatTime(clip.outPoint)}]
               </button>
-              <button onClick={() => resetPoints()} className="px-2 py-0.5 text-[10px] font-medium rounded-md text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 transition-all" title="Reset (R)">
+              <button onClick={() => resetPoints()} className="px-2.5 py-1 text-[10px] font-medium rounded-lg text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 border border-white/[0.06] transition-all" title="Reset (R)">
                 Reset
               </button>
               {canMerge() && (
