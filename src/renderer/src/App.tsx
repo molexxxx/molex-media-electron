@@ -156,10 +156,14 @@ function App(): React.JSX.Element {
   ]
 
   return (
-    <div className="h-full flex flex-col">
-      <TitleBar />
-      <div className="flex flex-1 overflow-hidden">
+    <div className="h-full flex">
+      {/* Sidebar — full height of window */}
+      <div className="shrink-0 h-full overflow-visible z-10">
         <Sidebar />
+      </div>
+      {/* Title bar + content column */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <TitleBar />
         <main className="flex-1 overflow-hidden relative">
           {views.map(({ id, el }) =>
             mounted.has(id) ? (

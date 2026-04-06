@@ -7,7 +7,7 @@
  * with real-time task progress, and pause / cancel / clear controls.
  */
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useAppStore, View } from '../../stores/appStore'
 import { ProcessingPanel } from './components/ProcessingPanel'
 
@@ -74,9 +74,22 @@ const icons = {
 }
 
 export default function Sidebar(): React.JSX.Element {
-  const { currentView, setView, files, logs } = useAppStore()
+  const { currentView, setView, files, logs, sidebarCollapsed, setSidebarCollapsed, toggleSidebar } = useAppStore()
 
   const errorCount = logs.filter((l) => l.level === 'error').length
+
+  // Auto-collapse on narrow windows
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 840px)')
+    const onChange = (e: MediaQueryListEvent | MediaQueryList): void => {
+      setSidebarCollapsed(e.matches)
+    }
+    onChange(mq)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [setSidebarCollapsed])
+
+  const collapsed = sidebarCollapsed
 
   const sections: { label?: string; items: NavItem[] }[] = [
     {
@@ -107,14 +120,39 @@ export default function Sidebar(): React.JSX.Element {
   ]
 
   return (
-    <nav className="w-[200px] shrink-0 bg-surface-900/50 border-r border-white/5 flex flex-col py-3 px-2">
-      <div className="flex-1 space-y-4">
+    <nav className={`${collapsed ? 'w-13 overflow-visible' : 'w-50'} shrink-0 h-full bg-surface-900/50 border-r border-white/5 flex flex-col pt-0 pb-3 px-2 transition-all duration-200 relative`}>
+      {/* Drag region + collapse toggle */}
+      <div className="drag-region h-10 shrink-0 relative">
+        <button
+          onClick={toggleSidebar}
+          className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+              <polyline points="14 9 17 12 14 15" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="9" y1="3" x2="9" y2="21" />
+              <polyline points="16 9 13 12 16 15" />
+            </svg>
+          )}
+        </button>
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin">
         {sections.map((section, si) => (
           <div key={si}>
-            {section.label && (
+            {section.label && !collapsed && (
               <div className="px-3 mb-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-surface-600">{section.label}</span>
               </div>
+            )}
+            {section.label && collapsed && (
+              <div className="mx-auto mb-1 w-5 border-t border-surface-700/60" />
             )}
             <div className="space-y-0.5">
               {section.items.map((item) => {
@@ -123,18 +161,23 @@ export default function Sidebar(): React.JSX.Element {
                   <button
                     key={item.id}
                     onClick={() => setView(item.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 group
+                    className={`w-full flex items-center ${collapsed ? 'justify-center' : ''} gap-2.5 ${collapsed ? 'px-0 py-2' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-150 group relative
                       ${active
                         ? 'bg-accent-500/15 text-accent-300 shadow-inner-glow'
                         : 'text-surface-400 hover:text-surface-200 hover:bg-surface-700/40'
                       }`}
                   >
-                    <span className={`transition-colors ${active ? 'text-accent-400' : 'text-surface-500 group-hover:text-surface-300'}`}>
+                    <span className={`transition-colors shrink-0 ${active ? 'text-accent-400' : 'text-surface-500 group-hover:text-surface-300'}`}>
                       {item.icon}
                     </span>
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center
+                    {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+                    {collapsed && (
+                      <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-surface-800 border border-surface-700 text-xs text-surface-200 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50 shadow-lg">
+                        {item.label}
+                      </span>
+                    )}
+                    {!collapsed && item.badge !== undefined && item.badge > 0 && (
+                      <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center
                         ${item.id === 'logs'
                           ? 'bg-red-500/20 text-red-400'
                           : active
@@ -145,6 +188,9 @@ export default function Sidebar(): React.JSX.Element {
                         {item.badge > 99 ? '99+' : item.badge}
                       </span>
                     )}
+                    {collapsed && item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-500" />
+                    )}
                   </button>
                 )
               })}
@@ -153,7 +199,7 @@ export default function Sidebar(): React.JSX.Element {
         ))}
       </div>
 
-      <ProcessingPanel />
+      <ProcessingPanel collapsed={collapsed} />
     </nav>
   )
 }
