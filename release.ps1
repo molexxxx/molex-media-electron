@@ -1,19 +1,17 @@
 <#
 .SYNOPSIS
-  Bump version, commit, tag, push, build, and publish a new release.
+  Bump version, commit, tag, push, and build for release. CI will handle changelog and publishing.
 .DESCRIPTION
   Interactive release script for molexMedia. Prompts for version bump type
   (patch / minor / major), updates package.json, commits, tags, pushes,
-  then builds and uploads to GitHub Releases via electron-builder.
-  Requires GH_TOKEN environment variable to be set.
+  builds the app, and relies on CI to generate changelog and publish the release.
 #>
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'
 
 # --- Preflight checks ---
-# electron-builder accepts GH_TOKEN or GITHUB_TOKEN
-# Check current session, then fall back to persisted user-level env vars
+
 if (-not $env:GH_TOKEN) {
     $env:GH_TOKEN = $env:GITHUB_TOKEN
 }
