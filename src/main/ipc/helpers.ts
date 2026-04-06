@@ -8,6 +8,7 @@ import { BrowserWindow, Notification } from 'electron'
 import { getConfig } from '../config'
 import { type ProcessingTask } from '../ffmpeg/processor'
 import { updateTrayProgress } from '../tray'
+import { logger } from '../logger'
 
 /* ------------------------------------------------------------------ */
 /*  Active abort controllers                                           */
@@ -58,7 +59,15 @@ export function endBatch(): void {
  */
 export async function notifyBatchComplete(results: ProcessingTask[]): Promise<void> {
   const config = await getConfig()
-  if (!config.showNotifications) return
+  if (!config.showNotifications) {
+    logger.info('Desktop notifications disabled in settings — skipping')
+    return
+  }
+
+  if (!Notification.isSupported()) {
+    logger.warn('Desktop notifications not supported on this platform')
+    return
+  }
 
   const succeeded = results.filter((t) => t.status === 'complete').length
   const failed = results.filter((t) => t.status === 'error').length
@@ -71,11 +80,16 @@ export async function notifyBatchComplete(results: ProcessingTask[]): Promise<vo
     body = `${succeeded} of ${total} succeeded, ${failed} failed.`
   }
 
-  const notification = new Notification({
-    title: 'molexMedia — Batch Complete',
-    body
-  })
-  notification.show()
+  try {
+    const notification = new Notification({
+      title: 'molexMedia — Batch Complete',
+      body
+    })
+    notification.show()
+    logger.info(`Desktop notification shown: ${body}`)
+  } catch (err: any) {
+    logger.error(`Failed to show desktop notification: ${err.message}`)
+  }
 }
 
 /* ------------------------------------------------------------------ */
