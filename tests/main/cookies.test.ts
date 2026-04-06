@@ -337,7 +337,7 @@ describe('ytdlp/cookies', () => {
         // First: setBrowserAndExport already sets sessionBrowser to 'chrome'
         // detectBrowser uses sessionBrowser, so exportCookiesFromBrowser proceeds
         // After invalidation: find Edge as fallback
-        if (typeof p === 'string' && p.includes('Edge') && callIdx > 3) return true
+        if (typeof p === 'string' && p.toLowerCase().includes('edge') && callIdx > 3) return true
         return false
       })
       // First export fails with cookie error, fallback export succeeds
