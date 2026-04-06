@@ -215,4 +215,133 @@ describe('convertFile', () => {
     expect(result.status).toBe('cancelled')
     expect(killMock).toHaveBeenCalledWith('SIGTERM')
   })
+
+  it('converts audio-only file without video codec args', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      videoStreams: [],
+      isVideoFile: false,
+      isAudioOnly: true
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(makeTask({
+      convertOptions: {
+        outputFormat: 'mp3', videoCodec: '', audioCodec: 'libmp3lame',
+        videoBitrate: '', audioBitrate: '320k', resolution: '', framerate: ''
+      }
+    }), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-c:v')
+  })
+
+  it('handles audioBitrate of 0 (no bitrate flag)', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({
+      convertOptions: {
+        outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac',
+        videoBitrate: '5000k', audioBitrate: '0', resolution: '', framerate: ''
+      }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-b:a')
+  })
+
+  it('does not add subtitles for audio-only files', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      videoStreams: [],
+      isVideoFile: false,
+      isAudioOnly: true
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    await convertFile(makeTask(), onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-c:s')
+  })
+
+  it('uses task.outputDir over config.outputDirectory', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(makeTask({ outputDir: '/custom' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('applies video codec with no bitrate when empty', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({
+      convertOptions: {
+        outputFormat: 'mp4', videoCodec: 'libx265', audioCodec: 'aac',
+        videoBitrate: '', audioBitrate: '256k', resolution: '', framerate: ''
+      }
+    })
+    const onProgress = vi.fn()
+    await convertFile(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-c:v')
+    expect(args).toContain('libx265')
+    expect(args).not.toContain('-b:v')
+  })
+
+  it('exercises progress callback with speed and without speed', async () => {
+    const { parseProgress: mockPP } = await import('../../src/main/ffmpeg/runner')
+    vi.mocked(mockPP)
+      .mockReturnValueOnce({ time: 30, speed: '2x' } as any)
+      .mockReturnValueOnce({ time: 60 } as any)
+      .mockReturnValueOnce(null)
+
+    mockRunCommand.mockImplementation((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('line1'); onLine('line2'); onLine('line3') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('falls back to path.dirname when no outputDir configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(makeTask({ outputDir: '' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('preserves subtitles disabled does not add subtitle flags', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, preserveSubtitles: false })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    await convertFile(makeTask(), onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-c:s')
+  })
 })

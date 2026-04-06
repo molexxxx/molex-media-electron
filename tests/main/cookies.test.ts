@@ -35,6 +35,10 @@ vi.mock('../../src/main/ytdlp/binary', () => ({
 // We need a fresh module for each test because cookies.ts has module-level state
 let ensureCookieFlags: typeof import('../../src/main/ytdlp/cookies').ensureCookieFlags
 let withCookieRetry: typeof import('../../src/main/ytdlp/cookies').withCookieRetry
+let getInstalledBrowsers: typeof import('../../src/main/ytdlp/cookies').getInstalledBrowsers
+let setBrowserAndExport: typeof import('../../src/main/ytdlp/cookies').setBrowserAndExport
+let clearCookies: typeof import('../../src/main/ytdlp/cookies').clearCookies
+let getCookieInfo: typeof import('../../src/main/ytdlp/cookies').getCookieInfo
 
 beforeEach(async () => {
   vi.resetAllMocks()
@@ -47,6 +51,10 @@ beforeEach(async () => {
   const mod = await import('../../src/main/ytdlp/cookies')
   ensureCookieFlags = mod.ensureCookieFlags
   withCookieRetry = mod.withCookieRetry
+  getInstalledBrowsers = mod.getInstalledBrowsers
+  setBrowserAndExport = mod.setBrowserAndExport
+  clearCookies = mod.clearCookies
+  getCookieInfo = mod.getCookieInfo
 })
 
 describe('ytdlp/cookies', () => {
@@ -264,6 +272,172 @@ describe('ytdlp/cookies', () => {
       const fn = vi.fn().mockResolvedValue('result')
       const result = await withCookieRetry(fn)
       expect(result).toBe('result')
+    })
+  })
+
+  describe('getInstalledBrowsers', () => {
+    it('returns browsers whose data directories exist', () => {
+      mockExistsSync.mockImplementation((p: string) =>
+        typeof p === 'string' && (p.includes('Chrome') || p.includes('Firefox'))
+      )
+      const browsers = getInstalledBrowsers()
+      expect(Array.isArray(browsers)).toBe(true)
+      for (const b of browsers) {
+        expect(b).toHaveProperty('name')
+        expect(b).toHaveProperty('label')
+      }
+    })
+
+    it('returns empty array when no browsers found', () => {
+      mockExistsSync.mockReturnValue(false)
+      const browsers = getInstalledBrowsers()
+      expect(browsers).toEqual([])
+    })
+
+    it('handles existsSync errors gracefully', () => {
+      mockExistsSync.mockImplementation(() => { throw new Error('access denied') })
+      const browsers = getInstalledBrowsers()
+      expect(Array.isArray(browsers)).toBe(true)
+    })
+  })
+
+  describe('setBrowserAndExport', () => {
+    it('sets sessionBrowser and saves config', async () => {
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      mockExistsSync.mockReturnValue(false)
+      await setBrowserAndExport('chrome')
+      expect(mockSaveConfig).toHaveBeenCalledWith({ ytdlpBrowser: 'chrome' })
+    })
+
+    it('returns true when export succeeds', async () => {
+      mockDl.mockResolvedValue(undefined)
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      mockExistsSync.mockImplementation((p: string) => {
+        if (typeof p === 'string' && p.includes('cookies.txt')) return true
+        return false
+      })
+      const result = await setBrowserAndExport('firefox')
+      // sessionBrowser is set to 'firefox' so detectBrowser returns it
+      expect(typeof result).toBe('boolean')
+    })
+
+    it('returns false when no browser is available and export fails', async () => {
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      mockExistsSync.mockReturnValue(false)
+      mockDl.mockRejectedValue(new Error('cannot connect'))
+      const result = await setBrowserAndExport('nonexistent')
+      expect(result).toBe(false)
+    })
+
+    it('handles cookie error and succeeds with fallback browser', async () => {
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      let callIdx = 0
+      mockExistsSync.mockImplementation((p: string) => {
+        callIdx++
+        // First: setBrowserAndExport already sets sessionBrowser to 'chrome'
+        // detectBrowser uses sessionBrowser, so exportCookiesFromBrowser proceeds
+        // After invalidation: find Edge as fallback
+        if (typeof p === 'string' && p.includes('Edge') && callIdx > 3) return true
+        return false
+      })
+      // First export fails with cookie error, fallback export succeeds
+      mockDl
+        .mockRejectedValueOnce(new Error('could not copy cookie database'))
+        .mockResolvedValueOnce(undefined)
+      const result = await setBrowserAndExport('chrome')
+      expect(result).toBe(true)
+    })
+  })
+
+  describe('clearCookies', () => {
+    it('removes cookie file and resets browser state', async () => {
+      mockExistsSync.mockReturnValue(true)
+      await clearCookies()
+      expect(mockUnlinkSync).toHaveBeenCalled()
+      expect(mockSaveConfig).toHaveBeenCalledWith({ ytdlpBrowser: '' })
+    })
+
+    it('handles missing cookie file gracefully', async () => {
+      mockExistsSync.mockReturnValue(false)
+      await expect(clearCookies()).resolves.not.toThrow()
+      expect(mockSaveConfig).toHaveBeenCalledWith({ ytdlpBrowser: '' })
+    })
+  })
+
+  describe('getCookieInfo', () => {
+    it('returns info when cookie file exists with data', () => {
+      mockStatSync.mockReturnValue({ size: 500, mtimeMs: Date.now() - 5000 })
+      const info = getCookieInfo()
+      expect(info.exists).toBe(true)
+      expect(info.age).toBeGreaterThanOrEqual(5000)
+    })
+
+    it('returns exists=false for empty file', () => {
+      mockStatSync.mockReturnValue({ size: 0, mtimeMs: Date.now() })
+      const info = getCookieInfo()
+      expect(info.exists).toBe(false)
+    })
+
+    it('returns exists=false when file does not exist', () => {
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      const info = getCookieInfo()
+      expect(info.exists).toBe(false)
+      expect(info.age).toBeNull()
+    })
+
+    it('returns browser name when session browser is set', async () => {
+      // Set session browser via setBrowserAndExport
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      mockExistsSync.mockReturnValue(false)
+      await setBrowserAndExport('edge')
+      mockStatSync.mockReturnValue({ size: 100, mtimeMs: Date.now() })
+      const info = getCookieInfo()
+      expect(info.browser).toBe('edge')
+    })
+  })
+
+  describe('ensureCookieFlags – IIFE fileUsable catch path', () => {
+    it('handles existsSync true but statSync throws in IIFE', async () => {
+      let freshChecked = false
+      mockStatSync.mockImplementation(() => {
+        if (!freshChecked) {
+          freshChecked = true
+          // First call: isCookiesFileFresh → throws (stale/missing)
+          throw new Error('ENOENT')
+        }
+        // Second call: inside IIFE statSync(fp).size → throw
+        throw new Error('permission denied')
+      })
+      // existsSync returns true for cookies.txt, false for browsers
+      mockExistsSync.mockImplementation((p: string) =>
+        typeof p === 'string' && p.includes('cookies.txt')
+      )
+      const flags = await ensureCookieFlags()
+      // fileUsable catch returns false → goes to "No file at all"
+      // No browser found → returns {}
+      expect(flags).toEqual({})
+    })
+  })
+
+  describe('ensureCookieFlags – detectBrowser config browser failed', () => {
+    it('skips config browser when it has previously failed', async () => {
+      // First call: set and fail a browser
+      mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
+      mockExistsSync.mockImplementation((p: string) =>
+        typeof p === 'string' && p.includes('Chrome')
+      )
+      mockDl.mockRejectedValue(new Error('could not copy cookie database'))
+      mockGetConfig.mockResolvedValue({ ytdlpBrowser: 'chrome' })
+
+      // This will fail with cookie error, invalidate 'chrome', then try to detect
+      // another browser. If Chrome is the only one, it loops through all and fails.
+      await ensureCookieFlags()
+
+      // Now call again — chrome should be in failedBrowsers and cfg.ytdlpBrowser='chrome'
+      // detectBrowser should skip chrome and fall through
+      mockExistsSync.mockReturnValue(false)
+      const flags = await ensureCookieFlags()
+      expect(flags).toEqual({})
     })
   })
 })

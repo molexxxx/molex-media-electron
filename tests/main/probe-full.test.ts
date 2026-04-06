@@ -264,4 +264,62 @@ describe('probeMedia', () => {
     expect(result.isVideoFile).toBe(false)
     expect(result.isAudioOnly).toBe(false)
   })
+
+  it('parses data and attachment streams', async () => {
+    const data = {
+      streams: [
+        { index: 0, codec_type: 'audio', codec_name: 'aac', channels: 2, sample_rate: '48000' },
+        { index: 1, codec_type: 'data', codec_name: 'bin_data', tags: { handler_name: 'SubtitleHandler' } },
+        { index: 2, codec_type: 'attachment', codec_name: 'ttf', tags: { filename: 'font.ttf' }, disposition: { attached_pic: 0 } }
+      ],
+      format: { filename: 'test.mkv', duration: '120', size: '5000000', bit_rate: '300000', format_name: 'matroska' }
+    }
+    const proc = createMockProbeProcess(JSON.stringify(data))
+    mockSpawn.mockReturnValue(proc)
+
+    const result = await probeMedia('/test/with-data.mkv')
+    expect(result.dataStreams).toHaveLength(2)
+    expect(result.dataStreams![0].codec_type).toBe('data')
+    expect(result.dataStreams![1].codec_type).toBe('attachment')
+    expect(result.dataStreams![1].codec_name).toBe('ttf')
+  })
+
+  it('fallback probe provides audio even when no streams parsed', async () => {
+    // Primary probe fails with invalid JSON
+    const primaryProc = createMockProbeProcess('BROKEN JSON')
+    // Fallback returns empty streams
+    const fallbackProc = createMockProbeProcess(JSON.stringify({ streams: [] }))
+    mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
+
+    const result = await probeMedia('/test/empty-fallback.mp3')
+    // fallbackProbe pushes a default audio stream when length === 0
+    expect(result.audioStreams).toHaveLength(1)
+    expect(result.audioStreams[0].codec_name).toBe('unknown')
+    expect(result.audioStreams[0].channels).toBe(2)
+  })
+
+  it('fallback probe handles missing streams key in JSON', async () => {
+    const primaryProc = createMockProbeProcess('BROKEN')
+    const fallbackProc = createMockProbeProcess(JSON.stringify({ format: { duration: '60' } }))
+    mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
+
+    const result = await probeMedia('/test/no-streams-key.mp3')
+    expect(result.audioStreams).toHaveLength(1)
+    expect(result.audioStreams[0].codec_name).toBe('unknown')
+  })
+
+  it('fallback probe uses defaults for sparse stream fields', async () => {
+    const primaryProc = createMockProbeProcess('BROKEN')
+    const fallbackProc = createMockProbeProcess(JSON.stringify({
+      streams: [{}]
+    }))
+    mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
+
+    const result = await probeMedia('/test/sparse-fb.mp3')
+    expect(result.audioStreams).toHaveLength(1)
+    expect(result.audioStreams[0].index).toBe(0)
+    expect(result.audioStreams[0].codec_name).toBe('unknown')
+    expect(result.audioStreams[0].channels).toBe(2)
+    expect(result.audioStreams[0].sample_rate).toBe('48000')
+  })
 })

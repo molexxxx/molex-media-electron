@@ -407,5 +407,284 @@ describe('ytdlp/resolver', () => {
       expect(entries[0].id).toBe('unknown')
       expect(entries[0].title).toBe('Unknown')
     })
+
+    it('resolves playlist URL with list parameter', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { id: 'a', title: 'A', url: 'https://youtube.com/watch?v=a', duration: 100 },
+          { id: 'b', title: 'B', url: 'https://youtube.com/watch?v=b', duration: 200 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/watch?v=x&list=PLabc')
+      expect(entries).toHaveLength(2)
+    })
+
+    it('resolves YouTube live URL as single video', async () => {
+      const mockDl = vi.fn().mockResolvedValue({ id: 'live1', title: 'Live Stream', duration: 0 })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/live/live1')
+      expect(entries).toHaveLength(1)
+    })
+
+    it('resolves generic YouTube channel URL as playlist', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { id: 'c1', title: 'Channel Vid 1', duration: 60 },
+          { id: 'c2', title: 'Channel Vid 2', duration: 120 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      // A YouTube URL that isn't watch, short, live, or youtu.be but has no list param
+      // This should hit the final `return false` in isSingleVideoUrl
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UCxyz')
+      expect(entries).toHaveLength(2)
+    })
+
+    it('uses data.id as title fallback when title is missing', async () => {
+      const mockDl = vi.fn().mockResolvedValue({ id: 'vid123', duration: 60 })
+      mockGetYtDl.mockResolvedValue(mockDl)
+
+      const entries = await resolvePlaylist('https://www.youtube.com/watch?v=vid123')
+      expect(entries[0].title).toBe('vid123')
+    })
+  })
+
+  describe('getAudioStreamUrl – edge cases', () => {
+    it('falls back to download when no direct URLs exist at all', async () => {
+      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(12345)
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const mockDl = vi.fn()
+        .mockResolvedValueOnce({
+          title: 'No Direct', duration: 60,
+          url: 'https://cdn.example.com/manifest.m3u8', protocol: 'm3u8_native',
+          formats: []
+        })
+        .mockResolvedValueOnce(undefined)
+      mockGetYtDl.mockResolvedValue(mockDl)
+      mockMkdirSync.mockReturnValue(undefined)
+      mockReaddirSync.mockReturnValue(['molex-12345-i.opus'])
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.audioUrl).toContain('file:///')
+      mockNow.mockRestore()
+      mockRandom.mockRestore()
+    })
+
+    it('handles no formats array at all', async () => {
+      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(99999)
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const mockDl = vi.fn()
+        .mockResolvedValueOnce({
+          title: 'No Formats', duration: 60,
+          url: 'https://cdn.example.com/manifest.m3u8', protocol: 'm3u8_native'
+        })
+        .mockResolvedValueOnce(undefined)
+      mockGetYtDl.mockResolvedValue(mockDl)
+      mockMkdirSync.mockReturnValue(undefined)
+      mockReaddirSync.mockReturnValue(['molex-99999-i.opus'])
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.title).toBe('No Formats')
+      mockNow.mockRestore()
+      mockRandom.mockRestore()
+    })
+
+    it('handles missing title/id/duration in getAudioStreamUrl', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        url: 'https://cdn.example.com/audio.m4a',
+        protocol: 'https'
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=x')
+      expect(track.title).toBe('Unknown')
+      expect(track.duration).toBeNull()
+    })
+
+    it('handles requested_formats with no direct audio (all HLS)', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        title: 'HLS RF',
+        duration: 60,
+        url: 'https://cdn.example.com/manifest.m3u8',
+        protocol: 'm3u8',
+        requested_formats: [
+          { acodec: 'opus', url: 'https://cdn.example.com/hls.m3u8', protocol: 'm3u8' },
+          { acodec: 'none', vcodec: 'vp9', url: 'https://cdn.example.com/vid.m3u8', protocol: 'm3u8' }
+        ],
+        formats: [
+          { acodec: 'opus', vcodec: 'none', url: 'https://cdn.example.com/direct.webm', protocol: 'https', abr: 128 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.audioUrl).toBe('https://cdn.example.com/direct.webm')
+    })
+
+    it('uses a/v format when formats list has no audio-only direct', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        title: 'AV Only',
+        duration: 60,
+        url: 'https://cdn.example.com/manifest.m3u8',
+        protocol: 'm3u8',
+        formats: [
+          { acodec: 'none', vcodec: 'h264', url: 'https://cdn.example.com/video.mp4', protocol: 'https', abr: 0 },
+          { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av.mp4', protocol: 'https', abr: 128 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.audioUrl).toBe('https://cdn.example.com/av.mp4')
+    })
+
+    it('handles formats with only HLS a/v (no direct at all)', async () => {
+      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(55555)
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const mockDl = vi.fn()
+        .mockResolvedValueOnce({
+          title: 'All HLS',
+          duration: 60,
+          url: 'https://cdn.example.com/manifest.m3u8',
+          protocol: 'm3u8',
+          formats: [
+            { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av.m3u8', protocol: 'm3u8', abr: 128 }
+          ]
+        })
+        .mockResolvedValueOnce(undefined)
+      mockGetYtDl.mockResolvedValue(mockDl)
+      mockMkdirSync.mockReturnValue(undefined)
+      mockReaddirSync.mockReturnValue(['molex-55555-i.opus'])
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.audioUrl).toContain('file:///')
+      mockNow.mockRestore()
+      mockRandom.mockRestore()
+    })
+
+    it('handles playlist entries with only url, no id', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { url: 'https://youtube.com/watch?v=z1', title: 'Z1', duration: 30 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/playlist?list=PLxyz')
+      expect(entries).toHaveLength(1)
+      expect(entries[0].id).toBe('')
+      expect(entries[0].url).toBe('https://youtube.com/watch?v=z1')
+    })
+
+    it('uses entry webpage_url when available', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { id: 'v1', title: 'V1', webpage_url: 'https://www.youtube.com/watch?v=v1', url: 'https://other.com', duration: 60 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/playlist?list=PLxyz')
+      expect(entries[0].url).toBe('https://www.youtube.com/watch?v=v1')
+    })
+
+    it('parsePlaylistData no-entries: uses all fields when present', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        id: 'single1',
+        title: 'Full Title',
+        webpage_url: 'https://www.youtube.com/watch?v=single1',
+        url: 'https://other.com',
+        duration: 300
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UCxyz')
+      expect(entries).toHaveLength(1)
+      expect(entries[0].title).toBe('Full Title')
+      expect(entries[0].url).toBe('https://www.youtube.com/watch?v=single1')
+      expect(entries[0].duration).toBe(300)
+    })
+
+    it('parsePlaylistData no-entries: title falls through to id', async () => {
+      const mockDl = vi.fn().mockResolvedValue({ id: 'fallbackid' })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UCabc')
+      expect(entries[0].title).toBe('fallbackid')
+      expect(entries[0].id).toBe('fallbackid')
+    })
+
+    it('parsePlaylistData no-entries: title and id both missing', async () => {
+      const mockDl = vi.fn().mockResolvedValue({})
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UCdef')
+      expect(entries[0].title).toBe('Unknown')
+      expect(entries[0].id).toBe('unknown')
+    })
+
+    it('parsePlaylistData no-entries: url falls through to originalUrl', async () => {
+      const mockDl = vi.fn().mockResolvedValue({ id: 'x' })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UCtest')
+      expect(entries[0].url).toBe('https://www.youtube.com/channel/UCtest')
+    })
+
+    it('parsePlaylistData no-entries: uses url when webpage_url missing', async () => {
+      const mockDl = vi.fn().mockResolvedValue({ id: 'y', url: 'https://alt.com/y' })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/channel/UC123')
+      expect(entries[0].url).toBe('https://alt.com/y')
+    })
+
+    it('entry title falls through to Unknown when both missing', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { url: 'https://youtube.com/watch?v=z2' }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/playlist?list=PLxyz')
+      expect(entries[0].title).toBe('Unknown')
+    })
+
+    it('entry url uses constructed youtube URL when webpage_url and url missing', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        entries: [
+          { id: 'eid1', title: 'E1' }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const entries = await resolvePlaylist('https://www.youtube.com/playlist?list=PLxyz')
+      expect(entries[0].url).toBe('https://www.youtube.com/watch?v=eid1')
+    })
+
+    it('pickDirectAudioUrl sort comparator with multiple a/v formats', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        title: 'Multi AV',
+        duration: 60,
+        url: 'https://cdn.example.com/manifest.m3u8',
+        protocol: 'm3u8',
+        formats: [
+          { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av-low.mp4', protocol: 'https', abr: 64 },
+          { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av-high.mp4', protocol: 'https', tbr: 320 },
+          { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av-mid.mp4', protocol: 'https', abr: 128 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      // Should pick highest bitrate a/v format (tbr=320)
+      expect(track.audioUrl).toBe('https://cdn.example.com/av-high.mp4')
+    })
+
+    it('pickDirectAudioUrl sort with multiple audio-only formats', async () => {
+      const mockDl = vi.fn().mockResolvedValue({
+        title: 'Multi Audio',
+        duration: 60,
+        url: 'https://cdn.example.com/manifest.m3u8',
+        protocol: 'm3u8',
+        requested_formats: [
+          { acodec: 'opus', url: 'https://cdn.example.com/hls.m3u8', protocol: 'm3u8' }
+        ],
+        formats: [
+          { acodec: 'opus', vcodec: 'none', url: 'https://cdn.example.com/a-64.webm', protocol: 'https', abr: 64 },
+          { acodec: 'opus', vcodec: 'none', url: 'https://cdn.example.com/a-256.webm', protocol: 'https', tbr: 256 },
+          { acodec: 'opus', vcodec: 'none', url: 'https://cdn.example.com/a-128.webm', protocol: 'https', abr: 128 }
+        ]
+      })
+      mockGetYtDl.mockResolvedValue(mockDl)
+      const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
+      expect(track.audioUrl).toBe('https://cdn.example.com/a-256.webm')
+    })
   })
 })

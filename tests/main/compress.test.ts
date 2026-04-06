@@ -235,4 +235,115 @@ describe('compressFile', () => {
     expect(result.status).toBe('cancelled')
     expect(killMock).toHaveBeenCalledWith('SIGTERM')
   })
+
+  it('uses task.outputDir when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ outputDir: '/custom' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('preserves subtitles in video file', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, preserveSubtitles: true })
+    mockProbeMedia.mockResolvedValue({
+      ...videoProbe,
+      subtitleStreams: [{ index: 2, codec_name: 'srt' }]
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-c:s')
+  })
+
+  it('compresses audio with low quality preset', async () => {
+    mockProbeMedia.mockResolvedValue(audioProbe)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({
+      filePath: '/media/song.mp3',
+      fileName: 'song.mp3',
+      compressOptions: { targetSizeMB: 0, quality: 'low' }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(task, onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses video with lossless quality (veryslow preset)', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 0, quality: 'lossless' } }), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('veryslow')
+  })
+
+  it('compresses video with low quality uses 128k audio', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 0, quality: 'low' } }), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('128k')
+  })
+
+  it('exercises progress callback with and without speed', async () => {
+    const { parseProgress: mockPP } = await import('../../src/main/ffmpeg/runner')
+    vi.mocked(mockPP)
+      .mockReturnValueOnce({ time: 30, speed: '2x' } as any)
+      .mockReturnValueOnce({ time: 60 } as any)
+      .mockReturnValueOnce(null)
+
+    mockRunCommand.mockImplementation((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('line1'); onLine('line2'); onLine('line3') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('falls back to path.dirname when no outputDir configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ outputDir: '' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses video with subtitles disabled', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, preserveSubtitles: false })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-c:s')
+  })
 })

@@ -425,5 +425,115 @@ describe('editor', () => {
       const result = await remuxMedia('/media/video.mkv', { keepStreams: [0] })
       expect(result.success).toBe(false)
     })
+
+    it('returns error when remux throws', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.reject(new Error('remux spawn failed')),
+        process: {}
+      })
+
+      const result = await remuxMedia('/media/video.mkv', { keepStreams: [0] })
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('remux spawn failed')
+    })
+
+    it('uses outputDirectory from config', async () => {
+      mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '/output' })
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      const result = await remuxMedia('/media/video.mkv', { keepStreams: [0] })
+      expect(result.success).toBe(true)
+      expect(result.outputPath).toContain('output')
+    })
+  })
+
+  describe('mergeMedia – error paths', () => {
+    it('returns error when merge throws unexpectedly', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.reject(new Error('merge spawn failed')),
+        process: {}
+      })
+
+      const segments = [
+        { path: '/a.mp4', inPoint: 0, outPoint: 10 },
+        { path: '/b.mp4', inPoint: 0, outPoint: 10 }
+      ]
+
+      const result = await mergeMedia(segments)
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('merge spawn failed')
+    })
+
+    it('reports progress during merge', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      mockParseProgress.mockReturnValue({ time: 5, speed: '1x' })
+
+      const segments = [
+        { path: '/a.mp4', inPoint: 0, outPoint: 10 },
+        { path: '/b.mp4', inPoint: 0, outPoint: 10 }
+      ]
+
+      const progress = vi.fn()
+      await mergeMedia(segments, {}, progress)
+
+      // Trigger stderr callbacks for segment cuts
+      for (let i = 0; i < 2; i++) {
+        const cb = mockRunCommand.mock.calls[i][2]
+        if (cb) cb('time=00:00:05.00')
+      }
+
+      expect(progress).toHaveBeenCalled()
+    })
+
+    it('uses outputFormat override in merge', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      const segments = [
+        { path: '/a.mp4', inPoint: 0, outPoint: 10 },
+        { path: '/b.mp4', inPoint: 0, outPoint: 10 }
+      ]
+
+      const result = await mergeMedia(segments, { outputFormat: 'mkv' })
+      expect(result.success).toBe(true)
+    })
+  })
+
+  describe('cutMedia – progress callbacks', () => {
+    it('reports progress during precise cut', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      mockParseProgress.mockReturnValue({ time: 5, speed: '2x' })
+
+      const progress = vi.fn()
+      await cutMedia('/media/video.mp4', 0, 10, {}, progress)
+
+      const cb = mockRunCommand.mock.calls[0][2]
+      cb('time=00:00:05.00')
+
+      expect(mockParseProgress).toHaveBeenCalledWith('time=00:00:05.00')
+      expect(progress).toHaveBeenCalled()
+    })
+
+    it('uses outputDir option', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      const result = await cutMedia('/media/video.mp4', 0, 10, { outputDir: '/custom' })
+      expect(result.success).toBe(true)
+      expect(result.outputPath).toContain('custom')
+    })
   })
 })

@@ -230,4 +230,191 @@ describe('normalizeFile', () => {
     expect(result.status).toBe('error')
     expect(result.error).toContain('FFmpeg encode failed')
   })
+
+  it('handles audio-only file with non-inherit codec', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, audioCodec: 'aac', overwriteOriginal: false, outputDirectory: '/output' })
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      videoStreams: [],
+      isVideoFile: false,
+      isAudioOnly: true
+    })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('uses task.outputDir when overwriteOriginal is false and outputDir is set', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask({ outputDir: '/custom/output' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('cancels during analysis loop when abort is signalled', async () => {
+    const abort = new AbortController()
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [sampleProbe.audioStreams[0], { ...sampleProbe.audioStreams[0], index: 2 }]
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    // Abort after first analysis pass
+    abort.abort()
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress, abort)
+    expect(result.status).toBe('cancelled')
+  })
+
+  it('returns error when loudness JSON cannot be extracted', async () => {
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: 'no json data here' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('Could not extract loudness')
+  })
+
+  it('preserves subtitles disabled does not add -map 0:s', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, preserveSubtitles: false })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[1][1]
+    expect(args).not.toContain('0:s?')
+  })
+
+  it('uses audio stream title tags for metadata', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [{ ...sampleProbe.audioStreams[0], tags: { title: '[molexMedia old] Song Title' } }]
+    })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('exercises encoding progress with speed falsy and null progress', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockImplementationOnce(() => ({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    }))
+    mockRunCommand.mockImplementationOnce((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('a'); onLine('b'); onLine('c') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+    mockParseProgress
+      .mockReturnValueOnce({ time: 30, speed: '2x' })
+      .mockReturnValueOnce({ time: 60 })
+      .mockReturnValueOnce(null)
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('falls back to path.dirname when both outputDir and outputDirectory empty', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask({ outputDir: '' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('exercises analysis progress with speed falsy', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockImplementationOnce((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('x'); onLine('y') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+        process: { kill: vi.fn() }
+      }
+    })
+    mockRunCommand.mockImplementationOnce(() => ({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    }))
+    mockParseProgress
+      .mockReturnValueOnce({ time: 30 })
+      .mockReturnValueOnce(null)
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
 })

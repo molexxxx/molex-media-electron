@@ -187,4 +187,124 @@ describe('extractAudio', () => {
     expect(result.status).toBe('cancelled')
     expect(killMock).toHaveBeenCalledWith('SIGTERM')
   })
+
+  it('extracts to wav using pcm codec without bitrate', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'wav', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('pcm_s16le')
+    expect(args).not.toContain('-b:a')
+  })
+
+  it('extracts to ogg using libvorbis', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'ogg', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('libvorbis')
+  })
+
+  it('extracts to opus using libopus', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'opus', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('libopus')
+  })
+
+  it('uses copy codec for unknown format', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'xyz', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('copy')
+    expect(args).not.toContain('-b:a')
+  })
+
+  it('uses task.outputDir when configured', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await extractAudio(makeTask({ outputDir: '/custom' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('extracts to m4a using aac codec', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'm4a', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('aac')
+  })
+
+  it('exercises progress callback with and without speed', async () => {
+    const { parseProgress: mockPP } = await import('../../src/main/ffmpeg/runner')
+    vi.mocked(mockPP)
+      .mockReturnValueOnce({ time: 30, speed: '1x' } as any)
+      .mockReturnValueOnce({ time: 60 } as any)
+      .mockReturnValueOnce(null)
+
+    mockRunCommand.mockImplementation((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('a'); onLine('b'); onLine('c') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+    const onProgress = vi.fn()
+    const result = await extractAudio(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('falls back to path.dirname when no outputDir configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await extractAudio(makeTask({ outputDir: '' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('extracts to aac with bitrate', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'aac', streamIndex: 0 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-b:a')
+  })
 })

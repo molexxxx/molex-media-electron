@@ -189,4 +189,67 @@ describe('appStore – extended coverage', () => {
       expect(useAppStore.getState().files).toHaveLength(1)
     })
   })
+
+  describe('sidebar', () => {
+    it('setSidebarCollapsed updates state and localStorage', () => {
+      useAppStore.getState().setSidebarCollapsed(true)
+      expect(useAppStore.getState().sidebarCollapsed).toBe(true)
+      expect(localStorage.getItem('sidebarCollapsed')).toBe('true')
+
+      useAppStore.getState().setSidebarCollapsed(false)
+      expect(useAppStore.getState().sidebarCollapsed).toBe(false)
+      expect(localStorage.getItem('sidebarCollapsed')).toBe('false')
+    })
+
+    it('toggleSidebar flips the state', () => {
+      useAppStore.getState().setSidebarCollapsed(false)
+      useAppStore.getState().toggleSidebar()
+      expect(useAppStore.getState().sidebarCollapsed).toBe(true)
+      expect(localStorage.getItem('sidebarCollapsed')).toBe('true')
+
+      useAppStore.getState().toggleSidebar()
+      expect(useAppStore.getState().sidebarCollapsed).toBe(false)
+      expect(localStorage.getItem('sidebarCollapsed')).toBe('false')
+    })
+  })
+
+  describe('operation setters', () => {
+    it('setConvertOptions merges partial options', () => {
+      useAppStore.getState().setConvertOptions({ outputFormat: 'webm' })
+      expect(useAppStore.getState().convertOptions.outputFormat).toBe('webm')
+      expect(useAppStore.getState().convertOptions.videoCodec).toBe('libx264')
+    })
+
+    it('setExtractOptions merges partial options', () => {
+      useAppStore.getState().setExtractOptions({ outputFormat: 'flac' })
+      expect(useAppStore.getState().extractOptions.outputFormat).toBe('flac')
+      expect(useAppStore.getState().extractOptions.streamIndex).toBe(0)
+    })
+
+    it('setCompressOptions merges partial options', () => {
+      useAppStore.getState().setCompressOptions({ targetSizeMB: 50 })
+      expect(useAppStore.getState().compressOptions.targetSizeMB).toBe(50)
+      expect(useAppStore.getState().compressOptions.quality).toBe('high')
+    })
+
+    it('setOperation changes the operation', () => {
+      useAppStore.getState().setOperation('boost')
+      expect(useAppStore.getState().operation).toBe('boost')
+    })
+
+    it('setBoostPercent updates boost value', () => {
+      useAppStore.getState().setBoostPercent(75)
+      expect(useAppStore.getState().boostPercent).toBe(75)
+    })
+
+    it('setSelectedPreset updates preset', () => {
+      useAppStore.getState().setSelectedPreset('custom')
+      expect(useAppStore.getState().selectedPreset).toBe('custom')
+    })
+
+    it('setBatchOutputDir updates batch output dir', () => {
+      useAppStore.getState().setBatchOutputDir('/output')
+      expect(useAppStore.getState().batchOutputDir).toBe('/output')
+    })
+  })
 })

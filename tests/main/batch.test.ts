@@ -165,4 +165,44 @@ describe('processBatch', () => {
     await processBatch([task], 1, onProgress)
     expect(mockNormalize).toHaveBeenCalledTimes(1)
   })
+
+  it('pauses and resumes during batch processing', async () => {
+    let taskIndex = 0
+    mockNormalize.mockImplementation(async (task: ProcessingTask) => {
+      taskIndex++
+      if (taskIndex === 1) {
+        // Pause, then resume on next tick so the second task can proceed
+        pauseProcessing()
+        queueMicrotask(() => resumeProcessing())
+      }
+      task.status = 'complete'
+      task.progress = 100
+      return task
+    })
+
+    const tasks = [makeTask('t1', 'normalize'), makeTask('t2', 'normalize')]
+    const onProgress = vi.fn()
+    const results = await processBatch(tasks, 1, onProgress)
+    expect(results).toHaveLength(2)
+    expect(results.every((r) => r.status === 'complete')).toBe(true)
+  })
+
+  it('waits when paused at batch start and resumes', async () => {
+    pauseProcessing()
+    const batchPromise = processBatch([makeTask('t1', 'normalize')], 1, vi.fn())
+    resumeProcessing()
+    const results = await batchPromise
+    expect(results).toHaveLength(1)
+    expect(results[0].status).toBe('complete')
+  })
+
+  it('handles abort while paused', async () => {
+    const abort = new AbortController()
+    pauseProcessing()
+    const batchPromise = processBatch([makeTask('t1', 'normalize'), makeTask('t2', 'normalize')], 1, vi.fn(), abort)
+    abort.abort()
+    resumeProcessing()
+    const results = await batchPromise
+    expect(results.length).toBeLessThanOrEqual(1)
+  })
 })

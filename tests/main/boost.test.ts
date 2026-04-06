@@ -204,4 +204,101 @@ describe('boostFile', () => {
     expect(result.status).toBe('cancelled')
     expect(killMock).toHaveBeenCalledWith('SIGTERM')
   })
+
+  it('uses task.outputDir when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ outputDir: '/custom' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('handles video file with subtitles and inherit codec', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      videoStreams: [{ index: 0, codec_name: 'h264', width: 1920, height: 1080 }],
+      subtitleStreams: [{ index: 2, codec_name: 'srt' }],
+      isVideoFile: true,
+      isAudioOnly: false
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ boostPercent: 50 }), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-c:v')
+    expect(args).toContain('-c:s')
+  })
+
+  it('handles video file with subtitles disabled', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, preserveSubtitles: false })
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      videoStreams: [{ index: 0, codec_name: 'h264', width: 1920, height: 1080 }],
+      isVideoFile: true,
+      isAudioOnly: false
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ boostPercent: 25 }), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-c:s')
+  })
+
+  it('handles multiple audio streams with tags', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [
+        { index: 0, codec_name: 'mp3', channels: 2, sample_rate: '44100', tags: { title: '[molexMedia old] Song' } },
+        { index: 1, codec_name: 'aac', channels: 6, sample_rate: '48000', tags: { handler_name: 'Surround' } }
+      ]
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ boostPercent: 50 }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('exercises progress callback with speed and without speed', async () => {
+    const { parseProgress: mockPP } = await import('../../src/main/ffmpeg/runner')
+    vi.mocked(mockPP)
+      .mockReturnValueOnce({ time: 30, speed: '1.5x' } as any)
+      .mockReturnValueOnce({ time: 60 } as any)
+      .mockReturnValueOnce(null)
+
+    mockRunCommand.mockImplementation((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) { onLine('line1'); onLine('line2'); onLine('line3') }
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ boostPercent: 25 }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('falls back to path.dirname when no outputDir configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask({ outputDir: '' }), onProgress)
+    expect(result.status).toBe('complete')
+  })
 })
