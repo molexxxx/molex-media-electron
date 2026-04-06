@@ -25,7 +25,6 @@ import { InspectTab } from './components/InspectTab'
 export default function MediaEditor(): React.JSX.Element {
   const store = useEditorStore()
   const clip = store.activeClip()
-  const duration = store.clipDuration()
 
   // -- Hooks --
   const { playing, currentTime, videoRef, audioRef, a2AudioRef, canvasRef, togglePlay, seek } = useEditorPlayback(clip)

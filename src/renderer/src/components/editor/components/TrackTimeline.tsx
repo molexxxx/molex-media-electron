@@ -52,12 +52,20 @@ export function TrackTimeline({
     setActiveIdx, moveClip, canMerge, removeClip, setAudioOffset,
     setCutMode, setOutputFormat, setOutputDir, setGifOptions, resetPoints,
     setVolume, setPlaybackRate, setClipVolume, toggleClipMute,
-    setA2Volume, toggleA2Mute, activeClip, clipDuration
+    setA2Volume, toggleA2Mute, setClipInPoint, setClipOutPoint,
+    activeClip, clipDuration
   } = useEditorStore()
 
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dropIdx, setDropIdx] = useState<number | null>(null)
   const trackAreaRef = useRef<HTMLDivElement>(null)
+
+  /* ---- trim handle state ---- */
+  const trimRef = useRef<{
+    clipId: string; edge: 'left' | 'right'
+    startX: number; startIn: number; startOut: number; dur: number; secPerPx: number
+  } | null>(null)
+  const [trimEdge, setTrimEdge] = useState<string | null>(null)
 
   const clip = activeClip()
   const duration = clipDuration()
@@ -80,6 +88,11 @@ export function TrackTimeline({
     : 0
   const playheadPct = totalDur > 0 ? Math.min(100, (seqTime / totalDur) * 100) : 0
   const marks = rulerMarks(totalDur)
+
+  // In/out bracket positions for the active clip
+  const activeSegDur = active ? active.outPoint - active.inPoint : 0
+  const inBracketPct = totalDur > 0 && active ? (clipStarts[activeIdx] / totalDur) * 100 : 0
+  const outBracketPct = totalDur > 0 && active ? ((clipStarts[activeIdx] + activeSegDur) / totalDur) * 100 : 100
 
   const srcExt = clip?.name.split('.').pop()?.toLowerCase() || ''
   const formats = clip?.isVideo ? OUTPUT_FORMATS.video : OUTPUT_FORMATS.audio
@@ -140,6 +153,42 @@ export function TrackTimeline({
     e.preventDefault(); if (dragIdx !== null && dragIdx !== toIdx) moveClip(dragIdx, toIdx); setDragIdx(null); setDropIdx(null)
   }, [dragIdx, moveClip])
   const handleDragEnd = useCallback(() => { setDragIdx(null); setDropIdx(null) }, [])
+
+  /* ---- trim handles: drag clip edges to adjust in/out points ---- */
+  const handleTrimStart = useCallback((e: React.MouseEvent, clipId: string, edge: 'left' | 'right', clipIdx: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const area = trackAreaRef.current
+    if (!area) return
+    const c = clips.find((cl) => cl.id === clipId)
+    if (!c) return
+    if (clipIdx !== activeIdx) setActiveIdx(clipIdx)
+    const trackWidth = area.getBoundingClientRect().width
+    trimRef.current = {
+      clipId, edge, startX: e.clientX,
+      startIn: c.inPoint, startOut: c.outPoint,
+      dur: c.duration, secPerPx: totalDur / trackWidth
+    }
+    setTrimEdge(`${clipId}-${edge}`)
+  }, [clips, activeIdx, setActiveIdx, totalDur])
+
+  useEffect(() => {
+    if (!trimEdge) return
+    const onMove = (e: MouseEvent): void => {
+      const t = trimRef.current
+      if (!t) return
+      const deltaSec = (e.clientX - t.startX) * t.secPerPx
+      if (t.edge === 'left') {
+        setClipInPoint(t.clipId, t.startIn + deltaSec)
+      } else {
+        setClipOutPoint(t.clipId, t.startOut + deltaSec)
+      }
+    }
+    const onUp = (): void => { trimRef.current = null; setTrimEdge(null) }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [trimEdge, setClipInPoint, setClipOutPoint])
 
   if (clips.length === 0) return <></>
 
@@ -230,6 +279,30 @@ export function TrackTimeline({
                 >
                   {isActive && <div className="absolute top-0 left-0 right-0 h-0.5 bg-accent-500" />}
 
+                  {/* Left trim handle */}
+                  <div
+                    onMouseDown={(e) => handleTrimStart(e, clip.id, 'left', i)}
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/trim ${
+                      trimEdge === `${clip.id}-left` ? 'bg-blue-400/40' : 'hover:bg-blue-400/25'
+                    }`}
+                  >
+                    <div className={`absolute left-0 top-0 bottom-0 w-0.5 transition-colors ${
+                      trimEdge === `${clip.id}-left` ? 'bg-blue-400' : 'bg-transparent group-hover/trim:bg-blue-400/50'
+                    }`} />
+                  </div>
+
+                  {/* Right trim handle */}
+                  <div
+                    onMouseDown={(e) => handleTrimStart(e, clip.id, 'right', i)}
+                    className={`absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/trimr ${
+                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400/40' : 'hover:bg-emerald-400/25'
+                    }`}
+                  >
+                    <div className={`absolute right-0 top-0 bottom-0 w-0.5 transition-colors ${
+                      trimEdge === `${clip.id}-right` ? 'bg-emerald-400' : 'bg-transparent group-hover/trimr:bg-emerald-400/50'
+                    }`} />
+                  </div>
+
                   <div className="h-full flex flex-col justify-center px-2 py-1 min-w-0">
                     <div className="flex items-center gap-1 min-w-0">
                       {clip.loadingState !== 'ready' && clip.loadingState !== 'error' && (
@@ -253,6 +326,17 @@ export function TrackTimeline({
                       )}
                     </div>
                     <span className="text-[9px] font-mono text-surface-500 mt-0.5">{formatTime(segDur)}</span>
+                    {/* Trim indicators — show available media beyond current edges */}
+                    {(clip.inPoint > 0.1 || clip.outPoint < clip.duration - 0.1) && (
+                      <div className="flex items-center gap-1 mt-px">
+                        {clip.inPoint > 0.1 && (
+                          <span className="text-[6px] text-blue-400/40 font-mono">◁{formatTime(clip.inPoint)}</span>
+                        )}
+                        {clip.outPoint < clip.duration - 0.1 && (
+                          <span className="text-[6px] text-emerald-400/40 font-mono">{formatTime(clip.duration - clip.outPoint)}▷</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Hover controls — remove only (volume/mute controls are on A1/A2) */}
@@ -278,15 +362,38 @@ export function TrackTimeline({
               className="h-8 flex border-t border-white/5 bg-surface-950/10 cursor-pointer"
               onMouseDown={handleRulerMouseDown}
             >
-              {clips.map((clip) => {
+              {clips.map((clip, i) => {
                 const segDur = clip.outPoint - clip.inPoint
+                const isActive = i === activeIdx
                 return (
                   <div
                     key={`a1-${clip.id}`}
-                    className="relative overflow-hidden border-r border-white/5 last:border-r-0"
+                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 cursor-pointer ${
+                      isActive ? 'bg-green-500/5' : ''
+                    }`}
                     style={{ flexGrow: segDur, flexShrink: 0, flexBasis: 0 }}
+                    onClick={() => setActiveIdx(i)}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
+                    {/* Selection indicator */}
+                    {isActive && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-400/40" />}
+
+                    {/* Left trim handle */}
+                    <div
+                      onMouseDown={(e) => handleTrimStart(e, clip.id, 'left', i)}
+                      className={`absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10 transition-colors ${
+                        trimEdge === `${clip.id}-left` ? 'bg-blue-400/30' : 'hover:bg-blue-400/20'
+                      }`}
+                    />
+
+                    {/* Right trim handle */}
+                    <div
+                      onMouseDown={(e) => handleTrimStart(e, clip.id, 'right', i)}
+                      className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-10 transition-colors ${
+                        trimEdge === `${clip.id}-right` ? 'bg-emerald-400/30' : 'hover:bg-emerald-400/20'
+                      }`}
+                    />
+
                     <div className="h-full flex items-center group relative">
                       {/* Waveform hint bars */}
                       <div className="absolute inset-0 flex items-center gap-px opacity-15 pointer-events-none overflow-hidden px-0.5">
@@ -353,15 +460,20 @@ export function TrackTimeline({
               className="h-8 flex border-t border-white/5 bg-surface-950/5 cursor-pointer"
               onMouseDown={handleRulerMouseDown}
             >
-              {clips.map((clip) => {
+              {clips.map((clip, i) => {
                 const segDur = clip.outPoint - clip.inPoint
+                const isActive = i === activeIdx
                 return (
                   <div
                     key={`a2-${clip.id}`}
-                    className="relative overflow-hidden border-r border-white/5 last:border-r-0"
+                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 ${
+                      isActive && clip.audioReplacement ? 'bg-amber-500/5' : ''
+                    }`}
                     style={{ flexGrow: segDur, flexShrink: 0, flexBasis: 0 }}
+                    onClick={() => setActiveIdx(i)}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
+                    {isActive && clip.audioReplacement && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400/40" />}
                     {clip.audioReplacement ? (
                       <AudioBlock
                         clipId={clip.id}
@@ -378,6 +490,49 @@ export function TrackTimeline({
                 )
               })}
             </div>
+          )}
+
+          {/* In/Out bracket markers — span all tracks */}
+          {active && totalDur > 0 && (
+            <>
+              {/* In-point needle (blue) */}
+              <div
+                className="absolute top-0 bottom-0 z-10 pointer-events-none"
+                style={{ left: `${inBracketPct}%` }}
+              >
+                <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-400/30" />
+                <div
+                  className="absolute -top-0.5 -left-[3px] w-[7px] h-[7px] pointer-events-auto cursor-col-resize"
+                  onMouseDown={(e) => handleTrimStart(e, active.id, 'left', activeIdx)}
+                >
+                  <div className="w-0 h-0 border-l-[4px] border-l-blue-400 border-y-[3px] border-y-transparent mt-px" />
+                </div>
+                {/* Bottom bracket foot */}
+                <div className="absolute bottom-0 left-0 w-2 h-0.5 bg-blue-400/40" />
+              </div>
+              {/* Out-point needle (emerald) */}
+              <div
+                className="absolute top-0 bottom-0 z-10 pointer-events-none"
+                style={{ left: `${outBracketPct}%` }}
+              >
+                <div className="absolute top-0 right-0 w-0.5 h-full bg-emerald-400/30" />
+                <div
+                  className="absolute -top-0.5 -left-[3px] w-[7px] h-[7px] pointer-events-auto cursor-col-resize"
+                  onMouseDown={(e) => handleTrimStart(e, active.id, 'right', activeIdx)}
+                >
+                  <div className="w-0 h-0 border-r-[4px] border-r-emerald-400 border-y-[3px] border-y-transparent mt-px ml-auto" />
+                </div>
+                {/* Bottom bracket foot */}
+                <div className="absolute bottom-0 right-0 w-2 h-0.5 bg-emerald-400/40" />
+              </div>
+              {/* Shaded region between in/out */}
+              {inBracketPct > 0.1 && (
+                <div className="absolute top-0 bottom-0 bg-blue-400/[0.03] pointer-events-none" style={{ left: 0, width: `${inBracketPct}%` }} />
+              )}
+              {outBracketPct < 99.9 && (
+                <div className="absolute top-0 bottom-0 bg-emerald-400/[0.03] pointer-events-none" style={{ left: `${outBracketPct}%`, right: 0 }} />
+              )}
+            </>
           )}
 
           {/* Playhead — spans ruler + all tracks, draggable */}

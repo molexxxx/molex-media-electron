@@ -510,6 +510,76 @@ describe('editorStore', () => {
   })
 
   /* ------------------------------------------------------------------ */
+  /*  Per-clip in/out point trimming                                     */
+  /* ------------------------------------------------------------------ */
+
+  describe('setClipInPoint', () => {
+    it('sets in-point for a clip by id', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipInPoint(clip.id, 5)
+      expect(useEditorStore.getState().clips[0].inPoint).toBe(5)
+    })
+
+    it('clamps to 0', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipInPoint(clip.id, -10)
+      expect(useEditorStore.getState().clips[0].inPoint).toBe(0)
+    })
+
+    it('clamps to outPoint - 0.05', () => {
+      const clip = makeClip({ outPoint: 20 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipInPoint(clip.id, 25)
+      expect(useEditorStore.getState().clips[0].inPoint).toBeCloseTo(19.95)
+    })
+
+    it('only affects the targeted clip', () => {
+      const c1 = makeClip({ name: 'a.mp4' })
+      const c2 = makeClip({ name: 'b.mp4' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().setClipInPoint(c1.id, 3)
+      expect(useEditorStore.getState().clips[0].inPoint).toBe(3)
+      expect(useEditorStore.getState().clips[1].inPoint).toBe(0)
+    })
+  })
+
+  describe('setClipOutPoint', () => {
+    it('sets out-point for a clip by id', () => {
+      const clip = makeClip({ duration: 60, outPoint: 60 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipOutPoint(clip.id, 45)
+      expect(useEditorStore.getState().clips[0].outPoint).toBe(45)
+    })
+
+    it('clamps to duration', () => {
+      const clip = makeClip({ duration: 30, outPoint: 30 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipOutPoint(clip.id, 100)
+      expect(useEditorStore.getState().clips[0].outPoint).toBe(30)
+    })
+
+    it('clamps to inPoint + 0.05', () => {
+      const clip = makeClip({ inPoint: 10, outPoint: 20 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipOutPoint(clip.id, 5)
+      expect(useEditorStore.getState().clips[0].outPoint).toBeCloseTo(10.05)
+    })
+
+    it('only affects the targeted clip', () => {
+      const c1 = makeClip({ name: 'a.mp4', duration: 60, outPoint: 60 })
+      const c2 = makeClip({ name: 'b.mp4', duration: 40, outPoint: 40 })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().setClipOutPoint(c1.id, 30)
+      expect(useEditorStore.getState().clips[0].outPoint).toBe(30)
+      expect(useEditorStore.getState().clips[1].outPoint).toBe(40)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
   /*  Volume and playback rate                                           */
   /* ------------------------------------------------------------------ */
 

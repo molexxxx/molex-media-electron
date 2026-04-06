@@ -59,6 +59,8 @@ interface EditorState {
   toggleClipMute: (clipId: string) => void
   setA2Volume: (clipId: string, volume: number) => void
   toggleA2Mute: (clipId: string) => void
+  setClipInPoint: (clipId: string, t: number) => void
+  setClipOutPoint: (clipId: string, t: number) => void
 
   /* -- in/out points -- */
   setInPoint: (t: number) => void
@@ -198,6 +200,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         c.id === clipId && c.audioReplacement
           ? { ...c, audioReplacement: { ...c.audioReplacement, muted: !c.audioReplacement.muted } }
           : c
+      )
+    })),
+
+  setClipInPoint: (clipId, t) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId ? { ...c, inPoint: Math.max(0, Math.min(t, c.outPoint - 0.05)) } : c
+      )
+    })),
+
+  setClipOutPoint: (clipId, t) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId ? { ...c, outPoint: Math.max(c.inPoint + 0.05, Math.min(t, c.duration)) } : c
       )
     })),
 

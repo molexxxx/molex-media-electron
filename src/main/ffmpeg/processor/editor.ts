@@ -517,8 +517,8 @@ export async function replaceAudio(
       if (!onProgress) return
       const progress = parseProgress(line)
       if (progress) {
-        const pct = Math.min(95, progress.percent || 0)
-        onProgress({ percent: pct, message: `Replacing audio... ${pct}%` })
+        const pct = Math.min(95, Math.round(progress.time))
+        onProgress({ percent: pct, message: `Replacing audio... ${pct}%${progress.speed ? ` @ ${progress.speed}` : ''}` })
       }
     })
     const result = await promise

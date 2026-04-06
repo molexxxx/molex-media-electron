@@ -4,7 +4,7 @@
  * indicator, and per-track controls.
  */
 
-import React, { useCallback, useState, useEffect, useRef } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import type { Track } from '../types'
 
 interface KnownFolder {
