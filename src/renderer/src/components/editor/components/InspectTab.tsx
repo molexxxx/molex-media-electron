@@ -136,7 +136,7 @@ export function InspectTab({
       {/* Format info */}
       <div className="glass rounded-xl p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Container</h3>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div><span className="text-2xs text-surface-500 block">Format</span><span className="text-xs text-surface-200 font-mono">{probeData.format?.format_name || '—'}</span></div>
           <div><span className="text-2xs text-surface-500 block">Duration</span><span className="text-xs text-surface-200 font-mono">{probeData.format?.duration ? `${parseFloat(probeData.format.duration).toFixed(1)}s` : '—'}</span></div>
           <div><span className="text-2xs text-surface-500 block">Size</span><span className="text-xs text-surface-200 font-mono">{probeData.format?.size ? `${(parseInt(probeData.format.size) / 1048576).toFixed(1)} MB` : '—'}</span></div>

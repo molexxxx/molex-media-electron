@@ -5,63 +5,56 @@
  * Thin orchestrator that delegates playback to {@link useEditorPlayback},
  * inspect logic to {@link useEditorInspect}, timeline interaction to
  * {@link useTimelineDrag}, and renders focused sub-components.
+ *
+ * All clip and UI state lives in {@link useEditorStore} for clean
+ * state management across clip switching and tab changes.
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
-import { type Clip, type CutMode, type GifOptions, ALL_EXTS, VIDEO_EXTS } from './types'
+import React, { useCallback, useEffect } from 'react'
+import { ALL_EXTS, VIDEO_EXTS } from './types'
+import { useEditorStore, type EditorClip } from '../../stores/editorStore'
 import { useEditorPlayback } from './hooks/useEditorPlayback'
 import { useEditorInspect } from './hooks/useEditorInspect'
 import { useTimelineDrag } from './hooks/useTimelineDrag'
 import { EditorHeader } from './components/EditorHeader'
 import { PreviewArea } from './components/PreviewArea'
-import { ClipSidebar } from './components/ClipSidebar'
+import { ClipList } from './components/ClipList'
 import { Timeline } from './components/Timeline'
 import { InspectTab } from './components/InspectTab'
 
 export default function MediaEditor(): React.JSX.Element {
-  const [clips, setClips] = useState<Clip[]>([])
-  const [activeIdx, setActiveIdx] = useState(0)
-  const [processing, setProcessing] = useState(false)
-  const [message, setMessage] = useState('')
-  const [editorTab, setEditorTab] = useState<'trim' | 'inspect'>('trim')
-  const [cutMode, setCutMode] = useState<CutMode>('precise')
-  const [outputFormat, setOutputFormat] = useState('')
-  const [exportProgress, setExportProgress] = useState(0)
-  const [outputDir, setOutputDir] = useState('')
-  const [loadingFiles, setLoadingFiles] = useState(0)
-  const [gifOptions, setGifOptions] = useState<GifOptions>({ loop: true, fps: 15, width: 480 })
-
-  const clip = clips[activeIdx] || null
-  const clipDuration = clip ? clip.outPoint - clip.inPoint : 0
+  const store = useEditorStore()
+  const clip = store.activeClip()
+  const duration = store.clipDuration()
 
   // -- Hooks --
   const { playing, currentTime, videoRef, audioRef, canvasRef, togglePlay, seek } = useEditorPlayback(clip)
-  const inspect = useEditorInspect(clip, editorTab, activeIdx)
-  const { timelineRef, handleTimelineMouseDown } = useTimelineDrag(clip, activeIdx, seek, setClips)
+  const inspect = useEditorInspect(clip, store.editorTab, store.activeIdx)
+  const { timelineRef, handleTimelineMouseDown } = useTimelineDrag(clip, store.activeIdx, seek)
 
   // -- Editor export progress subscription --
   useEffect(() => {
     const unsub = window.api.onEditorProgress((progress) => {
-      setExportProgress(progress.percent)
+      store.setExportProgress(progress.percent)
     })
     return unsub
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Initialise outputDir from first clip --
   useEffect(() => {
-    if (clip && !outputDir) {
+    if (clip && !store.outputDir) {
       const parts = clip.path.replace(/\\/g, '/').split('/')
       parts.pop()
-      setOutputDir(parts.join('/'))
+      store.setOutputDir(parts.join('/'))
     }
-  }, [clip]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clip?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const browseOutputDir = useCallback(async () => {
     const dir = await window.api.selectOutputDir()
-    if (dir) setOutputDir(dir)
-  }, [])
+    if (dir) store.setOutputDir(dir)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -- File loading --
+  // -- File loading with per-clip loading states --
   const loadFile = useCallback((file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     if (!ALL_EXTS.includes(ext)) return
@@ -69,28 +62,36 @@ export default function MediaEditor(): React.JSX.Element {
     const isVideo = VIDEO_EXTS.includes(ext)
     const objectUrl = URL.createObjectURL(file)
     const filePath = window.api.getFilePath(file)
+    const clipId = `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
-    setLoadingFiles((n) => n + 1)
-    const done = (): void => { setLoadingFiles((n) => Math.max(0, n - 1)) }
+    // Add placeholder clip in probing state
+    const placeholder: EditorClip = {
+      id: clipId, name: file.name, path: filePath, objectUrl,
+      duration: 0, isVideo, inPoint: 0, outPoint: 0, loadingState: 'probing'
+    }
+    useEditorStore.getState().addClip(placeholder)
 
-    const addClip = (dur: number, previewUrl?: string): void => {
-      const newClip: Clip = {
-        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name, path: filePath, objectUrl, previewUrl, duration: dur, isVideo,
-        inPoint: 0, outPoint: dur
-      }
-      setClips((prev) => { setActiveIdx(prev.length); return [...prev, newClip] })
-      done()
+    const finalise = (dur: number, previewUrl?: string): void => {
+      useEditorStore.getState().updateClip(clipId, {
+        duration: dur, outPoint: dur, previewUrl, loadingState: 'ready'
+      })
     }
 
     const probeFallback = (): void => {
+      useEditorStore.getState().updateClipLoading(clipId, 'transcoding')
       window.api.probeFile(filePath).then(async (info: any) => {
         const dur = parseFloat(info?.format?.duration)
-        if (!dur || !isFinite(dur)) { URL.revokeObjectURL(objectUrl); done(); return }
-        // Create a browser-playable preview via FFmpeg transcode
+        if (!dur || !isFinite(dur)) {
+          URL.revokeObjectURL(objectUrl)
+          useEditorStore.getState().updateClipLoading(clipId, 'error')
+          return
+        }
         const preview = await window.api.createPreview(filePath).catch(() => null)
-        addClip(dur, preview?.previewUrl)
-      }).catch(() => { URL.revokeObjectURL(objectUrl); done() })
+        finalise(dur, preview?.previewUrl)
+      }).catch(() => {
+        URL.revokeObjectURL(objectUrl)
+        useEditorStore.getState().updateClipLoading(clipId, 'error')
+      })
     }
 
     const tempEl = isVideo ? document.createElement('video') : new Audio()
@@ -101,52 +102,60 @@ export default function MediaEditor(): React.JSX.Element {
     tempEl.addEventListener('loadedmetadata', () => {
       const dur = tempEl.duration
       if (!dur || !isFinite(dur)) { cleanup(); probeFallback(); return }
-      addClip(dur)
+      finalise(dur)
       cleanup()
     })
     tempEl.addEventListener('error', () => { cleanup(); probeFallback() })
   }, [])
 
-  const handleFileSelect = useCallback(() => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.multiple = true
-    input.accept = ALL_EXTS.map((e) => `.${e}`).join(',')
-    input.onchange = () => { for (const f of Array.from(input.files || [])) loadFile(f) }
-    input.click()
-  }, [loadFile])
+  const loadFilePath = useCallback((filePath: string) => {
+    const name = filePath.split(/[\\/]/).pop() || filePath
+    const ext = name.split('.').pop()?.toLowerCase() || ''
+    if (!ALL_EXTS.includes(ext)) return
+    const isVideo = VIDEO_EXTS.includes(ext)
+    const clipId = `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+
+    const placeholder: EditorClip = {
+      id: clipId, name, path: filePath, objectUrl: `media://${encodeURIComponent(filePath)}`,
+      duration: 0, isVideo, inPoint: 0, outPoint: 0, loadingState: 'probing'
+    }
+    useEditorStore.getState().addClip(placeholder)
+
+    useEditorStore.getState().updateClipLoading(clipId, 'transcoding')
+    window.api.probeFile(filePath).then(async (info: any) => {
+      const dur = parseFloat(info?.format?.duration)
+      if (!dur || !isFinite(dur)) {
+        useEditorStore.getState().updateClipLoading(clipId, 'error')
+        return
+      }
+      const preview = await window.api.createPreview(filePath).catch(() => null)
+      useEditorStore.getState().updateClip(clipId, {
+        duration: dur, outPoint: dur,
+        previewUrl: preview?.previewUrl,
+        objectUrl: preview?.previewUrl || `media://${encodeURIComponent(filePath)}`,
+        loadingState: 'ready'
+      })
+    }).catch(() => {
+      useEditorStore.getState().updateClipLoading(clipId, 'error')
+    })
+  }, [])
 
   // -- Clip manipulation --
   const setIn = useCallback(() => {
-    if (!clip) return
-    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, inPoint: currentTime } : c))
-  }, [activeIdx, currentTime, clip])
+    store.setInPoint(currentTime)
+  }, [currentTime]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setOut = useCallback(() => {
-    if (!clip) return
-    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, outPoint: currentTime } : c))
-  }, [activeIdx, currentTime, clip])
-
-  const resetPoints = useCallback(() => {
-    if (!clip) return
-    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, inPoint: 0, outPoint: c.duration } : c))
-  }, [activeIdx, clip])
-
-  const removeClip = useCallback((idx: number) => {
-    setClips((prev) => {
-      const next = prev.filter((_, i) => i !== idx)
-      URL.revokeObjectURL(prev[idx].objectUrl)
-      setActiveIdx((ai) => Math.min(ai, Math.max(0, next.length - 1)))
-      return next
-    })
-  }, [])
+    store.setOutPoint(currentTime)
+  }, [currentTime]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Export --
   const handleCut = useCallback(async () => {
     if (!clip) return
-    setProcessing(true)
-    setMessage('')
-    setExportProgress(0)
+    store.setProcessing(true)
+    store.setMessage('')
+    store.setExportProgress(0)
+    const { cutMode, outputFormat, outputDir, gifOptions } = useEditorStore.getState()
     const opts = {
       mode: cutMode,
       outputFormat: outputFormat || undefined,
@@ -155,22 +164,23 @@ export default function MediaEditor(): React.JSX.Element {
     }
     try {
       const result = await window.api.cutMedia(clip.path, clip.inPoint, clip.outPoint, opts)
-      setMessage(result?.success
+      store.setMessage(result?.success
         ? `Saved: ${result.outputPath.split(/[\\/]/).pop()}`
         : `Error: ${result?.error || 'Cut failed'}`)
     } catch (err: any) {
-      setMessage(`Error: ${err.message}`)
+      store.setMessage(`Error: ${err.message}`)
     } finally {
-      setProcessing(false)
-      setExportProgress(0)
+      store.setProcessing(false)
+      store.setExportProgress(0)
     }
-  }, [clip, cutMode, outputFormat])
+  }, [clip]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMerge = useCallback(async () => {
-    if (clips.length < 2) return
-    setProcessing(true)
-    setMessage('')
-    setExportProgress(0)
+    if (!store.canMerge()) return
+    store.setProcessing(true)
+    store.setMessage('')
+    store.setExportProgress(0)
+    const { clips, cutMode, outputFormat, outputDir, gifOptions } = useEditorStore.getState()
     const opts = {
       mode: cutMode,
       outputFormat: outputFormat || undefined,
@@ -180,89 +190,65 @@ export default function MediaEditor(): React.JSX.Element {
     try {
       const segments = clips.map((c) => ({ path: c.path, inPoint: c.inPoint, outPoint: c.outPoint }))
       const result = await window.api.mergeMedia(segments, opts)
-      setMessage(result?.success
+      store.setMessage(result?.success
         ? `Merged: ${result.outputPath.split(/[\\/]/).pop()}`
         : `Error: ${result?.error || 'Merge failed'}`)
     } catch (err: any) {
-      setMessage(`Error: ${err.message}`)
+      store.setMessage(`Error: ${err.message}`)
     } finally {
-      setProcessing(false)
-      setExportProgress(0)
+      store.setProcessing(false)
+      store.setExportProgress(0)
     }
-  }, [clips, cutMode, outputFormat])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRemux = useCallback(async () => {
-    setProcessing(true)
+    store.setProcessing(true)
     await inspect.handleRemux()
-    setProcessing(false)
-  }, [inspect.handleRemux])
+    store.setProcessing(false)
+  }, [inspect.handleRemux]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex flex-col h-full animate-fade-in gap-4">
+    <div className="flex flex-col h-full animate-fade-in gap-3 sm:gap-4">
       <EditorHeader
-        clip={clip}
-        clipDuration={clipDuration}
-        editorTab={editorTab}
-        onSetEditorTab={setEditorTab}
-        onFileSelect={handleFileSelect}
+        onLoadFile={loadFile}
+        onLoadFilePath={loadFilePath}
       />
 
-      <div className={editorTab === 'trim' ? 'flex-1 flex flex-col gap-4 min-h-0' : 'hidden'}>
-        <div className="flex-1 flex gap-4 min-h-0">
+      <div className={store.editorTab === 'trim' ? 'flex-1 flex flex-col gap-3 sm:gap-4 min-h-0' : 'hidden'}>
+        {/* Desktop: side-by-side. Tablet/mobile: stacked */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 min-h-0">
           <PreviewArea
             clip={clip}
             videoRef={videoRef}
             audioRef={audioRef}
             canvasRef={canvasRef}
-            loading={loadingFiles > 0}
             onLoadFile={loadFile}
           />
-          {clips.length > 0 && (
-            <ClipSidebar
-              clips={clips}
-              activeIdx={activeIdx}
-              processing={processing}
-              onSetActiveIdx={setActiveIdx}
-              onRemoveClip={removeClip}
-              onMerge={handleMerge}
-            />
+          {store.clips.length > 0 && (
+            <ClipList onMerge={handleMerge} />
           )}
         </div>
-        {clip && (
+        {clip && clip.loadingState === 'ready' && (
           <Timeline
-            clip={clip}
             currentTime={currentTime}
             playing={playing}
-            processing={processing}
-            clipDuration={clipDuration}
-            message={message}
-            cutMode={cutMode}
-            outputFormat={outputFormat}
-            exportProgress={exportProgress}
             timelineRef={timelineRef}
             onTimelineMouseDown={handleTimelineMouseDown}
             onTogglePlay={togglePlay}
             onSetIn={setIn}
             onSetOut={setOut}
-            onResetPoints={resetPoints}
             onCut={handleCut}
-            onSetCutMode={setCutMode}
-            onSetOutputFormat={setOutputFormat}
-            gifOptions={gifOptions}
-            onSetGifOptions={setGifOptions}
-            outputDir={outputDir}
-            onOutputDirChange={setOutputDir}
             onBrowseOutputDir={browseOutputDir}
           />
         )}
       </div>
 
-      <div className={editorTab === 'inspect' ? 'flex-1 min-h-0 overflow-auto space-y-4' : 'hidden'}>
+      <div className={store.editorTab === 'inspect' ? 'flex-1 min-h-0 overflow-auto space-y-4' : 'hidden'}>
         <InspectTab
           hasClip={!!clip}
           probing={inspect.probing}
           probeData={inspect.probeData}
-          processing={processing}
+          processing={store.processing}
           inspectMsg={inspect.inspectMsg}
           streamEnabled={inspect.streamEnabled}
           editMeta={inspect.editMeta}

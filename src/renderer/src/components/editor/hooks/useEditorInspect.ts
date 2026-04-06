@@ -4,13 +4,13 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import type { Clip } from '../types'
+import type { EditorClip } from '../../../stores/editorStore'
 
 /**
  * Manages FFprobe inspection state: probe data, stream toggles,
  * metadata editing, disposition flags, and lossless remux.
  */
-export function useEditorInspect(clip: Clip | null, editorTab: string, activeIdx: number) {
+export function useEditorInspect(clip: EditorClip | null, editorTab: string, activeIdx: number) {
   const [probeData, setProbeData] = useState<any>(null)
   const [probing, setProbing] = useState(false)
   const [streamEnabled, setStreamEnabled] = useState<Record<number, boolean>>({})

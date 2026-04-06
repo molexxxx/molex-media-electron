@@ -4,13 +4,13 @@
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import type { Clip } from '../types'
+import type { EditorClip } from '../../../stores/editorStore'
 
 /**
  * Manages media element playback, audio context / analyser wiring,
  * and the audio-only canvas waveform visualizer for the editor.
  */
-export function useEditorPlayback(clip: Clip | null) {
+export function useEditorPlayback(clip: EditorClip | null) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)

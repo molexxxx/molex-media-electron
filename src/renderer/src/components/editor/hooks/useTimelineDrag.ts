@@ -4,17 +4,17 @@
  */
 
 import React, { useRef, useCallback } from 'react'
-import type { Clip } from '../types'
+import type { EditorClip } from '../../../stores/editorStore'
+import { useEditorStore } from '../../../stores/editorStore'
 
 /**
  * Encapsulates timeline scrubbing and in/out handle dragging via
  * pointer-capture on the timeline element.
  */
 export function useTimelineDrag(
-  clip: Clip | null,
+  clip: EditorClip | null,
   activeIdx: number,
-  seek: (time: number) => void,
-  setClips: React.Dispatch<React.SetStateAction<Clip[]>>
+  seek: (time: number) => void
 ) {
   const timelineRef = useRef<HTMLDivElement>(null)
   const dragTarget = useRef<'playhead' | 'in' | 'out' | null>(null)
@@ -49,9 +49,9 @@ export function useTimelineDrag(
       if (dragTarget.current === 'playhead') {
         seek(t)
       } else if (dragTarget.current === 'in') {
-        setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, inPoint: Math.min(t, c.outPoint - 0.1) } : c))
+        useEditorStore.getState().setInPoint(t)
       } else if (dragTarget.current === 'out') {
-        setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, outPoint: Math.max(t, c.inPoint + 0.1) } : c))
+        useEditorStore.getState().setOutPoint(t)
       }
     }
 
