@@ -33,5 +33,5 @@ export { compressFile } from './compress'
 export { processBatch, pauseProcessing, resumeProcessing, getIsPaused } from './batch'
 
 // Editor operations
-export { cutMedia, mergeMedia, remuxMedia } from './editor'
-export type { MergeSegment, RemuxOptions, CutOptions, EditorProgress, EditorProgressCallback } from './editor'
+export { cutMedia, mergeMedia, remuxMedia, replaceAudio } from './editor'
+export type { MergeSegment, RemuxOptions, CutOptions, EditorProgress, EditorProgressCallback, ReplaceAudioOptions } from './editor'

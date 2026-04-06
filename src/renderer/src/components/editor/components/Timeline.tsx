@@ -1,10 +1,10 @@
 /**
  * @module components/editor/Timeline
- * @description Interactive timeline with scrubber, in/out handle dragging, playback controls,
- * and export options. Responsive: stacks controls vertically on narrow widths.
+ * @description Enhanced interactive timeline with scrubber, in/out handle dragging,
+ * playback controls, volume/speed, keyboard shortcuts, and export options.
  */
 
-import React, { type RefObject } from 'react'
+import React, { type RefObject, useEffect } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { formatTime, OUTPUT_FORMATS } from '../types'
 
@@ -27,8 +27,9 @@ export function Timeline({
 }: TimelineProps): React.JSX.Element {
   const {
     processing, exportProgress, message, cutMode, outputFormat, outputDir, gifOptions,
+    volume, playbackRate,
     setCutMode, setOutputFormat, setOutputDir, setGifOptions, resetPoints, clipDuration,
-    activeClip
+    activeClip, setVolume, setPlaybackRate
   } = useEditorStore()
 
   const clip = activeClip()
@@ -38,16 +39,35 @@ export function Timeline({
   const srcExt = clip.name.split('.').pop()?.toLowerCase() || ''
   const formats = clip.isVideo ? OUTPUT_FORMATS.video : OUTPUT_FORMATS.audio
 
+  // -- Keyboard shortcuts --
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      // Don't capture when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return
+      switch (e.code) {
+        case 'Space': e.preventDefault(); onTogglePlay(); break
+        case 'KeyI': e.preventDefault(); onSetIn(); break
+        case 'KeyO': e.preventDefault(); onSetOut(); break
+        case 'KeyR': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); resetPoints() } break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onTogglePlay, onSetIn, onSetOut]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2]
+
   return (
-    <div className="shrink-0 glass rounded-xl px-3 sm:px-5 py-3 sm:py-4 space-y-3">
+    <div className="shrink-0 glass-panel rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 space-y-3">
       {/* Scrubber bar */}
       <div
         ref={timelineRef}
-        className="relative h-8 sm:h-10 bg-surface-800 rounded-lg cursor-pointer group select-none touch-none"
+        className="relative h-9 sm:h-11 bg-surface-900/80 rounded-xl cursor-pointer group select-none touch-none overflow-hidden"
         onMouseDown={onTimelineMouseDown}
       >
+        {/* Selected region */}
         <div
-          className="absolute top-0 bottom-0 bg-accent-500/15"
+          className="absolute top-0 bottom-0 scrubber-region border-y border-accent-500/10"
           style={{
             left: `${(clip.inPoint / clip.duration) * 100}%`,
             width: `${((clip.outPoint - clip.inPoint) / clip.duration) * 100}%`
@@ -55,111 +75,154 @@ export function Timeline({
         />
         {/* In-point handle */}
         <div
-          className="absolute top-0 bottom-0 w-1.5 cursor-col-resize z-20 group/handle"
-          style={{ left: `calc(${(clip.inPoint / clip.duration) * 100}% - 3px)` }}
+          className="absolute top-0 bottom-0 w-2 cursor-col-resize z-20 group/handle"
+          style={{ left: `calc(${(clip.inPoint / clip.duration) * 100}% - 4px)` }}
         >
-          <div className="absolute inset-y-0 left-[2px] w-[2px] bg-blue-400 group-hover/handle:bg-blue-300 transition-colors" />
-          <div className="absolute top-0 left-0 w-1.5 h-3 bg-blue-400 rounded-b-sm group-hover/handle:bg-blue-300 transition-colors" />
-          <div className="absolute bottom-0 left-0 w-1.5 h-3 bg-blue-400 rounded-t-sm group-hover/handle:bg-blue-300 transition-colors" />
+          <div className="absolute inset-y-0 left-[3px] w-[2px] bg-blue-400/80 group-hover/handle:bg-blue-300 transition-colors" />
+          <div className="absolute top-0 left-0.5 w-1.5 h-3.5 bg-blue-400 rounded-b group-hover/handle:bg-blue-300 transition-colors" />
+          <div className="absolute bottom-0 left-0.5 w-1.5 h-3.5 bg-blue-400 rounded-t group-hover/handle:bg-blue-300 transition-colors" />
         </div>
         {/* Out-point handle */}
         <div
-          className="absolute top-0 bottom-0 w-1.5 cursor-col-resize z-20 group/handle"
-          style={{ left: `calc(${(clip.outPoint / clip.duration) * 100}% - 3px)` }}
+          className="absolute top-0 bottom-0 w-2 cursor-col-resize z-20 group/handle"
+          style={{ left: `calc(${(clip.outPoint / clip.duration) * 100}% - 4px)` }}
         >
-          <div className="absolute inset-y-0 left-[2px] w-[2px] bg-emerald-400 group-hover/handle:bg-emerald-300 transition-colors" />
-          <div className="absolute top-0 left-0 w-1.5 h-3 bg-emerald-400 rounded-b-sm group-hover/handle:bg-emerald-300 transition-colors" />
-          <div className="absolute bottom-0 left-0 w-1.5 h-3 bg-emerald-400 rounded-t-sm group-hover/handle:bg-emerald-300 transition-colors" />
+          <div className="absolute inset-y-0 left-[3px] w-[2px] bg-emerald-400/80 group-hover/handle:bg-emerald-300 transition-colors" />
+          <div className="absolute top-0 left-0.5 w-1.5 h-3.5 bg-emerald-400 rounded-b group-hover/handle:bg-emerald-300 transition-colors" />
+          <div className="absolute bottom-0 left-0.5 w-1.5 h-3.5 bg-emerald-400 rounded-t group-hover/handle:bg-emerald-300 transition-colors" />
         </div>
         {/* Playhead */}
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_6px_rgba(255,255,255,0.5)] z-10 pointer-events-none"
+          className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none"
           style={{ left: `${(currentTime / clip.duration) * 100}%` }}
         >
-          <div className="absolute -top-1 -left-1.5 w-3.5 h-2.5 bg-white rounded-sm" />
+          <div className="absolute -top-0.5 -left-[5px] w-3 h-3 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+          <div className="absolute inset-y-0 -left-px w-1 bg-white/20 blur-sm" />
         </div>
-        {/* Time markers — hidden on very narrow */}
-        <div className="absolute bottom-0 left-0 right-0 hidden sm:flex justify-between px-1 pointer-events-none">
+        {/* Time markers */}
+        <div className="absolute bottom-0.5 left-0 right-0 hidden sm:flex justify-between px-1.5 pointer-events-none">
           {Array.from({ length: 11 }).map((_, i) => (
-            <span key={i} className="text-[8px] text-surface-600 font-mono">
+            <span key={i} className="text-[8px] text-surface-600/80 font-mono">
               {formatTime((clip.duration / 10) * i)}
             </span>
           ))}
         </div>
       </div>
 
-      {/* Playback + in/out controls — wraps on mobile */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      {/* Playback + in/out controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-3">
           <button
             onClick={onTogglePlay}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-accent-600 hover:bg-accent-500 flex items-center justify-center text-white transition-all shadow-glow hover:shadow-glow-lg"
+            className="w-9 h-9 rounded-full btn-accent flex items-center justify-center text-white"
+            title="Play/Pause (Space)"
           >
             {playing ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20" /></svg>
             )}
           </button>
-          <span className="text-xs font-mono text-surface-300 min-w-[70px]">
-            {formatTime(currentTime)} / {formatTime(clip.duration)}
+          <span className="text-xs font-mono text-surface-300 tabular-nums">
+            {formatTime(currentTime)} <span className="text-surface-600">/</span> {formatTime(clip.duration)}
           </span>
+
+          {/* Volume control */}
+          <div className="hidden sm:flex items-center gap-1.5 ml-1">
+            <button
+              onClick={() => setVolume(volume > 0 ? 0 : 1)}
+              className="text-surface-400 hover:text-surface-200 transition-colors"
+              title={volume > 0 ? 'Mute' : 'Unmute'}
+            >
+              {volume === 0 ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+              ) : volume < 0.5 ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+              )}
+            </button>
+            <input
+              type="range"
+              min={0} max={1} step={0.05}
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-16 h-1 accent-accent-500 cursor-pointer"
+              title={`Volume: ${Math.round(volume * 100)}%`}
+            />
+          </div>
+
+          {/* Speed control */}
+          <div className="hidden sm:flex items-center gap-1">
+            <select
+              value={playbackRate}
+              onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+              className="bg-surface-900/80 text-surface-300 rounded-lg px-1.5 py-0.5 text-2xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
+              title="Playback speed"
+            >
+              {SPEED_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}x</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button onClick={onSetIn} className="px-2 sm:px-2.5 py-1 text-2xs font-semibold rounded-md bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20 transition-all" title="Set In Point">
+          <button onClick={onSetIn} className="px-2.5 py-1 text-2xs font-semibold rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/15 transition-all" title="Set In Point (I)">
             In [{formatTime(clip.inPoint)}]
           </button>
-          <button onClick={onSetOut} className="px-2 sm:px-2.5 py-1 text-2xs font-semibold rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/20 transition-all" title="Set Out Point">
+          <button onClick={onSetOut} className="px-2.5 py-1 text-2xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/15 transition-all" title="Set Out Point (O)">
             Out [{formatTime(clip.outPoint)}]
           </button>
-          <button onClick={() => resetPoints()} className="px-2 sm:px-2.5 py-1 text-2xs font-medium rounded-md text-surface-400 hover:text-surface-200 bg-surface-700/50 hover:bg-surface-600/50 transition-all">
+          <button onClick={() => resetPoints()} className="px-2.5 py-1 text-2xs font-medium rounded-lg text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 transition-all" title="Reset Points (R)">
             Reset
           </button>
-          <div className="w-px h-5 bg-surface-700 mx-0.5 hidden sm:block" />
+          <div className="w-px h-5 bg-surface-700/50 mx-1 hidden sm:block" />
           <button
             onClick={onCut}
             disabled={processing || duration <= 0}
-            className="px-3 sm:px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-40 text-white shadow-glow hover:shadow-glow-lg transition-all"
+            className="px-4 py-1.5 text-xs font-semibold rounded-xl btn-accent text-white"
           >
             {processing ? `Exporting${exportProgress > 0 ? ` ${exportProgress}%` : '...'}` : 'Export Clip'}
           </button>
         </div>
       </div>
 
-      {/* Export options — wraps on narrow */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-surface-500 font-medium">Mode:</span>
-          <button
-            onClick={() => setCutMode('precise')}
-            className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-              cutMode === 'precise'
-                ? 'bg-accent-600/20 text-accent-400 border border-accent-500/30'
-                : 'text-surface-400 hover:text-surface-200 bg-surface-700/50 hover:bg-surface-600/50'
-            }`}
-            title="Re-encodes for frame-accurate cuts that match the preview exactly"
-          >
-            Precise
-          </button>
-          <button
-            onClick={() => setCutMode('fast')}
-            className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-              cutMode === 'fast'
-                ? 'bg-accent-600/20 text-accent-400 border border-accent-500/30'
-                : 'text-surface-400 hover:text-surface-200 bg-surface-700/50 hover:bg-surface-600/50'
-            }`}
-            title="Stream-copy mode — fast but may snap to the nearest keyframe (±1-5s for video)"
-          >
-            Fast
-          </button>
+      {/* Export options */}
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <span className="text-surface-500 font-medium mr-0.5">Mode:</span>
+          <div className="flex bg-surface-900/80 rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setCutMode('precise')}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all duration-200 ${
+                cutMode === 'precise'
+                  ? 'bg-accent-600/25 text-accent-300 shadow-sm'
+                  : 'text-surface-400 hover:text-surface-200'
+              }`}
+              title="Re-encodes for frame-accurate cuts that match the preview exactly"
+            >
+              Precise
+            </button>
+            <button
+              onClick={() => setCutMode('fast')}
+              className={`px-2.5 py-1 rounded-md font-medium transition-all duration-200 ${
+                cutMode === 'fast'
+                  ? 'bg-accent-600/25 text-accent-300 shadow-sm'
+                  : 'text-surface-400 hover:text-surface-200'
+              }`}
+              title="Stream-copy mode — fast but may snap to the nearest keyframe (±1-5s for video)"
+            >
+              Fast
+            </button>
+          </div>
         </div>
-        <div className="w-px h-4 bg-surface-700 hidden sm:block" />
+        <div className="w-px h-4 bg-surface-700/50 hidden sm:block" />
         <div className="flex items-center gap-1.5">
           <span className="text-surface-500 font-medium">Format:</span>
           <select
             value={outputFormat}
             onChange={(e) => setOutputFormat(e.target.value)}
-            className="bg-surface-800 text-surface-200 rounded-md px-2 py-0.5 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors cursor-pointer"
+            className="bg-surface-900/80 text-surface-200 rounded-lg px-2.5 py-1 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
           >
             <option value="">Same as source (.{srcExt})</option>
             {formats.map((fmt) => (
@@ -168,12 +231,12 @@ export function Timeline({
           </select>
         </div>
         {cutMode === 'fast' && clip.isVideo && outputFormat !== 'gif' && (
-          <span className="text-yellow-500/70 text-2xs ml-auto">
+          <span className="text-yellow-500/60 text-2xs ml-auto">
             ⚠ Fast mode may not match preview exactly for video
           </span>
         )}
         {outputFormat === 'gif' && (
-          <span className="text-amber-400/70 text-2xs ml-auto">
+          <span className="text-amber-400/60 text-2xs ml-auto">
             GIF always uses precise mode
           </span>
         )}
@@ -187,11 +250,11 @@ export function Timeline({
               type="checkbox"
               checked={gifOptions.loop}
               onChange={(e) => setGifOptions({ loop: e.target.checked })}
-              className="w-3.5 h-3.5 rounded border-surface-600 bg-surface-800 text-accent-500 focus:ring-accent-500/30 cursor-pointer"
+              className="w-3.5 h-3.5 rounded border-surface-600 bg-surface-900 text-accent-500 focus:ring-accent-500/30 cursor-pointer"
             />
             <span className="text-surface-300">Loop</span>
           </label>
-          <div className="w-px h-4 bg-surface-700" />
+          <div className="w-px h-4 bg-surface-700/50" />
           <div className="flex items-center gap-1.5">
             <span className="text-surface-500 font-medium">FPS:</span>
             <input
@@ -200,16 +263,16 @@ export function Timeline({
               max={30}
               value={gifOptions.fps}
               onChange={(e) => setGifOptions({ fps: Math.max(1, Math.min(30, parseInt(e.target.value) || 15)) })}
-              className="w-14 bg-surface-800 text-surface-200 rounded-md px-2 py-0.5 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors"
+              className="w-14 bg-surface-900/80 text-surface-200 rounded-lg px-2 py-1 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors"
             />
           </div>
-          <div className="w-px h-4 bg-surface-700" />
+          <div className="w-px h-4 bg-surface-700/50" />
           <div className="flex items-center gap-1.5">
             <span className="text-surface-500 font-medium">Width:</span>
             <select
               value={gifOptions.width}
               onChange={(e) => setGifOptions({ width: parseInt(e.target.value) })}
-              className="bg-surface-800 text-surface-200 rounded-md px-2 py-0.5 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors cursor-pointer"
+              className="bg-surface-900/80 text-surface-200 rounded-lg px-2.5 py-1 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
             >
               <option value={320}>320px</option>
               <option value={480}>480px</option>
@@ -229,30 +292,45 @@ export function Timeline({
           value={outputDir}
           onChange={(e) => setOutputDir(e.target.value)}
           placeholder="Same as source"
-          className="flex-1 bg-surface-800 text-surface-200 rounded-md px-2 py-1 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors truncate min-w-0"
+          className="flex-1 bg-surface-900/80 text-surface-200 rounded-lg px-2.5 py-1.5 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors truncate min-w-0"
         />
         <button
           onClick={onBrowseOutputDir}
-          className="shrink-0 px-2 py-1 text-2xs font-medium rounded-md text-surface-300 hover:text-surface-100 bg-surface-700/50 hover:bg-surface-600/50 border border-surface-700 transition-all"
+          className="shrink-0 px-2.5 py-1.5 text-2xs font-medium rounded-lg text-surface-300 hover:text-surface-100 bg-surface-800/60 hover:bg-surface-700/60 border border-white/[0.06] transition-all"
           title="Browse for output directory"
         >
           Browse
         </button>
       </div>
 
+      {/* Keyboard shortcuts hint */}
+      <div className="hidden sm:flex items-center gap-3 text-2xs text-surface-600 pt-0.5">
+        <span><kbd className="kbd-key">Space</kbd> Play/Pause</span>
+        <span><kbd className="kbd-key">I</kbd> Set In</span>
+        <span><kbd className="kbd-key">O</kbd> Set Out</span>
+        <span><kbd className="kbd-key">R</kbd> Reset</span>
+      </div>
+
       {processing && exportProgress > 0 && (
-        <div className="w-full h-1.5 bg-surface-800 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-surface-900 rounded-full overflow-hidden">
           <div
-            className="h-full bg-accent-500 rounded-full transition-all duration-300"
-            style={{ width: `${exportProgress}%` }}
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${exportProgress}%`, background: 'linear-gradient(90deg, var(--color-accent-600), var(--color-accent-400))' }}
           />
         </div>
       )}
 
       {message && (
-        <div className={`text-xs px-3 py-2 rounded-lg ${
-          message.startsWith('Error') ? 'bg-red-500/10 text-red-300' : 'bg-emerald-500/10 text-emerald-300'
+        <div className={`text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2 ${
+          message.startsWith('Error')
+            ? 'bg-red-500/[0.08] text-red-300 border border-red-500/10'
+            : 'bg-emerald-500/[0.08] text-emerald-300 border border-emerald-500/10'
         }`}>
+          {message.startsWith('Error') ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          )}
           {message}
         </div>
       )}

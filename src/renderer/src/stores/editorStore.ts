@@ -10,6 +10,20 @@ import type { CutMode, GifOptions } from '../components/editor/types'
 export type ClipLoadingState = 'probing' | 'transcoding' | 'ready' | 'error'
 export type EditorTab = 'trim' | 'inspect'
 
+export interface AudioReplacement {
+  path: string
+  name: string
+  duration: number
+  /** Offset in seconds — positive delays audio, negative starts audio earlier. */
+  offset: number
+  /** Per-track volume 0–1 (default 1). */
+  volume: number
+  /** Per-track mute flag (default false). */
+  muted: boolean
+  /** Browser-playable URL (blob or media://) for preview playback. */
+  objectUrl: string
+}
+
 export interface EditorClip {
   id: string
   name: string
@@ -21,6 +35,11 @@ export interface EditorClip {
   inPoint: number
   outPoint: number
   loadingState: ClipLoadingState
+  audioReplacement?: AudioReplacement
+  /** Per-clip volume 0–1 (default 1). */
+  clipVolume: number
+  /** Per-clip mute flag (default false). */
+  clipMuted: boolean
 }
 
 interface EditorState {
@@ -33,6 +52,13 @@ interface EditorState {
   setActiveIdx: (idx: number) => void
   updateClipLoading: (id: string, state: ClipLoadingState) => void
   updateClip: (id: string, data: Partial<EditorClip>) => void
+  moveClip: (fromIdx: number, toIdx: number) => void
+  setAudioReplacement: (clipId: string, replacement: AudioReplacement | undefined) => void
+  setAudioOffset: (clipId: string, offset: number) => void
+  setClipVolume: (clipId: string, volume: number) => void
+  toggleClipMute: (clipId: string) => void
+  setA2Volume: (clipId: string, volume: number) => void
+  toggleA2Mute: (clipId: string) => void
 
   /* -- in/out points -- */
   setInPoint: (t: number) => void
@@ -42,8 +68,12 @@ interface EditorState {
   /* -- playback -- */
   playing: boolean
   currentTime: number
+  volume: number
+  playbackRate: number
   setPlaying: (p: boolean) => void
   setCurrentTime: (t: number) => void
+  setVolume: (v: number) => void
+  setPlaybackRate: (r: number) => void
 
   /* -- UI -- */
   editorTab: EditorTab
@@ -115,6 +145,62 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       clips: s.clips.map((c) => (c.id === id ? { ...c, ...data } : c))
     })),
 
+  moveClip: (fromIdx, toIdx) =>
+    set((s) => {
+      if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= s.clips.length || toIdx >= s.clips.length) return {}
+      const next = [...s.clips]
+      const [moved] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, moved)
+      const newActiveIdx = fromIdx === s.activeIdx ? toIdx : s.activeIdx < Math.min(fromIdx, toIdx) || s.activeIdx > Math.max(fromIdx, toIdx) ? s.activeIdx : fromIdx < toIdx ? s.activeIdx - 1 : s.activeIdx + 1
+      return { clips: next, activeIdx: Math.max(0, Math.min(newActiveIdx, next.length - 1)) }
+    }),
+
+  setAudioReplacement: (clipId, replacement) =>
+    set((s) => ({
+      clips: s.clips.map((c) => (c.id === clipId ? { ...c, audioReplacement: replacement } : c))
+    })),
+
+  setAudioOffset: (clipId, offset) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId && c.audioReplacement
+          ? { ...c, audioReplacement: { ...c.audioReplacement, offset } }
+          : c
+      )
+    })),
+
+  setClipVolume: (clipId, volume) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId ? { ...c, clipVolume: Math.max(0, Math.min(1, volume)) } : c
+      )
+    })),
+
+  toggleClipMute: (clipId) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId ? { ...c, clipMuted: !c.clipMuted } : c
+      )
+    })),
+
+  setA2Volume: (clipId, volume) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId && c.audioReplacement
+          ? { ...c, audioReplacement: { ...c.audioReplacement, volume: Math.max(0, Math.min(1, volume)) } }
+          : c
+      )
+    })),
+
+  toggleA2Mute: (clipId) =>
+    set((s) => ({
+      clips: s.clips.map((c) =>
+        c.id === clipId && c.audioReplacement
+          ? { ...c, audioReplacement: { ...c.audioReplacement, muted: !c.audioReplacement.muted } }
+          : c
+      )
+    })),
+
   /* -- in/out points -- */
   setInPoint: (t) =>
     set((s) => {
@@ -147,8 +233,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   /* -- playback -- */
   playing: false,
   currentTime: 0,
+  volume: 1,
+  playbackRate: 1,
   setPlaying: (p) => set({ playing: p }),
   setCurrentTime: (t) => set({ currentTime: t }),
+  setVolume: (v) => set({ volume: Math.max(0, Math.min(1, v)) }),
+  setPlaybackRate: (r) => set({ playbackRate: r }),
 
   /* -- UI -- */
   editorTab: 'trim' as EditorTab,

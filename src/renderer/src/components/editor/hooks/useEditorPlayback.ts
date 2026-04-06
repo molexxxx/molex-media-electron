@@ -5,6 +5,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { EditorClip } from '../../../stores/editorStore'
+import { useEditorStore } from '../../../stores/editorStore'
 
 /**
  * Manages media element playback, audio context / analyser wiring,
@@ -13,6 +14,7 @@ import type { EditorClip } from '../../../stores/editorStore'
 export function useEditorPlayback(clip: EditorClip | null) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const a2AudioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
@@ -52,20 +54,95 @@ export function useEditorPlayback(clip: EditorClip | null) {
       audio.removeAttribute('src')
       audio.load()
     }
-  }, [clip?.id])
+  }, [clip?.id, clip?.loadingState]) // re-run when loading finishes (element appears in DOM)
 
   // -- Video source --
   useEffect(() => {
-    if (!clip || !clip.isVideo) return
+    if (!clip || !clip.isVideo || clip.loadingState !== 'ready') return
     const video = videoRef.current
     if (!video) return
-    video.preload = 'auto'
-    video.src = clip.previewUrl || clip.objectUrl
+    const src = clip.previewUrl || clip.objectUrl
+    // Only update src if it actually changed (avoid redundant reloads)
+    if (video.src !== src) {
+      video.preload = 'auto'
+      video.src = src
+    }
     const seekOnce = (): void => { video.currentTime = clip.inPoint }
     if (video.readyState >= 1) seekOnce()
     else video.addEventListener('loadedmetadata', seekOnce, { once: true })
     return () => { video.removeEventListener('loadedmetadata', seekOnce) }
-  }, [clip?.id])
+  }, [clip?.id, clip?.loadingState, clip?.previewUrl, clip?.objectUrl]) // re-run when clip becomes ready or src changes
+
+  // -- Sync media element when inPoint moves ahead of playhead --
+  useEffect(() => {
+    if (!clip) return
+    const el = clip.isVideo ? videoRef.current : audioRef.current
+    if (!el) return
+    // Tolerance for video keyframe imprecision — browser may land on the
+    // nearest keyframe before inPoint, so only re-seek if clearly behind.
+    const tol = clip.isVideo ? 0.15 : 0
+    if (el.currentTime < clip.inPoint - tol) {
+      el.currentTime = clip.inPoint
+      setCurrentTime(clip.inPoint)
+    }
+  }, [clip?.id, clip?.inPoint]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- Sync media element when outPoint shrinks behind playhead --
+  useEffect(() => {
+    if (!clip) return
+    const el = clip.isVideo ? videoRef.current : audioRef.current
+    if (!el) return
+    if (el.currentTime >= clip.outPoint) {
+      el.pause()
+      el.currentTime = clip.outPoint
+      setCurrentTime(clip.outPoint)
+      setPlaying(false)
+    }
+  }, [clip?.id, clip?.outPoint]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -- Sync volume and playback rate --
+  const volume = useEditorStore((s) => s.volume)
+  const playbackRate = useEditorStore((s) => s.playbackRate)
+  const clipVolume = clip?.clipVolume ?? 1
+  const clipMuted = clip?.clipMuted ?? false
+
+  useEffect(() => {
+    const el = clip?.isVideo ? videoRef.current : audioRef.current
+    if (el) el.volume = clipMuted ? 0 : volume * clipVolume
+  }, [clip?.isVideo, volume, clipVolume, clipMuted])
+
+  useEffect(() => {
+    const el = clip?.isVideo ? videoRef.current : audioRef.current
+    if (el) el.playbackRate = playbackRate
+  }, [clip?.isVideo, playbackRate])
+
+  // -- A2 audio source loading --
+  const a2Url = clip?.audioReplacement?.objectUrl
+  useEffect(() => {
+    const a2 = a2AudioRef.current
+    if (!a2) return
+    if (!a2Url) {
+      a2.pause()
+      a2.removeAttribute('src')
+      a2.load()
+      return
+    }
+    a2.src = a2Url
+  }, [a2Url])
+
+  // -- A2 volume sync --
+  const a2Volume = clip?.audioReplacement?.volume ?? 1
+  const a2Muted = clip?.audioReplacement?.muted ?? false
+  useEffect(() => {
+    const a2 = a2AudioRef.current
+    if (a2 && a2.src) a2.volume = a2Muted ? 0 : volume * a2Volume
+  }, [a2Volume, a2Muted, volume])
+
+  // -- A2 playback rate sync --
+  useEffect(() => {
+    const a2 = a2AudioRef.current
+    if (a2 && a2.src) a2.playbackRate = playbackRate
+  }, [playbackRate])
 
   // -- Playback time tracking --
   useEffect(() => {
@@ -73,15 +150,42 @@ export function useEditorPlayback(clip: EditorClip | null) {
     const el = clip.isVideo ? videoRef.current : audioRef.current
     if (!el) return
 
+    // Tolerance for video — browser may seek to nearest keyframe slightly
+    // before inPoint. Without tolerance, the handler re-seeks endlessly.
+    const tol = clip.isVideo ? 0.15 : 0
     const onTime = (): void => {
       setCurrentTime(el.currentTime)
-      if (el.currentTime >= clip.outPoint) {
+      if (el.currentTime < clip.inPoint - tol) {
+        el.currentTime = clip.inPoint
+      } else if (el.currentTime >= clip.outPoint) {
         el.pause()
         el.currentTime = clip.outPoint
+        const a2 = a2AudioRef.current
+        if (a2 && !a2.paused) a2.pause()
         setPlaying(false)
       }
+
+      // A2 sync — start/stop based on offset
+      const a2 = a2AudioRef.current
+      const ar = clip.audioReplacement
+      if (a2 && ar && a2.src && !el.paused) {
+        const rel = el.currentTime - clip.inPoint
+        const a2Time = rel - ar.offset
+        if (a2Time >= 0 && a2Time < ar.duration) {
+          if (a2.paused) {
+            a2.currentTime = a2Time
+            a2.play().catch(() => {})
+          }
+        } else if (!a2.paused) {
+          a2.pause()
+        }
+      }
     }
-    const onEnd = (): void => setPlaying(false)
+    const onEnd = (): void => {
+      const a2 = a2AudioRef.current
+      if (a2 && !a2.paused) a2.pause()
+      setPlaying(false)
+    }
 
     el.addEventListener('timeupdate', onTime)
     el.addEventListener('ended', onEnd)
@@ -89,7 +193,7 @@ export function useEditorPlayback(clip: EditorClip | null) {
       el.removeEventListener('timeupdate', onTime)
       el.removeEventListener('ended', onEnd)
     }
-  }, [clip?.id, clip?.outPoint])
+  }, [clip?.id, clip?.loadingState, clip?.inPoint, clip?.outPoint])
 
   // -- Canvas waveform visualizer (audio-only) --
   useEffect(() => {
@@ -173,21 +277,48 @@ export function useEditorPlayback(clip: EditorClip | null) {
     if (el.paused) {
       if (el.currentTime >= clip.outPoint || el.currentTime < clip.inPoint) {
         el.currentTime = clip.inPoint
+        setCurrentTime(clip.inPoint)
       }
+      // Browser handles play-after-pending-seek correctly; no need to await seeked
       el.play().catch(() => setPlaying(false))
+      // Start A2 if in range
+      const a2 = a2AudioRef.current
+      const ar = clip.audioReplacement
+      if (a2 && ar && a2.src) {
+        const rel = el.currentTime - clip.inPoint
+        const a2Time = rel - ar.offset
+        if (a2Time >= 0 && a2Time < ar.duration) {
+          a2.currentTime = a2Time
+          a2.play().catch(() => {})
+        }
+      }
       setPlaying(true)
     } else {
       el.pause()
+      const a2 = a2AudioRef.current
+      if (a2 && !a2.paused) a2.pause()
       setPlaying(false)
     }
-  }, [clip])
+  }, [clip?.id, clip?.inPoint, clip?.outPoint, clip?.isVideo, clip?.audioReplacement])
 
   const seek = useCallback((time: number) => {
     if (!clip) return
     const el = clip.isVideo ? videoRef.current : audioRef.current
-    if (el && !el.seeking) el.currentTime = time
+    if (el) el.currentTime = time
     setCurrentTime(time)
+    // Sync A2
+    const a2 = a2AudioRef.current
+    const ar = clip.audioReplacement
+    if (a2 && ar && a2.src) {
+      const rel = time - clip.inPoint
+      const a2Time = rel - ar.offset
+      if (a2Time >= 0 && a2Time < ar.duration) {
+        a2.currentTime = a2Time
+      } else if (!a2.paused) {
+        a2.pause()
+      }
+    }
   }, [clip])
 
-  return { playing, currentTime, videoRef, audioRef, canvasRef, togglePlay, seek }
+  return { playing, currentTime, videoRef, audioRef, a2AudioRef, canvasRef, togglePlay, seek }
 }

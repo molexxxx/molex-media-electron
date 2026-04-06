@@ -53,6 +53,7 @@ const api = {
   mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
   probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
+  replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number }) => ipcRenderer.invoke('editor:replaceAudio', videoPath, audioPath, options),
   createPreview: (filePath: string) => ipcRenderer.invoke('editor:createPreview', filePath),
   onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => {
     const listener = (_: any, progress: any) => cb(progress)

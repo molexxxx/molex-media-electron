@@ -24,6 +24,8 @@ function makeClip(overrides?: Partial<EditorClip>): EditorClip {
     inPoint: 0,
     outPoint: 120,
     loadingState: 'ready' as ClipLoadingState,
+    clipVolume: 1,
+    clipMuted: false,
     ...overrides
   }
 }
@@ -34,6 +36,8 @@ function resetStore(): void {
     activeIdx: 0,
     playing: false,
     currentTime: 0,
+    volume: 1,
+    playbackRate: 1,
     editorTab: 'trim',
     processing: false,
     exportProgress: 0,
@@ -432,6 +436,221 @@ describe('editorStore', () => {
       const s = useEditorStore.getState()
       expect(s.clips).toHaveLength(2)
       expect(s.activeIdx).toBe(1)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  moveClip                                                           */
+  /* ------------------------------------------------------------------ */
+
+  describe('moveClip', () => {
+    it('moves a clip forward in the list', () => {
+      useEditorStore.getState().addClip(makeClip({ name: 'a.mp4' }))
+      useEditorStore.getState().addClip(makeClip({ name: 'b.mp4' }))
+      useEditorStore.getState().addClip(makeClip({ name: 'c.mp4' }))
+      useEditorStore.getState().moveClip(0, 2)
+      const names = useEditorStore.getState().clips.map((c) => c.name)
+      expect(names).toEqual(['b.mp4', 'c.mp4', 'a.mp4'])
+    })
+
+    it('moves a clip backward in the list', () => {
+      useEditorStore.getState().addClip(makeClip({ name: 'a.mp4' }))
+      useEditorStore.getState().addClip(makeClip({ name: 'b.mp4' }))
+      useEditorStore.getState().addClip(makeClip({ name: 'c.mp4' }))
+      useEditorStore.getState().moveClip(2, 0)
+      const names = useEditorStore.getState().clips.map((c) => c.name)
+      expect(names).toEqual(['c.mp4', 'a.mp4', 'b.mp4'])
+    })
+
+    it('no-ops when from === to', () => {
+      useEditorStore.getState().addClip(makeClip({ name: 'a.mp4' }))
+      useEditorStore.getState().addClip(makeClip({ name: 'b.mp4' }))
+      useEditorStore.getState().moveClip(0, 0)
+      const names = useEditorStore.getState().clips.map((c) => c.name)
+      expect(names).toEqual(['a.mp4', 'b.mp4'])
+    })
+
+    it('no-ops for out-of-bounds indices', () => {
+      useEditorStore.getState().addClip(makeClip({ name: 'a.mp4' }))
+      useEditorStore.getState().moveClip(0, 5)
+      expect(useEditorStore.getState().clips).toHaveLength(1)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  Audio replacement                                                  */
+  /* ------------------------------------------------------------------ */
+
+  describe('setAudioReplacement', () => {
+    it('sets audio replacement for a clip', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/audio.mp3', name: 'audio.mp3', duration: 60, offset: 0, volume: 1, muted: false, objectUrl: 'blob:audio' })
+      const updated = useEditorStore.getState().clips[0]
+      expect(updated.audioReplacement).toBeDefined()
+      expect(updated.audioReplacement!.name).toBe('audio.mp3')
+    })
+
+    it('clears audio replacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/audio.mp3', name: 'audio.mp3', duration: 60, offset: 0, volume: 1, muted: false, objectUrl: 'blob:audio' })
+      useEditorStore.getState().setAudioReplacement(clip.id, undefined)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+
+    it('does not affect other clips', () => {
+      const c1 = makeClip({ name: 'a.mp4' })
+      const c2 = makeClip({ name: 'b.mp4' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().setAudioReplacement(c1.id, { path: '/audio.mp3', name: 'audio.mp3', duration: 60, offset: 0, volume: 1, muted: false, objectUrl: 'blob:audio' })
+      expect(useEditorStore.getState().clips[1].audioReplacement).toBeUndefined()
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  Volume and playback rate                                           */
+  /* ------------------------------------------------------------------ */
+
+  describe('volume and playbackRate', () => {
+    it('defaults volume to 1', () => {
+      expect(useEditorStore.getState().volume).toBe(1)
+    })
+
+    it('sets volume', () => {
+      useEditorStore.getState().setVolume(0.5)
+      expect(useEditorStore.getState().volume).toBe(0.5)
+    })
+
+    it('clamps volume to 0-1 range', () => {
+      useEditorStore.getState().setVolume(2)
+      expect(useEditorStore.getState().volume).toBe(1)
+      useEditorStore.getState().setVolume(-0.5)
+      expect(useEditorStore.getState().volume).toBe(0)
+    })
+
+    it('defaults playbackRate to 1', () => {
+      expect(useEditorStore.getState().playbackRate).toBe(1)
+    })
+
+    it('sets playback rate', () => {
+      useEditorStore.getState().setPlaybackRate(1.5)
+      expect(useEditorStore.getState().playbackRate).toBe(1.5)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  Per-clip volume and mute                                           */
+  /* ------------------------------------------------------------------ */
+
+  describe('setClipVolume', () => {
+    it('sets per-clip volume', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipVolume(clip.id, 0.4)
+      expect(useEditorStore.getState().clips[0].clipVolume).toBe(0.4)
+    })
+
+    it('clamps volume to 0-1 range', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setClipVolume(clip.id, 1.5)
+      expect(useEditorStore.getState().clips[0].clipVolume).toBe(1)
+      useEditorStore.getState().setClipVolume(clip.id, -0.3)
+      expect(useEditorStore.getState().clips[0].clipVolume).toBe(0)
+    })
+
+    it('only affects the targeted clip', () => {
+      const c1 = makeClip({ name: 'a.mp4' })
+      const c2 = makeClip({ name: 'b.mp4' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().setClipVolume(c1.id, 0.2)
+      expect(useEditorStore.getState().clips[0].clipVolume).toBe(0.2)
+      expect(useEditorStore.getState().clips[1].clipVolume).toBe(1)
+    })
+  })
+
+  describe('toggleClipMute', () => {
+    it('toggles mute on', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().toggleClipMute(clip.id)
+      expect(useEditorStore.getState().clips[0].clipMuted).toBe(true)
+    })
+
+    it('toggles mute off', () => {
+      const clip = makeClip({ clipMuted: true })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().toggleClipMute(clip.id)
+      expect(useEditorStore.getState().clips[0].clipMuted).toBe(false)
+    })
+
+    it('only affects the targeted clip', () => {
+      const c1 = makeClip({ name: 'a.mp4' })
+      const c2 = makeClip({ name: 'b.mp4' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().toggleClipMute(c1.id)
+      expect(useEditorStore.getState().clips[0].clipMuted).toBe(true)
+      expect(useEditorStore.getState().clips[1].clipMuted).toBe(false)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  A2 volume and mute                                                 */
+  /* ------------------------------------------------------------------ */
+
+  describe('setA2Volume', () => {
+    it('sets A2 volume on a clip with audioReplacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a' })
+      useEditorStore.getState().setA2Volume(clip.id, 0.3)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.volume).toBe(0.3)
+    })
+
+    it('clamps volume to 0-1', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a' })
+      useEditorStore.getState().setA2Volume(clip.id, 2)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.volume).toBe(1)
+      useEditorStore.getState().setA2Volume(clip.id, -1)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.volume).toBe(0)
+    })
+
+    it('no-ops when clip has no audioReplacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setA2Volume(clip.id, 0.5)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+  })
+
+  describe('toggleA2Mute', () => {
+    it('toggles A2 mute on', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a' })
+      useEditorStore.getState().toggleA2Mute(clip.id)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.muted).toBe(true)
+    })
+
+    it('toggles A2 mute off', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: true, objectUrl: 'blob:a' })
+      useEditorStore.getState().toggleA2Mute(clip.id)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.muted).toBe(false)
+    })
+
+    it('no-ops when clip has no audioReplacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().toggleA2Mute(clip.id)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
     })
   })
 })

@@ -18,7 +18,7 @@
 
 <br/>
 
-[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](CONTRIBUTING.md)
+[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Report a Bug](https://github.com/tonywied17/molex-media-electron/issues/new?template=bug_report.yml) · [Request a Feature](https://github.com/tonywied17/molex-media-electron/issues/new?template=feature_request.yml)
 
 <br/>
 
@@ -28,67 +28,62 @@
 
 ## Features
 
-<table>
-<tr>
-<td width="50%">
+### Batch Audio Processing
 
-**Batch Audio Processing**
-- ITU-R BS.1770-4 two-pass loudness normalization
-- Target LUFS, True Peak, and Loudness Range controls
-- Percentage-based volume boost / reduce
-- Format conversion with codec inheritance & smart fallback
-- Audio extraction from video files
-- Video compression with configurable quality
-- Subtitle and metadata stream preservation
-- 17+ format support (MP4, MKV, AVI, MOV, MP3, WAV, FLAC, OGG, M4A, AAC…)
-- Built-in file browser with quick-access locations
-- Add dropdown menu (File Browser, Choose Files, Add Folder)
+- **Loudness Normalization** — ITU-R BS.1770-4 two-pass analysis with configurable Integrated Loudness (LUFS), True Peak (dBFS), and Loudness Range (LU)
+- **10 Built-in Presets** — YouTube, Spotify, Apple Music, Podcast, Broadcast TV, Cinema/Film, Plex/Home Media, TikTok/Reels, CD Master, and Defaults
+- **Volume Boost / Reduce** — Percentage-based amplifier applied to all audio streams; preserves channel layout and sample rate
+- **Format Conversion** — Configurable video codec, audio codec, bitrate, resolution, and framerate; stream-copy or full re-encode modes
+- **Audio Extraction** — Demux audio from video into MP3, AAC, FLAC, WAV, OGG, Opus, or M4A
+- **Video Compression** — CRF-based H.264 with 4 quality presets (lossless / high / medium / low); optional target-size bitrate limiting
+- **Concurrent Workers** — Configurable worker pool with mid-batch pause, resume, and cancellation
+- **Real-time Progress** — Per-task speed, ETA, and progress bar with desktop notifications on completion
+- **35+ Formats** — 21 video extensions (MP4, MKV, AVI, MOV, WebM, TS…) and 14 audio extensions (MP3, WAV, FLAC, OGG, M4A, AAC, Opus…)
+- **Subtitle & Metadata Preservation** — Optionally copy subtitle streams, tags, chapters, and metadata to output
 
-</td>
-<td width="50%">
+### Media Editor
 
-**Performance & Workflow**
-- Concurrent batch processing with configurable worker count
-- Real-time progress tracking with speed & ETA per task
-- Drag-and-drop file queueing
-- Desktop notifications on batch completion
-- Collapsible sidebar with CSS tooltips in icon-only mode
-- Minimize to system tray
-- Auto-save settings with instant apply
-- Overwrite original or save alongside
+- **Multi-clip Workspace** — Load multiple audio and video clips, each independently probed with format/stream details
+- **Trim & Cut** — In/out point editing with two modes: fast (stream-copy, keyframe-aligned) or precise (re-encode, frame-accurate)
+- **Merge / Concatenate** — Combine 2+ trimmed segments into a single file via FFmpeg concat demuxer
+- **Replace Audio Track** — Swap a video's audio with another file while preserving the video stream
+- **GIF Export** — Two-pass palette generation for high-quality GIFs with configurable loop, FPS (1-30), and width
+- **Remux** — Losslessly keep/drop individual streams, edit metadata tags, and set per-stream disposition flags
+- **Stream Inspector** — Detailed FFprobe viewer with container info, per-stream codec/resolution/channels/sample rate, and metadata editor
+- **Interactive Timeline** — Draggable scrubber with in/out handles, time markers, and selected-region highlight
+- **Playback Controls** — Volume slider, speed selector (0.25x–2x), and keyboard shortcuts (Space, I, O, R)
+- **Drag-to-reorder** — Visual multi-clip track lane with proportional clip blocks, audio replacement badges, and drag-and-drop sequencing
+- **Video & Waveform Preview** — Native `<video>` for video clips, canvas waveform for audio-only; automatic transcoding for non-browser formats
+- **7 Output Formats** — Video: MP4, MKV, WebM, AVI, MOV, TS, GIF — Audio: MP3, WAV, FLAC, OGG, M4A, AAC, Opus
 
-</td>
-</tr>
-<tr>
-<td width="50%">
+### Media Player
 
-**Media Editor**
-- Precision timeline with draggable in/out points
-- Cut and trim audio & video clips
-- Merge multiple clips into one file
-- Stream inspector with per-stream toggle, metadata editing, and disposition flags
-- Remux without re-encoding
+- **Local Playback** — Play audio files from your filesystem with full playlist management
+- **YouTube Streaming** — Resolve and stream audio from YouTube videos and playlists via yt-dlp (auto-downloaded)
+- **8 Visualizations** — DMT, Space, Milkdrop, Plasma, Bars, Wave, Circular, and Horizon — all real-time canvas rendering via Web Audio API
+- **Beat Detection** — Per-frame analysis across sub-bass, bass, low-mid, mid, high-mid, and treble bands with beat-reactive visuals
+- **Audio Quality** — Best / Good / Low quality presets for YouTube stream selection
+- **Playlist Features** — Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, folder browser with system shortcuts
+- **Transport Bar** — Gradient seek bar, play/pause, prev/next, shuffle, repeat, volume slider with mute toggle
+- **Popout Player** — Always-on-top window with compact transport, pin/unpin, 3 size presets, custom size memory, and state transfer
+- **URL Input & History** — Paste YouTube URLs or direct audio links; persisted history with title, track count, and date
+- **Cookie Caching** — Transparent browser cookie export for authenticated YouTube content with auto-retry on auth failures
 
-</td>
-<td width="50%">
+### App & UI
 
-**Media Player**
-- Local file playback and playlist management
-- YouTube streaming via yt-dlp (auto-downloaded)
-- YouTube playlist resolution and queueing
-- Shuffle, repeat (one / all), and drag-to-reorder
-- 8 real-time audio visualizations: Bars, Waveform, Radial, Spectrum, Space, DMT, Milkdrop, and Plasma
-- Unique per-mode visualization icons and tooltip controls
-- Beat detection and loudness-reactive visuals
-- Popout player window with compact transport
-- Playlist overlay with click-outside dismiss
-- Add dropdown menu (File Browser, Choose Files, External Link)
-- Responsive compact transport bar and icon-only header
-- Smart cookie caching for authenticated YouTube content
-
-</td>
-</tr>
-</table>
+- **Zero Setup** — FFmpeg and yt-dlp are downloaded automatically on first launch
+- **Setup Wizard** — First-run flow: Welcome → Downloading → Complete, with retry and manual-install fallback
+- **Dashboard** — Quick stats, workflow launchers, tool cards with animated canvas backgrounds, system info, and recent activity feed
+- **File Browser** — VLC-style modal with known-folder shortcuts (Music, Videos, Desktop) and multi-file/folder selection
+- **System Tray** — Icon with context menu, live batch progress in tooltip, and minimize-to-tray behavior
+- **Auto-updater** — Check / download / install from GitHub Releases with progress forwarding
+- **Custom Title Bar** — Frameless drag region with logo, version badge, processing indicator, and window controls
+- **Collapsible Sidebar** — Dashboard, Batch, Editor, Player, Settings, Logs — auto-collapses on narrow windows with icon-only tooltips
+- **Live Processing Panel** — Sidebar-embedded task list with progress bars, pause/cancel controls
+- **Log Viewer** — Filterable by level (info / warn / error / success / ffmpeg), free-text search, auto-scroll
+- **Drag-and-drop Everywhere** — Drop files onto batch queue, editor, player, or processing view
+- **Responsive Design** — Adaptive layouts for sidebar, editor clip list, and timeline
+- **Settings** — Audio codec/bitrate/fallback, worker count, output directory, overwrite mode, notifications, tray behavior, browser cookie management, reset to defaults
 
 ---
 
@@ -148,9 +143,21 @@ npm run package:linux    # Linux
 
 ---
 
+## Feedback & Issues
+
+Found a bug or have an idea? We use GitHub Issue templates to keep things organized:
+
+- [**Report a Bug**](https://github.com/tonywied17/molex-media-electron/issues/new?template=bug_report.yml) — Something isn't working as expected
+- [**Request a Feature**](https://github.com/tonywied17/molex-media-electron/issues/new?template=feature_request.yml) — Suggest a new feature or enhancement
+- [**Browse Open Issues**](https://github.com/tonywied17/molex-media-electron/issues) — See what's already been reported or upvote existing requests
+
+Please search existing issues before opening a new one to avoid duplicates.
+
+---
+
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on branch naming, commit conventions, and the development workflow.
 
 ---
 

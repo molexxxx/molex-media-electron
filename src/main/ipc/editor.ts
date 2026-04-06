@@ -8,7 +8,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import { ipcMain } from 'electron'
 import { probeMedia } from '../ffmpeg/probe'
-import { cutMedia, mergeMedia, remuxMedia, type CutOptions, type ProcessingTask } from '../ffmpeg/processor'
+import { cutMedia, mergeMedia, remuxMedia, replaceAudio, type CutOptions, type ProcessingTask } from '../ffmpeg/processor'
 import { runCommand } from '../ffmpeg/runner'
 import { getConfig } from '../config'
 import { logger } from '../logger'
@@ -126,5 +126,29 @@ export function registerEditorIPC(): void {
       logger.error(`Preview transcode error: ${err.message}`)
       return { success: false, error: err.message }
     }
+  })
+
+  ipcMain.handle('editor:replaceAudio', async (_, videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number }) => {
+    const task = createEditorTask(videoPath, `${path.basename(videoPath)} (replace audio)`)
+    sendToAll('process:batch-started', { batchId: task.id, tasks: [task] })
+
+    const result = await replaceAudio(videoPath, audioPath, options, (progress) => {
+      task.progress = progress.percent
+      task.message = progress.message
+      task.status = progress.percent >= 100 ? 'finalizing' : 'processing'
+      sendToAll('process:task-progress', task)
+      sendToAll('editor:progress', progress)
+    })
+
+    task.status = result.success ? 'complete' : 'error'
+    task.progress = result.success ? 100 : task.progress
+    task.message = result.success ? 'Audio replaced' : (result.error || 'Replace audio failed')
+    task.completedAt = Date.now()
+    task.error = result.success ? undefined : result.error
+    task.outputPath = result.outputPath
+    sendToAll('process:task-progress', task)
+    sendToAll('process:batch-complete', { batchId: task.id, results: [task] })
+
+    return result
   })
 }

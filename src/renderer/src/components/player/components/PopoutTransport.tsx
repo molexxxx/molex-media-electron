@@ -41,11 +41,14 @@ export function PopoutTransport({
   onPlayPrev, onSeek, onVolumeChange, onToggleShuffle, onCycleRepeat,
   onCycleVisMode, onTogglePlaylist, onFileSelect, onBrowse
 }: PopoutTransportProps): React.JSX.Element {
+  const seekPct = duration > 0 ? (currentTime / duration) * 100 : 0
+  const volPct = volume * 100
+
   return (
-    <div className="shrink-0 space-y-1 px-1 pb-0.5">
+    <div className="shrink-0 space-y-1 px-1.5 pb-1">
       {/* Track name + vis + add */}
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="flex-1 text-[11px] text-surface-300 font-medium truncate min-w-0">
+        <span className="flex-1 text-xs text-surface-300 font-medium truncate min-w-0">
           {track ? track.name : 'No track loaded'}
         </span>
         <button
@@ -76,19 +79,29 @@ export function PopoutTransport({
       </div>
 
       {/* Seek bar */}
-      <div className="flex items-center gap-2">
-        <span className="text-[9px] text-surface-500 font-mono w-7 text-right select-none">{formatTime(currentTime)}</span>
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.1}
-          value={currentTime}
-          onChange={onSeek}
-          className="flex-1 h-0.5 accent-accent-500 cursor-pointer"
-          style={{ accentColor: 'var(--tw-accent-500, #8b5cf6)' }}
-        />
-        <span className="text-[9px] text-surface-500 font-mono w-7 select-none">{formatTime(duration)}</span>
+      <div className="flex items-center gap-2 group/seek">
+        <span className="text-[9px] text-surface-500 font-mono w-7 text-right select-none tabular-nums">{formatTime(currentTime)}</span>
+        <div className="relative flex-1 flex items-center">
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={currentTime}
+            onChange={onSeek}
+            className="seek-slider w-full h-3"
+            style={{ background: 'transparent' }}
+          />
+          <div
+            className="absolute top-1/2 left-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2"
+            style={{ width: `${seekPct}%`, background: 'linear-gradient(90deg, var(--color-accent-600), var(--color-accent-400))' }}
+          />
+          <div
+            className="absolute top-1/2 left-0 right-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2 -z-10"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+          />
+        </div>
+        <span className="text-[9px] text-surface-500 font-mono w-7 select-none tabular-nums">{formatTime(duration)}</span>
       </div>
 
       {/* Controls row */}
@@ -97,9 +110,7 @@ export function PopoutTransport({
           {/* Shuffle */}
           <button
             onClick={onToggleShuffle}
-            className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-              shuffle ? 'text-accent-400' : 'text-surface-500 hover:text-surface-300'
-            }`}
+            className={`transport-btn w-6 h-6 ${shuffle ? 'transport-btn-active' : ''}`}
             title="Shuffle"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -112,7 +123,7 @@ export function PopoutTransport({
           <button
             onClick={onPlayPrev}
             disabled={playlistLength === 0}
-            className="w-6 h-6 rounded flex items-center justify-center text-surface-400 hover:text-white disabled:opacity-30 transition-colors"
+            className="transport-btn w-6 h-6"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="3" height="14" rx="1" /><polygon points="21,5 10,12 21,19" /></svg>
           </button>
@@ -120,28 +131,26 @@ export function PopoutTransport({
           <button
             onClick={onTogglePlay}
             disabled={!track}
-            className="w-8 h-8 rounded-full bg-accent-600 hover:bg-accent-500 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all shadow-glow"
+            className="play-btn w-8 h-8 rounded-full flex items-center justify-center text-white cursor-pointer"
           >
             {playing ? (
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20" /></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20" /></svg>
             )}
           </button>
           {/* Next */}
           <button
             onClick={onPlayNext}
             disabled={playlistLength === 0}
-            className="w-6 h-6 rounded flex items-center justify-center text-surface-400 hover:text-white disabled:opacity-30 transition-colors"
+            className="transport-btn w-6 h-6"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="3,5 14,12 3,19" /><rect x="18" y="5" width="3" height="14" rx="1" /></svg>
           </button>
           {/* Repeat */}
           <button
             onClick={onCycleRepeat}
-            className={`w-6 h-6 rounded flex items-center justify-center transition-colors relative ${
-              repeat !== 'off' ? 'text-accent-400' : 'text-surface-500 hover:text-surface-300'
-            }`}
+            className={`transport-btn w-6 h-6 relative ${repeat !== 'off' ? 'transport-btn-active' : ''}`}
             title={`Repeat: ${repeat}`}
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -149,32 +158,56 @@ export function PopoutTransport({
               <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
             </svg>
             {repeat === 'one' && (
-              <span className="absolute -top-0.5 -right-0.5 text-[7px] font-bold text-accent-400">1</span>
+              <span className="absolute -top-0.5 -right-0.5 text-[7px] font-bold text-accent-300">1</span>
             )}
           </button>
         </div>
 
         <div className="flex items-center gap-1">
           {/* Volume */}
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-surface-500 shrink-0">
-            <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-          </svg>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={onVolumeChange}
-            className="w-14 h-0.5 accent-surface-400 cursor-pointer"
-          />
+          <button
+            className="transport-btn w-5 h-5"
+            onClick={() => {
+              const fakeEvent = { target: { value: volume > 0 ? '0' : '0.7' } } as React.ChangeEvent<HTMLInputElement>
+              onVolumeChange(fakeEvent)
+            }}
+            title={volume > 0 ? 'Mute' : 'Unmute'}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+              <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" />
+              {volume > 0 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />}
+              {volume === 0 && (
+                <>
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </>
+              )}
+            </svg>
+          </button>
+          <div className="relative flex items-center w-14">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={onVolumeChange}
+              className="vol-slider w-full h-3"
+              style={{ background: 'transparent' }}
+            />
+            <div
+              className="absolute top-1/2 left-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2"
+              style={{ width: `${volPct}%`, background: 'var(--color-surface-300)' }}
+            />
+            <div
+              className="absolute top-1/2 left-0 right-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2 -z-10"
+              style={{ background: 'rgba(255,255,255,0.1)' }}
+            />
+          </div>
           {/* Playlist */}
           <button
             onClick={onTogglePlaylist}
-            className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-              showPlaylist ? 'text-accent-400' : 'text-surface-500 hover:text-surface-300'
-            }`}
+            className={`transport-btn w-6 h-6 ${showPlaylist ? 'transport-btn-active' : ''}`}
             title="Playlist"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

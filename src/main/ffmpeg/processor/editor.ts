@@ -456,3 +456,85 @@ export async function remuxMedia(
     return { success: false, error: err.message }
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Replace Audio                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Options for the replaceAudio operation. */
+export interface ReplaceAudioOptions {
+  /** Override the output directory. Defaults to source file directory. */
+  outputDir?: string
+  /** Offset in seconds to delay the replacement audio. Positive delays audio start. */
+  audioOffset?: number
+}
+
+/**
+ * Replace the audio track(s) in a video file with audio from another file.
+ *
+ * Copies the video stream(s) from the source and takes the audio stream(s)
+ * from the replacement file.  No re-encoding is performed on the video;
+ * audio is copied if codec-compatible, otherwise re-encoded to AAC.
+ *
+ * @param videoPath - Absolute path to the source video file.
+ * @param audioPath - Absolute path to the replacement audio file.
+ * @param options   - Optional output directory override.
+ * @returns Result object with `success`, optional `outputPath`, and optional `error`.
+ */
+export async function replaceAudio(
+  videoPath: string,
+  audioPath: string,
+  options: ReplaceAudioOptions = {},
+  onProgress?: EditorProgressCallback
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpegPath
+  if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
+
+  const ext = path.extname(videoPath)
+  const base = path.basename(videoPath, ext)
+  const dir = options.outputDir || config.outputDirectory || path.dirname(videoPath)
+  const outputPath = path.join(dir, `${base}_replaced${ext}`)
+
+  logger.info(`Replacing audio: ${path.basename(videoPath)} ← ${path.basename(audioPath)}`)
+  onProgress?.({ percent: 0, message: 'Replacing audio track...' })
+
+  const args = [
+    '-y',
+    '-i', videoPath,
+    ...(options.audioOffset ? ['-itsoffset', String(options.audioOffset)] : []),
+    '-i', audioPath,
+    '-map', '0:v',
+    '-map', '1:a',
+    '-c:v', 'copy',
+    '-c:a', 'aac', '-b:a', '256k',
+    '-shortest',
+    outputPath
+  ]
+
+  try {
+    const { promise } = runCommand(ffmpegPath, args, (line) => {
+      if (!onProgress) return
+      const progress = parseProgress(line)
+      if (progress) {
+        const pct = Math.min(95, progress.percent || 0)
+        onProgress({ percent: pct, message: `Replacing audio... ${pct}%` })
+      }
+    })
+    const result = await promise
+    if (result.code !== 0 && !result.killed) {
+      cleanupTemp(outputPath)
+      logger.error(`Replace audio failed: ${result.stderr.slice(-300)}`)
+      onProgress?.({ percent: 0, message: '' })
+      return { success: false, error: 'FFmpeg replace audio failed' }
+    }
+    onProgress?.({ percent: 100, message: 'Complete' })
+    logger.success(`Audio replaced: ${path.basename(outputPath)}`)
+    return { success: true, outputPath }
+  } catch (err: any) {
+    cleanupTemp(outputPath)
+    logger.error(`Replace audio error: ${err.message}`)
+    onProgress?.({ percent: 0, message: '' })
+    return { success: false, error: err.message }
+  }
+}
