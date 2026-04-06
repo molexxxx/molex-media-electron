@@ -59,6 +59,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Package
         run: npm run ${{ matrix.script }}
