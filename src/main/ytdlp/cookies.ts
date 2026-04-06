@@ -105,8 +105,8 @@ function getCookiesFilePath(): string {
   return path.join(getUserDataPath(), 'cookies.txt')
 }
 
-/** Max age before cookies are re-exported from the browser (24 h). */
-const COOKIES_MAX_AGE_MS = 24 * 60 * 60 * 1000
+/** Max age before cookies are re-exported from the browser (7 days). */
+const COOKIES_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Check if the cookies file exists and is younger than the max age. */
 function isCookiesFileFresh(): boolean {

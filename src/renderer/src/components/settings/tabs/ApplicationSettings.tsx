@@ -229,7 +229,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
               </svg>
               <div className="text-xs text-surface-300 space-y-1">
                 <p className="font-medium text-surface-200">Close {browsers.find((b) => b.name === pendingBrowser)?.label || pendingBrowser} first</p>
-                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process — cookies are cached for 24 hours after export.</p>
+                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process — cookies are cached for 7 days after export.</p>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-1">
