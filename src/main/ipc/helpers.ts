@@ -4,7 +4,8 @@
  * tray progress updates, and desktop notifications.
  */
 
-import { BrowserWindow, Notification } from 'electron'
+import { BrowserWindow, Notification, app, nativeImage } from 'electron'
+import * as path from 'path'
 import { getConfig } from '../config'
 import { type ProcessingTask } from '../ffmpeg/processor'
 import { updateTrayProgress } from '../tray'
@@ -81,9 +82,11 @@ export async function notifyBatchComplete(results: ProcessingTask[]): Promise<vo
   }
 
   try {
+    const iconPath = path.join(app.isPackaged ? process.resourcesPath : path.join(__dirname, '../../resources'), 'icon.png')
     const notification = new Notification({
       title: 'molexMedia — Batch Complete',
-      body
+      body,
+      icon: nativeImage.createFromPath(iconPath)
     })
     notification.show()
     logger.info(`Desktop notification shown: ${body}`)
