@@ -116,6 +116,7 @@ export interface AppConfig {
   minimizeToTray: boolean
   showTrayNotification: boolean
   autoUpdate: boolean
+  ytdlpBrowser: string
 }
 
 export interface SystemInfo {

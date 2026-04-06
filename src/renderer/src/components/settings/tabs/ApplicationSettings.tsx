@@ -9,6 +9,9 @@ import { SettingGroup, SettingRow, Toggle } from '../../shared/ui'
 
 type UpdateStatus = 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
 
+interface BrowserOption { name: string; label: string }
+type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
+
 interface ApplicationSettingsProps {
   config: AppConfig
   onUpdate: <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => void
@@ -20,6 +23,15 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [downloadPercent, setDownloadPercent] = useState(0)
+
+  const [browsers, setBrowsers] = useState<BrowserOption[]>([])
+  const [cookieStatus, setCookieStatus] = useState<CookieStatus>('idle')
+  const [cookieError, setCookieError] = useState<string | null>(null)
+  const [pendingBrowser, setPendingBrowser] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.api.getInstalledBrowsers?.().then(setBrowsers).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const cleanup = window.api.onUpdaterStatus?.((info: any) => {
@@ -51,6 +63,42 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
 
   const installNow = useCallback(() => {
     window.api.installUpdate()
+  }, [])
+
+  const handleBrowserSelect = useCallback((browserName: string) => {
+    if (!browserName) {
+      onUpdate('ytdlpBrowser', '')
+      return
+    }
+    setPendingBrowser(browserName)
+    setCookieStatus('confirming')
+    setCookieError(null)
+  }, [onUpdate])
+
+  const confirmCookieExport = useCallback(async () => {
+    if (!pendingBrowser) return
+    setCookieStatus('exporting')
+    setCookieError(null)
+    try {
+      const result = await window.api.setCookieBrowser(pendingBrowser)
+      if (result.success) {
+        onUpdate('ytdlpBrowser', pendingBrowser)
+        setCookieStatus('success')
+      } else {
+        setCookieError(result.error || 'Export failed')
+        setCookieStatus('error')
+      }
+    } catch (err: any) {
+      setCookieError(err.message || 'Export failed')
+      setCookieStatus('error')
+    }
+    setPendingBrowser(null)
+  }, [pendingBrowser, onUpdate])
+
+  const cancelCookieExport = useCallback(() => {
+    setPendingBrowser(null)
+    setCookieStatus('idle')
+    setCookieError(null)
   }, [])
 
   return (
@@ -134,6 +182,69 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
             {config.ffprobePath || 'Not set'}
           </span>
         </SettingRow>
+      </SettingGroup>
+      <SettingGroup title="YouTube Cookies">
+        <SettingRow label="Cookie Source Browser" description="Browser to extract YouTube login cookies from for age-restricted or private content">
+          <select
+            value={config.ytdlpBrowser || ''}
+            onChange={(e) => handleBrowserSelect(e.target.value)}
+            disabled={cookieStatus === 'exporting'}
+            className="rounded-lg text-xs bg-surface-800/60 border border-surface-700 text-surface-200 px-2 py-1.5 transition-colors focus:border-accent-500 outline-none"
+          >
+            <option value="">Auto-detect</option>
+            {browsers.map((b) => (
+              <option key={b.name} value={b.name}>{b.label}</option>
+            ))}
+          </select>
+        </SettingRow>
+        {/* Confirm dialog */}
+        {cookieStatus === 'confirming' && pendingBrowser && (
+          <div className="mx-4 mb-3 p-3 rounded-lg bg-surface-800/80 border border-surface-700 space-y-2 animate-fade-in">
+            <div className="flex items-start gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0 mt-0.5">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+              <div className="text-xs text-surface-300 space-y-1">
+                <p className="font-medium text-surface-200">Close {browsers.find((b) => b.name === pendingBrowser)?.label || pendingBrowser} first</p>
+                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process — cookies are cached for 24 hours after export.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={confirmCookieExport}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+              >
+                Browser is closed — continue
+              </button>
+              <button
+                onClick={cancelCookieExport}
+                className="px-3 py-1.5 text-xs text-surface-500 hover:text-surface-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {cookieStatus === 'exporting' && (
+          <div className="mx-4 mb-3 flex items-center gap-2 text-xs text-surface-400 animate-fade-in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+              <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" />
+            </svg>
+            Extracting cookies…
+          </div>
+        )}
+        {cookieStatus === 'success' && (
+          <div className="mx-4 mb-3 text-xs text-green-400 animate-fade-in">
+            Cookies exported successfully
+          </div>
+        )}
+        {cookieStatus === 'error' && cookieError && (
+          <div className="mx-4 mb-3 text-xs text-red-400 animate-fade-in">
+            {cookieError}
+          </div>
+        )}
       </SettingGroup>
       <SettingGroup title="About">
         <div className="flex items-center justify-between">

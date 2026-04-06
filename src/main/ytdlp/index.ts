@@ -9,6 +9,9 @@
 // Stream URL token cache
 export { registerStreamUrl, resolveStreamToken } from './cache'
 
+// Cookie browser management
+export { getInstalledBrowsers, setBrowserAndExport } from './cookies'
+
 // Binary management
 export { ensureYtDlp } from './binary'
 

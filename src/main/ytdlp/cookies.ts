@@ -59,6 +59,43 @@ const BROWSER_ORDER: Record<string, string[]> = {
 let sessionBrowser: string | null = null
 const failedBrowsers = new Set<string>()
 
+/**
+ * Return the list of browsers installed on this system.
+ * Each entry has a `name` (yt-dlp identifier) and a `label` (display name).
+ */
+export function getInstalledBrowsers(): { name: string; label: string }[] {
+  const LABELS: Record<string, string> = {
+    chrome: 'Google Chrome', edge: 'Microsoft Edge', firefox: 'Firefox',
+    opera: 'Opera', brave: 'Brave', vivaldi: 'Vivaldi',
+    safari: 'Safari', chromium: 'Chromium'
+  }
+  const platformPaths = BROWSER_PATHS[process.platform] || {}
+  const order = BROWSER_ORDER[process.platform] || Object.keys(platformPaths)
+  const result: { name: string; label: string }[] = []
+  for (const name of order) {
+    const pathFn = platformPaths[name]
+    if (!pathFn) continue
+    try {
+      if (fs.existsSync(pathFn())) {
+        result.push({ name, label: LABELS[name] || name.charAt(0).toUpperCase() + name.slice(1) })
+      }
+    } catch { /* skip */ }
+  }
+  return result
+}
+
+/**
+ * Manually set the browser for cookie export and immediately re-export.
+ * Returns true if the export succeeded.
+ */
+export async function setBrowserAndExport(browserName: string): Promise<boolean> {
+  sessionBrowser = browserName
+  failedBrowsers.delete(browserName)
+  await saveConfig({ ytdlpBrowser: browserName })
+  invalidateCookiesFile()
+  return exportCookiesFromBrowser()
+}
+
 /* ------------------------------------------------------------------ */
 /*  Cookie file management                                             */
 /* ------------------------------------------------------------------ */
