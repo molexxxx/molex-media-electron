@@ -617,6 +617,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   // -- Popout button handler --
   const handlePopout = useCallback(() => {
     const state = getSerializableState()
+    state.showPlaylist = false // start popout with playlist collapsed
     // Stop local playback
     if (audioRef.current) {
       audioRef.current.pause()
