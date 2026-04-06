@@ -28,7 +28,7 @@ export function useEditorPlayback(clip: Clip | null) {
     const audio = audioRef.current
     if (!audio) return
 
-    audio.src = clip.objectUrl
+    audio.src = clip.previewUrl || clip.objectUrl
     audio.currentTime = clip.inPoint
 
     if (!ctxRef.current) ctxRef.current = new AudioContext()
@@ -60,7 +60,7 @@ export function useEditorPlayback(clip: Clip | null) {
     const video = videoRef.current
     if (!video) return
     video.preload = 'auto'
-    video.src = clip.objectUrl
+    video.src = clip.previewUrl || clip.objectUrl
     const seekOnce = (): void => { video.currentTime = clip.inPoint }
     if (video.readyState >= 1) seekOnce()
     else video.addEventListener('loadedmetadata', seekOnce, { once: true })

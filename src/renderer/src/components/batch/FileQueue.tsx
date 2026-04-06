@@ -11,14 +11,13 @@
 import React, { useState, useEffect } from 'react'
 import { useAppStore } from '../../stores/appStore'
 import type { FileItem } from '../../stores/types'
-import { VIDEO_EXTS } from './utils'
 import { OperationPanel } from './components/OperationPanel'
 import { FileTable } from './components/FileTable'
 
 export default function FileQueue(): React.JSX.Element {
   const {
     files, addFiles, updateFile, removeFile, clearFiles,
-    operation
+    operation, config, batchOutputDir, setBatchOutputDir
   } = useAppStore()
   const [scanning, setScanning] = useState(false)
 
@@ -78,25 +77,25 @@ export default function FileQueue(): React.JSX.Element {
   const handleStart = async () => {
     if (files.length === 0) return
     const paths = files.map((f) => f.path)
+    const { batchOutputDir } = useAppStore.getState()
+    const outputDir = batchOutputDir || undefined
 
     if (operation === 'normalize') {
-      await window.api.normalize(paths)
+      await window.api.normalize(paths, outputDir)
     } else if (operation === 'boost') {
       const { boostPercent } = useAppStore.getState()
-      await window.api.boost(paths, boostPercent)
+      await window.api.boost(paths, boostPercent, outputDir)
     } else if (operation === 'convert') {
       const { convertOptions } = useAppStore.getState()
-      await window.api.convert(paths, convertOptions)
+      await window.api.convert(paths, convertOptions, outputDir)
     } else if (operation === 'extract') {
       const { extractOptions } = useAppStore.getState()
-      await window.api.extract(paths, extractOptions)
+      await window.api.extract(paths, extractOptions, outputDir)
     } else if (operation === 'compress') {
       const { compressOptions } = useAppStore.getState()
-      await window.api.compress(paths, compressOptions)
+      await window.api.compress(paths, compressOptions, outputDir)
     }
   }
-
-  const hasVideoFiles = files.some((f) => VIDEO_EXTS.has(f.ext))
 
   const startLabel = (() => {
     const n = files.length
@@ -136,8 +135,45 @@ export default function FileQueue(): React.JSX.Element {
         </div>
       </div>
 
-      <OperationPanel onStart={handleStart} startLabel={startLabel} hasVideoFiles={hasVideoFiles} />
+      <OperationPanel onStart={handleStart} startLabel={startLabel} />
       <FileTable files={files} onRemoveFile={removeFile} onAddFiles={addFiles} />
+
+      {/* Output directory */}
+      <div className="flex items-center gap-2 text-xs shrink-0">
+        <span className="text-surface-500 font-medium shrink-0">Output:</span>
+        <input
+          type="text"
+          value={batchOutputDir}
+          onChange={(e) => setBatchOutputDir(e.target.value)}
+          placeholder={
+            config?.overwriteOriginal
+              ? 'Overwrite originals (global setting)'
+              : config?.outputDirectory
+                ? config.outputDirectory
+                : 'Same as source (global setting)'
+          }
+          className="flex-1 bg-surface-800 text-surface-200 rounded-md px-2 py-1 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors truncate min-w-0"
+        />
+        <button
+          onClick={async () => {
+            const dir = await window.api.selectOutputDir()
+            if (dir) setBatchOutputDir(dir)
+          }}
+          className="shrink-0 px-2 py-1 text-2xs font-medium rounded-md text-surface-300 hover:text-surface-100 bg-surface-700/50 hover:bg-surface-600/50 border border-surface-700 transition-all"
+          title="Browse for output directory"
+        >
+          Browse
+        </button>
+        {batchOutputDir && (
+          <button
+            onClick={() => setBatchOutputDir('')}
+            className="shrink-0 px-1.5 py-1 text-2xs text-surface-500 hover:text-surface-300 transition-colors"
+            title="Reset to global setting"
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </div>
   )
 }

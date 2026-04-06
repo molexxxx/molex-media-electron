@@ -45,10 +45,19 @@ export interface SubtitleStream {
   disposition?: Record<string, number>
 }
 
+export interface DataStream {
+  index: number
+  codec_name: string
+  codec_type: string
+  tags?: Record<string, string>
+  disposition?: Record<string, number>
+}
+
 export interface MediaInfo {
   audioStreams: AudioStream[]
   videoStreams: VideoStream[]
   subtitleStreams: SubtitleStream[]
+  dataStreams: DataStream[]
   format: {
     filename: string
     duration: string
@@ -131,10 +140,21 @@ export async function probeMedia(filePath: string): Promise<MediaInfo> {
         disposition: s.disposition
       }))
 
+    const dataStreams: DataStream[] = streams
+      .filter((s: any) => s.codec_type === 'data' || s.codec_type === 'attachment')
+      .map((s: any) => ({
+        index: s.index,
+        codec_name: s.codec_name || 'unknown',
+        codec_type: s.codec_type,
+        tags: s.tags,
+        disposition: s.disposition
+      }))
+
     return {
       audioStreams,
       videoStreams,
       subtitleStreams,
+      dataStreams,
       format: {
         filename: format.filename || filePath,
         duration: format.duration || '0',
@@ -189,6 +209,7 @@ async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaIn
       audioStreams,
       videoStreams: [],
       subtitleStreams: [],
+      dataStreams: [],
       format: {
         filename: filePath,
         duration: '0',
@@ -205,6 +226,7 @@ async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaIn
       audioStreams: [{ index: 0, codec_name: 'unknown', channels: 2, sample_rate: '48000' }],
       videoStreams: [],
       subtitleStreams: [],
+      dataStreams: [],
       format: { filename: filePath, duration: '0', size: '0', bit_rate: '0', format_name: 'unknown' },
       isVideoFile: false,
       isAudioOnly: true

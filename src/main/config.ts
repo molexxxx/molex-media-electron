@@ -49,8 +49,8 @@ export interface AppConfig {
   urlHistory: UrlHistoryEntry[]
 }
 
-const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts']
-const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.wma', '.aac', '.opus']
+const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts', '.vob', '.3gp', '.mts', '.m2ts', '.divx', '.f4v', '.ogv', '.rm', '.rmvb', '.asf']
+const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.wma', '.aac', '.opus', '.ac3', '.eac3', '.dts', '.amr', '.ape', '.wv']
 
 const DEFAULT_CONFIG: AppConfig = {
   version: '3.0.0',

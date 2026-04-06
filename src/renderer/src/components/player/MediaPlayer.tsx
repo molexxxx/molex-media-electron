@@ -44,6 +44,9 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const [urlHistory, setUrlHistory] = useState<{ url: string; title: string; trackCount: number; addedAt: number }[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [isPoppedOut, setIsPoppedOut] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingPlayRef = useRef<number | null>(null)
   const skipCountRef = useRef(0) // prevent infinite skip loops on consecutive failures
   const MAX_CONSECUTIVE_SKIPS = 5
@@ -592,6 +595,46 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     }
   }, [popout, restoreFromState])
 
+  // -- Fullscreen mode --
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((v) => {
+      if (!v) {
+        // Entering fullscreen: auto-hide controls after delay
+        setControlsVisible(true)
+        hideTimerRef.current = setTimeout(() => setControlsVisible(false), 2500)
+      } else {
+        // Exiting fullscreen: show controls
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+        setControlsVisible(true)
+      }
+      return !v
+    })
+  }, [])
+
+  const handleFullscreenMouseMove = useCallback(() => {
+    if (!fullscreen) return
+    setControlsVisible(true)
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), 2500)
+  }, [fullscreen])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const handleKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setFullscreen(false)
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+        setControlsVisible(true)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [fullscreen])
+
+  useEffect(() => {
+    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current) }
+  }, [])
+
   // -- Popout button handler --
   const handlePopout = useCallback(() => {
     const state = getSerializableState()
@@ -627,7 +670,12 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   }, [])
 
   return (
-    <div className="flex h-full animate-fade-in gap-4 relative">
+    <div
+      className={`flex animate-fade-in gap-4 relative ${
+        fullscreen ? 'fixed inset-0 z-[100] bg-black' : 'h-full'
+      }`}
+      onMouseMove={fullscreen ? handleFullscreenMouseMove : undefined}
+    >
       {/* Popped-out overlay */}
       {isPoppedOut && !popout && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface-950/90 backdrop-blur-sm rounded-2xl">
@@ -646,6 +694,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       )}
       {/* Main column */}
       <div className="flex flex-col flex-1 gap-4 min-w-0">
+        <div className={`transition-opacity duration-300 ${fullscreen && !controlsVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <PlayerHeader
           track={track}
           popout={popout}
@@ -654,10 +703,12 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           audioQuality={audioQuality}
           showPlaylist={showPlaylist}
           playlistLength={playlist.length}
+          fullscreen={fullscreen}
           onCycleQuality={cycleQuality}
           onCycleVisMode={cycleVisMode}
           onTogglePlaylist={() => setShowPlaylist((v) => !v)}
           onToggleUrlInput={() => setShowUrlInput((v) => !v)}
+          onToggleFullscreen={toggleFullscreen}
           onPopout={handlePopout}
           onFileSelect={handleFileSelect}
         />
@@ -676,13 +727,16 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             onRemoveFromHistory={removeFromHistory}
           />
         )}
+        </div>
 
         {/* Canvas area */}
         <div
           ref={dropRef}
+          onDoubleClick={toggleFullscreen}
           className={`flex-1 relative rounded-2xl overflow-hidden border transition-colors ${
             dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
           }`}
+          style={fullscreen && !controlsVisible ? { cursor: 'none' } : undefined}
         >
           <canvas
             ref={canvasRef}
@@ -720,6 +774,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           )}
         </div>
 
+        <div className={`transition-opacity duration-300 ${fullscreen && !controlsVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <TransportBar
           track={track}
           playing={playing}
@@ -737,9 +792,10 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           onToggleShuffle={() => setShuffle((s) => !s)}
           onCycleRepeat={cycleRepeat}
         />
+        </div>
       </div>
 
-      {showPlaylist && (
+      {showPlaylist && !fullscreen && (
         <PlaylistPanel
           playlist={playlist}
           trackIdx={trackIdx}

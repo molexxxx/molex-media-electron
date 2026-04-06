@@ -159,6 +159,11 @@ export function InspectTab({
         streamEnabled={streamEnabled} editDispositions={editDispositions}
         onSetStreamEnabled={onSetStreamEnabled} onToggleDisposition={onToggleDisposition}
       />
+      <StreamPanel
+        title="Data / Attachment Streams" color="blue" streams={probeData.dataStreams}
+        streamEnabled={streamEnabled} editDispositions={editDispositions}
+        onSetStreamEnabled={onSetStreamEnabled} onToggleDisposition={onToggleDisposition}
+      />
 
       {/* Format metadata */}
       <div className="glass rounded-xl p-4">

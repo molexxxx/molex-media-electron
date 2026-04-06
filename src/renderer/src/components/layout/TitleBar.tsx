@@ -20,7 +20,7 @@ export default function TitleBar(): React.JSX.Element {
         <span className="text-xs font-semibold tracking-widest uppercase text-surface-300">
           molex<span className="text-accent-400">Media</span>
         </span>
-        <span className="text-2xs text-surface-500 font-mono">v3.0</span>
+        <span className="text-2xs text-surface-500 font-mono">v{__APP_VERSION__}</span>
       </div>
 
       <div className="flex items-center gap-1 no-drag">

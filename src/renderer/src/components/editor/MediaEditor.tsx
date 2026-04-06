@@ -7,8 +7,8 @@
  * {@link useTimelineDrag}, and renders focused sub-components.
  */
 
-import React, { useState, useCallback } from 'react'
-import { type Clip, type CutMode, ALL_EXTS, VIDEO_EXTS } from './types'
+import React, { useState, useCallback, useEffect } from 'react'
+import { type Clip, type CutMode, type GifOptions, ALL_EXTS, VIDEO_EXTS } from './types'
 import { useEditorPlayback } from './hooks/useEditorPlayback'
 import { useEditorInspect } from './hooks/useEditorInspect'
 import { useTimelineDrag } from './hooks/useTimelineDrag'
@@ -26,6 +26,10 @@ export default function MediaEditor(): React.JSX.Element {
   const [editorTab, setEditorTab] = useState<'trim' | 'inspect'>('trim')
   const [cutMode, setCutMode] = useState<CutMode>('precise')
   const [outputFormat, setOutputFormat] = useState('')
+  const [exportProgress, setExportProgress] = useState(0)
+  const [outputDir, setOutputDir] = useState('')
+  const [loadingFiles, setLoadingFiles] = useState(0)
+  const [gifOptions, setGifOptions] = useState<GifOptions>({ loop: true, fps: 15, width: 480 })
 
   const clip = clips[activeIdx] || null
   const clipDuration = clip ? clip.outPoint - clip.inPoint : 0
@@ -34,6 +38,28 @@ export default function MediaEditor(): React.JSX.Element {
   const { playing, currentTime, videoRef, audioRef, canvasRef, togglePlay, seek } = useEditorPlayback(clip)
   const inspect = useEditorInspect(clip, editorTab, activeIdx)
   const { timelineRef, handleTimelineMouseDown } = useTimelineDrag(clip, activeIdx, seek, setClips)
+
+  // -- Editor export progress subscription --
+  useEffect(() => {
+    const unsub = window.api.onEditorProgress((progress) => {
+      setExportProgress(progress.percent)
+    })
+    return unsub
+  }, [])
+
+  // -- Initialise outputDir from first clip --
+  useEffect(() => {
+    if (clip && !outputDir) {
+      const parts = clip.path.replace(/\\/g, '/').split('/')
+      parts.pop()
+      setOutputDir(parts.join('/'))
+    }
+  }, [clip]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const browseOutputDir = useCallback(async () => {
+    const dir = await window.api.selectOutputDir()
+    if (dir) setOutputDir(dir)
+  }, [])
 
   // -- File loading --
   const loadFile = useCallback((file: File) => {
@@ -44,6 +70,29 @@ export default function MediaEditor(): React.JSX.Element {
     const objectUrl = URL.createObjectURL(file)
     const filePath = window.api.getFilePath(file)
 
+    setLoadingFiles((n) => n + 1)
+    const done = (): void => { setLoadingFiles((n) => Math.max(0, n - 1)) }
+
+    const addClip = (dur: number, previewUrl?: string): void => {
+      const newClip: Clip = {
+        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: file.name, path: filePath, objectUrl, previewUrl, duration: dur, isVideo,
+        inPoint: 0, outPoint: dur
+      }
+      setClips((prev) => { setActiveIdx(prev.length); return [...prev, newClip] })
+      done()
+    }
+
+    const probeFallback = (): void => {
+      window.api.probeFile(filePath).then(async (info: any) => {
+        const dur = parseFloat(info?.format?.duration)
+        if (!dur || !isFinite(dur)) { URL.revokeObjectURL(objectUrl); done(); return }
+        // Create a browser-playable preview via FFmpeg transcode
+        const preview = await window.api.createPreview(filePath).catch(() => null)
+        addClip(dur, preview?.previewUrl)
+      }).catch(() => { URL.revokeObjectURL(objectUrl); done() })
+    }
+
     const tempEl = isVideo ? document.createElement('video') : new Audio()
     tempEl.preload = 'metadata'
     tempEl.src = objectUrl
@@ -51,16 +100,11 @@ export default function MediaEditor(): React.JSX.Element {
 
     tempEl.addEventListener('loadedmetadata', () => {
       const dur = tempEl.duration
-      if (!dur || !isFinite(dur)) { cleanup(); URL.revokeObjectURL(objectUrl); return }
-      const newClip: Clip = {
-        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name, path: filePath, objectUrl, duration: dur, isVideo,
-        inPoint: 0, outPoint: dur
-      }
-      setClips((prev) => { setActiveIdx(prev.length); return [...prev, newClip] })
+      if (!dur || !isFinite(dur)) { cleanup(); probeFallback(); return }
+      addClip(dur)
       cleanup()
     })
-    tempEl.addEventListener('error', () => { URL.revokeObjectURL(objectUrl); cleanup() })
+    tempEl.addEventListener('error', () => { cleanup(); probeFallback() })
   }, [])
 
   const handleFileSelect = useCallback(() => {
@@ -102,7 +146,13 @@ export default function MediaEditor(): React.JSX.Element {
     if (!clip) return
     setProcessing(true)
     setMessage('')
-    const opts = { mode: cutMode, outputFormat: outputFormat || undefined }
+    setExportProgress(0)
+    const opts = {
+      mode: cutMode,
+      outputFormat: outputFormat || undefined,
+      outputDir: outputDir || undefined,
+      gifOptions: outputFormat === 'gif' ? gifOptions : undefined
+    }
     try {
       const result = await window.api.cutMedia(clip.path, clip.inPoint, clip.outPoint, opts)
       setMessage(result?.success
@@ -112,6 +162,7 @@ export default function MediaEditor(): React.JSX.Element {
       setMessage(`Error: ${err.message}`)
     } finally {
       setProcessing(false)
+      setExportProgress(0)
     }
   }, [clip, cutMode, outputFormat])
 
@@ -119,7 +170,13 @@ export default function MediaEditor(): React.JSX.Element {
     if (clips.length < 2) return
     setProcessing(true)
     setMessage('')
-    const opts = { mode: cutMode, outputFormat: outputFormat || undefined }
+    setExportProgress(0)
+    const opts = {
+      mode: cutMode,
+      outputFormat: outputFormat || undefined,
+      outputDir: outputDir || undefined,
+      gifOptions: outputFormat === 'gif' ? gifOptions : undefined
+    }
     try {
       const segments = clips.map((c) => ({ path: c.path, inPoint: c.inPoint, outPoint: c.outPoint }))
       const result = await window.api.mergeMedia(segments, opts)
@@ -130,6 +187,7 @@ export default function MediaEditor(): React.JSX.Element {
       setMessage(`Error: ${err.message}`)
     } finally {
       setProcessing(false)
+      setExportProgress(0)
     }
   }, [clips, cutMode, outputFormat])
 
@@ -156,6 +214,7 @@ export default function MediaEditor(): React.JSX.Element {
             videoRef={videoRef}
             audioRef={audioRef}
             canvasRef={canvasRef}
+            loading={loadingFiles > 0}
             onLoadFile={loadFile}
           />
           {clips.length > 0 && (
@@ -179,6 +238,7 @@ export default function MediaEditor(): React.JSX.Element {
             message={message}
             cutMode={cutMode}
             outputFormat={outputFormat}
+            exportProgress={exportProgress}
             timelineRef={timelineRef}
             onTimelineMouseDown={handleTimelineMouseDown}
             onTogglePlay={togglePlay}
@@ -188,6 +248,11 @@ export default function MediaEditor(): React.JSX.Element {
             onCut={handleCut}
             onSetCutMode={setCutMode}
             onSetOutputFormat={setOutputFormat}
+            gifOptions={gifOptions}
+            onSetGifOptions={setGifOptions}
+            outputDir={outputDir}
+            onOutputDirChange={setOutputDir}
+            onBrowseOutputDir={browseOutputDir}
           />
         )}
       </div>

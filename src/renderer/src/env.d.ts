@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 declare global {
+  const __APP_VERSION__: string
   interface Window {
     electron: any
     api: {
@@ -24,8 +25,8 @@ declare global {
       returnPlayerState: (state: any) => void
       onPopoutClosed: (cb: () => void) => () => void
       onReceivePlayerState: (cb: (state: any) => void) => () => void
-      normalize: (filePaths: string[]) => Promise<any>
-      boost: (filePaths: string[], percent: number) => Promise<any>
+      normalize: (filePaths: string[], outputDir?: string) => Promise<any>
+      boost: (filePaths: string[], percent: number, outputDir?: string) => Promise<any>
       cancelBatch: (batchId: string) => Promise<boolean>
       cancelAll: () => Promise<boolean>
       getActiveCount: () => Promise<number>
@@ -49,13 +50,15 @@ declare global {
       getIsPaused: () => Promise<boolean>
       onPaused: (cb: () => void) => () => void
       onResumed: (cb: () => void) => () => void
-      convert: (filePaths: string[], options: any) => Promise<any>
-      extract: (filePaths: string[], options: any) => Promise<any>
-      compress: (filePaths: string[], options: any) => Promise<any>
-      cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => Promise<any>
-      mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => Promise<any>
+      convert: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
+      extract: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
+      compress: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
+      cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
+      mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
       probeDetailed: (filePath: string) => Promise<any>
       remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => Promise<{ success: boolean; outputPath?: string; error?: string }>
+      createPreview: (filePath: string) => Promise<{ success: boolean; previewUrl?: string; error?: string }>
+      onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => () => void
       getUrlHistory: () => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>
       removeUrlHistory: (url: string) => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>
       clearUrlHistory: () => Promise<void>

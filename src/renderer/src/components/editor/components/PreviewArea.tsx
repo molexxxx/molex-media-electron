@@ -11,10 +11,11 @@ interface PreviewAreaProps {
   videoRef: React.RefObject<HTMLVideoElement | null>
   audioRef: React.RefObject<HTMLAudioElement | null>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
+  loading: boolean
   onLoadFile: (file: File) => void
 }
 
-export function PreviewArea({ clip, videoRef, audioRef, canvasRef, onLoadFile }: PreviewAreaProps): React.JSX.Element {
+export function PreviewArea({ clip, videoRef, audioRef, canvasRef, loading, onLoadFile }: PreviewAreaProps): React.JSX.Element {
   const [dragging, setDragging] = useState(false)
   const dragCounter = useRef(0)
 
@@ -54,6 +55,15 @@ export function PreviewArea({ clip, videoRef, audioRef, canvasRef, onLoadFile }:
       {dragging && (
         <div className="absolute inset-0 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm z-10">
           <p className="text-accent-300 font-semibold text-lg">Drop to add</p>
+        </div>
+      )}
+      {loading && !dragging && (
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-900/80 backdrop-blur-sm z-10">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-accent-500/30 border-t-accent-400 rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-surface-300 text-sm">Preparing preview…</p>
+            <p className="text-surface-500 text-2xs mt-1">Transcoding for playback</p>
+          </div>
         </div>
       )}
       <audio ref={audioRef} className="hidden" />

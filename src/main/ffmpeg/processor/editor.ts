@@ -15,8 +15,29 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { getConfig } from '../../config'
 import { logger } from '../../logger'
-import { runCommand } from '../runner'
+import { runCommand, parseProgress } from '../runner'
 import { cleanupTemp } from './types'
+
+/** Progress info emitted during editor operations. */
+export interface EditorProgress {
+  /** 0-100 */
+  percent: number
+  /** Human-readable status message */
+  message: string
+}
+
+/** Optional callback for reporting editor operation progress. */
+export type EditorProgressCallback = (progress: EditorProgress) => void
+
+/** GIF-specific encoding options. */
+export interface GifOptions {
+  /** Whether the GIF should loop. Defaults to true. */
+  loop?: boolean
+  /** Frame rate for the GIF (1-30). Defaults to 15. */
+  fps?: number
+  /** Output width in pixels (-1 = original). Defaults to 480. */
+  width?: number
+}
 
 /** Options that control how each cut/trim is performed. */
 export interface CutOptions {
@@ -24,6 +45,10 @@ export interface CutOptions {
   mode?: 'fast' | 'precise'
   /** Override the output container, e.g. `'mp4'`, `'mkv'`, `'mp3'`.  Defaults to the source extension. */
   outputFormat?: string
+  /** Override the output directory. Defaults to `config.outputDirectory` or source file directory. */
+  outputDir?: string
+  /** GIF-specific options. Only used when outputFormat is 'gif'. */
+  gifOptions?: GifOptions
 }
 
 /* ------------------------------------------------------------------ */
@@ -50,31 +75,50 @@ export async function cutMedia(
   filePath: string,
   inPoint: number,
   outPoint: number,
-  options: CutOptions = {}
+  options: CutOptions = {},
+  onProgress?: EditorProgressCallback
 ): Promise<{ success: boolean; outputPath?: string; error?: string }> {
   const config = await getConfig()
-  const mode = options.mode || 'precise'
+  const mode = options.outputFormat === 'gif' ? 'precise' : (options.mode || 'precise')
   const srcExt = path.extname(filePath)
   const outExt = options.outputFormat ? `.${options.outputFormat.replace(/^\./, '')}` : srcExt
   const base = path.basename(filePath, srcExt)
-  const dir = config.outputDirectory || path.dirname(filePath)
+  const dir = options.outputDir || config.outputDirectory || path.dirname(filePath)
   const outputPath = path.join(dir, `${base}_cut${outExt}`)
+  const totalDuration = outPoint - inPoint
 
   logger.info(`Cutting ${path.basename(filePath)}: ${inPoint.toFixed(2)}s → ${outPoint.toFixed(2)}s (mode=${mode}, ext=${outExt})`)
+
+  onProgress?.({ percent: 0, message: 'Starting export...' })
+
+  // GIF export uses two-pass palette generation for quality
+  if (outExt === '.gif') {
+    return exportGif(config.ffmpegPath, filePath, inPoint, outPoint, outputPath, options.gifOptions || {}, totalDuration, onProgress)
+  }
 
   const args = buildCutArgs(filePath, inPoint, outPoint, outputPath, mode)
 
   try {
-    const { promise } = runCommand(config.ffmpegPath, args)
+    const { promise } = runCommand(config.ffmpegPath, args, (line) => {
+      if (!onProgress || totalDuration <= 0) return
+      const progress = parseProgress(line)
+      if (progress) {
+        const pct = Math.min(95, Math.round((progress.time / totalDuration) * 95))
+        onProgress({ percent: pct, message: `Exporting... ${pct}%${progress.speed ? ` @ ${progress.speed}` : ''}` })
+      }
+    })
     const result = await promise
     if (result.code !== 0 && !result.killed) {
       logger.error(`Cut failed: ${result.stderr.slice(-300)}`)
+      onProgress?.({ percent: 0, message: '' })
       return { success: false, error: 'FFmpeg cut failed' }
     }
+    onProgress?.({ percent: 100, message: 'Complete' })
     logger.success(`Cut saved: ${outputPath}`)
     return { success: true, outputPath }
   } catch (err: any) {
     logger.error(`Cut error: ${err.message}`)
+    onProgress?.({ percent: 0, message: '' })
     return { success: false, error: err.message }
   }
 }
@@ -121,6 +165,89 @@ function buildCutArgs(
   ]
 }
 
+/**
+ * Export a GIF using two-pass palette generation for high quality.
+ *
+ * Pass 1: Generate an optimised palette from the input segment.
+ * Pass 2: Encode the GIF using that palette at the requested fps/width.
+ */
+async function exportGif(
+  ffmpegPath: string,
+  filePath: string,
+  inPoint: number,
+  outPoint: number,
+  outputPath: string,
+  gifOpts: GifOptions,
+  totalDuration: number,
+  onProgress?: EditorProgressCallback
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  const fps = gifOpts.fps ?? 15
+  const width = gifOpts.width ?? 480
+  const loop = gifOpts.loop !== false
+  const duration = outPoint - inPoint
+
+  const scaleFilter = width > 0 ? `scale=${width}:-1:flags=lanczos` : 'scale=trunc(iw/2)*2:-1:flags=lanczos'
+  const palettePath = outputPath.replace(/\.gif$/, '_palette.png')
+
+  try {
+    // Pass 1 — generate palette
+    onProgress?.({ percent: 0, message: 'Generating palette...' })
+    const paletteArgs = [
+      '-y', '-ss', String(inPoint), '-i', filePath, '-t', String(duration),
+      '-vf', `fps=${fps},${scaleFilter},palettegen=stats_mode=diff`,
+      palettePath
+    ]
+    const p1 = runCommand(ffmpegPath, paletteArgs, (line) => {
+      if (!onProgress || totalDuration <= 0) return
+      const progress = parseProgress(line)
+      if (progress) {
+        const pct = Math.min(40, Math.round((progress.time / totalDuration) * 40))
+        onProgress({ percent: pct, message: `Generating palette... ${pct}%` })
+      }
+    })
+    const r1 = await p1.promise
+    if (r1.code !== 0 && !r1.killed) {
+      logger.error(`GIF palette generation failed: ${r1.stderr.slice(-300)}`)
+      onProgress?.({ percent: 0, message: '' })
+      return { success: false, error: 'GIF palette generation failed' }
+    }
+
+    // Pass 2 — encode with palette
+    onProgress?.({ percent: 45, message: 'Encoding GIF...' })
+    const encodeArgs = [
+      '-y', '-ss', String(inPoint), '-i', filePath, '-i', palettePath, '-t', String(duration),
+      '-lavfi', `fps=${fps},${scaleFilter} [x]; [x][1:v] paletteuse=dither=sierra2_4a`,
+      '-loop', loop ? '0' : '-1',
+      outputPath
+    ]
+    const p2 = runCommand(ffmpegPath, encodeArgs, (line) => {
+      if (!onProgress || totalDuration <= 0) return
+      const progress = parseProgress(line)
+      if (progress) {
+        const pct = Math.min(95, 45 + Math.round((progress.time / totalDuration) * 50))
+        onProgress({ percent: pct, message: `Encoding GIF... ${pct}%` })
+      }
+    })
+    const r2 = await p2.promise
+    if (r2.code !== 0 && !r2.killed) {
+      logger.error(`GIF encoding failed: ${r2.stderr.slice(-300)}`)
+      onProgress?.({ percent: 0, message: '' })
+      return { success: false, error: 'GIF encoding failed' }
+    }
+
+    onProgress?.({ percent: 100, message: 'Complete' })
+    logger.success(`GIF saved: ${outputPath}`)
+    return { success: true, outputPath }
+  } catch (err: any) {
+    logger.error(`GIF export error: ${err.message}`)
+    onProgress?.({ percent: 0, message: '' })
+    return { success: false, error: err.message }
+  } finally {
+    // Clean up temporary palette file
+    try { fs.unlinkSync(palettePath) } catch { /* ignore */ }
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Merge / Concatenate                                                */
 /* ------------------------------------------------------------------ */
@@ -146,7 +273,8 @@ export interface MergeSegment {
  */
 export async function mergeMedia(
   segments: MergeSegment[],
-  options: CutOptions = {}
+  options: CutOptions = {},
+  onProgress?: EditorProgressCallback
 ): Promise<{ success: boolean; outputPath?: string; error?: string }> {
   const config = await getConfig()
   const mode = options.mode || 'precise'
@@ -155,26 +283,43 @@ export async function mergeMedia(
 
   const srcExt = path.extname(segments[0].path)
   const outExt = options.outputFormat ? `.${options.outputFormat.replace(/^\./, '')}` : srcExt
-  const dir = config.outputDirectory || path.dirname(segments[0].path)
+  const dir = options.outputDir || config.outputDirectory || path.dirname(segments[0].path)
   const outputPath = path.join(dir, `merged_${Date.now()}${outExt}`)
   const concatFile = path.join(dir, `.molexmedia_concat_${Date.now()}.txt`)
 
   logger.info(`Merging ${segments.length} segments (mode=${mode})`)
 
+  onProgress?.({ percent: 0, message: 'Preparing segments...' })
+
   try {
     // First, cut each segment to a temp file
     const tempFiles: string[] = []
+    const totalSegments = segments.length
 
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i]
+      const segDuration = seg.outPoint - seg.inPoint
       const tempPath = path.join(dir, `.molexmedia_seg_${Date.now()}_${i}${outExt}`)
+      const segBase = Math.round((i / (totalSegments + 1)) * 90)
+
+      onProgress?.({ percent: segBase, message: `Cutting segment ${i + 1}/${totalSegments}...` })
+
       const args = buildCutArgs(seg.path, seg.inPoint, seg.outPoint, tempPath, mode)
 
-      const { promise } = runCommand(config.ffmpegPath, args)
+      const { promise } = runCommand(config.ffmpegPath, args, (line) => {
+        if (!onProgress || segDuration <= 0) return
+        const progress = parseProgress(line)
+        if (progress) {
+          const segPct = Math.min(1, progress.time / segDuration)
+          const pct = Math.round(segBase + segPct * (90 / (totalSegments + 1)))
+          onProgress({ percent: Math.min(90, pct), message: `Cutting segment ${i + 1}/${totalSegments}... ${Math.round(segPct * 100)}%` })
+        }
+      })
       const result = await promise
       if (result.code !== 0 && !result.killed) {
         // Cleanup temp files
         for (const f of tempFiles) { try { fs.unlinkSync(f) } catch { /* best-effort */ } }
+        onProgress?.({ percent: 0, message: '' })
         return { success: false, error: `Failed to cut segment ${i + 1}` }
       }
       tempFiles.push(tempPath)
@@ -183,6 +328,8 @@ export async function mergeMedia(
     // Write concat list
     const concatContent = tempFiles.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n')
     fs.writeFileSync(concatFile, concatContent, 'utf-8')
+
+    onProgress?.({ percent: 90, message: 'Merging segments...' })
 
     // Merge
     const args = [
@@ -203,14 +350,17 @@ export async function mergeMedia(
 
     if (result.code !== 0 && !result.killed) {
       logger.error(`Merge failed: ${result.stderr.slice(-300)}`)
+      onProgress?.({ percent: 0, message: '' })
       return { success: false, error: 'FFmpeg merge failed' }
     }
 
+    onProgress?.({ percent: 100, message: 'Complete' })
     logger.success(`Merged ${segments.length} segments → ${outputPath}`)
     return { success: true, outputPath }
   } catch (err: any) {
     try { fs.unlinkSync(concatFile) } catch { /* best-effort */ }
     logger.error(`Merge error: ${err.message}`)
+    onProgress?.({ percent: 0, message: '' })
     return { success: false, error: err.message }
   }
 }

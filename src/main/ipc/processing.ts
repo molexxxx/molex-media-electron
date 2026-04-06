@@ -84,24 +84,24 @@ async function runBatchOperation(
 /** Register batch processing and process-control IPC handlers. */
 export function registerProcessingIPC(): void {
   // --- Batch operations ---
-  ipcMain.handle('process:normalize', async (_, filePaths: string[]) => {
-    return runBatchOperation(filePaths, 'normalize')
+  ipcMain.handle('process:normalize', async (_, filePaths: string[], outputDir?: string) => {
+    return runBatchOperation(filePaths, 'normalize', { outputDir: outputDir || undefined })
   })
 
-  ipcMain.handle('process:boost', async (_, filePaths: string[], boostPercent: number) => {
-    return runBatchOperation(filePaths, 'boost', { boostPercent })
+  ipcMain.handle('process:boost', async (_, filePaths: string[], boostPercent: number, outputDir?: string) => {
+    return runBatchOperation(filePaths, 'boost', { boostPercent, outputDir: outputDir || undefined })
   })
 
-  ipcMain.handle('process:convert', async (_, filePaths: string[], convertOptions: any) => {
-    return runBatchOperation(filePaths, 'convert', { convertOptions })
+  ipcMain.handle('process:convert', async (_, filePaths: string[], convertOptions: any, outputDir?: string) => {
+    return runBatchOperation(filePaths, 'convert', { convertOptions, outputDir: outputDir || undefined })
   })
 
-  ipcMain.handle('process:extract', async (_, filePaths: string[], extractOptions: any) => {
-    return runBatchOperation(filePaths, 'extract', { extractOptions })
+  ipcMain.handle('process:extract', async (_, filePaths: string[], extractOptions: any, outputDir?: string) => {
+    return runBatchOperation(filePaths, 'extract', { extractOptions, outputDir: outputDir || undefined })
   })
 
-  ipcMain.handle('process:compress', async (_, filePaths: string[], compressOptions: any) => {
-    return runBatchOperation(filePaths, 'compress', { compressOptions })
+  ipcMain.handle('process:compress', async (_, filePaths: string[], compressOptions: any, outputDir?: string) => {
+    return runBatchOperation(filePaths, 'compress', { compressOptions, outputDir: outputDir || undefined })
   })
 
   // --- Cancel ---

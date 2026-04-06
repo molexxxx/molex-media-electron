@@ -20,6 +20,7 @@ export interface Preset {
 }
 
 export const BUILTIN_PRESETS: Preset[] = [
+  { id: 'defaults', name: 'Defaults', description: 'Uses your global normalization settings', category: 'custom', normalization: { I: -16, TP: -1.5, LRA: 11 }, audioCodec: 'inherit', audioBitrate: '256k' },
   { id: 'youtube', name: 'YouTube', description: 'Optimized for YouTube uploads', category: 'streaming', normalization: { I: -14, TP: -1, LRA: 11 }, audioCodec: 'aac', audioBitrate: '256k', videoCodec: 'copy', videoBitrate: '' },
   { id: 'spotify', name: 'Spotify', description: 'Spotify loudness target (-14 LUFS)', category: 'streaming', normalization: { I: -14, TP: -1, LRA: 9 }, audioCodec: 'aac', audioBitrate: '320k' },
   { id: 'apple-music', name: 'Apple Music', description: 'Apple Music / iTunes standard', category: 'streaming', normalization: { I: -16, TP: -1, LRA: 12 }, audioCodec: 'aac', audioBitrate: '256k' },

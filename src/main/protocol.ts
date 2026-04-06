@@ -12,6 +12,24 @@ import { protocol, net } from 'electron'
 import { logger } from './logger'
 import { resolveStreamToken } from './ytdlp'
 
+/* ------------------------------------------------------------------ */
+/*  Preview file registry (editor playback for non-browser formats)    */
+/* ------------------------------------------------------------------ */
+
+const previewFiles = new Map<string, string>()
+
+/** Register a local file path and return a token for media:// access. */
+export function registerPreviewFile(filePath: string): string {
+  const token = `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  previewFiles.set(token, filePath)
+  return token
+}
+
+/** Remove a preview token (cleanup). */
+export function unregisterPreviewFile(token: string): void {
+  previewFiles.delete(token)
+}
+
 /**
  * Register `media://` as a privileged scheme.
  * **Must** be called before `app.ready`.
@@ -40,6 +58,22 @@ export function registerMediaHandler(): void {
   protocol.handle('media', async (request) => {
     const token = decodeURIComponent(request.url.replace('media://', '').replace(/\/$/, ''))
     logger.info(`media:// request for token=${token.slice(0, 8)}...`)
+
+    // Check preview files first (editor playback previews)
+    const previewPath = previewFiles.get(token)
+    if (previewPath) {
+      try {
+        const fileUrl = `file:///${previewPath.replace(/\\/g, '/')}`
+        const resp = await net.fetch(fileUrl, {
+          headers: request.headers
+        })
+        return resp
+      } catch (err: any) {
+        logger.error(`media:// preview file failed: ${err.message}`)
+        return new Response('Preview file not found', { status: 404 })
+      }
+    }
+
     const cdnUrl = resolveStreamToken(token)
 
     if (!cdnUrl) {

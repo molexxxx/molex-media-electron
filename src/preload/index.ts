@@ -36,11 +36,11 @@ const api = {
   probeFile: (filePath: string) => ipcRenderer.invoke('files:probe', filePath),
 
   // Processing
-  normalize: (filePaths: string[]) => ipcRenderer.invoke('process:normalize', filePaths),
-  boost: (filePaths: string[], percent: number) => ipcRenderer.invoke('process:boost', filePaths, percent),
-  convert: (filePaths: string[], options: any) => ipcRenderer.invoke('process:convert', filePaths, options),
-  extract: (filePaths: string[], options: any) => ipcRenderer.invoke('process:extract', filePaths, options),
-  compress: (filePaths: string[], options: any) => ipcRenderer.invoke('process:compress', filePaths, options),
+  normalize: (filePaths: string[], outputDir?: string) => ipcRenderer.invoke('process:normalize', filePaths, outputDir),
+  boost: (filePaths: string[], percent: number, outputDir?: string) => ipcRenderer.invoke('process:boost', filePaths, percent, outputDir),
+  convert: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:convert', filePaths, options, outputDir),
+  extract: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:extract', filePaths, options, outputDir),
+  compress: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:compress', filePaths, options, outputDir),
   cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
   cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
   getActiveCount: () => ipcRenderer.invoke('process:activeCount'),
@@ -49,10 +49,16 @@ const api = {
   getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
 
   // Editor
-  cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
-  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => ipcRenderer.invoke('editor:merge', segments, options),
+  cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
+  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
   probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
+  createPreview: (filePath: string) => ipcRenderer.invoke('editor:createPreview', filePath),
+  onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => {
+    const listener = (_: any, progress: any) => cb(progress)
+    ipcRenderer.on('editor:progress', listener)
+    return () => ipcRenderer.removeListener('editor:progress', listener)
+  },
 
   // File utilities
   getFilePath: (file: File) => webUtils.getPathForFile(file),

@@ -8,6 +8,7 @@ export interface Clip {
   name: string
   path: string
   objectUrl: string
+  previewUrl?: string
   duration: number
   isVideo: boolean
   inPoint: number
@@ -25,12 +26,18 @@ export function formatTime(sec: number): string {
 export type CutMode = 'fast' | 'precise'
 
 export const OUTPUT_FORMATS = {
-  video: ['mp4', 'mkv', 'webm', 'avi', 'mov', 'ts'],
+  video: ['mp4', 'mkv', 'webm', 'avi', 'mov', 'ts', 'gif'],
   audio: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
 }
 
-export const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus']
-export const VIDEO_EXTS = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'wmv', 'webm', 'm4v', 'ts']
+export interface GifOptions {
+  loop: boolean
+  fps: number
+  width: number
+}
+
+export const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus', 'ac3', 'eac3', 'dts', 'amr', 'ape', 'wv']
+export const VIDEO_EXTS = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'wmv', 'webm', 'm4v', 'ts', 'mpg', 'mpeg', 'vob', '3gp', 'mts', 'm2ts', 'divx', 'f4v', 'ogv', 'rm', 'rmvb', 'asf']
 export const ALL_EXTS = [...AUDIO_EXTS, ...VIDEO_EXTS]
 
 export const DISPOSITION_FLAGS = [

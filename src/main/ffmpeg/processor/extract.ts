@@ -60,7 +60,7 @@ export async function extractAudio(
     task.progress = 5
     onProgress(task)
 
-    const outDir = config.outputDirectory || path.dirname(task.filePath)
+    const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
     const baseName = path.basename(task.filePath, path.extname(task.filePath))
     const outPath = path.join(outDir, `${baseName}_audio.${opts.outputFormat}`)
 

@@ -34,4 +34,4 @@ export { processBatch, pauseProcessing, resumeProcessing, getIsPaused } from './
 
 // Editor operations
 export { cutMedia, mergeMedia, remuxMedia } from './editor'
-export type { MergeSegment, RemuxOptions, CutOptions } from './editor'
+export type { MergeSegment, RemuxOptions, CutOptions, EditorProgress, EditorProgressCallback } from './editor'

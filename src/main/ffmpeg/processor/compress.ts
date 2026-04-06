@@ -120,7 +120,7 @@ export async function compressFile(
       fs.renameSync(tempPath, task.filePath)
       task.outputPath = task.filePath
     } else {
-      const outDir = config.outputDirectory || path.dirname(task.filePath)
+      const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
       const outPath = path.join(outDir, `compressed_${path.basename(task.filePath)}`)
       fs.renameSync(tempPath, outPath)
       task.outputPath = outPath

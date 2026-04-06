@@ -26,6 +26,7 @@ export interface ProcessingTask {
   convertOptions?: ConvertOptions
   extractOptions?: ExtractOptions
   compressOptions?: CompressOptions
+  outputDir?: string
   status: 'queued' | 'analyzing' | 'processing' | 'finalizing' | 'complete' | 'error' | 'cancelled'
   progress: number
   message: string

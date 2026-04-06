@@ -55,6 +55,8 @@ interface AppState {
   setConvertOptions: (opts: Partial<ConvertOptions>) => void
   setExtractOptions: (opts: Partial<ExtractOptions>) => void
   setCompressOptions: (opts: Partial<CompressOptions>) => void
+  batchOutputDir: string
+  setBatchOutputDir: (dir: string) => void
 
   tasks: ProcessingTask[]
   activeBatchId: string | null
@@ -129,9 +131,9 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ files: state.files.filter((f) => f.path !== filePath) })),
   clearFiles: () => set({ files: [] }),
 
-  operation: 'normalize',
+  operation: 'convert',
   boostPercent: 10,
-  selectedPreset: null,
+  selectedPreset: 'defaults',
   convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
   extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
   compressOptions: { targetSizeMB: 0, quality: 'high' },
@@ -141,6 +143,8 @@ export const useAppStore = create<AppState>((set) => ({
   setConvertOptions: (opts) => set((s) => ({ convertOptions: { ...s.convertOptions, ...opts } })),
   setExtractOptions: (opts) => set((s) => ({ extractOptions: { ...s.extractOptions, ...opts } })),
   setCompressOptions: (opts) => set((s) => ({ compressOptions: { ...s.compressOptions, ...opts } })),
+  batchOutputDir: '',
+  setBatchOutputDir: (dir) => set({ batchOutputDir: dir }),
 
   tasks: [],
   activeBatchId: null,

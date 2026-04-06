@@ -16,10 +16,9 @@ const OP_TABS: { id: Operation; label: string }[] = [
   { id: 'extract', label: 'Extract Audio' },
 ]
 
-export function OperationPanel({ onStart, startLabel, hasVideoFiles }: {
+export function OperationPanel({ onStart, startLabel }: {
   onStart: () => void
   startLabel: string
-  hasVideoFiles: boolean
 }): React.JSX.Element {
   const {
     files, operation, setOperation,
@@ -31,22 +30,12 @@ export function OperationPanel({ onStart, startLabel, hasVideoFiles }: {
     isProcessing
   } = useAppStore()
 
-  const [copySubtitles, setCopySubtitles] = React.useState(true)
-  const { config } = useAppStore()
-
-  React.useEffect(() => {
-    if (config) setCopySubtitles(config.preserveSubtitles)
-  }, [config?.preserveSubtitles])
-
   const handleApplyPreset = (presetId: string) => {
     setSelectedPreset(presetId)
     setOperation('normalize')
   }
 
-  const handleStart = async () => {
-    if (hasVideoFiles && operation !== 'extract') {
-      await window.api.saveConfig({ preserveSubtitles: copySubtitles })
-    }
+  const handleStart = () => {
     onStart()
   }
 
@@ -87,19 +76,7 @@ export function OperationPanel({ onStart, startLabel, hasVideoFiles }: {
         <CompressForm options={compressOptions} setOptions={setCompressOptions} />
       )}
 
-      <div className="flex items-center justify-between">
-        {hasVideoFiles && operation !== 'extract' ? (
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={copySubtitles}
-              onChange={(e) => setCopySubtitles(e.target.checked)}
-              className="w-3.5 h-3.5 rounded accent-accent-500 bg-surface-700 border-surface-600"
-            />
-            <span className="text-xs text-surface-400">Copy subtitles</span>
-          </label>
-        ) : <div />}
-
+      <div className="flex items-center justify-end">
         <button
           onClick={handleStart}
           disabled={files.length === 0 || isProcessing}
@@ -116,6 +93,7 @@ function NormalizeOptions({ selectedPreset, onApplyPreset }: {
   selectedPreset: string | null
   onApplyPreset: (id: string) => void
 }): React.JSX.Element {
+  const { config } = useAppStore()
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -137,16 +115,23 @@ function NormalizeOptions({ selectedPreset, onApplyPreset }: {
       </div>
       {selectedPreset && (
         <div className="flex items-center gap-4 text-xs text-surface-400 bg-surface-800/50 rounded-lg px-3 py-2">
-          {(() => { const p = BUILTIN_PRESETS.find((x) => x.id === selectedPreset); return p ? (
-            <>
-              <span>I={p.normalization.I} LUFS</span>
-              <span>TP={p.normalization.TP} dBFS</span>
-              <span>LRA={p.normalization.LRA} LU</span>
-              <span className="text-surface-500">·</span>
-              <span>{p.audioCodec.toUpperCase()} {p.audioBitrate}</span>
-              <span className="text-surface-500 ml-auto">{p.description}</span>
-            </>
-          ) : null })()}
+          {(() => {
+            const p = BUILTIN_PRESETS.find((x) => x.id === selectedPreset)
+            if (!p) return null
+            const norm = selectedPreset === 'defaults' && config ? config.normalization : p.normalization
+            const codec = selectedPreset === 'defaults' && config ? config.audioCodec : p.audioCodec
+            const bitrate = selectedPreset === 'defaults' && config ? config.audioBitrate : p.audioBitrate
+            return (
+              <>
+                <span>I={norm.I} LUFS</span>
+                <span>TP={norm.TP} dBFS</span>
+                <span>LRA={norm.LRA} LU</span>
+                <span className="text-surface-500">·</span>
+                <span>{codec.toUpperCase()} {bitrate}</span>
+                <span className="text-surface-500 ml-auto">{p.description}</span>
+              </>
+            )
+          })()}
         </div>
       )}
     </div>

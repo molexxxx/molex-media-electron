@@ -5,7 +5,7 @@
 
 import React, { type RefObject } from 'react'
 import type { Clip, CutMode } from '../types'
-import { formatTime, OUTPUT_FORMATS } from '../types'
+import { formatTime, OUTPUT_FORMATS, type GifOptions } from '../types'
 
 interface TimelineProps {
   clip: Clip
@@ -16,6 +16,7 @@ interface TimelineProps {
   message: string
   cutMode: CutMode
   outputFormat: string
+  exportProgress: number
   timelineRef: RefObject<HTMLDivElement | null>
   onTimelineMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
   onTogglePlay: () => void
@@ -25,13 +26,18 @@ interface TimelineProps {
   onCut: () => void
   onSetCutMode: (mode: CutMode) => void
   onSetOutputFormat: (fmt: string) => void
+  gifOptions: GifOptions
+  onSetGifOptions: (opts: GifOptions) => void
+  outputDir: string
+  onOutputDirChange: (dir: string) => void
+  onBrowseOutputDir: () => void
 }
 
 export function Timeline({
   clip, currentTime, playing, processing, clipDuration, message,
-  cutMode, outputFormat,
+  cutMode, outputFormat, exportProgress,
   timelineRef, onTimelineMouseDown, onTogglePlay, onSetIn, onSetOut, onResetPoints, onCut,
-  onSetCutMode, onSetOutputFormat
+  onSetCutMode, onSetOutputFormat, gifOptions, onSetGifOptions, outputDir, onOutputDirChange, onBrowseOutputDir
 }: TimelineProps): React.JSX.Element {
   const srcExt = clip.name.split('.').pop()?.toLowerCase() || ''
   const formats = clip.isVideo ? OUTPUT_FORMATS.video : OUTPUT_FORMATS.audio
@@ -116,7 +122,7 @@ export function Timeline({
             disabled={processing || clipDuration <= 0}
             className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-40 text-white shadow-glow hover:shadow-glow-lg transition-all"
           >
-            {processing ? 'Exporting...' : 'Export Clip'}
+            {processing ? `Exporting${exportProgress > 0 ? ` ${exportProgress}%` : '...'}` : 'Export Clip'}
           </button>
         </div>
       </div>
@@ -162,12 +168,87 @@ export function Timeline({
             ))}
           </select>
         </div>
-        {cutMode === 'fast' && clip.isVideo && (
+        {cutMode === 'fast' && clip.isVideo && outputFormat !== 'gif' && (
           <span className="text-yellow-500/70 text-2xs ml-auto">
             ⚠ Fast mode may not match preview exactly for video
           </span>
         )}
+        {outputFormat === 'gif' && (
+          <span className="text-amber-400/70 text-2xs ml-auto">
+            GIF always uses precise mode
+          </span>
+        )}
       </div>
+
+      {/* GIF options row */}
+      {outputFormat === 'gif' && (
+        <div className="flex items-center gap-4 text-xs">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={gifOptions.loop}
+              onChange={(e) => onSetGifOptions({ ...gifOptions, loop: e.target.checked })}
+              className="w-3.5 h-3.5 rounded border-surface-600 bg-surface-800 text-accent-500 focus:ring-accent-500/30 cursor-pointer"
+            />
+            <span className="text-surface-300">Loop</span>
+          </label>
+          <div className="w-px h-4 bg-surface-700" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-surface-500 font-medium">FPS:</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={gifOptions.fps}
+              onChange={(e) => onSetGifOptions({ ...gifOptions, fps: Math.max(1, Math.min(30, parseInt(e.target.value) || 15)) })}
+              className="w-14 bg-surface-800 text-surface-200 rounded-md px-2 py-0.5 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors"
+            />
+          </div>
+          <div className="w-px h-4 bg-surface-700" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-surface-500 font-medium">Width:</span>
+            <select
+              value={gifOptions.width}
+              onChange={(e) => onSetGifOptions({ ...gifOptions, width: parseInt(e.target.value) })}
+              className="bg-surface-800 text-surface-200 rounded-md px-2 py-0.5 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors cursor-pointer"
+            >
+              <option value={320}>320px</option>
+              <option value={480}>480px</option>
+              <option value={640}>640px</option>
+              <option value={800}>800px</option>
+              <option value={-1}>Original</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Output directory row */}
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-surface-500 font-medium shrink-0">Output:</span>
+        <input
+          type="text"
+          value={outputDir}
+          onChange={(e) => onOutputDirChange(e.target.value)}
+          placeholder="Same as source"
+          className="flex-1 bg-surface-800 text-surface-200 rounded-md px-2 py-1 text-xs border border-surface-700 hover:border-surface-600 focus:border-accent-500 outline-none transition-colors truncate min-w-0"
+        />
+        <button
+          onClick={onBrowseOutputDir}
+          className="shrink-0 px-2 py-1 text-2xs font-medium rounded-md text-surface-300 hover:text-surface-100 bg-surface-700/50 hover:bg-surface-600/50 border border-surface-700 transition-all"
+          title="Browse for output directory"
+        >
+          Browse
+        </button>
+      </div>
+
+      {processing && exportProgress > 0 && (
+        <div className="w-full h-1.5 bg-surface-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-accent-500 rounded-full transition-all duration-300"
+            style={{ width: `${exportProgress}%` }}
+          />
+        </div>
+      )}
 
       {message && (
         <div className={`text-xs px-3 py-2 rounded-lg ${
