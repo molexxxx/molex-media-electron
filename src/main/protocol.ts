@@ -75,6 +75,29 @@ function serveLocalFile(filePath: string, request: Request): Response {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
     const rangeHeader = request.headers.get('Range')
 
+    const wrapStream = (stream: ReturnType<typeof createReadStream>): ReadableStream => {
+      let closed = false
+      return new ReadableStream({
+        start(controller) {
+          stream.on('data', (chunk: Buffer) => {
+            if (!closed) {
+              try { controller.enqueue(chunk) } catch { closed = true }
+            }
+          })
+          stream.on('end', () => {
+            if (!closed) { closed = true; try { controller.close() } catch { /* ok */ } }
+          })
+          stream.on('error', (err) => {
+            if (!closed) { closed = true; try { controller.error(err) } catch { /* ok */ } }
+          })
+        },
+        cancel() {
+          closed = true
+          stream.destroy()
+        }
+      })
+    }
+
     if (rangeHeader) {
       const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader)
       if (match) {
@@ -82,16 +105,7 @@ function serveLocalFile(filePath: string, request: Request): Response {
         const end = match[2] ? parseInt(match[2], 10) : total - 1
         const chunkSize = end - start + 1
 
-        const stream = createReadStream(filePath, { start, end })
-        const readable = new ReadableStream({
-          start(controller) {
-            stream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
-            stream.on('end', () => controller.close())
-            stream.on('error', (err) => controller.error(err))
-          }
-        })
-
-        return new Response(readable as any, {
+        return new Response(wrapStream(createReadStream(filePath, { start, end })) as any, {
           status: 206,
           headers: {
             'Content-Type': contentType,
@@ -103,17 +117,7 @@ function serveLocalFile(filePath: string, request: Request): Response {
       }
     }
 
-    // Full file response
-    const stream = createReadStream(filePath)
-    const readable = new ReadableStream({
-      start(controller) {
-        stream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
-        stream.on('end', () => controller.close())
-        stream.on('error', (err) => controller.error(err))
-      }
-    })
-
-    return new Response(readable as any, {
+    return new Response(wrapStream(createReadStream(filePath)) as any, {
       status: 200,
       headers: {
         'Content-Type': contentType,
