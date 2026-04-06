@@ -41,6 +41,8 @@
 - Video compression with configurable quality
 - Subtitle and metadata stream preservation
 - 17+ format support (MP4, MKV, AVI, MOV, MP3, WAV, FLAC, OGG, M4A, AAC…)
+- Built-in file browser with quick-access locations
+- Add dropdown menu (File Browser, Choose Files, Add Folder)
 
 </td>
 <td width="50%">
@@ -50,6 +52,7 @@
 - Real-time progress tracking with speed & ETA per task
 - Drag-and-drop file queueing
 - Desktop notifications on batch completion
+- Collapsible sidebar with CSS tooltips in icon-only mode
 - Minimize to system tray
 - Auto-save settings with instant apply
 - Overwrite original or save alongside
@@ -75,7 +78,12 @@
 - YouTube playlist resolution and queueing
 - Shuffle, repeat (one / all), and drag-to-reorder
 - 8 real-time audio visualizations: Bars, Waveform, Radial, Spectrum, Space, DMT, Milkdrop, and Plasma
+- Unique per-mode visualization icons and tooltip controls
 - Beat detection and loudness-reactive visuals
+- Popout player window with compact transport
+- Playlist overlay with click-outside dismiss
+- Add dropdown menu (File Browser, Choose Files, External Link)
+- Responsive compact transport bar and icon-only header
 - Smart cookie caching for authenticated YouTube content
 
 </td>

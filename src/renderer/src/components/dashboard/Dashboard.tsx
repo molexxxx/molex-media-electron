@@ -32,7 +32,7 @@ export default function Dashboard(): React.JSX.Element {
         <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
       </svg>
     )},
-    { label: 'Boost', desc: 'Amplify / reduce', op: 'boost' as const, iconClass: 'text-emerald-400', boxClass: 'bg-emerald-500/10 border-emerald-500/20', icon: (
+    { label: 'Boost Audio', desc: 'Amplify / reduce', op: 'boost' as const, iconClass: 'text-emerald-400', boxClass: 'bg-emerald-500/10 border-emerald-500/20', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
         <path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />

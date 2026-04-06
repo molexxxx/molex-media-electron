@@ -7,7 +7,7 @@ import React, { useState, useCallback } from 'react'
 import { useAppStore } from '../../../stores/appStore'
 import { STATUS_COLORS, STATUS_LABELS } from '../../shared/constants'
 
-export function ProcessingPanel(): React.JSX.Element {
+export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.JSX.Element {
   const { tasks, isProcessing, isPaused, activeBatchId, clearTasks } = useAppStore()
   const [showProcessing, setShowProcessing] = useState(false)
 
@@ -24,6 +24,25 @@ export function ProcessingPanel(): React.JSX.Element {
     if (isPaused) await window.api.resumeProcessing()
     else await window.api.pauseProcessing()
   }, [isPaused])
+
+  if (collapsed) {
+    return (
+      <div className="mt-auto border-t border-white/5 flex flex-col items-center py-2 gap-1">
+        <div className={`w-2 h-2 rounded-full ${
+          isProcessing ? 'bg-amber-400 animate-pulse' : total > 0 && errors > 0 ? 'bg-red-400' : 'bg-emerald-400'
+        }`} title={
+          isProcessing
+            ? isPaused ? 'Paused' : `Processing ${completed}/${total} (${overallProgress}%)`
+            : total > 0
+              ? `${completed} done${errors > 0 ? `, ${errors} failed` : ''}`
+              : 'Ready'
+        } />
+        {isProcessing && (
+          <span className="text-[8px] font-mono text-surface-500">{overallProgress}%</span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="mt-auto border-t border-white/5">
