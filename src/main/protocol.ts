@@ -169,6 +169,19 @@ export function registerMediaHandler(): void {
     try {
       const response = await net.fetch(cdnUrl, { headers })
       logger.info(`media:// CDN response: ${response.status} type=${response.headers.get('content-type')}`)
+
+      // Validate response — expired CDN URLs return HTML error pages
+      if (!response.ok) {
+        logger.warn(`media:// CDN returned ${response.status} for token=${token.slice(0, 8)}`)
+        return new Response(`CDN returned ${response.status}`, { status: response.status })
+      }
+
+      const ct = response.headers.get('content-type') || ''
+      if (ct.startsWith('text/html') || ct.startsWith('text/xml')) {
+        logger.warn(`media:// CDN returned non-audio content-type: ${ct}`)
+        return new Response('CDN returned non-audio content', { status: 502 })
+      }
+
       return response
     } catch (err: any) {
       logger.error(`media:// fetch failed: ${err.message}`)

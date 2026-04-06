@@ -51,6 +51,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const pendingSeekRef = useRef<number | null>(null)
   const pendingPauseRef = useRef(false)
   const skipCountRef = useRef(0) // prevent infinite skip loops on consecutive failures
+  const ytRetryRef = useRef<string | null>(null) // track ID that already had one retry
   const MAX_CONSECUTIVE_SKIPS = 5
 
   // Refs for values needed inside audio event closures (avoids stale closures)
@@ -146,8 +147,9 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       return
     }
 
-    // Successful start — reset skip counter
+    // Successful start — reset skip counter and retry tracker
     skipCountRef.current = 0
+    ytRetryRef.current = null
 
     // Tear down previous — remove src BEFORE creating new element
     // to avoid the old error listener firing on the empty-src load
@@ -214,12 +216,20 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       if (audioRef.current !== audio) return
       const code = audio.error?.code
       const msg = audio.error?.message || 'Unknown error'
-      setError(`Audio load failed (code ${code}): ${msg}`)
-      setPlaying(false)
       // Clear cached URL for YouTube tracks so re-clicking will re-resolve
       if (isYouTube) {
         setPlaylist((prev) => prev.map((tr, i) => i === idx ? { ...tr, src: '' } : tr))
+        // Retry once: re-resolve the same track before skipping
+        if (ytRetryRef.current !== t.id) {
+          ytRetryRef.current = t.id
+          setError(null)
+          playTrackRef.current?.(idx)
+          return
+        }
       }
+      setError(`Audio load failed (code ${code}): ${msg}`)
+      setPlaying(false)
+      ytRetryRef.current = null
       // Auto-skip to next track
       skipCountRef.current++
       if (skipCountRef.current < MAX_CONSECUTIVE_SKIPS) {
@@ -524,6 +534,40 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     setPlaying(false)
   }, [playlist])
 
+  // Load all media files from a folder into the playlist
+  const loadFolder = useCallback(async (folderPath: string, mode: 'replace' | 'append') => {
+    try {
+      const result = await window.api.browseDirectory(folderPath)
+      if (!result.success) return
+      const audioFiles = result.entries.filter(
+        (e: any) => !e.isDirectory && AUDIO_EXTS.includes(e.ext.replace('.', ''))
+      )
+      if (audioFiles.length === 0) return
+      const newTracks: Track[] = []
+      for (const f of audioFiles) {
+        const mediaUrl = await window.api.registerLocalFile(f.path)
+        newTracks.push({
+          id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: f.name,
+          src: mediaUrl,
+          isBlob: false,
+          filePath: f.path
+        })
+      }
+      if (mode === 'replace') {
+        playlist.forEach((t) => { if (t.isBlob) URL.revokeObjectURL(t.src) })
+        if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() }
+        setPlaying(false)
+        setPlaylist(newTracks)
+        schedulePlay(0)
+      } else {
+        const startIdx = playlist.length
+        setPlaylist((prev) => [...prev, ...newTracks])
+        if (trackIdx < 0) schedulePlay(startIdx)
+      }
+    } catch { /* ignored */ }
+  }, [playlist, trackIdx, schedulePlay])
+
   const cycleRepeat = useCallback(() => {
     setRepeat((r) => r === 'off' ? 'all' : r === 'all' ? 'one' : 'off')
   }, [])
@@ -573,9 +617,10 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     return {
       playlist: playlist.map((t) => ({
         ...t,
-        // Blob URLs are per-process and can't be transferred;
-        // keep filePath so the popout can re-register via media://
-        src: t.isBlob ? '' : t.src
+        // Blob URLs are per-process and can't be transferred.
+        // YouTube cached media:// tokens point to CDN URLs that may expire;
+        // clear them so the target window gets fresh resolution.
+        src: t.isBlob || t.videoUrl ? '' : t.src
       })),
       trackIdx,
       currentTime: audioRef.current?.currentTime ?? currentTime,
@@ -592,12 +637,20 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const restoreFromState = useCallback(async (state: any) => {
     if (!state) return
     if (state.playlist) {
-      // Re-register blob tracks that have a filePath so they can play via media://
+      // Re-register local/blob tracks for fresh media:// tokens;
+      // YouTube tracks get src cleared so playTrack re-resolves on demand.
       const restored: Track[] = await Promise.all(
         state.playlist.map(async (t: Track) => {
-          if (t.isBlob && !t.src && t.filePath) {
-            const mediaUrl = await window.api.registerLocalFile(t.filePath)
-            return { ...t, src: mediaUrl, isBlob: false }
+          // Blob or local file with a filePath → re-register for a fresh token
+          if (t.filePath && (!t.src || t.isBlob)) {
+            try {
+              const mediaUrl = await window.api.registerLocalFile(t.filePath)
+              return { ...t, src: mediaUrl, isBlob: false }
+            } catch { /* fall through */ }
+          }
+          // YouTube tracks: ensure src is cleared so playTrack re-resolves
+          if (t.videoUrl) {
+            return { ...t, src: '' }
           }
           return t
         })
@@ -743,6 +796,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
                 onRemoveTrack={removeTrack}
                 onMoveTrack={moveTrack}
                 onClearPlaylist={clearPlaylist}
+                onLoadFolder={loadFolder}
               />
               </div>
             </div>
@@ -896,6 +950,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
                 onRemoveTrack={removeTrack}
                 onMoveTrack={moveTrack}
                 onClearPlaylist={clearPlaylist}
+                onLoadFolder={loadFolder}
               />
               </div>
             </>
