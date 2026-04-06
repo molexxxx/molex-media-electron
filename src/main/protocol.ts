@@ -9,8 +9,22 @@
  */
 
 import { protocol, net } from 'electron'
+import { createReadStream, statSync } from 'fs'
+import { extname } from 'path'
 import { logger } from './logger'
 import { resolveStreamToken } from './ytdlp'
+
+/* ------------------------------------------------------------------ */
+/*  MIME type lookup for local audio/video files                       */
+/* ------------------------------------------------------------------ */
+
+const MIME_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac',
+  '.wma': 'audio/x-ms-wma', '.opus': 'audio/opus', '.webm': 'audio/webm',
+  '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.avi': 'video/x-msvideo',
+  '.mov': 'video/quicktime', '.ts': 'video/mp2t'
+}
 
 /* ------------------------------------------------------------------ */
 /*  Preview file registry (editor playback for non-browser formats)    */
@@ -51,6 +65,69 @@ export function registerMediaScheme(): void {
 }
 
 /**
+ * Serve a local file with proper Range request support for seeking.
+ */
+function serveLocalFile(filePath: string, request: Request): Response {
+  try {
+    const stat = statSync(filePath)
+    const total = stat.size
+    const ext = extname(filePath).toLowerCase()
+    const contentType = MIME_TYPES[ext] || 'application/octet-stream'
+    const rangeHeader = request.headers.get('Range')
+
+    if (rangeHeader) {
+      const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader)
+      if (match) {
+        const start = parseInt(match[1], 10)
+        const end = match[2] ? parseInt(match[2], 10) : total - 1
+        const chunkSize = end - start + 1
+
+        const stream = createReadStream(filePath, { start, end })
+        const readable = new ReadableStream({
+          start(controller) {
+            stream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
+            stream.on('end', () => controller.close())
+            stream.on('error', (err) => controller.error(err))
+          }
+        })
+
+        return new Response(readable as any, {
+          status: 206,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Range': `bytes ${start}-${end}/${total}`,
+            'Content-Length': String(chunkSize),
+            'Accept-Ranges': 'bytes'
+          }
+        })
+      }
+    }
+
+    // Full file response
+    const stream = createReadStream(filePath)
+    const readable = new ReadableStream({
+      start(controller) {
+        stream.on('data', (chunk: Buffer) => controller.enqueue(chunk))
+        stream.on('end', () => controller.close())
+        stream.on('error', (err) => controller.error(err))
+      }
+    })
+
+    return new Response(readable as any, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(total),
+        'Accept-Ranges': 'bytes'
+      }
+    })
+  } catch (err: any) {
+    logger.error(`media:// local file failed: ${err.message}`)
+    return new Response('File not found', { status: 404 })
+  }
+}
+
+/**
  * Install the `media://` protocol handler.
  * Called once inside `app.whenReady()`.
  */
@@ -62,16 +139,7 @@ export function registerMediaHandler(): void {
     // Check preview files first (editor playback previews)
     const previewPath = previewFiles.get(token)
     if (previewPath) {
-      try {
-        const fileUrl = `file:///${previewPath.replace(/\\/g, '/')}`
-        const resp = await net.fetch(fileUrl, {
-          headers: request.headers
-        })
-        return resp
-      } catch (err: any) {
-        logger.error(`media:// preview file failed: ${err.message}`)
-        return new Response('Preview file not found', { status: 404 })
-      }
+      return serveLocalFile(previewPath, request)
     }
 
     const cdnUrl = resolveStreamToken(token)
@@ -81,16 +149,10 @@ export function registerMediaHandler(): void {
       return new Response('Stream expired or not found', { status: 404 })
     }
 
-    // Local file (HLS download fallback) — serve via net.fetch
+    // Local file (HLS download fallback) — serve with Range support
     if (cdnUrl.startsWith('file:///')) {
-      try {
-        const resp = await net.fetch(cdnUrl)
-        logger.info(`media:// local file: ${resp.status} type=${resp.headers.get('content-type')}`)
-        return resp
-      } catch (err: any) {
-        logger.error(`media:// local file failed: ${err.message}`)
-        return new Response('File not found', { status: 404 })
-      }
+      const filePath = decodeURIComponent(cdnUrl.replace('file:///', '').replace(/\//g, '\\'))
+      return serveLocalFile(filePath, request)
     }
 
     // Forward to the real CDN URL, preserving Range headers for seeking
