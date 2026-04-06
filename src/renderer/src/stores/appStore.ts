@@ -91,6 +91,11 @@ interface AppState {
   // Download progress
   downloadProgress: { stage: string; message: string; percent: number } | null
   setDownloadProgress: (progress: { stage: string; message: string; percent: number } | null) => void
+
+  // Sidebar
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
+  toggleSidebar: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -180,5 +185,9 @@ export const useAppStore = create<AppState>((set) => ({
   setShowSetup: (show) => set({ showSetup: show }),
 
   downloadProgress: null,
-  setDownloadProgress: (progress) => set({ downloadProgress: progress })
+  setDownloadProgress: (progress) => set({ downloadProgress: progress }),
+
+  sidebarCollapsed: false,
+  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed }))
 }))

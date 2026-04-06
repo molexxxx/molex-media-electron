@@ -17,6 +17,7 @@ import { PopoutTransport } from './components/PopoutTransport'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { PlayerHeader } from './components/PlayerHeader'
 import { UrlInputBar } from './components/UrlInputBar'
+import { FileBrowser } from '../shared'
 
 export default function MediaPlayer({ popout = false }: { popout?: boolean }): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -45,6 +46,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const [urlHistory, setUrlHistory] = useState<{ url: string; title: string; trackCount: number; addedAt: number }[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [isPoppedOut, setIsPoppedOut] = useState(false)
+  const [showBrowser, setShowBrowser] = useState(false)
   const pendingPlayRef = useRef<number | null>(null)
   const pendingSeekRef = useRef<number | null>(null)
   const pendingPauseRef = useRef(false)
@@ -208,6 +210,8 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       }
     })
     audio.addEventListener('error', () => {
+      // Ignore errors from a stale audio element (previous track teardown)
+      if (audioRef.current !== audio) return
       const code = audio.error?.code
       const msg = audio.error?.message || 'Unknown error'
       setError(`Audio load failed (code ${code}): ${msg}`)
@@ -238,6 +242,9 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
         setPlaying(true)
       }
     }).catch((err) => {
+      // Ignore AbortError — happens when play() is interrupted by a new track load
+      if (err.name === 'AbortError') return
+      if (audioRef.current !== audio) return
       setError(`Playback failed: ${err.message}`)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,11 +272,13 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     for (const f of files) {
       const ext = f.name.split('.').pop()?.toLowerCase() || ''
       if (!AUDIO_EXTS.includes(ext)) continue
+      const fp = window.api.getFilePath(f)
       newTracks.push({
         id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: f.name,
         src: URL.createObjectURL(f),
-        isBlob: true
+        isBlob: true,
+        filePath: fp || undefined
       })
     }
     if (newTracks.length === 0) return
@@ -424,6 +433,28 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     input.click()
   }, [addFiles])
 
+  // -- Browse handler: converts file paths to tracks --
+  const handleBrowseSelect = useCallback(async (paths: string[]) => {
+    const newTracks: Track[] = []
+    for (const p of paths) {
+      const ext = p.split('.').pop()?.toLowerCase() || ''
+      if (!AUDIO_EXTS.includes(ext)) continue
+      const mediaUrl = await window.api.registerLocalFile(p)
+      newTracks.push({
+        id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: p.split(/[\\/]/).pop() || p,
+        src: mediaUrl,
+        isBlob: false,
+        filePath: p
+      })
+    }
+    if (newTracks.length === 0) return
+    const startIdx = playlist.length
+    setPlaylist((prev) => [...prev, ...newTracks])
+    setShowPlaylist(true)
+    schedulePlay(startIdx)
+  }, [playlist.length, schedulePlay])
+
   // -- Playback controls --
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -542,7 +573,8 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     return {
       playlist: playlist.map((t) => ({
         ...t,
-        // Blob URLs are per-process and can't be transferred
+        // Blob URLs are per-process and can't be transferred;
+        // keep filePath so the popout can re-register via media://
         src: t.isBlob ? '' : t.src
       })),
       trackIdx,
@@ -557,9 +589,21 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     }
   }, [playlist, trackIdx, currentTime, volume, visMode, audioQuality, shuffle, repeat, showPlaylist, playing])
 
-  const restoreFromState = useCallback((state: any) => {
+  const restoreFromState = useCallback(async (state: any) => {
     if (!state) return
-    if (state.playlist) setPlaylist(state.playlist)
+    if (state.playlist) {
+      // Re-register blob tracks that have a filePath so they can play via media://
+      const restored: Track[] = await Promise.all(
+        state.playlist.map(async (t: Track) => {
+          if (t.isBlob && !t.src && t.filePath) {
+            const mediaUrl = await window.api.registerLocalFile(t.filePath)
+            return { ...t, src: mediaUrl, isBlob: false }
+          }
+          return t
+        })
+      )
+      setPlaylist(restored)
+    }
     if (state.volume != null) setVolume(state.volume)
     if (state.visMode) setVisMode(state.visMode)
     if (state.audioQuality) setAudioQuality(state.audioQuality)
@@ -653,7 +697,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   if (popout) {
     return (
       <div className="flex flex-col animate-fade-in h-full min-w-0">
-        {/* Canvas area */}
+        {/* Canvas area with playlist overlay */}
         <div
           ref={dropRef}
           className={`flex-1 relative rounded-xl overflow-hidden border transition-colors ${
@@ -687,10 +731,26 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
               <p className="text-accent-300 font-semibold text-sm">Drop to add</p>
             </div>
           )}
+          {/* Playlist overlay — slides up from bottom of canvas */}
+          {showPlaylist && (
+            <div className="absolute inset-0 z-20 flex flex-col bg-surface-950/85 backdrop-blur-sm" onClick={() => setShowPlaylist(false)}>
+              <div className="flex-1 min-h-0" onClick={(e) => e.stopPropagation()}>
+              <PlaylistPanel
+                playlist={playlist}
+                trackIdx={trackIdx}
+                playing={playing}
+                onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
+                onRemoveTrack={removeTrack}
+                onMoveTrack={moveTrack}
+                onClearPlaylist={clearPlaylist}
+              />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Compact transport */}
-        <div className="pt-2">
+        <div className="pt-2 shrink-0">
           <PopoutTransport
             track={track}
             playing={playing}
@@ -712,22 +772,17 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             onCycleVisMode={cycleVisMode}
             onTogglePlaylist={() => setShowPlaylist((v) => !v)}
             onFileSelect={handleFileSelect}
+            onBrowse={() => setShowBrowser(true)}
           />
         </div>
 
-        {/* Playlist stacks below */}
-        {showPlaylist && (
-          <PlaylistPanel
-            playlist={playlist}
-            trackIdx={trackIdx}
-            playing={playing}
-            vertical
-            onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
-            onRemoveTrack={removeTrack}
-            onMoveTrack={moveTrack}
-            onClearPlaylist={clearPlaylist}
-          />
-        )}
+        <FileBrowser
+          open={showBrowser}
+          onClose={() => setShowBrowser(false)}
+          onSelect={handleBrowseSelect}
+          extensions={AUDIO_EXTS}
+          title="Browse Audio Files"
+        />
       </div>
     )
   }
@@ -735,7 +790,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   // -- Main window layout --
   return (
     <div
-      className="flex animate-fade-in gap-4 relative h-full"
+      className="flex animate-fade-in gap-4 relative h-full min-w-0"
     >
       {/* Popped-out overlay */}
       {isPoppedOut && (
@@ -753,8 +808,8 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           </div>
         </div>
       )}
-      {/* Main column */}
-      <div className="flex flex-col flex-1 gap-4 min-w-0">
+      {/* Main column — always full width */}
+      <div className="flex flex-col flex-1 gap-3 min-w-0">
         <PlayerHeader
           track={track}
           popout={false}
@@ -769,6 +824,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           onToggleUrlInput={() => setShowUrlInput((v) => !v)}
           onPopout={handlePopout}
           onFileSelect={handleFileSelect}
+          onBrowse={() => setShowBrowser(true)}
         />
 
         {showUrlInput && (
@@ -827,6 +883,23 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
               <p className="text-accent-300 font-semibold text-lg">Drop to add</p>
             </div>
           )}
+          {/* Playlist overlay — floats on top of the canvas */}
+          {showPlaylist && (
+            <>
+              <div className="absolute inset-0 z-[19]" onClick={() => setShowPlaylist(false)} />
+              <div className="absolute top-0 right-0 bottom-0 z-20 w-64 max-w-[60%]">
+              <PlaylistPanel
+                playlist={playlist}
+                trackIdx={trackIdx}
+                playing={playing}
+                onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
+                onRemoveTrack={removeTrack}
+                onMoveTrack={moveTrack}
+                onClearPlaylist={clearPlaylist}
+              />
+              </div>
+            </>
+          )}
         </div>
 
         <TransportBar
@@ -848,18 +921,13 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
         />
       </div>
 
-      {/* Main view: playlist sits beside the player column */}
-      {showPlaylist && (
-        <PlaylistPanel
-          playlist={playlist}
-          trackIdx={trackIdx}
-          playing={playing}
-          onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
-          onRemoveTrack={removeTrack}
-          onMoveTrack={moveTrack}
-          onClearPlaylist={clearPlaylist}
-        />
-      )}
+      <FileBrowser
+        open={showBrowser}
+        onClose={() => setShowBrowser(false)}
+        onSelect={handleBrowseSelect}
+        extensions={AUDIO_EXTS}
+        title="Browse Audio Files"
+      />
     </div>
   )
 }

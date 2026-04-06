@@ -43,7 +43,7 @@ export function PlaylistPanel({
   }, [])
 
   return (
-    <div className={`${vertical ? 'w-full max-h-48' : 'w-72'} shrink-0 flex flex-col glass rounded-2xl border border-white/5 overflow-hidden`}>
+    <div className={`${vertical ? 'w-full max-h-48' : 'h-full'} shrink-0 flex flex-col glass rounded-2xl border border-white/5 overflow-hidden`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <span className="text-sm font-semibold text-white">Playlist</span>
         <div className="flex items-center gap-1">

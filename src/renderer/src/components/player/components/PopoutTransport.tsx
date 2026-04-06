@@ -32,13 +32,14 @@ interface PopoutTransportProps {
   onCycleVisMode: () => void
   onTogglePlaylist: () => void
   onFileSelect: () => void
+  onBrowse: () => void
 }
 
 export function PopoutTransport({
   track, playing, currentTime, duration, volume, shuffle, repeat,
   visMode, showPlaylist, playlistLength, onTogglePlay, onPlayNext,
   onPlayPrev, onSeek, onVolumeChange, onToggleShuffle, onCycleRepeat,
-  onCycleVisMode, onTogglePlaylist, onFileSelect
+  onCycleVisMode, onTogglePlaylist, onFileSelect, onBrowse
 }: PopoutTransportProps): React.JSX.Element {
   return (
     <div className="shrink-0 space-y-1 px-1 pb-0.5">
@@ -53,6 +54,15 @@ export function PopoutTransport({
           title={`Visualization: ${VIS_LABELS[visMode]}`}
         >
           {VIS_LABELS[visMode]}
+        </button>
+        <button
+          onClick={onBrowse}
+          className="shrink-0 w-5 h-5 flex items-center justify-center rounded bg-surface-800/60 text-surface-500 hover:text-surface-200 transition-colors"
+          title="Browse files"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
         </button>
         <button
           onClick={onFileSelect}

@@ -9,6 +9,7 @@ export interface Track {
   src: string
   isBlob: boolean
   videoUrl?: string
+  filePath?: string
 }
 
 export const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus', 'webm', 'mp4']
