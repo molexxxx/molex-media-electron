@@ -107,22 +107,17 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "        Pushed commits + tags"
 
 # --- Build ---
-Write-Host "  [4/5] Building app..." -ForegroundColor Cyan
+Write-Host "  [4/5] Building app (local verification)..." -ForegroundColor Cyan
 npx electron-vite build
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR: electron-vite build failed" -ForegroundColor Red
     exit 1
 }
+Write-Host "        Build OK"
 
-# --- Publish ---
-Write-Host "  [5/5] Publishing to GitHub Releases..." -ForegroundColor Cyan
-npx electron-builder --publish always
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: electron-builder publish failed" -ForegroundColor Red
-    exit 1
-}
-
+# --- Done ---
 Write-Host ""
-Write-Host "  v$next released successfully!" -ForegroundColor Green
-Write-Host "  https://github.com/tonywied17/molex-media-electron/releases/tag/v$next" -ForegroundColor DarkGray
+Write-Host "  v$next tag pushed — CI will build, generate changelog, and publish the release." -ForegroundColor Green
+Write-Host "  Monitor progress: https://github.com/tonywied17/molex-media-electron/actions" -ForegroundColor DarkGray
+Write-Host "  Release page:     https://github.com/tonywied17/molex-media-electron/releases/tag/v$next" -ForegroundColor DarkGray
 Write-Host ""
