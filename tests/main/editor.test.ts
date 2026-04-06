@@ -126,6 +126,156 @@ describe('editor', () => {
       const result = await cutMedia('/media/video.mp4', 0, 10)
       expect(result.outputPath).toContain('output')
     })
+
+    it('gif export uses two-pass palette generation', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      const result = await cutMedia('/media/video.mp4', 5, 15, {
+        outputFormat: 'gif',
+        gifOptions: { loop: true, fps: 10, width: 320 }
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.outputPath).toContain('video_cut.gif')
+      // Two calls: palette generation + encoding
+      expect(mockRunCommand).toHaveBeenCalledTimes(2)
+
+      const paletteArgs = mockRunCommand.mock.calls[0][1]
+      expect(paletteArgs.some((a: string) => a.includes('palettegen'))).toBe(true)
+      expect(paletteArgs.some((a: string) => a.includes('fps=10'))).toBe(true)
+      expect(paletteArgs.some((a: string) => a.includes('scale=320'))).toBe(true)
+
+      const encodeArgs = mockRunCommand.mock.calls[1][1]
+      expect(encodeArgs.some((a: string) => a.includes('paletteuse'))).toBe(true)
+      expect(encodeArgs).toContain('-loop')
+      expect(encodeArgs).toContain('0') // loop enabled
+    })
+
+    it('gif export with loop disabled uses -1', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      await cutMedia('/media/video.mp4', 0, 10, {
+        outputFormat: 'gif',
+        gifOptions: { loop: false, fps: 15, width: 480 }
+      })
+
+      const encodeArgs = mockRunCommand.mock.calls[1][1]
+      expect(encodeArgs).toContain('-loop')
+      expect(encodeArgs).toContain('-1') // no loop
+    })
+
+    it('gif export with width=-1 uses original size filter', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      await cutMedia('/media/video.mp4', 0, 10, {
+        outputFormat: 'gif',
+        gifOptions: { width: -1 }
+      })
+
+      const paletteArgs = mockRunCommand.mock.calls[0][1]
+      expect(paletteArgs.some((a: string) => a.includes('trunc(iw/2)*2'))).toBe(true)
+    })
+
+    it('gif export defaults options when gifOptions omitted', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      const result = await cutMedia('/media/video.mp4', 0, 5, { outputFormat: 'gif' })
+
+      expect(result.success).toBe(true)
+      expect(mockRunCommand).toHaveBeenCalledTimes(2)
+      const paletteArgs = mockRunCommand.mock.calls[0][1]
+      expect(paletteArgs.some((a: string) => a.includes('fps=15'))).toBe(true)
+      expect(paletteArgs.some((a: string) => a.includes('scale=480'))).toBe(true)
+    })
+
+    it('gif export forces precise mode regardless of option', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+
+      // Request fast mode with gif — should still get gif (no -c copy)
+      const result = await cutMedia('/media/video.mp4', 0, 5, { mode: 'fast', outputFormat: 'gif' })
+      expect(result.success).toBe(true)
+      // Should use gif pipeline (2 calls), not fast stream-copy
+      expect(mockRunCommand).toHaveBeenCalledTimes(2)
+    })
+
+    it('gif export returns error when palette generation fails', async () => {
+      mockRunCommand.mockReturnValueOnce({
+        promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'palette error' }),
+        process: {}
+      })
+
+      const result = await cutMedia('/media/video.mp4', 0, 10, { outputFormat: 'gif' })
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('palette')
+    })
+
+    it('gif export returns error when encoding fails', async () => {
+      mockRunCommand
+        .mockReturnValueOnce({
+          promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+          process: {}
+        })
+        .mockReturnValueOnce({
+          promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'encode error' }),
+          process: {}
+        })
+
+      const result = await cutMedia('/media/video.mp4', 0, 10, { outputFormat: 'gif' })
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('GIF encoding failed')
+    })
+
+    it('gif export returns error when ffmpeg throws', async () => {
+      mockRunCommand.mockReturnValueOnce({
+        promise: Promise.reject(new Error('gif spawn failed')),
+        process: {}
+      })
+
+      const result = await cutMedia('/media/video.mp4', 0, 10, { outputFormat: 'gif' })
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('gif spawn failed')
+    })
+
+    it('gif export reports progress via callback', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      mockParseProgress.mockReturnValue({ time: 5, speed: '1x' })
+
+      const progress = vi.fn()
+      await cutMedia('/media/video.mp4', 0, 10, { outputFormat: 'gif' }, progress)
+
+      // Should have been called with palette and encoding progress messages
+      expect(progress).toHaveBeenCalled()
+      const messages = progress.mock.calls.map((c: any[]) => c[0].message)
+      expect(messages.some((m: string) => m.includes('palette'))).toBe(true)
+
+      // Trigger the stderr line callbacks to exercise progress parsing
+      const pass1Cb = mockRunCommand.mock.calls[0][2]
+      const pass2Cb = mockRunCommand.mock.calls[1][2]
+      pass1Cb('frame= 100')
+      pass2Cb('frame= 200')
+
+      // Verify parseProgress was called for each line
+      expect(mockParseProgress).toHaveBeenCalledWith('frame= 100')
+      expect(mockParseProgress).toHaveBeenCalledWith('frame= 200')
+    })
   })
 
   describe('mergeMedia', () => {
