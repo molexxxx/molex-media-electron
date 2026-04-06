@@ -202,7 +202,12 @@ describe('bootstrap', () => {
   })
 
   describe('downloadFFmpeg', () => {
-    it('throws when ffmpeg binary not found in extracted files', { timeout: 15000 }, async () => {
+    it('throws when ffmpeg binary not found in extracted files', async () => {
+      // Force win32 platform so the zip path (mocked via extract-zip) is used
+      // instead of the tar path (which spawns a child process)
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
       // Mock successful download response
       mockHttpsGet.mockImplementation((_url: string, _opts: any, callback: any) => {
         const res = new EventEmitter() as any
@@ -221,7 +226,11 @@ describe('bootstrap', () => {
       mockReaddirSync.mockReturnValue([])
 
       const onProgress = vi.fn()
-      await expect(downloadFFmpeg(onProgress)).rejects.toThrow('Could not find ffmpeg binary')
+      try {
+        await expect(downloadFFmpeg(onProgress)).rejects.toThrow('Could not find ffmpeg binary')
+      } finally {
+        Object.defineProperty(process, 'platform', { value: originalPlatform })
+      }
     })
   })
 })
