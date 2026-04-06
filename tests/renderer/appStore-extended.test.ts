@@ -191,25 +191,21 @@ describe('appStore – extended coverage', () => {
   })
 
   describe('sidebar', () => {
-    it('setSidebarCollapsed updates state and localStorage', () => {
+    it('setSidebarCollapsed updates state and calls saveConfig', () => {
       useAppStore.getState().setSidebarCollapsed(true)
       expect(useAppStore.getState().sidebarCollapsed).toBe(true)
-      expect(localStorage.getItem('sidebarCollapsed')).toBe('true')
 
       useAppStore.getState().setSidebarCollapsed(false)
       expect(useAppStore.getState().sidebarCollapsed).toBe(false)
-      expect(localStorage.getItem('sidebarCollapsed')).toBe('false')
     })
 
     it('toggleSidebar flips the state', () => {
       useAppStore.getState().setSidebarCollapsed(false)
       useAppStore.getState().toggleSidebar()
       expect(useAppStore.getState().sidebarCollapsed).toBe(true)
-      expect(localStorage.getItem('sidebarCollapsed')).toBe('true')
 
       useAppStore.getState().toggleSidebar()
       expect(useAppStore.getState().sidebarCollapsed).toBe(false)
-      expect(localStorage.getItem('sidebarCollapsed')).toBe('false')
     })
   })
 

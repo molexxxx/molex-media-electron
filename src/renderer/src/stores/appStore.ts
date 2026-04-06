@@ -187,14 +187,14 @@ export const useAppStore = create<AppState>((set) => ({
   downloadProgress: null,
   setDownloadProgress: (progress) => set({ downloadProgress: progress }),
 
-  sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+  sidebarCollapsed: false,
   setSidebarCollapsed: (collapsed) => {
-    localStorage.setItem('sidebarCollapsed', String(collapsed))
     set({ sidebarCollapsed: collapsed })
+    window.api?.saveConfig({ sidebarCollapsed: collapsed }).catch(() => {})
   },
   toggleSidebar: () => set((s) => {
     const next = !s.sidebarCollapsed
-    localStorage.setItem('sidebarCollapsed', String(next))
+    window.api?.saveConfig({ sidebarCollapsed: next }).catch(() => {})
     return { sidebarCollapsed: next }
   })
 }))

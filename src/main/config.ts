@@ -48,6 +48,7 @@ export interface AppConfig {
   ytdlpBrowser: string
   urlHistory: UrlHistoryEntry[]
   popoutSize: { width: number; height: number }
+  sidebarCollapsed: boolean
 }
 
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts', '.vob', '.3gp', '.mts', '.m2ts', '.divx', '.f4v', '.ogv', '.rm', '.rmvb', '.asf']
@@ -81,7 +82,8 @@ const DEFAULT_CONFIG: AppConfig = {
 
   ytdlpBrowser: '',
   urlHistory: [],
-  popoutSize: { width: 420, height: 560 }
+  popoutSize: { width: 420, height: 560 },
+  sidebarCollapsed: false
 }
 
 let Store: any
