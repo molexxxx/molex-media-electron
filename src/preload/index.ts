@@ -62,6 +62,9 @@ const api = {
 
   // File utilities
   getFilePath: (file: File) => webUtils.getPathForFile(file),
+  registerLocalFile: (filePath: string) => ipcRenderer.invoke('files:registerLocalFile', filePath),
+  getKnownFolders: () => ipcRenderer.invoke('files:knownFolders'),
+  browseDirectory: (dirPath: string) => ipcRenderer.invoke('files:browse', dirPath),
 
   // Popout player
   popoutPlayer: (state?: any) => ipcRenderer.invoke('player:popout', state),

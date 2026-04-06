@@ -4,7 +4,7 @@
  * scanning, and media probing.
  */
 
-import { ipcMain, dialog } from 'electron'
+import { ipcMain, dialog, app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
 import { saveConfig, getConfig } from '../config'
@@ -13,6 +13,7 @@ import { findSystemFFmpeg, downloadFFmpeg, getFFmpegVersion, type BootstrapProgr
 import { probeMedia } from '../ffmpeg/probe'
 import { findMediaFiles } from '../ffmpeg/processor'
 import { initFFmpegDir } from '../ytdlp/binary'
+import { registerPreviewFile } from '../protocol'
 import { sendToAll } from './helpers'
 
 /** Register FFmpeg setup, file dialog, and probe IPC handlers. */
@@ -94,5 +95,74 @@ export function registerFilesIPC(): void {
   // --- Media probing ---
   ipcMain.handle('files:probe', async (_, filePath: string) => {
     return probeMedia(filePath)
+  })
+
+  // --- Register local file for media:// protocol access ---
+  ipcMain.handle('files:registerLocalFile', async (_, filePath: string) => {
+    const token = registerPreviewFile(filePath)
+    return `media://${token}`
+  })
+
+  // --- Known folder locations (My Music, My Videos, etc.) ---
+  ipcMain.handle('files:knownFolders', async () => {
+    const folders: { name: string; path: string; icon: string }[] = []
+    const tryAdd = (name: string, key: string, icon: string): void => {
+      try {
+        const p = app.getPath(key as any)
+        if (p && fs.existsSync(p)) folders.push({ name, path: p, icon })
+      } catch { /* not available */ }
+    }
+    tryAdd('Desktop', 'desktop', 'desktop')
+    tryAdd('Documents', 'documents', 'documents')
+    tryAdd('Downloads', 'downloads', 'downloads')
+    tryAdd('Music', 'music', 'music')
+    tryAdd('Videos', 'videos', 'video')
+    tryAdd('Pictures', 'pictures', 'picture')
+    tryAdd('Home', 'home', 'home')
+
+    // Add drive roots on Windows
+    if (process.platform === 'win32') {
+      for (const letter of 'CDEFGHIJKLMNOPQRSTUVWXYZ') {
+        const drive = `${letter}:\\`
+        try {
+          if (fs.existsSync(drive)) folders.push({ name: `${letter}: Drive`, path: drive, icon: 'drive' })
+        } catch { /* skip */ }
+      }
+    } else {
+      folders.push({ name: '/', path: '/', icon: 'drive' })
+    }
+    return folders
+  })
+
+  // --- Browse directory contents ---
+  ipcMain.handle('files:browse', async (_, dirPath: string) => {
+    try {
+      const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+      const results: { name: string; path: string; isDirectory: boolean; size: number; ext: string }[] = []
+      for (const entry of entries) {
+        // Skip hidden files/dirs
+        if (entry.name.startsWith('.')) continue
+        const fullPath = path.join(dirPath, entry.name)
+        const isDir = entry.isDirectory()
+        let size = 0
+        let ext = ''
+        if (!isDir) {
+          try {
+            const stat = await fs.promises.stat(fullPath)
+            size = stat.size
+          } catch { /* skip unreadable */ }
+          ext = path.extname(entry.name).toLowerCase()
+        }
+        results.push({ name: entry.name, path: fullPath, isDirectory: isDir, size, ext })
+      }
+      // Sort: directories first, then files, both alphabetical
+      results.sort((a, b) => {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      })
+      return { success: true, entries: results, parentPath: path.dirname(dirPath) }
+    } catch (err: any) {
+      return { success: false, entries: [], parentPath: dirPath, error: err.message }
+    }
   })
 }

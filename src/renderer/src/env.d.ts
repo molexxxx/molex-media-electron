@@ -18,6 +18,9 @@ declare global {
       scanDirectory: (dirPath: string) => Promise<{ path: string; name: string; size: number; ext: string }[]>
       probeFile: (filePath: string) => Promise<any>
       getFilePath: (file: File) => string
+      registerLocalFile: (filePath: string) => Promise<string>
+      getKnownFolders: () => Promise<{ name: string; path: string; icon: string }[]>
+      browseDirectory: (dirPath: string) => Promise<{ success: boolean; entries: { name: string; path: string; isDirectory: boolean; size: number; ext: string }[]; parentPath: string; error?: string }>
       popoutPlayer: (state?: any) => Promise<void>
       isPopout: () => Promise<boolean>
       togglePin: () => Promise<boolean>
