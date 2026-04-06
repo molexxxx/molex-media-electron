@@ -7,9 +7,40 @@
  * with real-time task progress, and pause / cancel / clear controls.
  */
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef, useState as useLocalState } from 'react'
 import { useAppStore, View } from '../../stores/appStore'
 import { ProcessingPanel } from './components/ProcessingPanel'
+
+/**
+ * Tooltip that uses fixed positioning to escape overflow containers.
+ * Measures the trigger element's position on hover and places itself to the right.
+ */
+function SidebarTip({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useLocalState<{ top: number; left: number } | null>(null)
+
+  const show = (): void => {
+    // Measure the first child element since this wrapper is display:contents
+    const child = ref.current?.firstElementChild as HTMLElement | null
+    if (!child) return
+    const rect = child.getBoundingClientRect()
+    setPos({ top: rect.top + rect.height / 2, left: rect.right + 8 })
+  }
+
+  return (
+    <div ref={ref} onMouseEnter={show} onMouseLeave={() => setPos(null)} className="contents">
+      {children}
+      {pos && (
+        <div
+          className="fixed px-2 py-1 rounded-md bg-surface-800 border border-surface-700 text-xs text-surface-200 whitespace-nowrap pointer-events-none z-999 shadow-lg animate-fade-in"
+          style={{ top: pos.top, left: pos.left, transform: 'translateY(-50%)' }}
+        >
+          {label}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface NavItem {
   id: View
@@ -120,28 +151,34 @@ export default function Sidebar(): React.JSX.Element {
   ]
 
   return (
-    <nav className={`${collapsed ? 'w-13 overflow-visible' : 'w-50'} shrink-0 h-full bg-surface-900/50 border-r border-white/5 flex flex-col pt-0 pb-3 px-2 transition-all duration-200 relative`}>
+    <nav className={`${collapsed ? 'w-13' : 'w-50'} shrink-0 h-full bg-surface-900/50 border-r border-white/5 flex flex-col pt-0 pb-3 px-2 transition-all duration-200 relative`}>
       {/* Drag region + collapse toggle */}
       <div className="drag-region h-10 shrink-0 relative">
-        <button
-          onClick={toggleSidebar}
-          className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-              <polyline points="14 9 17 12 14 15" />
-            </svg>
-          ) : (
+        {collapsed ? (
+          <SidebarTip label="Expand">
+            <button
+              onClick={toggleSidebar}
+              className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <polyline points="14 9 17 12 14 15" />
+              </svg>
+            </button>
+          </SidebarTip>
+        ) : (
+          <button
+            onClick={toggleSidebar}
+            className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <line x1="9" y1="3" x2="9" y2="21" />
               <polyline points="16 9 13 12 16 15" />
             </svg>
-          )}
-        </button>
+          </button>
+        )}
       </div>
       <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin">
         {sections.map((section, si) => (
@@ -151,13 +188,11 @@ export default function Sidebar(): React.JSX.Element {
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-surface-600">{section.label}</span>
               </div>
             )}
-            {section.label && collapsed && (
-              <div className="mx-auto mb-1 w-5 border-t border-surface-700/60" />
-            )}
+
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const active = currentView === item.id
-                return (
+                const btn = (
                   <button
                     key={item.id}
                     onClick={() => setView(item.id)}
@@ -171,11 +206,6 @@ export default function Sidebar(): React.JSX.Element {
                       {item.icon}
                     </span>
                     {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-                    {collapsed && (
-                      <span className="absolute left-full ml-2 px-2 py-1 rounded-md bg-surface-800 border border-surface-700 text-xs text-surface-200 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 z-50 shadow-lg">
-                        {item.label}
-                      </span>
-                    )}
                     {!collapsed && item.badge !== undefined && item.badge > 0 && (
                       <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center
                         ${item.id === 'logs'
@@ -192,6 +222,11 @@ export default function Sidebar(): React.JSX.Element {
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-500" />
                     )}
                   </button>
+                )
+                return collapsed ? (
+                  <SidebarTip key={item.id} label={item.label}>{btn}</SidebarTip>
+                ) : (
+                  <React.Fragment key={item.id}>{btn}</React.Fragment>
                 )
               })}
             </div>

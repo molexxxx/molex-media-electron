@@ -158,7 +158,7 @@ function App(): React.JSX.Element {
   return (
     <div className="h-full flex">
       {/* Sidebar — full height of window */}
-      <div className="shrink-0 h-full overflow-visible z-10">
+      <div className="shrink-0 h-full">
         <Sidebar />
       </div>
       {/* Title bar + content column */}
