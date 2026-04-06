@@ -145,12 +145,20 @@ export async function getYtDl(): Promise<ReturnType<typeof createYtDl>> {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Common flags applied to every yt-dlp invocation. */
-export function baseFlags(): Record<string, any> {
-  return {
-    noWarnings: true,
-    noCheckCertificates: true,
-    jsRuntimes: 'node'
+/** Cached FFmpeg directory — populated by `initFFmpegDir()`. */
+let cachedFFmpegDir: string | undefined
+
+/**
+ * Resolve and cache the FFmpeg directory from app config.
+ * Called once at startup (or lazily). After this, `baseFlags()` will
+ * include `ffmpegLocation` automatically.
+ */
+export async function initFFmpegDir(): Promise<void> {
+  const cfg = await getConfig()
+  if (cfg.ffmpegPath && fs.existsSync(cfg.ffmpegPath)) {
+    cachedFFmpegDir = path.dirname(cfg.ffmpegPath)
+  } else {
+    cachedFFmpegDir = undefined
   }
 }
 
@@ -159,9 +167,19 @@ export function baseFlags(): Record<string, any> {
  * yt-dlp for HLS demuxing and post-processing).
  */
 export async function getFFmpegDir(): Promise<string | undefined> {
-  const cfg = await getConfig()
-  if (cfg.ffmpegPath && fs.existsSync(cfg.ffmpegPath)) {
-    return path.dirname(cfg.ffmpegPath)
+  await initFFmpegDir()
+  return cachedFFmpegDir
+}
+
+/** Common flags applied to every yt-dlp invocation. */
+export function baseFlags(): Record<string, any> {
+  const flags: Record<string, any> = {
+    noWarnings: true,
+    noCheckCertificates: true,
+    jsRuntimes: 'node'
   }
-  return undefined
+  if (cachedFFmpegDir) {
+    flags.ffmpegLocation = cachedFFmpegDir
+  }
+  return flags
 }

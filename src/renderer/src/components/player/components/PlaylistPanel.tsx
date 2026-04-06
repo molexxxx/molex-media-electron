@@ -11,6 +11,7 @@ interface PlaylistPanelProps {
   playlist: Track[]
   trackIdx: number
   playing: boolean
+  vertical?: boolean
   onPlayTrack: (idx: number) => void
   onRemoveTrack: (idx: number) => void
   onMoveTrack: (from: number, to: number) => void
@@ -18,7 +19,7 @@ interface PlaylistPanelProps {
 }
 
 export function PlaylistPanel({
-  playlist, trackIdx, playing, onPlayTrack, onRemoveTrack, onMoveTrack, onClearPlaylist
+  playlist, trackIdx, playing, vertical, onPlayTrack, onRemoveTrack, onMoveTrack, onClearPlaylist
 }: PlaylistPanelProps): React.JSX.Element {
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
@@ -42,7 +43,7 @@ export function PlaylistPanel({
   }, [])
 
   return (
-    <div className="w-72 shrink-0 flex flex-col glass rounded-2xl border border-white/5 overflow-hidden">
+    <div className={`${vertical ? 'w-full max-h-48' : 'w-72'} shrink-0 flex flex-col glass rounded-2xl border border-white/5 overflow-hidden`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <span className="text-sm font-semibold text-white">Playlist</span>
         <div className="flex items-center gap-1">

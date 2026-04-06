@@ -22,6 +22,8 @@ declare global {
       isPopout: () => Promise<boolean>
       togglePin: () => Promise<boolean>
       isPinned: () => Promise<boolean>
+      resizePopout: (width: number, height: number, save?: boolean) => Promise<void>
+      getPopoutSize: () => Promise<{ width: number; height: number }>
       returnPlayerState: (state: any) => void
       onPopoutClosed: (cb: () => void) => () => void
       onReceivePlayerState: (cb: (state: any) => void) => () => void
@@ -42,6 +44,7 @@ declare global {
       windowMinimize: () => void
       windowMaximize: () => void
       windowClose: () => void
+      showTextContextMenu: () => void
       onNavigate: (cb: (view: string) => void) => () => void
       resolvePlaylist: (url: string) => Promise<{ success: boolean; entries: any[]; error?: string }>
       getStreamUrl: (videoUrl: string, quality?: string) => Promise<{ success: boolean; mediaUrl?: string; title?: string; duration?: number | null; error?: string }>
@@ -62,6 +65,10 @@ declare global {
       getUrlHistory: () => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>
       removeUrlHistory: (url: string) => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>
       clearUrlHistory: () => Promise<void>
+      checkForUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>
+      downloadUpdate: () => Promise<{ success: boolean; error?: string }>
+      installUpdate: () => Promise<void>
+      onUpdaterStatus: (cb: (status: any) => void) => () => void
     }
   }
 }

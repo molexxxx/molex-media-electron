@@ -12,6 +12,7 @@ import { logger } from '../logger'
 import { findSystemFFmpeg, downloadFFmpeg, getFFmpegVersion, type BootstrapProgress } from '../ffmpeg/bootstrap'
 import { probeMedia } from '../ffmpeg/probe'
 import { findMediaFiles } from '../ffmpeg/processor'
+import { initFFmpegDir } from '../ytdlp/binary'
 import { sendToAll } from './helpers'
 
 /** Register FFmpeg setup, file dialog, and probe IPC handlers. */
@@ -22,6 +23,7 @@ export function registerFilesIPC(): void {
     if (paths) {
       const version = await getFFmpegVersion(paths.ffmpeg)
       await saveConfig({ ffmpegPath: paths.ffmpeg, ffprobePath: paths.ffprobe })
+      await initFFmpegDir()
       return { found: true, version, ...paths }
     }
     return { found: false }
@@ -34,6 +36,7 @@ export function registerFilesIPC(): void {
       })
       const version = await getFFmpegVersion(paths.ffmpeg)
       await saveConfig({ ffmpegPath: paths.ffmpeg, ffprobePath: paths.ffprobe })
+      await initFFmpegDir()
       return { success: true, version, ...paths }
     } catch (err: any) {
       logger.error(`FFmpeg download failed: ${err.message}`)

@@ -68,6 +68,8 @@ const api = {
   isPopout: () => ipcRenderer.invoke('player:isPopout'),
   togglePin: () => ipcRenderer.invoke('player:togglePin'),
   isPinned: () => ipcRenderer.invoke('player:isPinned'),
+  resizePopout: (width: number, height: number, save?: boolean) => ipcRenderer.invoke('player:resize', width, height, save),
+  getPopoutSize: () => ipcRenderer.invoke('player:getSize'),
   returnPlayerState: (state: any) => ipcRenderer.send('player:returnState', state),
   onPopoutClosed: (cb: () => void) => {
     const listener = () => cb()
@@ -133,12 +135,23 @@ const api = {
   windowMinimize: () => ipcRenderer.send('window:minimize'),
   windowMaximize: () => ipcRenderer.send('window:maximize'),
   windowClose: () => ipcRenderer.send('window:close'),
+  showTextContextMenu: () => ipcRenderer.send('context-menu:text'),
 
   // Navigation (from tray context menu)
   onNavigate: (cb: (view: string) => void) => {
     const listener = (_: any, view: string) => cb(view)
     ipcRenderer.on('navigate', listener)
     return () => ipcRenderer.removeListener('navigate', listener)
+  },
+
+  // Updater
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download'),
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
+  onUpdaterStatus: (cb: (status: any) => void) => {
+    const listener = (_: any, status: any) => cb(status)
+    ipcRenderer.on('updater:status', listener)
+    return () => ipcRenderer.removeListener('updater:status', listener)
   }
 }
 

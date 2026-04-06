@@ -15,20 +15,18 @@ interface PlayerHeaderProps {
   audioQuality: AudioQuality
   showPlaylist: boolean
   playlistLength: number
-  fullscreen: boolean
   onCycleQuality: () => void
   onCycleVisMode: () => void
   onTogglePlaylist: () => void
   onToggleUrlInput: () => void
-  onToggleFullscreen: () => void
   onPopout: () => void
   onFileSelect: () => void
 }
 
 export function PlayerHeader({
   track, popout, isPoppedOut, visMode, audioQuality, showPlaylist,
-  playlistLength, fullscreen, onCycleQuality, onCycleVisMode, onTogglePlaylist,
-  onToggleUrlInput, onToggleFullscreen, onPopout, onFileSelect
+  playlistLength, onCycleQuality, onCycleVisMode, onTogglePlaylist,
+  onToggleUrlInput, onPopout, onFileSelect
 }: PlayerHeaderProps): React.JSX.Element {
   return (
     <div className="flex items-center justify-between shrink-0">
@@ -78,25 +76,6 @@ export function PlayerHeader({
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-        </button>
-        <button
-          onClick={onToggleFullscreen}
-          className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-            fullscreen ? 'bg-accent-600/20 border-accent-500 text-accent-300' : 'bg-surface-800 border-surface-600 text-surface-300 hover:text-white hover:border-accent-500'
-          }`}
-          title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
-        >
-          {fullscreen ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline -mt-0.5">
-              <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-              <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline -mt-0.5">
-              <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-              <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-            </svg>
-          )}
         </button>
         {!popout && !isPoppedOut && (
           <button

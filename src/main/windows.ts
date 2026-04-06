@@ -4,10 +4,10 @@
  * and global IPC handlers for window controls and player state transfer.
  */
 
-import { BrowserWindow, shell, dialog, ipcMain } from 'electron'
+import { BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron'
 import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
-import { getConfigSync, saveConfig } from './config'
+import { getConfigSync, saveConfig, getConfig } from './config'
 
 /* ------------------------------------------------------------------ */
 /*  State                                                              */
@@ -158,11 +158,14 @@ export function createPopoutWindow(): void {
     return
   }
 
+  const cfg = getConfigSync()
+  const { width, height } = cfg.popoutSize || { width: 420, height: 560 }
+
   popoutWindow = new BrowserWindow({
-    width: 480,
-    height: 600,
-    minWidth: 360,
-    minHeight: 400,
+    width,
+    height,
+    minWidth: 300,
+    minHeight: 360,
     frame: false,
     titleBarStyle: 'hidden',
     alwaysOnTop: true,
@@ -258,5 +261,36 @@ export function registerGlobalIPC(): void {
   ipcMain.handle('player:isPinned', () => {
     if (!popoutWindow || popoutWindow.isDestroyed()) return false
     return popoutWindow.isAlwaysOnTop()
+  })
+
+  ipcMain.handle('player:resize', async (_event, width: number, height: number, save?: boolean) => {
+    if (!popoutWindow || popoutWindow.isDestroyed()) return
+    popoutWindow.setSize(width, height, true)
+    popoutWindow.center()
+    if (save) {
+      await saveConfig({ popoutSize: { width, height } })
+    }
+  })
+
+  ipcMain.handle('player:getSize', async () => {
+    const cfg = await getConfig()
+    return cfg.popoutSize || { width: 420, height: 560 }
+  })
+
+  // Text field context menu
+  ipcMain.on('context-menu:text', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    const menu = Menu.buildFromTemplate([
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { type: 'separator' },
+      { role: 'selectAll' }
+    ])
+    menu.popup({ window: win })
   })
 }

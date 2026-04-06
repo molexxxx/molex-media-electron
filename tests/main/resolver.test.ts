@@ -19,11 +19,9 @@ vi.mock('fs', () => ({
 
 const mockGetYtDl = vi.fn()
 const mockBaseFlags = vi.fn(() => ({ noWarnings: true }))
-const mockGetFFmpegDir = vi.fn()
 vi.mock('../../src/main/ytdlp/binary', () => ({
   getYtDl: (...a: any[]) => mockGetYtDl(...a),
-  baseFlags: (...a: any[]) => mockBaseFlags(...a),
-  getFFmpegDir: (...a: any[]) => mockGetFFmpegDir(...a)
+  baseFlags: (...a: any[]) => mockBaseFlags(...a)
 }))
 
 const mockWithCookieRetry = vi.fn(async (fn: Function) => fn({}))
@@ -215,7 +213,6 @@ describe('ytdlp/resolver', () => {
         ext: 'm4a'
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       expect(track.audioUrl).toBe('https://cdn.example.com/audio.m4a')
@@ -235,7 +232,6 @@ describe('ytdlp/resolver', () => {
         ]
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       expect(track.audioUrl).toBe('https://cdn.example.com/audio.webm')
@@ -256,7 +252,6 @@ describe('ytdlp/resolver', () => {
         ]
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       expect(track.audioUrl).toBe('https://cdn.example.com/audio-128.webm')
@@ -273,7 +268,6 @@ describe('ytdlp/resolver', () => {
         ]
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       expect(track.audioUrl).toBe('https://cdn.example.com/av.mp4')
@@ -289,7 +283,6 @@ describe('ytdlp/resolver', () => {
           protocol: 'https'
         })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       expect(track.audioUrl).toBe('https://cdn.example.com/audio.m4a')
@@ -315,7 +308,6 @@ describe('ytdlp/resolver', () => {
         .mockResolvedValueOnce(undefined)
 
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue('/ffmpeg/bin')
       mockMkdirSync.mockReturnValue(undefined)
       // The id will be molex-99999-i (0.5.toString(36) = "0.i" -> slice(2,6) = "i")
       mockReaddirSync.mockReturnValue(['molex-99999-i.opus'])
@@ -336,7 +328,6 @@ describe('ytdlp/resolver', () => {
         protocol: 'https'
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc', 'good')
       expect(track.title).toBe('Good Quality')
@@ -353,7 +344,6 @@ describe('ytdlp/resolver', () => {
         protocol: 'https'
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc', 'low')
       expect(track.title).toBe('Low Quality')
@@ -361,7 +351,7 @@ describe('ytdlp/resolver', () => {
       expect(callArgs.format).toContain('worstaudio')
     })
 
-    it('passes ffmpegLocation when ffmpeg dir exists', async () => {
+    it('passes ffmpegLocation when baseFlags includes it', async () => {
       const mockDl = vi.fn().mockResolvedValue({
         title: 'FF',
         duration: 60,
@@ -369,7 +359,7 @@ describe('ytdlp/resolver', () => {
         protocol: 'https'
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue('/app/bin')
+      mockBaseFlags.mockReturnValue({ noWarnings: true, ffmpegLocation: '/app/bin' })
 
       await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
       const callArgs = mockDl.mock.calls[0][1]
@@ -383,7 +373,6 @@ describe('ytdlp/resolver', () => {
         protocol: 'https'
       })
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockGetFFmpegDir.mockResolvedValue(undefined)
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=notitle')
       expect(track.title).toBe('notitle')

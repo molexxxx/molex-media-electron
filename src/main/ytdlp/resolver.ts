@@ -12,7 +12,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import { logger } from '../logger'
-import { getYtDl, baseFlags, getFFmpegDir } from './binary'
+import { getYtDl, baseFlags } from './binary'
 import { withCookieRetry } from './cookies'
 
 /* ------------------------------------------------------------------ */
@@ -161,9 +161,6 @@ export async function getAudioStreamUrl(
   const fmt = FORMAT_STRINGS[quality] || FORMAT_STRINGS.best
 
   return withCookieRetry(async (cookieFlags) => {
-    const ffmpegDir = await getFFmpegDir()
-    const ffmpegFlags: Record<string, any> = ffmpegDir ? { ffmpegLocation: ffmpegDir } : {}
-
     let data: any
     try {
       data = await dl(videoUrl, {
@@ -171,7 +168,6 @@ export async function getAudioStreamUrl(
         format: fmt,
         noPlaylist: true,
         ...baseFlags(),
-        ...ffmpegFlags,
         ...cookieFlags
       }) as any
     } catch {
@@ -180,7 +176,6 @@ export async function getAudioStreamUrl(
         dumpSingleJson: true,
         noPlaylist: true,
         ...baseFlags(),
-        ...ffmpegFlags,
         ...cookieFlags
       }) as any
     }
@@ -279,11 +274,6 @@ async function downloadAudioToFile(
   const id = `molex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
   const outTemplate = path.join(AUDIO_CACHE_DIR, `${id}.%(ext)s`)
 
-  const ffmpegDir = await getFFmpegDir()
-  const ffmpegFlags: Record<string, any> = ffmpegDir ? { ffmpegLocation: ffmpegDir } : {}
-
-  logger.info(`downloadAudioToFile: ffmpegLocation=${ffmpegDir || 'system PATH'}`)
-
   await dl(videoUrl, {
     format: 'bestaudio/best',
     extractAudio: true,
@@ -291,7 +281,6 @@ async function downloadAudioToFile(
     output: outTemplate,
     noPlaylist: true,
     ...baseFlags(),
-    ...ffmpegFlags,
     ...cookieFlags
   })
 

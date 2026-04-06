@@ -79,6 +79,23 @@ function App(): React.JSX.Element {
     })
   }, [currentView])
 
+  // Right-click context menu for text inputs and textareas
+  useEffect(() => {
+    const onContextMenu = (e: MouseEvent): void => {
+      const target = e.target as HTMLElement
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable
+      ) {
+        e.preventDefault()
+        window.api.showTextContextMenu()
+      }
+    }
+    document.addEventListener('contextmenu', onContextMenu)
+    return () => document.removeEventListener('contextmenu', onContextMenu)
+  }, [])
+
   // Mouse back button (button 3) and Alt+Left for navigation history
   useEffect(() => {
     const onMouseUp = (e: MouseEvent): void => {

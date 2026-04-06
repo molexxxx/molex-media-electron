@@ -33,7 +33,7 @@ vi.mock('youtube-dl-exec', () => ({
   create: (...a: any[]) => mockCreateYtDl(...a)
 }))
 
-import { baseFlags, getFFmpegDir, ensureYtDlp } from '../../src/main/ytdlp/binary'
+import { baseFlags, getFFmpegDir, initFFmpegDir, ensureYtDlp } from '../../src/main/ytdlp/binary'
 
 describe('ytdlp/binary', () => {
   beforeEach(() => {
@@ -46,6 +46,14 @@ describe('ytdlp/binary', () => {
       const flags = baseFlags()
       expect(flags.noWarnings).toBe(true)
       expect(flags.noCheckCertificates).toBe(true)
+    })
+
+    it('includes ffmpegLocation after initFFmpegDir', async () => {
+      mockGetConfig.mockResolvedValue({ ffmpegPath: '/usr/bin/ffmpeg' })
+      mockExistsSync.mockReturnValue(true)
+      await initFFmpegDir()
+      const flags = baseFlags()
+      expect(flags.ffmpegLocation).toContain('bin')
     })
   })
 

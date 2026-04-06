@@ -1,6 +1,6 @@
 {
   "name": "molex-media",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "Media processing toolkit powered by FFmpeg — audio normalization, video conversion, format tools, and more",
   "main": "./out/main/index.js",
   "author": "molex",
@@ -16,12 +16,15 @@
     "package": "electron-vite build && electron-builder --publish never",
     "package:win": "electron-vite build && electron-builder --win --publish never",
     "package:mac": "electron-vite build && electron-builder --mac --publish never",
-    "package:linux": "electron-vite build && electron-builder --linux --publish never"
+    "package:linux": "electron-vite build && electron-builder --linux --publish never",
+    "release": "electron-vite build && electron-builder --publish always",
+    "release:win": "electron-vite build && electron-builder --win --publish always"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.3",
     "extract-zip": "^2.0.1",
     "tar": "^7.4.0",
     "youtube-dl-exec": "^3.1.4"

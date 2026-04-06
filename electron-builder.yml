@@ -1,5 +1,9 @@
 appId: com.molex.media
 productName: molexMedia
+publish:
+  provider: github
+  owner: tonywied17
+  repo: molex-media-electron
 directories:
   buildResources: build
   output: dist

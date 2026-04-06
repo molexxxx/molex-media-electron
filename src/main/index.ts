@@ -14,8 +14,10 @@ import { loadConfig } from './config'
 import { logger } from './logger'
 import { killAllProcesses } from './ffmpeg/runner'
 import { cleanupAudioCache } from './ytdlp'
+import { initFFmpegDir } from './ytdlp/binary'
 import { registerMediaScheme, registerMediaHandler } from './protocol'
 import { createTray, destroyTray, hasTray, setTrayCallbacks } from './tray'
+import { initUpdater } from './updater'
 import {
   createWindow,
   showMainWindow,
@@ -59,6 +61,7 @@ app.whenReady().then(async () => {
   })
 
   await loadConfig()
+  await initFFmpegDir()
   registerIPC()
   registerGlobalIPC()
 
@@ -72,6 +75,7 @@ app.whenReady().then(async () => {
 
   cleanupAudioCache()
   createWindow()
+  await initUpdater()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
