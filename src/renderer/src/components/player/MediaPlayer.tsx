@@ -13,6 +13,7 @@ import type { VisMode, AudioQuality } from '../../visualizations'
 import { type Track, AUDIO_EXTS, isYouTubeUrl } from './types'
 import { useVisualizer } from './hooks/useVisualizer'
 import { TransportBar } from './components/TransportBar'
+import { PopoutTransport } from './components/PopoutTransport'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { PlayerHeader } from './components/PlayerHeader'
 import { UrlInputBar } from './components/UrlInputBar'
@@ -647,12 +648,96 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     } catch { /* ignore */ }
   }, [])
 
+  // -- Popout: compact layout --
+  if (popout) {
+    return (
+      <div className="flex flex-col animate-fade-in h-full min-w-0">
+        {/* Canvas area */}
+        <div
+          ref={dropRef}
+          className={`flex-1 relative rounded-xl overflow-hidden border transition-colors ${
+            dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
+          }`}
+        >
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          {!track && !error && !resolving && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mx-auto text-surface-600 mb-2">
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                </svg>
+                <p className="text-surface-500 text-xs">Drop files or add tracks</p>
+              </div>
+            </div>
+          )}
+          {resolving && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-6 h-6 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {error && (
+            <div className="absolute bottom-2 left-2 right-2 px-2 py-1.5 rounded-lg bg-red-500/15 border border-red-500/20 text-[10px] text-red-300">
+              {error}
+            </div>
+          )}
+          {dragging && (
+            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm pointer-events-none z-10">
+              <p className="text-accent-300 font-semibold text-sm">Drop to add</p>
+            </div>
+          )}
+        </div>
+
+        {/* Compact transport */}
+        <div className="pt-2">
+          <PopoutTransport
+            track={track}
+            playing={playing}
+            currentTime={currentTime}
+            duration={duration}
+            volume={volume}
+            shuffle={shuffle}
+            repeat={repeat}
+            visMode={visMode}
+            showPlaylist={showPlaylist}
+            playlistLength={playlist.length}
+            onTogglePlay={togglePlay}
+            onPlayNext={playNext}
+            onPlayPrev={playPrev}
+            onSeek={seek}
+            onVolumeChange={changeVolume}
+            onToggleShuffle={() => setShuffle((s) => !s)}
+            onCycleRepeat={cycleRepeat}
+            onCycleVisMode={cycleVisMode}
+            onTogglePlaylist={() => setShowPlaylist((v) => !v)}
+            onFileSelect={handleFileSelect}
+          />
+        </div>
+
+        {/* Playlist stacks below */}
+        {showPlaylist && (
+          <PlaylistPanel
+            playlist={playlist}
+            trackIdx={trackIdx}
+            playing={playing}
+            vertical
+            onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
+            onRemoveTrack={removeTrack}
+            onMoveTrack={moveTrack}
+            onClearPlaylist={clearPlaylist}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // -- Main window layout --
   return (
     <div
       className="flex animate-fade-in gap-4 relative h-full"
     >
       {/* Popped-out overlay */}
-      {isPoppedOut && !popout && (
+      {isPoppedOut && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface-950/90 backdrop-blur-sm rounded-2xl">
           <div className="text-center space-y-4">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto text-accent-400">
@@ -671,7 +756,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       <div className="flex flex-col flex-1 gap-4 min-w-0">
         <PlayerHeader
           track={track}
-          popout={popout}
+          popout={false}
           isPoppedOut={isPoppedOut}
           visMode={visMode}
           audioQuality={audioQuality}
@@ -760,24 +845,10 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           onToggleShuffle={() => setShuffle((s) => !s)}
           onCycleRepeat={cycleRepeat}
         />
-
-        {/* Popout: playlist stacks vertically below transport */}
-        {popout && showPlaylist && (
-          <PlaylistPanel
-            playlist={playlist}
-            trackIdx={trackIdx}
-            playing={playing}
-            vertical
-            onPlayTrack={(idx) => { skipCountRef.current = 0; playTrack(idx) }}
-            onRemoveTrack={removeTrack}
-            onMoveTrack={moveTrack}
-            onClearPlaylist={clearPlaylist}
-          />
-        )}
       </div>
 
       {/* Main view: playlist sits beside the player column */}
-      {!popout && showPlaylist && (
+      {showPlaylist && (
         <PlaylistPanel
           playlist={playlist}
           trackIdx={trackIdx}

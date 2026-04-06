@@ -147,7 +147,7 @@ export function PopoutShell(): React.JSX.Element {
         </div>
       </div>
       {/* Player */}
-      <main className="flex-1 overflow-hidden p-3">
+      <main className="flex-1 overflow-hidden px-2 pt-1.5 pb-2">
         <MediaPlayer popout />
       </main>
     </div>

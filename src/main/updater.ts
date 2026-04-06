@@ -9,7 +9,7 @@
  */
 
 import { autoUpdater } from 'electron-updater'
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import { logger } from './logger'
 import { getConfig } from './config'
 import { sendToAll } from './ipc/helpers'
@@ -19,6 +19,11 @@ export async function initUpdater(): Promise<void> {
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.logger = null // we handle logging ourselves
+
+  // In dev mode, use dev-app-update.yml so checkForUpdates doesn't hang
+  if (!app.isPackaged) {
+    autoUpdater.forceDevUpdateConfig = true
+  }
 
   // --- Forward events to renderer ---
   autoUpdater.on('checking-for-update', () => {
@@ -59,7 +64,10 @@ export async function initUpdater(): Promise<void> {
   // --- IPC handlers ---
   ipcMain.handle('updater:check', async () => {
     try {
-      const result = await autoUpdater.checkForUpdates()
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Update check timed out')), 15_000)
+      )
+      const result = await Promise.race([autoUpdater.checkForUpdates(), timeout])
       return { success: true, version: result?.updateInfo?.version }
     } catch (err: any) {
       return { success: false, error: err.message }
