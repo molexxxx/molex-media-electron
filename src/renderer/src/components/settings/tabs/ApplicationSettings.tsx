@@ -12,6 +12,16 @@ type UpdateStatus = 'idle' | 'checking' | 'available' | 'up-to-date' | 'download
 interface BrowserOption { name: string; label: string }
 type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
 
+function formatAge(ms: number | null): string {
+  if (ms == null || ms < 0) return 'unknown time'
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return 'less than a minute'
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ${mins % 60}m`
+  return `${Math.floor(hrs / 24)}d ${hrs % 24}h`
+}
+
 interface ApplicationSettingsProps {
   config: AppConfig
   onUpdate: <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => void
@@ -28,9 +38,11 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
   const [cookieStatus, setCookieStatus] = useState<CookieStatus>('idle')
   const [cookieError, setCookieError] = useState<string | null>(null)
   const [pendingBrowser, setPendingBrowser] = useState<string | null>(null)
+  const [cookieInfo, setCookieInfo] = useState<{ exists: boolean; age: number | null; browser: string } | null>(null)
 
   useEffect(() => {
     window.api.getInstalledBrowsers?.().then(setBrowsers).catch(() => {})
+    window.api.getCookieInfo?.().then(setCookieInfo).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -84,6 +96,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
       if (result.success) {
         onUpdate('ytdlpBrowser', pendingBrowser)
         setCookieStatus('success')
+        window.api.getCookieInfo?.().then(setCookieInfo).catch(() => {})
       } else {
         setCookieError(result.error || 'Export failed')
         setCookieStatus('error')
@@ -100,6 +113,14 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
     setCookieStatus('idle')
     setCookieError(null)
   }, [])
+
+  const handleClearCookies = useCallback(async () => {
+    await window.api.clearCookies()
+    onUpdate('ytdlpBrowser', '' as any)
+    setCookieInfo({ exists: false, age: null, browser: '' })
+    setCookieStatus('idle')
+    setCookieError(null)
+  }, [onUpdate])
 
   return (
     <div className="space-y-5">
@@ -245,6 +266,20 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
             {cookieError}
           </div>
         )}
+        <SettingRow
+          label="Cached Cookies"
+          description={cookieInfo?.exists
+            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} — refreshes every 24h`
+            : 'No cookies cached — will export on next YouTube request'}
+        >
+          <button
+            onClick={handleClearCookies}
+            disabled={!cookieInfo?.exists}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-700 hover:bg-surface-600 text-surface-300 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Clear Cookies
+          </button>
+        </SettingRow>
       </SettingGroup>
       <SettingGroup title="About">
         <div className="flex items-center justify-between">

@@ -90,6 +90,8 @@ const api = {
   getStreamUrl: (videoUrl: string, quality?: string) => ipcRenderer.invoke('ytdlp:getStreamUrl', videoUrl, quality),
   getInstalledBrowsers: () => ipcRenderer.invoke('ytdlp:getInstalledBrowsers'),
   setCookieBrowser: (browserName: string) => ipcRenderer.invoke('ytdlp:setBrowser', browserName),
+  clearCookies: () => ipcRenderer.invoke('ytdlp:clearCookies'),
+  getCookieInfo: () => ipcRenderer.invoke('ytdlp:cookieInfo'),
   onPaused: (cb: () => void) => {
     const listener = () => cb()
     ipcRenderer.on('process:paused', listener)

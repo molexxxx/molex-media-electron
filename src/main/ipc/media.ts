@@ -7,7 +7,7 @@
 import { ipcMain } from 'electron'
 import { logger } from '../logger'
 import { addUrlHistory } from '../config'
-import { resolvePlaylist, getAudioStreamUrl, registerStreamUrl, getInstalledBrowsers, setBrowserAndExport } from '../ytdlp'
+import { resolvePlaylist, getAudioStreamUrl, registerStreamUrl, getInstalledBrowsers, setBrowserAndExport, clearCookies, getCookieInfo } from '../ytdlp'
 
 /** Register YouTube / yt-dlp IPC handlers. */
 export function registerMediaIPC(): void {
@@ -40,6 +40,15 @@ export function registerMediaIPC(): void {
       logger.error(`setBrowser failed: ${err.message}`)
       return { success: false, error: err.message }
     }
+  })
+
+  ipcMain.handle('ytdlp:clearCookies', async () => {
+    await clearCookies()
+    return { success: true }
+  })
+
+  ipcMain.handle('ytdlp:cookieInfo', () => {
+    return getCookieInfo()
   })
 
   ipcMain.handle('ytdlp:getStreamUrl', async (_, videoUrl: string, quality?: string) => {

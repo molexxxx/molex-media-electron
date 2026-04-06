@@ -240,6 +240,33 @@ function invalidateCookiesFile(): void {
   } catch { /* ignore */ }
 }
 
+/**
+ * Delete cached cookies and clear the selected browser.
+ * Exported for use via IPC.
+ */
+export async function clearCookies(): Promise<void> {
+  invalidateCookiesFile()
+  sessionBrowser = null
+  failedBrowsers.clear()
+  await saveConfig({ ytdlpBrowser: '' })
+  logger.info('Cached cookies and browser selection cleared')
+}
+
+/**
+ * Return info about the current cookie cache state.
+ */
+export function getCookieInfo(): { exists: boolean; age: number | null; browser: string } {
+  const fp = getCookiesFilePath()
+  let exists = false
+  let age: number | null = null
+  try {
+    const stat = fs.statSync(fp)
+    exists = stat.size > 0
+    age = Date.now() - stat.mtimeMs
+  } catch { /* no file */ }
+  return { exists, age, browser: sessionBrowser || '' }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Cookie flag helper                                                 */
 /* ------------------------------------------------------------------ */

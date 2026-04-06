@@ -10,7 +10,7 @@
 export { registerStreamUrl, resolveStreamToken } from './cache'
 
 // Cookie browser management
-export { getInstalledBrowsers, setBrowserAndExport } from './cookies'
+export { getInstalledBrowsers, setBrowserAndExport, clearCookies, getCookieInfo } from './cookies'
 
 // Binary management
 export { ensureYtDlp } from './binary'
