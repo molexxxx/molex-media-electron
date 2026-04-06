@@ -1,5 +1,5 @@
 ---
-name: 🐛 Bug Report
+name: Bug Report
 description: Something isn't working as expected
 labels: [bug, triage]
 body:
@@ -78,5 +78,5 @@ body:
       options:
         - label: I have searched existing issues to avoid duplicates
           required: true
-        - label: I am using the latest version of molexAudio
+        - label: I am using the latest version of molexMedia
           required: false

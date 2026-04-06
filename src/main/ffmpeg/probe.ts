@@ -1,3 +1,13 @@
+/**
+ * @module main/ffmpeg/probe
+ * @description FFprobe media analysis wrapper.
+ *
+ * Spawns `ffprobe` with JSON output to extract stream information,
+ * format metadata, chapter markers, and disposition flags from media
+ * files. Exports typed interfaces (`MediaInfo`, `StreamInfo`) and
+ * utility formatters for duration and file size display.
+ */
+
 import { spawn } from 'child_process'
 import { getConfig } from '../config'
 import { logger } from '../logger'
@@ -9,6 +19,9 @@ export interface AudioStream {
   sample_rate: string
   bit_rate?: string
   tags?: Record<string, string>
+  disposition?: Record<string, number>
+  channel_layout?: string
+  profile?: string
 }
 
 export interface VideoStream {
@@ -18,11 +31,24 @@ export interface VideoStream {
   height: number
   duration?: string
   bit_rate?: string
+  tags?: Record<string, string>
+  disposition?: Record<string, number>
+  r_frame_rate?: string
+  pix_fmt?: string
+  profile?: string
+}
+
+export interface SubtitleStream {
+  index: number
+  codec_name: string
+  tags?: Record<string, string>
+  disposition?: Record<string, number>
 }
 
 export interface MediaInfo {
   audioStreams: AudioStream[]
   videoStreams: VideoStream[]
+  subtitleStreams: SubtitleStream[]
   format: {
     filename: string
     duration: string
@@ -35,6 +61,14 @@ export interface MediaInfo {
   isAudioOnly: boolean
 }
 
+/**
+ * Probes a media file with FFprobe and returns typed stream, format,
+ * and metadata information. Falls back to a minimal audio-only probe
+ * if the primary JSON parse fails.
+ *
+ * @param filePath - Absolute path to the media file.
+ * @returns Detailed media information including audio, video, and subtitle streams.
+ */
 export async function probeMedia(filePath: string): Promise<MediaInfo> {
   const config = await getConfig()
   const ffprobe = config.ffprobePath
@@ -66,7 +100,10 @@ export async function probeMedia(filePath: string): Promise<MediaInfo> {
         channels: parseInt(s.channels, 10) || 2,
         sample_rate: s.sample_rate || '48000',
         bit_rate: s.bit_rate,
-        tags: s.tags
+        tags: s.tags,
+        disposition: s.disposition,
+        channel_layout: s.channel_layout,
+        profile: s.profile
       }))
 
     const videoStreams: VideoStream[] = streams
@@ -77,12 +114,27 @@ export async function probeMedia(filePath: string): Promise<MediaInfo> {
         width: parseInt(s.width, 10) || 0,
         height: parseInt(s.height, 10) || 0,
         duration: s.duration,
-        bit_rate: s.bit_rate
+        bit_rate: s.bit_rate,
+        tags: s.tags,
+        disposition: s.disposition,
+        r_frame_rate: s.r_frame_rate,
+        pix_fmt: s.pix_fmt,
+        profile: s.profile
+      }))
+
+    const subtitleStreams: SubtitleStream[] = streams
+      .filter((s: any) => s.codec_type === 'subtitle')
+      .map((s: any) => ({
+        index: s.index,
+        codec_name: s.codec_name || 'unknown',
+        tags: s.tags,
+        disposition: s.disposition
       }))
 
     return {
       audioStreams,
       videoStreams,
+      subtitleStreams,
       format: {
         filename: format.filename || filePath,
         duration: format.duration || '0',
@@ -100,6 +152,14 @@ export async function probeMedia(filePath: string): Promise<MediaInfo> {
   }
 }
 
+/**
+ * Fallback probe that only queries audio streams with a minimal set
+ * of entry fields. Used when the full probe fails to parse.
+ *
+ * @param ffprobe  - Absolute path to the FFprobe binary.
+ * @param filePath - Absolute path to the media file.
+ * @returns A best-effort {@link MediaInfo} (audio-only, no format details).
+ */
 async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaInfo> {
   const args = [
     '-v', 'error',
@@ -128,6 +188,7 @@ async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaIn
     return {
       audioStreams,
       videoStreams: [],
+      subtitleStreams: [],
       format: {
         filename: filePath,
         duration: '0',
@@ -143,6 +204,7 @@ async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaIn
     return {
       audioStreams: [{ index: 0, codec_name: 'unknown', channels: 2, sample_rate: '48000' }],
       videoStreams: [],
+      subtitleStreams: [],
       format: { filename: filePath, duration: '0', size: '0', bit_rate: '0', format_name: 'unknown' },
       isVideoFile: false,
       isAudioOnly: true
@@ -150,6 +212,13 @@ async function fallbackProbe(ffprobe: string, filePath: string): Promise<MediaIn
   }
 }
 
+/**
+ * Spawns FFprobe with the given arguments and resolves with stdout.
+ *
+ * @param ffprobe - Absolute path to the FFprobe binary.
+ * @param args    - CLI arguments to pass.
+ * @returns The raw stdout output.
+ */
 function runProbe(ffprobe: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn(ffprobe, args, { timeout: 30000 })
@@ -168,6 +237,10 @@ function runProbe(ffprobe: string, args: string[]): Promise<string> {
   })
 }
 
+/**
+ * Formats a duration in seconds to a human-readable `H:MM:SS` or `M:SS` string.
+ * @param seconds - Duration in seconds.
+ */
 export function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -176,6 +249,10 @@ export function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+/**
+ * Formats a byte count to a human-readable size string (B / KB / MB / GB).
+ * @param bytes - File size in bytes.
+ */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`

@@ -1,3 +1,13 @@
+/**
+ * @module hooks/useIPC
+ * @description React hook that bridges the renderer process with Electron's main process.
+ *
+ * On mount, loads the persisted configuration, system information, FFmpeg
+ * status, and the log buffer. Subscribes to IPC event channels (log entries,
+ * task progress, batch lifecycle, download progress, and navigation) and
+ * pipes them into the Zustand store. Cleans up all listeners on unmount.
+ */
+
 import { useEffect } from 'react'
 import { useAppStore } from '../stores/appStore'
 
@@ -14,6 +24,7 @@ export function useIPC(): void {
     setFFmpegChecking,
     setShowSetup,
     setSystemInfo,
+    setView,
     addLog,
     updateTask,
     setTasks,
@@ -100,6 +111,10 @@ export function useIPC(): void {
       setDownloadProgress(progress)
     })
 
+    const unsubNavigate = window.api.onNavigate?.((view: string) => {
+      setView(view as any)
+    })
+
     return () => {
       cancelled = true
       unsubLog?.()
@@ -109,6 +124,7 @@ export function useIPC(): void {
       unsubPaused?.()
       unsubResumed?.()
       unsubDownload?.()
+      unsubNavigate?.()
     }
   }, [])
 }

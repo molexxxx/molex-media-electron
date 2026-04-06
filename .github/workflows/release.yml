@@ -1,7 +1,7 @@
-# ─────────────────────────────────────────────────────
+# -----------------------------------------------------
 # Release — Auto-generate releases with changelogs
 # Triggered by pushing a version tag: v*.*.*
-# ─────────────────────────────────────────────────────
+# -----------------------------------------------------
 name: Release
 
 on:
@@ -13,8 +13,28 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    name: Test & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: TypeScript type check
+        run: npx tsc -b --noEmit
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
   release:
     name: Release (${{ matrix.os }})
+    needs: test
     strategy:
       fail-fast: false
       matrix:

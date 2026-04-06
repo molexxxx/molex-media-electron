@@ -1,3 +1,13 @@
+/**
+ * @module main/ffmpeg/bootstrap
+ * @description FFmpeg/FFprobe binary download and installation.
+ *
+ * Detects the host platform and architecture, downloads the appropriate
+ * FFmpeg build from GitHub releases, extracts the archive, and verifies
+ * the installation by running `ffmpeg -version`. Reports progress
+ * percentage back to the renderer for the setup wizard UI.
+ */
+
 import * as https from 'https'
 import * as http from 'http'
 import * as fs from 'fs'
@@ -38,10 +48,20 @@ const DOWNLOAD_URLS: Record<string, { url: string; type: 'zip' | 'tar' }> = {
 
 const FFPROBE_MAC_URL = 'https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip'
 
+/**
+ * Returns the platform-specific executable name (appends `.exe` on Windows).
+ * @param base - The base binary name (e.g. `"ffmpeg"`).
+ */
 function getExecutableName(base: string): string {
   return process.platform === 'win32' ? `${base}.exe` : base
 }
 
+/**
+ * Searches for existing FFmpeg and FFprobe binaries, first in the app's
+ * data directory and then in the system PATH.
+ *
+ * @returns The paths to both binaries, or `null` if neither location has them.
+ */
 export async function findSystemFFmpeg(): Promise<FFmpegPaths | null> {
   const ffmpegName = getExecutableName('ffmpeg')
   const ffprobeName = getExecutableName('ffprobe')
@@ -69,6 +89,11 @@ export async function findSystemFFmpeg(): Promise<FFmpegPaths | null> {
   return null
 }
 
+/**
+ * Searches directories listed in `$PATH` for an executable by name.
+ * @param name - Base binary name to look for.
+ * @returns The first matching absolute path, or `null`.
+ */
 async function findInPath(name: string): Promise<string | null> {
   const execName = getExecutableName(name)
   const pathDirs = (process.env.PATH || '').split(path.delimiter)
@@ -85,6 +110,11 @@ async function findInPath(name: string): Promise<string | null> {
   return null
 }
 
+/**
+ * Runs `ffmpeg -version` to verify the binary is functional.
+ * @param binPath - Absolute path to the binary to verify.
+ * @returns `true` if the binary produces valid version output.
+ */
 async function verifyBinary(binPath: string): Promise<boolean> {
   return new Promise((resolve) => {
     const proc = spawn(binPath, ['-version'], { timeout: 10000 })
@@ -95,6 +125,14 @@ async function verifyBinary(binPath: string): Promise<boolean> {
   })
 }
 
+/**
+ * Downloads the content at `url`, following HTTP 3xx redirects, and
+ * reports byte-level progress to an optional callback.
+ *
+ * @param url        - The URL to download.
+ * @param onProgress - Optional callback receiving `(downloaded, total)` byte counts.
+ * @returns The downloaded file contents as a Buffer.
+ */
 function followRedirects(url: string, onProgress?: (downloaded: number, total: number) => void): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http
@@ -131,6 +169,17 @@ function followRedirects(url: string, onProgress?: (downloaded: number, total: n
   })
 }
 
+/**
+ * Downloads, extracts, and verifies FFmpeg and FFprobe for the current
+ * platform. Reports stage-based progress to the setup wizard UI.
+ *
+ * On macOS the FFprobe binary is downloaded separately from evermeet.cx
+ * because the FFmpeg-only release does not include it.
+ *
+ * @param onProgress - Callback receiving {@link BootstrapProgress} updates.
+ * @returns The absolute paths to the installed binaries.
+ * @throws If the platform is unsupported or verification fails.
+ */
 export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmpegPaths> {
   const platform = process.platform
   const config = DOWNLOAD_URLS[platform]
@@ -234,6 +283,12 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
   }
 }
 
+/**
+ * Recursively searches a directory tree for a file by exact name.
+ * @param dir  - Root directory to begin the search.
+ * @param name - Exact filename to match.
+ * @returns The first matching absolute path, or `null`.
+ */
 function findFile(dir: string, name: string): string | null {
   const entries = fs.readdirSync(dir, { withFileTypes: true })
   for (const entry of entries) {
@@ -247,6 +302,11 @@ function findFile(dir: string, name: string): string | null {
   return null
 }
 
+/**
+ * Runs `ffmpeg -version` and extracts the version string.
+ * @param ffmpegPath - Absolute path to the FFmpeg binary.
+ * @returns The version string (e.g. `"6.1-full_build"`) or `"unknown"`.
+ */
 export async function getFFmpegVersion(ffmpegPath: string): Promise<string> {
   return new Promise((resolve) => {
     const proc = spawn(ffmpegPath, ['-version'], { timeout: 10000 })

@@ -1,4 +1,4 @@
-# Contributing to molexAudio
+# Contributing to molexMedia
 
 ## Getting Started
 
@@ -11,8 +11,8 @@
 ### Setup
 
 ```bash
-git clone https://github.com/molex/molex-audio-electron.git
-cd molex-audio-electron
+git clone https://github.com/molex/molex-media-electron.git
+cd molex-media-electron
 npm install
 npm run dev
 ```
@@ -92,7 +92,7 @@ npm run package:linux  # Linux (.AppImage)
 
 ## Reporting Bugs
 
-Use the [Bug Report template](https://github.com/molex/molex-audio-electron/issues/new?template=bug_report.yml). Include:
+Use the [Bug Report template](https://github.com/molex/molex-media-electron/issues/new?template=bug_report.yml). Include:
 
 - OS and version
 - App version

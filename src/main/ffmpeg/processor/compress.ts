@@ -1,0 +1,142 @@
+/**
+ * @module main/ffmpeg/processor/compress
+ * @description Media file compression.
+ *
+ * Compresses video files using CRF-based H.264 encoding with optional
+ * target-size bitrate limiting, and audio-only files using AAC or FLAC.
+ * Supports four quality presets: lossless, high, medium, and low.
+ */
+
+import * as path from 'path'
+import * as fs from 'fs'
+import { getConfig } from '../../config'
+import { logger } from '../../logger'
+import { probeMedia, formatDuration, formatFileSize } from '../probe'
+import { runCommand, parseProgress } from '../runner'
+import {
+  type ProcessingTask,
+  type TaskProgressCallback,
+  createTempPath,
+  cleanupTemp,
+  formatElapsed
+} from './types'
+
+/**
+ * Compress a media file using quality-preset or target-size encoding.
+ *
+ * For video files the encoder is `libx264` with CRF quality control.
+ * When a target size (MB) is provided, a constrained bitrate is
+ * calculated instead.  Audio-only files are compressed with AAC (lossy)
+ * or FLAC (lossless preset).
+ *
+ * @param task        - The processing task (mutated with status updates).
+ * @param onProgress  - Callback invoked on every status / progress change.
+ * @param abortSignal - Optional abort controller for cancellation.
+ * @returns The completed (or errored / cancelled) task.
+ */
+export async function compressFile(
+  task: ProcessingTask,
+  onProgress: TaskProgressCallback,
+  abortSignal?: AbortController
+): Promise<ProcessingTask> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpegPath
+  if (!ffmpegPath) { task.status = 'error'; task.error = 'FFmpeg not configured'; onProgress(task); return task }
+
+  const opts = task.compressOptions || { targetSizeMB: 0, quality: 'high' }
+
+  task.status = 'analyzing'
+  task.startedAt = Date.now()
+  task.message = 'Analyzing media...'
+  onProgress(task)
+
+  try {
+    const info = await probeMedia(task.filePath)
+    task.mediaInfo = info
+    task.inputSize = parseInt(info.format.size, 10) || 0
+    const totalDuration = parseFloat(info.format.duration) || 0
+
+    logger.info(`Compressing: ${task.fileName} (${opts.quality} quality)`)
+
+    task.status = 'processing'
+    task.message = `Compressing (${opts.quality} quality)...`
+    task.progress = 5
+    onProgress(task)
+
+    const tempPath = createTempPath(task.filePath, config.tempSuffix)
+
+    /** Quality preset → CRF value for H.264. */
+    const crfMap: Record<string, number> = { lossless: 0, high: 18, medium: 23, low: 28 }
+    const crf = crfMap[opts.quality] ?? 23
+
+    const args = ['-y', '-i', task.filePath, '-threads', '0']
+
+    if (info.isVideoFile) {
+      args.push('-c:v', 'libx264', '-preset', opts.quality === 'lossless' ? 'veryslow' : 'medium', '-crf', String(crf))
+      if (opts.targetSizeMB > 0 && totalDuration > 0) {
+        const targetBits = opts.targetSizeMB * 8 * 1024 * 1024
+        const audioBitrate = 128000
+        const videoBitrate = Math.max(100000, Math.floor((targetBits / totalDuration) - audioBitrate))
+        args.length = 5 // reset after -threads 0
+        args.push('-c:v', 'libx264', '-b:v', String(videoBitrate), '-maxrate', String(videoBitrate * 2), '-bufsize', String(videoBitrate * 4))
+      }
+      args.push('-c:a', 'aac', '-b:a', opts.quality === 'low' ? '128k' : '256k')
+    } else {
+      // Audio-only compression
+      const audioBitrates: Record<string, string> = { lossless: '0', high: '256k', medium: '192k', low: '128k' }
+      if (opts.quality === 'lossless') {
+        args.push('-c:a', 'flac')
+      } else {
+        args.push('-c:a', 'aac', '-b:a', audioBitrates[opts.quality])
+      }
+    }
+
+    if (info.isVideoFile && config.preserveSubtitles) args.push('-c:s', 'copy')
+    args.push(tempPath)
+
+    const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
+      const progress = parseProgress(line)
+      if (progress && totalDuration > 0) {
+        const pct = Math.min(95, 5 + Math.round((progress.time / totalDuration) * 90))
+        task.progress = pct
+        task.message = `Compressing... ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+        onProgress(task)
+      }
+    })
+
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    const result = await promise
+
+    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(tempPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
+    if (result.code !== 0) { cleanupTemp(tempPath); throw new Error(`Compression failed (code ${result.code})`) }
+
+    task.status = 'finalizing'
+    task.message = 'Finalizing...'
+    task.progress = 96
+    onProgress(task)
+
+    if (config.overwriteOriginal) {
+      fs.unlinkSync(task.filePath)
+      fs.renameSync(tempPath, task.filePath)
+      task.outputPath = task.filePath
+    } else {
+      const outDir = config.outputDirectory || path.dirname(task.filePath)
+      const outPath = path.join(outDir, `compressed_${path.basename(task.filePath)}`)
+      fs.renameSync(tempPath, outPath)
+      task.outputPath = outPath
+    }
+
+    task.outputSize = fs.statSync(task.outputPath!).size
+    const ratio = task.inputSize ? Math.round((1 - task.outputSize / task.inputSize) * 100) : 0
+    task.status = 'complete'
+    task.progress = 100
+    task.completedAt = Date.now()
+    task.message = `Compressed (${ratio}% smaller) in ${formatElapsed(task.startedAt!, task.completedAt)}`
+    logger.success(`Compressed: ${task.fileName} (${formatFileSize(task.inputSize!)} → ${formatFileSize(task.outputSize)}, ${ratio}% reduction)`)
+    onProgress(task)
+    return task
+  } catch (err: any) {
+    task.status = 'error'; task.error = err.message; task.message = `Error: ${err.message}`; task.completedAt = Date.now()
+    logger.error(`Failed to compress ${task.fileName}: ${err.message}`); onProgress(task); return task
+  }
+}

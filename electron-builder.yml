@@ -12,6 +12,7 @@ files:
   - '!{tailwind.config.js,postcss.config.js}'
 win:
   executableName: molexMedia
+  icon: build/icon.ico
   target:
     - target: nsis
       arch:
@@ -21,7 +22,13 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
 mac:
+  icon: build/icon.png
   entitlementsInherit: build/entitlements.mac.plist
   target:
     - target: dmg
@@ -29,9 +36,10 @@ mac:
         - x64
         - arm64
 linux:
+  icon: build/icon.png
   target:
     - target: AppImage
       arch:
         - x64
   maintainer: molex
-  category: Audio
+  category: AudioVideo

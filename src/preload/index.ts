@@ -1,4 +1,15 @@
-import { contextBridge, ipcRenderer } from 'electron'
+/**
+ * @module preload/index
+ * @description Electron preload script — secure bridge between renderer and main.
+ *
+ * Exposes a curated `window.api` object to the renderer via
+ * `contextBridge.exposeInMainWorld`. Each method is a thin wrapper
+ * around `ipcRenderer.invoke` or `ipcRenderer.on`, providing type-safe
+ * access to file operations, FFmpeg processing, configuration, yt-dlp,
+ * window controls, and system queries without granting full Node access.
+ */
+
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
@@ -38,8 +49,34 @@ const api = {
   getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
 
   // Editor
-  cutMedia: (filePath: string, inPoint: number, outPoint: number) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint),
-  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[]) => ipcRenderer.invoke('editor:merge', segments),
+  cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
+  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string }) => ipcRenderer.invoke('editor:merge', segments, options),
+  probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
+  remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
+
+  // File utilities
+  getFilePath: (file: File) => webUtils.getPathForFile(file),
+
+  // Popout player
+  popoutPlayer: (state?: any) => ipcRenderer.invoke('player:popout', state),
+  isPopout: () => ipcRenderer.invoke('player:isPopout'),
+  togglePin: () => ipcRenderer.invoke('player:togglePin'),
+  isPinned: () => ipcRenderer.invoke('player:isPinned'),
+  returnPlayerState: (state: any) => ipcRenderer.send('player:returnState', state),
+  onPopoutClosed: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('player:popout-closed', listener)
+    return () => ipcRenderer.removeListener('player:popout-closed', listener)
+  },
+  onReceivePlayerState: (cb: (state: any) => void) => {
+    const listener = (_: any, state: any) => cb(state)
+    ipcRenderer.on('player:receiveState', listener)
+    return () => ipcRenderer.removeListener('player:receiveState', listener)
+  },
+
+  // YouTube / yt-dlp
+  resolvePlaylist: (url: string) => ipcRenderer.invoke('ytdlp:resolve', url),
+  getStreamUrl: (videoUrl: string, quality?: string) => ipcRenderer.invoke('ytdlp:getStreamUrl', videoUrl, quality),
   onPaused: (cb: () => void) => {
     const listener = () => cb()
     ipcRenderer.on('process:paused', listener)
@@ -81,10 +118,22 @@ const api = {
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
   showInFolder: (filePath: string) => ipcRenderer.invoke('shell:openPath', filePath),
 
+  // URL History
+  getUrlHistory: () => ipcRenderer.invoke('history:get'),
+  removeUrlHistory: (url: string) => ipcRenderer.invoke('history:remove', url),
+  clearUrlHistory: () => ipcRenderer.invoke('history:clear'),
+
   // Window controls
   windowMinimize: () => ipcRenderer.send('window:minimize'),
   windowMaximize: () => ipcRenderer.send('window:maximize'),
-  windowClose: () => ipcRenderer.send('window:close')
+  windowClose: () => ipcRenderer.send('window:close'),
+
+  // Navigation (from tray context menu)
+  onNavigate: (cb: (view: string) => void) => {
+    const listener = (_: any, view: string) => cb(view)
+    ipcRenderer.on('navigate', listener)
+    return () => ipcRenderer.removeListener('navigate', listener)
+  }
 }
 
 if (process.contextIsolated) {

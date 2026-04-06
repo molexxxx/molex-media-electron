@@ -1,0 +1,213 @@
+﻿/**
+ * @module components/editor/MediaEditor
+ * @description Non-linear media editor for trimming, merging, and inspecting files.
+ *
+ * Thin orchestrator that delegates playback to {@link useEditorPlayback},
+ * inspect logic to {@link useEditorInspect}, timeline interaction to
+ * {@link useTimelineDrag}, and renders focused sub-components.
+ */
+
+import React, { useState, useCallback } from 'react'
+import { type Clip, type CutMode, ALL_EXTS, VIDEO_EXTS } from './types'
+import { useEditorPlayback } from './hooks/useEditorPlayback'
+import { useEditorInspect } from './hooks/useEditorInspect'
+import { useTimelineDrag } from './hooks/useTimelineDrag'
+import { EditorHeader } from './components/EditorHeader'
+import { PreviewArea } from './components/PreviewArea'
+import { ClipSidebar } from './components/ClipSidebar'
+import { Timeline } from './components/Timeline'
+import { InspectTab } from './components/InspectTab'
+
+export default function MediaEditor(): React.JSX.Element {
+  const [clips, setClips] = useState<Clip[]>([])
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [processing, setProcessing] = useState(false)
+  const [message, setMessage] = useState('')
+  const [editorTab, setEditorTab] = useState<'trim' | 'inspect'>('trim')
+  const [cutMode, setCutMode] = useState<CutMode>('precise')
+  const [outputFormat, setOutputFormat] = useState('')
+
+  const clip = clips[activeIdx] || null
+  const clipDuration = clip ? clip.outPoint - clip.inPoint : 0
+
+  // -- Hooks --
+  const { playing, currentTime, videoRef, audioRef, canvasRef, togglePlay, seek } = useEditorPlayback(clip)
+  const inspect = useEditorInspect(clip, editorTab, activeIdx)
+  const { timelineRef, handleTimelineMouseDown } = useTimelineDrag(clip, activeIdx, seek, setClips)
+
+  // -- File loading --
+  const loadFile = useCallback((file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    if (!ALL_EXTS.includes(ext)) return
+
+    const isVideo = VIDEO_EXTS.includes(ext)
+    const objectUrl = URL.createObjectURL(file)
+    const filePath = window.api.getFilePath(file)
+
+    const tempEl = isVideo ? document.createElement('video') : new Audio()
+    tempEl.preload = 'metadata'
+    tempEl.src = objectUrl
+    const cleanup = (): void => { tempEl.removeAttribute('src'); tempEl.load() }
+
+    tempEl.addEventListener('loadedmetadata', () => {
+      const dur = tempEl.duration
+      if (!dur || !isFinite(dur)) { cleanup(); URL.revokeObjectURL(objectUrl); return }
+      const newClip: Clip = {
+        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: file.name, path: filePath, objectUrl, duration: dur, isVideo,
+        inPoint: 0, outPoint: dur
+      }
+      setClips((prev) => { setActiveIdx(prev.length); return [...prev, newClip] })
+      cleanup()
+    })
+    tempEl.addEventListener('error', () => { URL.revokeObjectURL(objectUrl); cleanup() })
+  }, [])
+
+  const handleFileSelect = useCallback(() => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.accept = ALL_EXTS.map((e) => `.${e}`).join(',')
+    input.onchange = () => { for (const f of Array.from(input.files || [])) loadFile(f) }
+    input.click()
+  }, [loadFile])
+
+  // -- Clip manipulation --
+  const setIn = useCallback(() => {
+    if (!clip) return
+    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, inPoint: currentTime } : c))
+  }, [activeIdx, currentTime, clip])
+
+  const setOut = useCallback(() => {
+    if (!clip) return
+    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, outPoint: currentTime } : c))
+  }, [activeIdx, currentTime, clip])
+
+  const resetPoints = useCallback(() => {
+    if (!clip) return
+    setClips((prev) => prev.map((c, i) => i === activeIdx ? { ...c, inPoint: 0, outPoint: c.duration } : c))
+  }, [activeIdx, clip])
+
+  const removeClip = useCallback((idx: number) => {
+    setClips((prev) => {
+      const next = prev.filter((_, i) => i !== idx)
+      URL.revokeObjectURL(prev[idx].objectUrl)
+      setActiveIdx((ai) => Math.min(ai, Math.max(0, next.length - 1)))
+      return next
+    })
+  }, [])
+
+  // -- Export --
+  const handleCut = useCallback(async () => {
+    if (!clip) return
+    setProcessing(true)
+    setMessage('')
+    const opts = { mode: cutMode, outputFormat: outputFormat || undefined }
+    try {
+      const result = await window.api.cutMedia(clip.path, clip.inPoint, clip.outPoint, opts)
+      setMessage(result?.success
+        ? `Saved: ${result.outputPath.split(/[\\/]/).pop()}`
+        : `Error: ${result?.error || 'Cut failed'}`)
+    } catch (err: any) {
+      setMessage(`Error: ${err.message}`)
+    } finally {
+      setProcessing(false)
+    }
+  }, [clip, cutMode, outputFormat])
+
+  const handleMerge = useCallback(async () => {
+    if (clips.length < 2) return
+    setProcessing(true)
+    setMessage('')
+    const opts = { mode: cutMode, outputFormat: outputFormat || undefined }
+    try {
+      const segments = clips.map((c) => ({ path: c.path, inPoint: c.inPoint, outPoint: c.outPoint }))
+      const result = await window.api.mergeMedia(segments, opts)
+      setMessage(result?.success
+        ? `Merged: ${result.outputPath.split(/[\\/]/).pop()}`
+        : `Error: ${result?.error || 'Merge failed'}`)
+    } catch (err: any) {
+      setMessage(`Error: ${err.message}`)
+    } finally {
+      setProcessing(false)
+    }
+  }, [clips, cutMode, outputFormat])
+
+  const handleRemux = useCallback(async () => {
+    setProcessing(true)
+    await inspect.handleRemux()
+    setProcessing(false)
+  }, [inspect.handleRemux])
+
+  return (
+    <div className="flex flex-col h-full animate-fade-in gap-4">
+      <EditorHeader
+        clip={clip}
+        clipDuration={clipDuration}
+        editorTab={editorTab}
+        onSetEditorTab={setEditorTab}
+        onFileSelect={handleFileSelect}
+      />
+
+      <div className={editorTab === 'trim' ? 'flex-1 flex flex-col gap-4 min-h-0' : 'hidden'}>
+        <div className="flex-1 flex gap-4 min-h-0">
+          <PreviewArea
+            clip={clip}
+            videoRef={videoRef}
+            audioRef={audioRef}
+            canvasRef={canvasRef}
+            onLoadFile={loadFile}
+          />
+          {clips.length > 0 && (
+            <ClipSidebar
+              clips={clips}
+              activeIdx={activeIdx}
+              processing={processing}
+              onSetActiveIdx={setActiveIdx}
+              onRemoveClip={removeClip}
+              onMerge={handleMerge}
+            />
+          )}
+        </div>
+        {clip && (
+          <Timeline
+            clip={clip}
+            currentTime={currentTime}
+            playing={playing}
+            processing={processing}
+            clipDuration={clipDuration}
+            message={message}
+            cutMode={cutMode}
+            outputFormat={outputFormat}
+            timelineRef={timelineRef}
+            onTimelineMouseDown={handleTimelineMouseDown}
+            onTogglePlay={togglePlay}
+            onSetIn={setIn}
+            onSetOut={setOut}
+            onResetPoints={resetPoints}
+            onCut={handleCut}
+            onSetCutMode={setCutMode}
+            onSetOutputFormat={setOutputFormat}
+          />
+        )}
+      </div>
+
+      <div className={editorTab === 'inspect' ? 'flex-1 min-h-0 overflow-auto space-y-4' : 'hidden'}>
+        <InspectTab
+          hasClip={!!clip}
+          probing={inspect.probing}
+          probeData={inspect.probeData}
+          processing={processing}
+          inspectMsg={inspect.inspectMsg}
+          streamEnabled={inspect.streamEnabled}
+          editMeta={inspect.editMeta}
+          editDispositions={inspect.editDispositions}
+          onSetStreamEnabled={inspect.setStreamEnabled}
+          onSetEditMeta={inspect.setEditMeta}
+          onToggleDisposition={inspect.toggleStreamDisposition}
+          onRemux={handleRemux}
+        />
+      </div>
+    </div>
+  )
+}

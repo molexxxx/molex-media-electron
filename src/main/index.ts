@@ -1,66 +1,56 @@
-import { app, shell, BrowserWindow } from 'electron'
-import * as path from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+/**
+ * @module main/index
+ * @description Electron main process entry point.
+ *
+ * Orchestrates app lifecycle events (ready, activate, window-all-closed,
+ * before-quit), registers IPC handlers, and wires together the protocol,
+ * tray, and window sub-modules.
+ */
+
+import { app, BrowserWindow } from 'electron'
+import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerIPC } from './ipc'
 import { loadConfig } from './config'
 import { logger } from './logger'
 import { killAllProcesses } from './ffmpeg/runner'
-import { ipcMain } from 'electron'
+import { cleanupAudioCache } from './ytdlp'
+import { registerMediaScheme, registerMediaHandler } from './protocol'
+import { createTray, destroyTray, hasTray, setTrayCallbacks } from './tray'
+import {
+  createWindow,
+  showMainWindow,
+  showPopout,
+  registerGlobalIPC,
+  isQuitting,
+  setQuitting
+} from './windows'
 
-let mainWindow: BrowserWindow | null = null
+// Re-export for IPC helpers (they import updateTrayProgress from here)
+export { updateTrayProgress } from './tray'
 
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 960,
-    minHeight: 640,
-    show: false,
-    frame: false,
-    titleBarStyle: 'hidden',
-    backgroundColor: '#080b14',
-    icon: path.join(__dirname, '../../resources/icon.png'),
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  })
+// Register media:// as a privileged scheme BEFORE app is ready
+registerMediaScheme()
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
-  })
+// Suppress Chromium GPU disk cache errors (harmless but noisy)
+app.commandLine.appendSwitch('disk-cache-size', '0')
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+// --- Single instance lock -----------------------
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
-  registerIPC(mainWindow)
-
-  // Window controls
-  ipcMain.on('window:minimize', () => mainWindow?.minimize())
-  ipcMain.on('window:maximize', () => {
-    if (mainWindow?.isMaximized()) mainWindow.unmaximize()
-    else mainWindow?.maximize()
-  })
-  ipcMain.on('window:close', () => mainWindow?.close())
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
-  }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    showMainWindow()
   })
 }
 
 app.whenReady().then(async () => {
   logger.init()
   logger.info('molexMedia starting up...')
+
+  registerMediaHandler()
 
   electronApp.setAppUserModelId('com.molex.media')
 
@@ -69,6 +59,18 @@ app.whenReady().then(async () => {
   })
 
   await loadConfig()
+  registerIPC()
+  registerGlobalIPC()
+
+  // Wire tray callbacks (avoids circular dependency tray ↔ windows)
+  setTrayCallbacks({
+    showMainWindow,
+    showPopout: () => showPopout(),
+    quit: () => { setQuitting(true); app.quit() }
+  })
+  createTray()
+
+  cleanupAudioCache()
   createWindow()
 
   app.on('activate', () => {
@@ -77,12 +79,16 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
+  if (hasTray() && !isQuitting) return
   killAllProcesses()
+  destroyTray()
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 app.on('before-quit', () => {
+  setQuitting(true)
   killAllProcesses()
+  destroyTray()
 })

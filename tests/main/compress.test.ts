@@ -1,0 +1,238 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../../src/main/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), success: vi.fn(), ffmpeg: vi.fn() }
+}))
+
+const mockGetConfig = vi.fn()
+vi.mock('../../src/main/config', () => ({
+  getConfig: (...a: any[]) => mockGetConfig(...a)
+}))
+
+const mockProbeMedia = vi.fn()
+vi.mock('../../src/main/ffmpeg/probe', () => ({
+  probeMedia: (...a: any[]) => mockProbeMedia(...a),
+  formatDuration: vi.fn((s: number) => `${Math.floor(s)}s`),
+  formatFileSize: vi.fn((b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`)
+}))
+
+const mockRunCommand = vi.fn()
+vi.mock('../../src/main/ffmpeg/runner', () => ({
+  runCommand: (...a: any[]) => mockRunCommand(...a),
+  parseProgress: vi.fn(() => ({ time: 60, speed: '2x', size: '2000kB' }))
+}))
+
+vi.mock('fs', () => ({
+  existsSync: vi.fn(() => false),
+  unlinkSync: vi.fn(),
+  renameSync: vi.fn(),
+  statSync: vi.fn(() => ({ size: 3000000 })),
+  mkdirSync: vi.fn()
+}))
+
+import type { ProcessingTask } from '../../src/main/ffmpeg/processor/types'
+import { compressFile } from '../../src/main/ffmpeg/processor/compress'
+
+const baseConfig = {
+  ffmpegPath: '/usr/bin/ffmpeg',
+  audioBitrate: '256k',
+  tempSuffix: '_temp',
+  overwriteOriginal: true,
+  outputDirectory: '',
+  preserveSubtitles: true,
+  preserveMetadata: true
+}
+
+const videoProbe = {
+  audioStreams: [{ index: 1, codec_name: 'aac', channels: 2, sample_rate: '48000' }],
+  videoStreams: [{ index: 0, codec_name: 'h264', width: 1920, height: 1080 }],
+  subtitleStreams: [],
+  format: { duration: '120', size: '50000000', format_name: 'matroska' },
+  isVideoFile: true,
+  isAudioOnly: false
+}
+
+const audioProbe = {
+  audioStreams: [{ index: 0, codec_name: 'mp3', channels: 2, sample_rate: '44100' }],
+  videoStreams: [],
+  subtitleStreams: [],
+  format: { duration: '240', size: '8000000', format_name: 'mp3' },
+  isVideoFile: false,
+  isAudioOnly: true
+}
+
+function makeTask(overrides?: Partial<ProcessingTask>): ProcessingTask {
+  return {
+    id: 'comp-1',
+    filePath: '/media/video.mkv',
+    fileName: 'video.mkv',
+    operation: 'compress',
+    compressOptions: { targetSizeMB: 0, quality: 'high' },
+    status: 'queued',
+    progress: 0,
+    message: '',
+    ...overrides
+  }
+}
+
+describe('compressFile', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetConfig.mockResolvedValue(baseConfig)
+    mockProbeMedia.mockResolvedValue(videoProbe)
+  })
+
+  it('returns error when ffmpegPath is not configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, ffmpegPath: '' })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+  })
+
+  it('compresses video with high quality preset', async () => {
+    mockRunCommand.mockImplementation((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) onLine('time=00:01:00.00 speed=2x')
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 0, quality: 'high' } }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses video with medium quality', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 0, quality: 'medium' } }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses video with low quality', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 0, quality: 'low' } }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses video with target size', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: { targetSizeMB: 25, quality: 'high' } }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('compresses audio-only files', async () => {
+    mockProbeMedia.mockResolvedValue(audioProbe)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const task = makeTask({
+      filePath: '/media/song.mp3',
+      fileName: 'song.mp3',
+      compressOptions: { targetSizeMB: 0, quality: 'medium' }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(task, onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('uses lossless preset for audio (FLAC)', async () => {
+    mockProbeMedia.mockResolvedValue(audioProbe)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const task = makeTask({
+      filePath: '/media/song.mp3',
+      fileName: 'song.mp3',
+      compressOptions: { targetSizeMB: 0, quality: 'lossless' }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(task, onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('handles abort signal', async () => {
+    const abort = new AbortController()
+    abort.abort()
+
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: true, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress, abort)
+    expect(result.status).toBe('cancelled')
+  })
+
+  it('returns error when ffmpeg fails', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'encoding error' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+  })
+
+  it('uses default compressOptions when not provided', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask({ compressOptions: undefined }), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('uses output directory when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/output' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('fires abort listener during active processing', async () => {
+    const abort = new AbortController()
+    const killMock = vi.fn()
+
+    mockRunCommand.mockImplementation(() => {
+      queueMicrotask(() => abort.abort())
+      return {
+        promise: Promise.resolve({ code: 0, killed: true, stdout: '', stderr: '' }),
+        process: { kill: killMock }
+      }
+    })
+
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress, abort)
+    expect(result.status).toBe('cancelled')
+    expect(killMock).toHaveBeenCalledWith('SIGTERM')
+  })
+})

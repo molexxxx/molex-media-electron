@@ -3,22 +3,22 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo.svg">
   <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo.svg">
-  <img alt="molexAudio" src=".github/assets/logo.svg" width="500">
+  <img alt="molexMedia" src=".github/assets/logo.svg" width="500">
 </picture>
 
 <br/>
 
-**Cross-platform audio normalization & processing powered by FFmpeg**
+**Cross-platform media processing toolkit powered by FFmpeg**
 
-[![CI](https://github.com/tonywied17/molex-audio-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/molex-audio-electron/actions/workflows/ci.yml)
-[![Build](https://github.com/tonywied17/molex-audio-electron/actions/workflows/build.yml/badge.svg)](https://github.com/tonywied17/molex-audio-electron/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/tonywied17/molex-audio-electron?include_prereleases&style=flat-square&color=7c3aed)](https://github.com/tonywied17/molex-audio-electron/releases)
-[![License](https://img.shields.io/github/license/tonywied17/molex-audio-electron?style=flat-square&color=a78bfa)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/tonywied17/molex-audio-electron/total?style=flat-square&color=4f46e5)](https://github.com/tonywied17/molex-audio-electron/releases)
+[![CI](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml)
+[![Build](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/tonywied17/molex-media-electron?include_prereleases&style=flat-square&color=7c3aed)](https://github.com/tonywied17/molex-media-electron/releases)
+[![License](https://img.shields.io/github/license/tonywied17/molex-media-electron?style=flat-square&color=a78bfa)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/tonywied17/molex-media-electron/total?style=flat-square&color=4f46e5)](https://github.com/tonywied17/molex-media-electron/releases)
 
 <br/>
 
-[Download](#-install) · [Features](#-features) · [Quick Start](#-quick-start) · [Contributing](CONTRIBUTING.md)
+[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](CONTRIBUTING.md)
 
 <br/>
 
@@ -26,46 +26,57 @@
 
 ---
 
-## ✨ Features
+## Features
 
 <table>
 <tr>
 <td width="50%">
 
-**🎚️ Audio Processing**
-- ITU-R BS.1770-4 loudness normalization
-- Target LUFS, True Peak, and Loudness Range
-- Precise percentage-based volume boosting
-- Per-stream codec inheritance with smart fallback
-- Subtitle stream preservation
+**Batch Audio Processing**
+- ITU-R BS.1770-4 two-pass loudness normalization
+- Target LUFS, True Peak, and Loudness Range controls
+- Percentage-based volume boost / reduce
+- Format conversion with codec inheritance & smart fallback
+- Audio extraction from video files
+- Video compression with configurable quality
+- Subtitle and metadata stream preservation
+- 17+ format support (MP4, MKV, AVI, MOV, MP3, WAV, FLAC, OGG, M4A, AAC…)
 
 </td>
 <td width="50%">
 
-**⚡ Performance**
-- Concurrent batch processing with configurable workers
-- Real-time progress with speed & ETA
-- 17+ format support (MP4, MKV, AVI, MOV, MP3, WAV, FLAC, OGG, M4A, AAC…)
+**Performance & Workflow**
+- Concurrent batch processing with configurable worker count
+- Real-time progress tracking with speed & ETA per task
+- Drag-and-drop file queueing
+- Desktop notifications on batch completion
+- Minimize to system tray
+- Auto-save settings with instant apply
+- Overwrite original or save alongside
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-**🖥️ Modern UI**
-- Dark theme with glassmorphism
-- Smooth Framer Motion animations
-- Drag-and-drop file queue
-- Filterable log viewer with FFmpeg debug output
+**Media Editor**
+- Precision timeline with draggable in/out points
+- Cut and trim audio & video clips
+- Merge multiple clips into one file
+- Stream inspector with per-stream toggle, metadata editing, and disposition flags
+- Remux without re-encoding
 
 </td>
 <td width="50%">
 
-**🔧 Developer Experience**
-- Auto FFmpeg download & setup wizard
-- Cross-platform builds (Windows, macOS, Linux)
-- Typed IPC with context isolation
-- Zustand state management
+**Media Player**
+- Local file playback and playlist management
+- YouTube streaming via yt-dlp (auto-downloaded)
+- YouTube playlist resolution and queueing
+- Shuffle, repeat (one / all), and drag-to-reorder
+- 8 real-time audio visualizations: Bars, Waveform, Radial, Spectrum, Space, DMT, Milkdrop, and Plasma
+- Beat detection and loudness-reactive visuals
+- Smart cookie caching for authenticated YouTube content
 
 </td>
 </tr>
@@ -73,30 +84,33 @@
 
 ---
 
-## 📥 Install
+## Install
 
 Grab the latest release for your platform:
 
 | Platform | Download | Format |
 |----------|----------|--------|
-| **Windows** | [Latest Release](https://github.com/molex/molex-audio-electron/releases/latest) | `.exe` (NSIS installer) |
-| **macOS** | [Latest Release](https://github.com/molex/molex-audio-electron/releases/latest) | `.dmg` (Intel & Apple Silicon) |
-| **Linux** | [Latest Release](https://github.com/molex/molex-audio-electron/releases/latest) | `.AppImage` |
+| **Windows** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.exe` (NSIS installer) |
+| **macOS** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.dmg` (Intel & Apple Silicon) |
+| **Linux** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.AppImage` |
 
-> FFmpeg is downloaded automatically on first launch — no manual setup required.
+> FFmpeg and yt-dlp are downloaded automatically on first launch — no manual setup required.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Clone & install
-git clone https://github.com/tonywied17/molex-audio-electron.git
-cd molex-audio-electron
+git clone https://github.com/tonywied17/molex-media-electron.git
+cd molex-media-electron
 npm install
 
 # Development (hot-reload)
 npm run dev
+
+# Run tests
+npm test
 
 # Build for production
 npm run build
@@ -110,64 +124,29 @@ npm run package:linux    # Linux
 
 ---
 
-## 🏗️ Architecture
+## Tech Stack
 
-```
-src/
-├── main/                   # Electron main process
-│   ├── index.ts            # Window creation & app lifecycle
-│   ├── ipc.ts              # IPC handler registration
-│   ├── config.ts           # Persistent config (electron-store)
-│   ├── logger.ts           # Dual-output logging
-│   └── ffmpeg/
-│       ├── bootstrap.ts    # FFmpeg download & setup wizard
-│       ├── probe.ts        # ffprobe wrapper with fallbacks
-│       ├── processor.ts    # Normalize / boost / batch engine
-│       └── runner.ts       # Process execution & management
-├── preload/
-│   └── index.ts            # Context bridge (typed IPC API)
-└── renderer/               # React + Vite + Tailwind
-    └── src/
-        ├── App.tsx
-        ├── stores/         # Zustand state management
-        ├── hooks/          # IPC event subscriptions
-        └── components/     # UI components
-```
+- **Electron** — Cross-platform desktop framework
+- **React 18** — UI with functional components and hooks
+- **TypeScript** — Full type safety across main and renderer
+- **Vite** — Build tooling via electron-vite
+- **Tailwind CSS** — Utility-first styling
+- **Zustand** — Lightweight state management
+- **electron-store** — Persistent configuration
+- **electron-builder** — Packaging & distribution
+- **Vitest** — Unit and integration testing
+- **yt-dlp** — YouTube audio streaming and playlist resolution
+- **Web Audio API** — Real-time audio analysis and visualization
 
 ---
 
-## ⚙️ Configuration
-
-Settings are persisted via `electron-store`:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| I (LUFS) | `-16.0` | Integrated loudness target |
-| TP (dBFS) | `-1.5` | True peak maximum |
-| LRA (LU) | `11.0` | Loudness range |
-| Audio Codec | `inherit` | Codec strategy per stream |
-| Bitrate | `256k` | Audio encoding bitrate |
-| Max Workers | CPU count | Concurrent processing limit |
-
----
-
-## 🔄 Release Process
-
-This project uses automated releases:
-
-1. Write code using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `perf:`, etc.)
-2. Tag a release: `git tag v3.1.0 && git push --tags`
-3. GitHub Actions builds all platforms and creates a release with auto-generated patch notes
-
-Pre-release tags (`v3.1.0-beta.1`, `-alpha`, `-rc`) are marked as pre-releases automatically.
-
----
-
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 📄 License
+---
+
+## License
 
 [MIT](LICENSE) — build cool things with it.
 
@@ -176,18 +155,3 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 <div align="center">
 <sub>Built with Electron · React · Tailwind · FFmpeg</sub>
 </div>
-
-## Tech Stack
-
-- **Electron** — Cross-platform desktop framework
-- **React 18** — UI library
-- **TypeScript** — Type safety
-- **Vite** — Build tooling (via electron-vite)
-- **Tailwind CSS** — Utility-first styling
-- **Zustand** — Lightweight state management
-- **electron-store** — Persistent configuration
-- **electron-builder** — Packaging & distribution
-
-## License
-
-MIT

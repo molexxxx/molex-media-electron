@@ -1,3 +1,13 @@
+/**
+ * @module main/ffmpeg/runner
+ * @description Low-level FFmpeg process runner with progress parsing.
+ *
+ * Wraps `child_process.spawn` to execute FFmpeg commands with real-time
+ * stderr progress parsing (time, speed, bitrate). Supports cancellation
+ * via signal, collects stderr for error diagnostics, and resolves with
+ * the combined output on completion.
+ */
+
 import { ChildProcess, spawn } from 'child_process'
 import { logger } from '../logger'
 
@@ -10,6 +20,18 @@ export interface RunCommandResult {
   killed: boolean
 }
 
+/**
+ * Spawns an FFmpeg process with the given arguments and streams stderr
+ * line-by-line to an optional callback for real-time progress parsing.
+ *
+ * The returned object exposes both the `promise` (resolves on exit)
+ * and the raw `process` handle for external cancellation.
+ *
+ * @param ffmpegPath - Absolute path to the FFmpeg binary.
+ * @param args       - CLI arguments passed to FFmpeg.
+ * @param onStderr   - Optional callback invoked for each non-empty stderr line.
+ * @returns An object with `promise` and `process`.
+ */
 export function runCommand(
   ffmpegPath: string,
   args: string[],
@@ -57,6 +79,13 @@ export function runCommand(
   return { promise, process: proc }
 }
 
+/**
+ * Parses an FFmpeg stderr progress line and extracts the current
+ * timestamp, encoding speed, and output size.
+ *
+ * @param line - A single stderr line from FFmpeg.
+ * @returns Parsed progress values, or `null` if the line is not a progress update.
+ */
 export function parseProgress(line: string): { time: number; speed: string; size: string } | null {
   const timeMatch = line.match(/time=(\d+):(\d+):(\d+)\.(\d+)/)
   const speedMatch = line.match(/speed=\s*([\d.]+)x/)
@@ -76,6 +105,7 @@ export function parseProgress(line: string): { time: number; speed: string; size
   }
 }
 
+/** Sends SIGTERM to every active FFmpeg child process and clears the tracking set. */
 export function killAllProcesses(): void {
   for (const proc of activeProcesses) {
     try {
@@ -85,6 +115,7 @@ export function killAllProcesses(): void {
   activeProcesses.clear()
 }
 
+/** Returns the number of FFmpeg child processes currently running. */
 export function getActiveProcessCount(): number {
   return activeProcesses.size
 }

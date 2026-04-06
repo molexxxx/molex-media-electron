@@ -85,17 +85,17 @@
       <animate attributeName="opacity" values="0;1" dur="0.8s" fill="freeze"/>
     </text>
 
-    <!-- "Audio" text -->
+    <!-- "Media" text -->
     <text x="172" y="5" font-family="'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif"
           font-size="56" font-weight="300" letter-spacing="-2" fill="url(#textGrad)" opacity="0.75">
-      Audio
+      Media
       <animate attributeName="opacity" values="0;0.75" dur="0.8s" begin="0.3s" fill="freeze"/>
     </text>
 
     <!-- Tagline -->
     <text x="2" y="32" font-family="'SF Pro Display', 'Inter', 'Segoe UI', system-ui, sans-serif"
           font-size="13" font-weight="400" letter-spacing="4" fill="#a78bfa" opacity="0">
-      AUDIO PROCESSING TOOL
+      MEDIA PROCESSING TOOLKIT
       <animate attributeName="opacity" values="0;0.6" dur="0.6s" begin="0.6s" fill="freeze"/>
     </text>
   </g>

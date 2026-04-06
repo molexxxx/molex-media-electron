@@ -1,0 +1,233 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// -- Shared mocks for all processor operations --
+vi.mock('../../src/main/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), success: vi.fn(), ffmpeg: vi.fn() }
+}))
+
+const mockGetConfig = vi.fn()
+vi.mock('../../src/main/config', () => ({
+  getConfig: (...a: any[]) => mockGetConfig(...a)
+}))
+
+const mockProbeMedia = vi.fn()
+const mockFormatDuration = vi.fn((s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`)
+const mockFormatFileSize = vi.fn((b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`)
+vi.mock('../../src/main/ffmpeg/probe', () => ({
+  probeMedia: (...a: any[]) => mockProbeMedia(...a),
+  formatDuration: (...a: any[]) => mockFormatDuration(...a),
+  formatFileSize: (...a: any[]) => mockFormatFileSize(...a)
+}))
+
+const mockRunCommand = vi.fn()
+const mockParseProgress = vi.fn()
+vi.mock('../../src/main/ffmpeg/runner', () => ({
+  runCommand: (...a: any[]) => mockRunCommand(...a),
+  parseProgress: (...a: any[]) => mockParseProgress(...a)
+}))
+
+vi.mock('fs', () => ({
+  existsSync: vi.fn(() => false),
+  unlinkSync: vi.fn(),
+  renameSync: vi.fn(),
+  statSync: vi.fn(() => ({ size: 5000000 })),
+  mkdirSync: vi.fn()
+}))
+
+import type { ProcessingTask } from '../../src/main/ffmpeg/processor/types'
+import { normalizeFile } from '../../src/main/ffmpeg/processor/normalize'
+
+const baseConfig = {
+  ffmpegPath: '/usr/bin/ffmpeg',
+  ffprobePath: '/usr/bin/ffprobe',
+  normalization: { I: -16, TP: -1.5, LRA: 11 },
+  audioCodec: 'inherit',
+  fallbackCodec: 'ac3',
+  audioBitrate: '256k',
+  tempSuffix: '_temp',
+  overwriteOriginal: true,
+  outputDirectory: '',
+  preserveSubtitles: true,
+  preserveMetadata: true
+}
+
+const sampleProbe = {
+  audioStreams: [{ index: 1, codec_name: 'aac', channels: 2, sample_rate: '48000', channel_layout: 'stereo' }],
+  videoStreams: [{ index: 0, codec_name: 'h264', width: 1920, height: 1080 }],
+  subtitleStreams: [],
+  format: { duration: '120', size: '10000000', format_name: 'matroska' },
+  isVideoFile: true,
+  isAudioOnly: false
+}
+
+function makeTask(overrides?: Partial<ProcessingTask>): ProcessingTask {
+  return {
+    id: 'test-1',
+    filePath: '/media/test.mkv',
+    fileName: 'test.mkv',
+    operation: 'normalize',
+    status: 'queued',
+    progress: 0,
+    message: '',
+    ...overrides
+  }
+}
+
+describe('normalizeFile', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    mockGetConfig.mockResolvedValue(baseConfig)
+    mockProbeMedia.mockResolvedValue(sampleProbe)
+    mockParseProgress.mockReturnValue({ time: 60, speed: '2x', size: '5000kB' })
+  })
+
+  it('returns error when ffmpegPath is not configured', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, ffmpegPath: '' })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('FFmpeg not configured')
+  })
+
+  it('returns error when no audio streams found', async () => {
+    mockProbeMedia.mockResolvedValue({ ...sampleProbe, audioStreams: [] })
+    const onProgress = vi.fn()
+
+    // runCommand for analysis would not be needed since we error before
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('No audio')
+  })
+
+  it('completes successfully with valid inputs', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+
+    // Analysis pass - invoke callback
+    mockRunCommand.mockImplementationOnce((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) onLine('time=00:00:30.00 speed=2x')
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+        process: { kill: vi.fn() }
+      }
+    })
+    // Encoding pass - invoke callback
+    mockRunCommand.mockImplementationOnce((_cmd: any, _args: any, onLine: any) => {
+      if (onLine) onLine('time=00:01:00.00 speed=2x')
+      return {
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: { kill: vi.fn() }
+      }
+    })
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+
+    expect(result.status).toBe('complete')
+    expect(result.progress).toBe(100)
+    expect(mockRunCommand).toHaveBeenCalledTimes(2)
+    expect(onProgress).toHaveBeenCalled()
+  })
+
+  it('reports progress via onProgress callback', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: {}
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+
+    // Should invoke onProgress for: analyzing, processing, finalizing, complete
+    expect(onProgress.mock.calls.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('handles abort signal during processing', async () => {
+    const abort = new AbortController()
+
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: {}
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: true, stdout: '', stderr: '' }),
+      process: {}
+    })
+
+    abort.abort()
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress, abort)
+
+    expect(result.status).toBe('cancelled')
+  })
+
+  it('returns error when analysis pass fails', async () => {
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'analysis error' }),
+      process: {}
+    })
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+  })
+
+  it('uses output directory when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/output' })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+  })
+
+  it('handles encode failure after analysis', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'encode error' }),
+      process: { kill: vi.fn() }
+    })
+
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('FFmpeg encode failed')
+  })
+})

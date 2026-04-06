@@ -10,6 +10,9 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "package": "electron-vite build && electron-builder --publish never",
     "package:win": "electron-vite build && electron-builder --win --publish never",
     "package:mac": "electron-vite build && electron-builder --mac --publish never",
@@ -20,19 +23,25 @@
     "@electron-toolkit/utils": "^4.0.0",
     "electron-store": "^8.2.0",
     "extract-zip": "^2.0.1",
-    "tar": "^7.4.0"
+    "tar": "^7.4.0",
+    "youtube-dl-exec": "^3.1.4"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.2",
     "autoprefixer": "^10.4.19",
     "electron": "^41.1.1",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
     "framer-motion": "^12.38.0",
+    "jsdom": "^29.0.1",
     "lucide-react": "^1.7.0",
     "postcss": "^8.4.38",
     "react": "^19.2.4",
@@ -40,6 +49,7 @@
     "react-dropzone": "^15.0.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
+    "vitest": "^4.1.2",
     "zustand": "^5.0.12"
   }
 }

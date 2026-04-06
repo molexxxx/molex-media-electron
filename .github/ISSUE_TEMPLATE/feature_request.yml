@@ -1,12 +1,12 @@
 ---
-name: ✨ Feature Request
+name: Feature Request
 description: Suggest a new feature or enhancement
 labels: [enhancement]
 body:
   - type: markdown
     attributes:
       value: |
-        Have an idea to make molexAudio better? We'd love to hear it!
+        Have an idea to make molexMedia better? We'd love to hear it!
 
   - type: textarea
     id: problem
