@@ -5,9 +5,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import type { AppConfig } from '../../../stores/appStore'
+import { useAppStore } from '../../../stores/appStore'
 import { SettingGroup, SettingRow, Toggle } from '../../shared/ui'
-
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
 
 interface BrowserOption { name: string; label: string }
 type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
@@ -29,10 +28,14 @@ interface ApplicationSettingsProps {
 }
 
 export function ApplicationSettings({ config, onUpdate, onResetDefaults }: ApplicationSettingsProps): React.JSX.Element {
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>('idle')
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null)
-  const [updateError, setUpdateError] = useState<string | null>(null)
-  const [downloadPercent, setDownloadPercent] = useState(0)
+  const updateStatus = useAppStore((s) => s.updateStatus)
+  const updateVersion = useAppStore((s) => s.updateVersion)
+  const updateError = useAppStore((s) => s.updateError)
+  const downloadPercent = useAppStore((s) => s.updateDownloadPercent)
+  const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
+  const setUpdateVersion = useAppStore((s) => s.setUpdateVersion)
+  const setUpdateError = useAppStore((s) => s.setUpdateError)
+  const setDownloadPercent = useAppStore((s) => s.setUpdateDownloadPercent)
 
   const [browsers, setBrowsers] = useState<BrowserOption[]>([])
   const [cookieStatus, setCookieStatus] = useState<CookieStatus>('idle')

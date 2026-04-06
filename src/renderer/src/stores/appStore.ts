@@ -96,6 +96,16 @@ interface AppState {
   sidebarCollapsed: boolean
   setSidebarCollapsed: (collapsed: boolean) => void
   toggleSidebar: () => void
+
+  // Updater
+  updateStatus: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
+  updateVersion: string | null
+  updateError: string | null
+  updateDownloadPercent: number
+  setUpdateStatus: (status: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error') => void
+  setUpdateVersion: (version: string | null) => void
+  setUpdateError: (error: string | null) => void
+  setUpdateDownloadPercent: (percent: number) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -196,5 +206,14 @@ export const useAppStore = create<AppState>((set) => ({
     const next = !s.sidebarCollapsed
     window.api?.saveConfig({ sidebarCollapsed: next }).catch(() => {})
     return { sidebarCollapsed: next }
-  })
+  }),
+
+  updateStatus: 'idle',
+  updateVersion: null,
+  updateError: null,
+  updateDownloadPercent: 0,
+  setUpdateStatus: (status) => set({ updateStatus: status }),
+  setUpdateVersion: (version) => set({ updateVersion: version }),
+  setUpdateError: (error) => set({ updateError: error }),
+  setUpdateDownloadPercent: (percent) => set({ updateDownloadPercent: percent })
 }))
