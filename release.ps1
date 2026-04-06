@@ -9,7 +9,7 @@
 #>
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 # --- Preflight checks ---
 # electron-builder accepts GH_TOKEN or GITHUB_TOKEN
@@ -84,22 +84,24 @@ Write-Host "        package.json -> v$next"
 
 # --- Commit and tag ---
 Write-Host "  [2/5] Committing and tagging..." -ForegroundColor Cyan
-git add package.json
-git commit -m "v$next" --quiet
-git tag "v$next"
+git add package.json 2>&1 | Out-Null
+git commit -m "v$next" --quiet 2>&1 | Out-Null
+git tag "v$next" 2>&1 | Out-Null
 Write-Host "        Tagged v$next"
 
 # --- Push ---
 Write-Host "  [3/5] Pushing to origin..." -ForegroundColor Cyan
-git push 2>&1 | Out-Null
+$pushOut = git push 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR: Push failed. Run 'git pull --rebase' first, then retry." -ForegroundColor Red
+    Write-Host "  $pushOut" -ForegroundColor Red
     git tag -d "v$next" 2>&1 | Out-Null
     exit 1
 }
-git push --tags 2>&1 | Out-Null
+$tagOut = git push --tags 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR: Tag push failed." -ForegroundColor Red
+    Write-Host "  $tagOut" -ForegroundColor Red
     exit 1
 }
 Write-Host "        Pushed commits + tags"
