@@ -26,6 +26,8 @@ jobs:
           cache: npm
 
       - run: npm ci --legacy-peer-deps
+        env:
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
       - name: TypeScript type check
         run: npx tsc -b --noEmit

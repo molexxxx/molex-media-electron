@@ -25,6 +25,8 @@ jobs:
           cache: npm
 
       - run: npm ci --legacy-peer-deps
+        env:
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
       - name: TypeScript type check
         run: npx tsc -b --noEmit
@@ -61,6 +63,7 @@ jobs:
       - run: npm ci
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
       - name: Build & Package
         run: npm run ${{ matrix.script }}
