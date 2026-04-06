@@ -21,6 +21,7 @@ export default defineConfig({
         'src/main/ipc/**',
         'src/main/ffmpeg/processor/index.ts',
         'src/main/ffmpeg/bootstrap.ts',
+        'src/main/updater.ts',
         'src/main/ytdlp/index.ts',
         'src/main/ytdlp/binary.ts',
         'src/preload/**',
