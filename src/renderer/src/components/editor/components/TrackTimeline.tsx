@@ -58,7 +58,9 @@ export function TrackTimeline({
 
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dropIdx, setDropIdx] = useState<number | null>(null)
+  const [zoom, setZoom] = useState(1)
   const trackAreaRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   /* ---- trim handle state ---- */
   const trimRef = useRef<{
@@ -100,9 +102,12 @@ export function TrackTimeline({
   /* ---- scrub: click/drag on ruler or tracks ---- */
   const scrubFromEvent = useCallback((e: MouseEvent | React.MouseEvent): void => {
     const area = trackAreaRef.current
-    if (!area || clips.length === 0) return
-    const rect = area.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const scroll = scrollContainerRef.current
+    if (!area || !scroll || clips.length === 0) return
+    const rect = scroll.getBoundingClientRect()
+    const contentWidth = area.scrollWidth
+    const x = e.clientX - rect.left + scroll.scrollLeft
+    const pct = Math.max(0, Math.min(1, x / contentWidth))
     const seqT = pct * totalDur
 
     // Find which clip this falls into
@@ -142,6 +147,54 @@ export function TrackTimeline({
     return () => window.removeEventListener('keydown', onKey)
   }, [onTogglePlay, onSetIn, onSetOut]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ---- zoom: Ctrl+wheel to zoom, plain wheel to scroll ---- */
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const onWheel = (e: WheelEvent): void => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const rect = container.getBoundingClientRect()
+        const mouseX = e.clientX - rect.left
+        const scrollBefore = container.scrollLeft
+        const contentBefore = container.scrollWidth
+        const anchorPct = (mouseX + scrollBefore) / contentBefore
+
+        setZoom((prev) => {
+          const next = Math.max(1, Math.min(20, prev * (e.deltaY < 0 ? 1.25 : 0.8)))
+          // Defer scroll adjustment to after render
+          requestAnimationFrame(() => {
+            const contentAfter = container.scrollWidth
+            container.scrollLeft = anchorPct * contentAfter - mouseX
+          })
+          return next
+        })
+      } else if (zoom > 1) {
+        // Horizontal scroll with trackpad or shift+wheel
+        if (e.deltaX !== 0) return // let native horizontal scroll work
+        e.preventDefault()
+        container.scrollLeft += e.deltaY
+      }
+    }
+    container.addEventListener('wheel', onWheel, { passive: false })
+    return () => container.removeEventListener('wheel', onWheel)
+  }, [zoom])
+
+  /* ---- auto-scroll playhead into view during playback ---- */
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container || zoom <= 1) return
+    const contentWidth = container.scrollWidth
+    const viewportWidth = container.clientWidth
+    const playheadX = (playheadPct / 100) * contentWidth
+    const margin = viewportWidth * 0.15
+    if (playheadX < container.scrollLeft + margin) {
+      container.scrollLeft = playheadX - margin
+    } else if (playheadX > container.scrollLeft + viewportWidth - margin) {
+      container.scrollLeft = playheadX - viewportWidth + margin
+    }
+  }, [playheadPct, zoom])
+
   /* ---- drag-to-reorder ---- */
   const handleDragStart = useCallback((e: React.DragEvent, idx: number) => {
     setDragIdx(idx); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx))
@@ -163,7 +216,7 @@ export function TrackTimeline({
     const c = clips.find((cl) => cl.id === clipId)
     if (!c) return
     if (clipIdx !== activeIdx) setActiveIdx(clipIdx)
-    const trackWidth = area.getBoundingClientRect().width
+    const trackWidth = area.scrollWidth
     trimRef.current = {
       clipId, edge, startX: e.clientX,
       startIn: c.inPoint, startOut: c.outPoint,
@@ -229,8 +282,9 @@ export function TrackTimeline({
           )}
         </div>
 
-        {/* Timeline content area */}
-        <div ref={trackAreaRef} className="flex-1 min-w-0 relative">
+        {/* Timeline content area — scrollable when zoomed */}
+        <div ref={scrollContainerRef} className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-thin">
+        <div ref={trackAreaRef} className="relative" style={{ width: zoom > 1 ? `${zoom * 100}%` : '100%' }}>
           {/* Timecode ruler — clickable for scrubbing */}
           <div
             className="h-5 relative border-b border-white/5 bg-surface-950/40 cursor-pointer"
@@ -546,6 +600,7 @@ export function TrackTimeline({
             />
           </div>
         </div>
+        </div>
       </div>
 
       {/* ========== TRANSPORT + IN/OUT ========== */}
@@ -597,6 +652,24 @@ export function TrackTimeline({
               >
                 {SPEED_OPTIONS.map((s) => <option key={s} value={s}>{s}x</option>)}
               </select>
+
+              {/* Zoom */}
+              <div className="hidden sm:flex items-center gap-1 ml-1">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-500">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="range" min={1} max={10} step={0.25} value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="w-14 h-1 accent-accent-500 cursor-pointer"
+                  title={`Zoom: ${zoom.toFixed(1)}x (Ctrl+Scroll)`} />
+                {zoom > 1 && (
+                  <button onClick={() => setZoom(1)}
+                    className="text-[8px] text-surface-500 hover:text-surface-300 font-mono transition-colors"
+                    title="Reset zoom">
+                    {zoom.toFixed(1)}x
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-1.5 flex-wrap">
