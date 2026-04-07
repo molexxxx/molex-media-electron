@@ -139,14 +139,33 @@ function NormalizeOptions({ selectedPreset, onApplyPreset }: {
   selectedPreset: string | null
   onApplyPreset: (id: string) => void
 }): React.JSX.Element {
-  const { normalizeOptions, setNormalizeOptions, config } = useAppStore()
+  const { normalizeOptions, setNormalizeOptions, setSelectedPreset, config } = useAppStore()
   const [advanced, setAdvanced] = useState(false)
+
+  /** Clear custom overrides → revert to Defaults preset */
+  const clearCustom = () => {
+    onApplyPreset('defaults')
+  }
 
   return (
     <div className="space-y-3">
       {/* Preset buttons */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-2xs text-surface-500 mr-1">Preset</span>
+        {selectedPreset === null && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-2xs font-medium rounded-lg bg-amber-600/20 text-amber-300 border border-amber-500/30">
+            Custom
+            <button
+              onClick={clearCustom}
+              className="ml-0.5 hover:text-white transition-colors"
+              title="Reset to Defaults"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </span>
+        )}
         {BUILTIN_PRESETS.map((p) => (
           <button
             key={p.id}

@@ -119,13 +119,13 @@
 
 @layer components {
   .glass {
-    background: rgba(30, 37, 56, 0.6);
+    background: rgba(30, 37, 56, 0.85);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .glass-hover {
-    background: rgba(30, 37, 56, 0.6);
+    background: rgba(30, 37, 56, 0.85);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.06);
     transition-property: all;
@@ -134,7 +134,7 @@
   }
 
   .glass-hover:hover {
-    background: rgba(30, 37, 56, 0.8);
+    background: rgba(30, 37, 56, 0.92);
     border-color: rgba(124, 58, 237, 0.3);
   }
 
