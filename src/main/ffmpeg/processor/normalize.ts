@@ -10,7 +10,7 @@
 
 import * as path from 'path'
 import * as fs from 'fs'
-import { getConfig, type AppConfig } from '../../config'
+import { getConfig } from '../../config'
 import { logger } from '../../logger'
 import { probeMedia, formatDuration, formatFileSize } from '../probe'
 import { runCommand, parseProgress } from '../runner'
@@ -50,10 +50,10 @@ async function analyzeLoudness(
   ffmpegPath: string,
   filePath: string,
   streamIndex: number,
-  config: AppConfig,
+  norm: { I: number; TP: number; LRA: number },
   onStderrLine?: (line: string) => void
 ): Promise<LoudnessMetrics> {
-  const { I, TP, LRA } = config.normalization
+  const { I, TP, LRA } = norm
   const args = [
     '-i', filePath,
     '-threads', '0',
@@ -115,6 +115,7 @@ export async function normalizeFile(
 ): Promise<ProcessingTask> {
   const config = await getConfig()
   const ffmpegPath = config.ffmpegPath
+  const norm = task.normalizeOptions || config.normalization
 
   if (!ffmpegPath) {
     task.status = 'error'
@@ -156,7 +157,7 @@ export async function normalizeFile(
         return task
       }
 
-      const m = await analyzeLoudness(ffmpegPath, task.filePath, i, config, (line) => {
+      const m = await analyzeLoudness(ffmpegPath, task.filePath, i, norm, (line) => {
         const progress = parseProgress(line)
         if (progress && totalDuration > 0) {
           const streamBase = Math.round((i / info.audioStreams.length) * 30)
@@ -176,7 +177,7 @@ export async function normalizeFile(
     task.progress = 30
     onProgress(task)
 
-    const { I, TP, LRA } = config.normalization
+    const { I, TP, LRA } = norm
     const filterParts: string[] = []
     const mapArgs: string[] = []
 

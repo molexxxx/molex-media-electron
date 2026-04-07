@@ -271,69 +271,22 @@
     border-radius: 2px;
   }
 
-  /* ---- Transport seek / volume sliders ---- */
+  /* ---- Normalize parameter sliders ---- */
 
-  .seek-slider,
-  .vol-slider {
+  .norm-slider {
     -webkit-appearance: none;
     appearance: none;
+    width: 100%;
+    height: 100%;
     background: transparent;
     cursor: pointer;
-    position: relative;
-  }
-
-  .seek-slider::-webkit-slider-runnable-track {
-    height: 4px;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.08);
-    transition: height 150ms;
-  }
-
-  .seek-slider:hover::-webkit-slider-runnable-track {
-    height: 5px;
-  }
-
-  .seek-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 0 6px rgba(124, 58, 237, 0.5);
-    margin-top: -4px;
+    outline: none;
+    position: absolute;
+    inset: 0;
     opacity: 0;
-    transition: opacity 150ms, transform 150ms;
   }
 
-  .seek-slider:hover::-webkit-slider-thumb {
-    opacity: 1;
-  }
-
-  .seek-slider:active::-webkit-slider-thumb {
-    transform: scale(1.2);
-  }
-
-  .vol-slider::-webkit-slider-runnable-track {
-    height: 3px;
-    border-radius: 9999px;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .vol-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
-    margin-top: -3.5px;
-    opacity: 0;
-    transition: opacity 150ms;
-  }
-
-  .vol-slider:hover::-webkit-slider-thumb {
-    opacity: 1;
-  }
+  /* ---- Transport buttons ---- */
 
   .transport-btn {
     display: flex;

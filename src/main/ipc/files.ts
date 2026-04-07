@@ -14,6 +14,7 @@ import { probeMedia } from '../ffmpeg/probe'
 import { findMediaFiles } from '../ffmpeg/processor'
 import { initFFmpegDir } from '../ytdlp/binary'
 import { registerPreviewFile } from '../protocol'
+import { prepareForPlayback, prepareForPlaybackAt, clearPlaybackCacheFor } from '../ffmpeg/playback'
 import { sendToAll } from './helpers'
 
 /** Register FFmpeg setup, file dialog, and probe IPC handlers. */
@@ -103,8 +104,24 @@ export function registerFilesIPC(): void {
   })
 
   // --- Register local file for media:// protocol access ---
+  // Non-native formats are extracted to a browser-compatible temp file first.
   ipcMain.handle('files:registerLocalFile', async (_, filePath: string) => {
-    const token = registerPreviewFile(filePath)
+    const playbackPath = await prepareForPlayback(filePath)
+    const token = registerPreviewFile(playbackPath)
+    return `media://${token}`
+  })
+
+  // --- Clear extraction cache for a file (retry after playback error) ---
+  ipcMain.handle('files:clearPlaybackCache', async (_, filePath: string) => {
+    clearPlaybackCacheFor(filePath)
+  })
+
+  // --- Seek-extract: re-extract audio starting at a specific time offset ---
+  // Used when seeking deep into large extracted files where normal byte-range
+  // seeking doesn't work reliably.
+  ipcMain.handle('files:seekLocalFile', async (_, filePath: string, seekTime: number) => {
+    const playbackPath = await prepareForPlaybackAt(filePath, seekTime)
+    const token = registerPreviewFile(playbackPath)
     return `media://${token}`
   })
 

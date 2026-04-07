@@ -21,30 +21,30 @@ export default function Dashboard(): React.JSX.Element {
   const activeTasks = tasks.filter((t) => t.status === 'processing' || t.status === 'analyzing')
 
   const quickActions = [
-    { label: 'Convert', desc: 'Transcode formats', op: 'convert' as const, iconClass: 'text-blue-400', boxClass: 'bg-blue-500/10 border-blue-500/20', icon: (
+    { label: 'Convert', desc: 'Transcode formats', op: 'convert' as const, iconClass: 'text-blue-400', boxClass: 'bg-blue-500/10 border-blue-500/20', hoverBorder: 'hover:border-blue-500/30', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <polyline points="16,3 21,3 21,8" /><line x1="4" y1="20" x2="21" y2="3" />
         <polyline points="21,16 21,21 16,21" /><line x1="15" y1="15" x2="21" y2="21" />
       </svg>
     )},
-    { label: 'Normalize', desc: 'ITU-R BS.1770 loudness', op: 'normalize' as const, iconClass: 'text-accent-400', boxClass: 'bg-accent-500/10 border-accent-500/20', icon: (
+    { label: 'Normalize', desc: 'ITU-R BS.1770 loudness', op: 'normalize' as const, iconClass: 'text-accent-400', boxClass: 'bg-accent-500/10 border-accent-500/20', hoverBorder: 'hover:border-accent-500/30', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
       </svg>
     )},
-    { label: 'Boost Audio', desc: 'Amplify / reduce', op: 'boost' as const, iconClass: 'text-emerald-400', boxClass: 'bg-emerald-500/10 border-emerald-500/20', icon: (
+    { label: 'Boost Audio', desc: 'Adjust gain level', op: 'boost' as const, iconClass: 'text-emerald-400', boxClass: 'bg-emerald-500/10 border-emerald-500/20', hoverBorder: 'hover:border-emerald-500/30', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
         <path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
       </svg>
     )},
-    { label: 'Compress', desc: 'Reduce file size', op: 'compress' as const, iconClass: 'text-amber-400', boxClass: 'bg-amber-500/10 border-amber-500/20', icon: (
+    { label: 'Compress', desc: 'Reduce file size', op: 'compress' as const, iconClass: 'text-amber-400', boxClass: 'bg-amber-500/10 border-amber-500/20', hoverBorder: 'hover:border-amber-500/30', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
         <polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" />
       </svg>
     )},
-    { label: 'Extract', desc: 'Rip audio tracks', op: 'extract' as const, iconClass: 'text-purple-400', boxClass: 'bg-purple-500/10 border-purple-500/20', icon: (
+    { label: 'Extract', desc: 'Rip audio tracks', op: 'extract' as const, iconClass: 'text-purple-400', boxClass: 'bg-purple-500/10 border-purple-500/20', hoverBorder: 'hover:border-purple-500/30', icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="12" cy="12" r="10" /><polygon points="10,8 16,12 10,16" />
       </svg>
@@ -75,7 +75,8 @@ export default function Dashboard(): React.JSX.Element {
             <button
               key={action.op}
               onClick={() => { setOperation(action.op); setView('batch') }}
-              className="flex-1 glass-hover rounded-xl px-3 py-3 text-center group"
+              className={`flex-1 rounded-xl px-3 py-3 text-center group border border-white/[0.06] ${action.hoverBorder} transition-all duration-200`}
+              style={{ background: 'rgba(30, 37, 56, 0.6)', backdropFilter: 'blur(12px)' }}
             >
               <div className={`w-9 h-9 mx-auto rounded-lg border flex items-center justify-center mb-2 ${action.boxClass} ${action.iconClass}`}>
                 {action.icon}
@@ -112,7 +113,7 @@ export default function Dashboard(): React.JSX.Element {
             onClick={() => setView('player')}
             accentClass="accent"
             title="Media Player"
-            desc="Play local files or stream from YouTube with visualizations"
+            desc="Play local files or stream from URLs such as YouTube with visualizations"
             drawBg={drawPlayerBg}
             icon={
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">

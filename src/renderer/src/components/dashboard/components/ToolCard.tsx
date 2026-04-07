@@ -7,9 +7,9 @@ import React, { useEffect, useRef, useCallback } from 'react'
 
 type DrawFn = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, rgb: string) => void
 
-const accentColors: Record<string, { border: string; bg: string; text: string; hoverText: string; glow: string; rgb: string }> = {
-  blue:   { border: 'border-blue-500/20',   bg: 'bg-blue-500/10',   text: 'text-blue-400',   hoverText: 'group-hover:text-blue-300',   glow: 'rgba(59,130,246,0.08)', rgb: '59,130,246' },
-  accent: { border: 'border-accent-500/20', bg: 'bg-accent-500/10', text: 'text-accent-400', hoverText: 'group-hover:text-accent-300', glow: 'rgba(139,92,246,0.08)', rgb: '139,92,246' },
+const accentColors: Record<string, { border: string; bg: string; text: string; hoverText: string; hoverBorder: string; glow: string; rgb: string }> = {
+  blue:   { border: 'border-blue-500/20',   bg: 'bg-blue-500/10',   text: 'text-blue-400',   hoverText: 'group-hover:text-blue-300',   hoverBorder: 'hover:border-blue-500/30',   glow: 'rgba(59,130,246,0.08)', rgb: '59,130,246' },
+  accent: { border: 'border-accent-500/20', bg: 'bg-accent-500/10', text: 'text-accent-400', hoverText: 'group-hover:text-accent-300', hoverBorder: 'hover:border-accent-500/30', glow: 'rgba(139,92,246,0.08)', rgb: '139,92,246' },
 }
 
 export function ToolCard({ onClick, accentClass, title, desc, icon, drawBg }: {
@@ -54,7 +54,7 @@ export function ToolCard({ onClick, accentClass, title, desc, icon, drawBg }: {
   return (
     <button
       onClick={onClick}
-      className="rounded-xl text-left group relative overflow-hidden flex flex-col h-full border border-white/[0.06] hover:border-accent-500/30 transition-all duration-200"
+      className={`rounded-xl text-left group relative overflow-hidden flex flex-col h-full border border-white/[0.06] ${c.hoverBorder} transition-all duration-200`}
       style={{ background: 'rgba(30, 37, 56, 0.4)', backdropFilter: 'blur(12px)' }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-[1]" />

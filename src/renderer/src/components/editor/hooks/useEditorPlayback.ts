@@ -220,18 +220,32 @@ export function useEditorPlayback(clip: EditorClip | null) {
         }
       }
 
-      // A2 sync — start/stop based on offset
+      // A2 sync — read fresh state from store so offset/volume changes
+      // after drag operations are always respected
       const a2 = a2AudioRef.current
-      const ar = clip.audioReplacement
-      if (a2 && ar && a2.src && !el.paused) {
-        const rel = el.currentTime - clip.inPoint
-        const a2Time = rel - ar.offset
-        if (a2Time >= 0 && a2Time < ar.duration) {
-          if (a2.paused) {
-            a2.currentTime = a2Time
-            a2.play().catch(() => {})
+      if (a2 && !el.paused) {
+        const freshState = useEditorStore.getState()
+        const freshClip = freshState.clips.find((c) => c.id === clip.id)
+        const ar = freshClip?.audioReplacement
+        if (ar && a2.src) {
+          const rel = el.currentTime - clip.inPoint
+          const a2Time = rel - ar.offset
+          if (a2Time >= 0 && a2Time < ar.duration) {
+            // Keep A2 volume/rate in sync with latest values
+            a2.volume = ar.muted ? 0 : freshState.volume * ar.volume
+            a2.playbackRate = freshState.playbackRate
+            if (a2.paused) {
+              a2.currentTime = a2Time
+              a2.play().catch(() => {})
+            } else if (Math.abs(a2.currentTime - a2Time) > 0.3) {
+              // Drift correction
+              a2.currentTime = a2Time
+            }
+          } else if (!a2.paused) {
+            a2.pause()
           }
         } else if (!a2.paused) {
+          // A2 was removed from this clip (e.g. moved to another clip)
           a2.pause()
         }
       }
@@ -370,9 +384,10 @@ export function useEditorPlayback(clip: EditorClip | null) {
     const el = clip.isVideo ? videoRef.current : audioRef.current
     if (el) el.currentTime = time
     setCurrentTime(time)
-    // Sync A2
+    // Sync A2 — read fresh state to respect offset changes
     const a2 = a2AudioRef.current
-    const ar = clip.audioReplacement
+    const freshClip = useEditorStore.getState().clips.find((c) => c.id === clip.id)
+    const ar = freshClip?.audioReplacement
     if (a2 && ar && a2.src) {
       const rel = time - clip.inPoint
       const a2Time = rel - ar.offset

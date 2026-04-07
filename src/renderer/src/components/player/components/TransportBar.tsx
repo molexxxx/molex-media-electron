@@ -43,7 +43,20 @@ export function TransportBar({
       {/* Seek bar */}
       <div className="flex items-center gap-2.5 group/seek">
         <span className="text-2xs text-surface-500 font-mono w-9 text-right select-none tabular-nums">{formatTime(currentTime)}</span>
-        <div className="relative flex-1 flex items-center">
+        <div className="relative flex-1 flex items-center h-5 cursor-pointer group/bar">
+          {/* Track background */}
+          <div className="absolute left-0 right-0 h-1 rounded-full bg-white/8 group-hover/bar:h-1.5 transition-all" />
+          {/* Filled portion */}
+          <div
+            className="absolute left-0 h-1 rounded-full bg-accent-500 group-hover/bar:h-1.5 transition-all"
+            style={{ width: `${seekPct}%` }}
+          />
+          {/* Thumb */}
+          <div
+            className="absolute w-3 h-3 rounded-full bg-accent-400 border-2 border-accent-300 shadow-lg shadow-accent-500/30 pointer-events-none transition-opacity opacity-0 group-hover/bar:opacity-100"
+            style={{ left: `calc(${seekPct}% - 6px)` }}
+          />
+          {/* Hidden native input */}
           <input
             type="range"
             min={0}
@@ -55,17 +68,7 @@ export function TransportBar({
             onMouseUp={onSeekEnd}
             onTouchStart={onSeekStart}
             onTouchEnd={onSeekEnd}
-            className="seek-slider w-full h-4"
-            style={{ background: 'transparent' }}
-          />
-          {/* Gradient fill overlay */}
-          <div
-            className="absolute top-1/2 left-0 h-1 rounded-full pointer-events-none -translate-y-1/2 group-hover/seek:h-1.25 transition-all"
-            style={{ width: `${seekPct}%`, background: 'linear-gradient(90deg, var(--color-accent-600), var(--color-accent-400))' }}
-          />
-          <div
-            className="absolute top-1/2 left-0 right-0 h-1 rounded-full pointer-events-none -translate-y-1/2 -z-10 group-hover/seek:h-1.25 transition-all"
-            style={{ background: 'rgba(255,255,255,0.08)' }}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
         <span className="text-2xs text-surface-500 font-mono w-9 select-none tabular-nums">{formatTime(duration)}</span>
@@ -167,7 +170,20 @@ export function TransportBar({
               )}
             </svg>
           </button>
-          <div className="relative flex items-center w-20">
+          <div className="relative flex items-center w-20 h-4 cursor-pointer group/vol">
+            {/* Track background */}
+            <div className="absolute left-0 right-0 h-1 rounded-full bg-white/10" />
+            {/* Filled portion */}
+            <div
+              className="absolute left-0 h-1 rounded-full bg-surface-300"
+              style={{ width: `${volPct}%` }}
+            />
+            {/* Thumb */}
+            <div
+              className="absolute w-2.5 h-2.5 rounded-full bg-surface-200 border border-surface-100 shadow pointer-events-none transition-opacity opacity-0 group-hover/vol:opacity-100"
+              style={{ left: `calc(${volPct}% - 5px)` }}
+            />
+            {/* Hidden native input */}
             <input
               type="range"
               min={0}
@@ -175,16 +191,7 @@ export function TransportBar({
               step={0.01}
               value={volume}
               onChange={onVolumeChange}
-              className="vol-slider w-full h-4"
-              style={{ background: 'transparent' }}
-            />
-            <div
-              className="absolute top-1/2 left-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2"
-              style={{ width: `${volPct}%`, background: 'var(--color-surface-300)' }}
-            />
-            <div
-              className="absolute top-1/2 left-0 right-0 h-0.75 rounded-full pointer-events-none -translate-y-1/2 -z-10"
-              style={{ background: 'rgba(255,255,255,0.1)' }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>
         </div>

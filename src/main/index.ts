@@ -13,6 +13,7 @@ import { registerIPC } from './ipc'
 import { loadConfig } from './config'
 import { logger } from './logger'
 import { killAllProcesses } from './ffmpeg/runner'
+import { cleanupPlaybackTemp } from './ffmpeg/playback'
 import { cleanupAudioCache } from './ytdlp'
 import { initFFmpegDir } from './ytdlp/binary'
 import { registerMediaScheme, registerMediaHandler } from './protocol'
@@ -97,5 +98,6 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   setQuitting(true)
   killAllProcesses()
+  cleanupPlaybackTemp()
   destroyTray()
 })

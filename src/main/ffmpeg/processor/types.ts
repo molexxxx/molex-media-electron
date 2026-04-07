@@ -23,6 +23,7 @@ export interface ProcessingTask {
   operation: 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
   boostPercent?: number
   preset?: string
+  normalizeOptions?: { I: number; TP: number; LRA: number }
   convertOptions?: ConvertOptions
   extractOptions?: ExtractOptions
   compressOptions?: CompressOptions
@@ -52,11 +53,17 @@ export interface ConvertOptions {
 export interface ExtractOptions {
   outputFormat: string
   streamIndex: number
+  audioBitrate?: string
+  sampleRate?: string
+  channels?: string
 }
 
 export interface CompressOptions {
   targetSizeMB: number
   quality: string
+  videoCodec?: string
+  speed?: string
+  audioBitrate?: string
 }
 
 /** Callback invoked whenever a task's status or progress changes. */

@@ -104,18 +104,41 @@ const icons = {
   )
 }
 
+/** Animated update notification badge with pulsing glow. */
+function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element {
+  return collapsed ? (
+    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
+      <span className="absolute w-3.5 h-3.5 rounded-full bg-accent-500/40 animate-ping" />
+      <span className="relative w-2.5 h-2.5 rounded-full bg-accent-500 flex items-center justify-center">
+        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
+        </svg>
+      </span>
+    </span>
+  ) : (
+    <span className="relative flex items-center justify-center">
+      <span className="absolute w-6 h-6 rounded-full bg-accent-500/20 animate-pulse-slow" />
+      <span className="relative w-5 h-5 rounded-full bg-accent-600 flex items-center justify-center shadow-glow">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
 export default function Sidebar(): React.JSX.Element {
-  const { currentView, setView, files, logs, sidebarCollapsed, setSidebarCollapsed, toggleSidebar } = useAppStore()
+  const { currentView, setView, files, logs, sidebarCollapsed, setSidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
 
   const errorCount = logs.filter((l) => l.level === 'error').length
+  const hasUpdate = updateStatus === 'available' || updateStatus === 'downloaded'
 
-  // Auto-collapse on narrow windows
+  // Auto-collapse on narrow windows (resize only — initial state comes from persisted config)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 840px)')
-    const onChange = (e: MediaQueryListEvent | MediaQueryList): void => {
+    const onChange = (e: MediaQueryListEvent): void => {
       setSidebarCollapsed(e.matches)
     }
-    onChange(mq)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [setSidebarCollapsed])
@@ -144,7 +167,7 @@ export default function Sidebar(): React.JSX.Element {
     {
       label: 'System',
       items: [
-        { id: 'settings', label: 'Settings', icon: icons.settings },
+        { id: 'settings', label: 'Settings', icon: icons.settings, badge: hasUpdate ? -1 : undefined },
         { id: 'logs', label: 'Logs', icon: icons.logs, badge: errorCount || undefined }
       ]
     }
@@ -218,8 +241,14 @@ export default function Sidebar(): React.JSX.Element {
                         {item.badge > 99 ? '99+' : item.badge}
                       </span>
                     )}
+                    {!collapsed && item.badge === -1 && (
+                      <UpdateBadge collapsed={false} />
+                    )}
                     {collapsed && item.badge !== undefined && item.badge > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-500" />
+                    )}
+                    {collapsed && item.badge === -1 && (
+                      <UpdateBadge collapsed={true} />
                     )}
                   </button>
                 )

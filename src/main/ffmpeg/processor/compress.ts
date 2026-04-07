@@ -65,29 +65,57 @@ export async function compressFile(
 
     const tempPath = createTempPath(task.filePath, config.tempSuffix)
 
-    /** Quality preset → CRF value for H.264. */
-    const crfMap: Record<string, number> = { lossless: 0, high: 18, medium: 23, low: 28 }
-    const crf = crfMap[opts.quality] ?? 23
+    const codec = opts.videoCodec || 'libx264'
+    const speed = opts.speed || (opts.quality === 'lossless' ? 'veryslow' : 'medium')
+
+    /** Quality preset → CRF value per codec. */
+    const CRF_MAP: Record<string, Record<string, number>> = {
+      libx264:        { lossless: 0, high: 18, medium: 23, low: 28 },
+      libx265:        { lossless: 0, high: 22, medium: 28, low: 33 },
+      'libvpx-vp9':   { lossless: 0, high: 24, medium: 31, low: 38 },
+      'libaom-av1':   { lossless: 0, high: 22, medium: 28, low: 35 },
+    }
+    const crfTable = CRF_MAP[codec] || CRF_MAP.libx264
+    const crf = crfTable[opts.quality] ?? 23
 
     const args = ['-y', '-i', task.filePath, '-threads', '0']
 
     if (info.isVideoFile) {
-      args.push('-c:v', 'libx264', '-preset', opts.quality === 'lossless' ? 'veryslow' : 'medium', '-crf', String(crf))
+      args.push('-c:v', codec)
+
+      // Encoding speed / quality trade-off
+      if (codec === 'libx264' || codec === 'libx265') {
+        args.push('-preset', speed)
+      } else if (codec === 'libvpx-vp9') {
+        const cpuMap: Record<string, string> = { veryslow: '0', slow: '1', medium: '2', fast: '4', veryfast: '5' }
+        args.push('-cpu-used', cpuMap[speed] || '2')
+      } else if (codec === 'libaom-av1') {
+        const cpuMap: Record<string, string> = { veryslow: '1', slow: '2', medium: '4', fast: '6', veryfast: '8' }
+        args.push('-cpu-used', cpuMap[speed] || '4')
+      }
+
+      args.push('-crf', String(crf))
+
+      // VP9 needs -b:v 0 for CRF-only mode
+      if (codec === 'libvpx-vp9') args.push('-b:v', '0')
+
       if (opts.targetSizeMB > 0 && totalDuration > 0) {
         const targetBits = opts.targetSizeMB * 8 * 1024 * 1024
         const audioBitrate = 128000
         const videoBitrate = Math.max(100000, Math.floor((targetBits / totalDuration) - audioBitrate))
         args.length = 5 // reset after -threads 0
-        args.push('-c:v', 'libx264', '-b:v', String(videoBitrate), '-maxrate', String(videoBitrate * 2), '-bufsize', String(videoBitrate * 4))
+        args.push('-c:v', codec, '-b:v', String(videoBitrate), '-maxrate', String(videoBitrate * 2), '-bufsize', String(videoBitrate * 4))
       }
-      args.push('-c:a', 'aac', '-b:a', opts.quality === 'low' ? '128k' : '256k')
+      const abr = opts.audioBitrate || (opts.quality === 'low' ? '128k' : '256k')
+      args.push('-c:a', 'aac', '-b:a', abr)
     } else {
       // Audio-only compression
       const audioBitrates: Record<string, string> = { lossless: '0', high: '256k', medium: '192k', low: '128k' }
+      const abr = opts.audioBitrate || audioBitrates[opts.quality] || '192k'
       if (opts.quality === 'lossless') {
         args.push('-c:a', 'flac')
       } else {
-        args.push('-c:a', 'aac', '-b:a', audioBitrates[opts.quality])
+        args.push('-c:a', 'aac', '-b:a', abr)
       }
     }
 

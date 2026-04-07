@@ -93,7 +93,8 @@ export default function FileQueue(): React.JSX.Element {
     const outputDir = batchOutputDir || undefined
 
     if (operation === 'normalize') {
-      await window.api.normalize(paths, outputDir)
+      const { normalizeOptions } = useAppStore.getState()
+      await window.api.normalize(paths, normalizeOptions, outputDir)
     } else if (operation === 'boost') {
       const { boostPercent } = useAppStore.getState()
       await window.api.boost(paths, boostPercent, outputDir)
@@ -114,7 +115,7 @@ export default function FileQueue(): React.JSX.Element {
     const s = n !== 1 ? 's' : ''
     const labels: Record<string, string> = {
       normalize: `Normalize ${n} File${s}`,
-      boost: `Boost ${n} File${s}`,
+      boost: `Adjust ${n} File${s}`,
       convert: `Convert ${n} File${s}`,
       extract: `Extract ${n} File${s}`,
       compress: `Compress ${n} File${s}`,

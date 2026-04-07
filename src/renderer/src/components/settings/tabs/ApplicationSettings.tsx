@@ -182,6 +182,12 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
             <Toggle checked={config.showTrayNotification} onChange={(v) => onUpdate('showTrayNotification', v)} />
           </SettingRow>
         )}
+        <SettingRow label="Sidebar Collapsed" description="Start with the sidebar collapsed on launch">
+          <Toggle checked={config.sidebarCollapsed ?? false} onChange={(v) => {
+            onUpdate('sidebarCollapsed', v as any)
+            useAppStore.setState({ sidebarCollapsed: v })
+          }} />
+        </SettingRow>
       </SettingGroup>
       <SettingGroup title="Paths">
         <SettingRow label="FFmpeg" description="Auto-detected or downloaded on first launch">

@@ -73,7 +73,14 @@ interface EditorState {
   setClipOutPoint: (clipId: string, t: number) => void
   splitClip: (clipId: string, time: number) => void
   clipToSelection: () => void
+  deleteSelection: () => void
   deleteActiveClip: () => void
+
+  /* -- undo / redo -- */
+  undo: () => void
+  redo: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 
   /* -- in/out points -- */
   setInPoint: (t: number) => void
@@ -116,6 +123,26 @@ interface EditorState {
   loadingCount: () => number
 }
 
+/* ------------------------------------------------------------------ */
+/*  Undo / redo history                                                */
+/* ------------------------------------------------------------------ */
+
+interface HistorySnapshot {
+  clips: EditorClip[]
+  activeIdx: number
+}
+
+const MAX_HISTORY = 50
+let undoStack: HistorySnapshot[] = []
+let redoStack: HistorySnapshot[] = []
+
+/** Snapshot current clip state before a destructive action. */
+function pushHistory(s: Pick<EditorState, 'clips' | 'activeIdx'>): void {
+  undoStack.push({ clips: s.clips.map((c) => ({ ...c })), activeIdx: s.activeIdx })
+  if (undoStack.length > MAX_HISTORY) undoStack.shift()
+  redoStack = [] // any new action clears redo
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   /* -- clip list -- */
   clips: [],
@@ -129,6 +156,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   removeClip: (idx) =>
     set((s) => {
+      pushHistory(s)
       const next = s.clips.filter((_, i) => i !== idx)
       let newIdx = s.activeIdx
       if (next.length === 0) {
@@ -144,12 +172,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearClips: () => {
     const { clips } = get()
     clips.forEach((c) => { if (c.objectUrl?.startsWith('blob:')) URL.revokeObjectURL(c.objectUrl) })
+    undoStack = []; redoStack = []
     set({ clips: [], activeIdx: 0, playing: false, currentTime: 0 })
   },
 
   resetEditor: () => {
     const { clips } = get()
     clips.forEach((c) => { if (c.objectUrl?.startsWith('blob:')) URL.revokeObjectURL(c.objectUrl) })
+    undoStack = []; redoStack = []
     set({
       clips: [], activeIdx: 0, playing: false, currentTime: 0,
       volume: 1, playbackRate: 1,
@@ -178,6 +208,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   moveClip: (fromIdx, toIdx) =>
     set((s) => {
       if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= s.clips.length || toIdx >= s.clips.length) return {}
+      pushHistory(s)
       const next = [...s.clips]
       const [moved] = next.splice(fromIdx, 1)
       next.splice(toIdx, 0, moved)
@@ -283,6 +314,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => {
       const idx = s.clips.findIndex((c) => c.id === clipId)
       if (idx === -1) return {}
+      pushHistory(s)
       const orig = s.clips[idx]
       const ss = orig.sourceStart
       const clipEnd = ss + orig.duration
@@ -396,6 +428,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const hasIn = clip.inPoint > ss + 0.05
       const hasOut = clip.outPoint < ss + clip.duration - 0.05
       if (!hasIn && !hasOut) return {} // nothing to clip
+      pushHistory(s)
       const newStart = clip.inPoint
       const newDur = clip.outPoint - clip.inPoint
       let ar = clip.audioReplacement
@@ -417,6 +450,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   deleteActiveClip: () =>
     set((s) => {
       if (s.clips.length === 0) return {}
+      pushHistory(s)
       const next = s.clips.filter((_, i) => i !== s.activeIdx)
       if (next.length === 0) return { clips: [], activeIdx: 0, playing: false, currentTime: 0 }
       return {
@@ -427,11 +461,84 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }),
 
+  deleteSelection: () =>
+    set((s) => {
+      const clip = s.clips[s.activeIdx]
+      if (!clip) return {}
+      const ss = clip.sourceStart
+      const clipEnd = ss + clip.duration
+      const hasIn = clip.inPoint > ss + 0.05
+      const hasOut = clip.outPoint < clipEnd - 0.05
+      if (!hasIn && !hasOut) return {} // nothing selected to delete
+
+      pushHistory(s)
+
+      // Build segments from the parts OUTSIDE the selection
+      const segments: EditorClip[] = []
+      if (hasIn) {
+        segments.push({
+          ...clip,
+          id: `${clip.id}-dL`,
+          sourceStart: ss,
+          duration: clip.inPoint - ss,
+          inPoint: ss,
+          outPoint: clip.inPoint,
+          audioReplacement: clip.audioReplacement
+            ? { ...clip.audioReplacement }
+            : undefined
+        })
+      }
+      if (hasOut) {
+        segments.push({
+          ...clip,
+          id: `${clip.id}-dR`,
+          sourceStart: clip.outPoint,
+          duration: clipEnd - clip.outPoint,
+          inPoint: clip.outPoint,
+          outPoint: clipEnd,
+          audioReplacement: !hasIn && clip.audioReplacement
+            ? { ...clip.audioReplacement, offset: Math.max(0, clip.audioReplacement.offset - (clip.outPoint - ss)) }
+            : undefined
+        })
+      }
+
+      if (segments.length === 0) {
+        // Entire clip is selected — remove it
+        const next = s.clips.filter((_, i) => i !== s.activeIdx)
+        return { clips: next, activeIdx: Math.min(s.activeIdx, Math.max(next.length - 1, 0)), playing: false, currentTime: 0 }
+      }
+
+      const next = [...s.clips]
+      next.splice(s.activeIdx, 1, ...segments)
+      return { clips: next, activeIdx: s.activeIdx, playing: false, currentTime: segments[0].inPoint }
+    }),
+
+  /* -- undo / redo -- */
+  undo: () =>
+    set((s) => {
+      if (undoStack.length === 0) return {}
+      redoStack.push({ clips: s.clips.map((c) => ({ ...c })), activeIdx: s.activeIdx })
+      const snapshot = undoStack.pop()!
+      return { clips: snapshot.clips, activeIdx: snapshot.activeIdx, playing: false }
+    }),
+
+  redo: () =>
+    set((s) => {
+      if (redoStack.length === 0) return {}
+      undoStack.push({ clips: s.clips.map((c) => ({ ...c })), activeIdx: s.activeIdx })
+      const snapshot = redoStack.pop()!
+      return { clips: snapshot.clips, activeIdx: snapshot.activeIdx, playing: false }
+    }),
+
+  canUndo: () => undoStack.length > 0,
+  canRedo: () => redoStack.length > 0,
+
   /* -- in/out points -- */
   setInPoint: (t) =>
     set((s) => {
       const clip = s.clips[s.activeIdx]
       if (!clip) return {}
+      pushHistory(s)
       const clamped = Math.max(clip.sourceStart, Math.min(t, clip.outPoint))
       const updated = s.clips.map((c, i) => (i === s.activeIdx ? { ...c, inPoint: clamped } : c))
       return { clips: updated }
@@ -441,6 +548,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => {
       const clip = s.clips[s.activeIdx]
       if (!clip) return {}
+      pushHistory(s)
       const clamped = Math.max(clip.inPoint, Math.min(t, clip.sourceStart + clip.duration))
       const updated = s.clips.map((c, i) => (i === s.activeIdx ? { ...c, outPoint: clamped } : c))
       return { clips: updated }
@@ -450,6 +558,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => {
       const clip = s.clips[s.activeIdx]
       if (!clip) return {}
+      pushHistory(s)
       const updated = s.clips.map((c, i) =>
         i === s.activeIdx ? { ...c, inPoint: c.sourceStart, outPoint: c.sourceStart + c.duration } : c
       )

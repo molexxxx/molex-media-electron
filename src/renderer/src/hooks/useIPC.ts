@@ -46,8 +46,8 @@ export function useIPC(): void {
         const config = await window.api.loadConfig()
         setConfig(config)
         // Hydrate sidebar collapsed state from persisted config
-        if (config?.sidebarCollapsed) {
-          useAppStore.setState({ sidebarCollapsed: true })
+        if (config && typeof config.sidebarCollapsed === 'boolean') {
+          useAppStore.setState({ sidebarCollapsed: config.sidebarCollapsed })
         }
 
         // Load system info

@@ -221,8 +221,8 @@ describe('appStore', () => {
     })
 
     it('sets selected preset', () => {
-      useAppStore.getState().setSelectedPreset('youtube')
-      expect(useAppStore.getState().selectedPreset).toBe('youtube')
+      useAppStore.getState().setSelectedPreset('dialogue')
+      expect(useAppStore.getState().selectedPreset).toBe('dialogue')
     })
 
     it('merges convert options', () => {

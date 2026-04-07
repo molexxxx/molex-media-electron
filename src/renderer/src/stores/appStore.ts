@@ -11,10 +11,10 @@
 import { create } from 'zustand'
 import type {
   View, Operation, AppConfig, FileItem, ProcessingTask, LogEntry,
-  ConvertOptions, ExtractOptions, CompressOptions, SystemInfo
+  ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions
 } from './types'
 
-export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo } from './types'
+export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions } from './types'
 export { BUILTIN_PRESETS } from './types'
 
 interface AppState {
@@ -46,12 +46,14 @@ interface AppState {
   operation: Operation
   boostPercent: number
   selectedPreset: string | null
+  normalizeOptions: NormalizeOptions
   convertOptions: ConvertOptions
   extractOptions: ExtractOptions
   compressOptions: CompressOptions
   setOperation: (op: Operation) => void
   setBoostPercent: (pct: number) => void
   setSelectedPreset: (id: string | null) => void
+  setNormalizeOptions: (opts: Partial<NormalizeOptions>) => void
   setConvertOptions: (opts: Partial<ConvertOptions>) => void
   setExtractOptions: (opts: Partial<ExtractOptions>) => void
   setCompressOptions: (opts: Partial<CompressOptions>) => void
@@ -150,12 +152,14 @@ export const useAppStore = create<AppState>((set) => ({
   operation: 'convert',
   boostPercent: 10,
   selectedPreset: 'defaults',
+  normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
   convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
-  extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
-  compressOptions: { targetSizeMB: 0, quality: 'high' },
+  extractOptions: { outputFormat: 'mp3', streamIndex: 0, audioBitrate: '', sampleRate: '', channels: '' },
+  compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'medium', audioBitrate: '' },
   setOperation: (op) => set({ operation: op }),
   setBoostPercent: (pct) => set({ boostPercent: pct }),
   setSelectedPreset: (id) => set({ selectedPreset: id }),
+  setNormalizeOptions: (opts) => set((s) => ({ normalizeOptions: { ...s.normalizeOptions, ...opts } })),
   setConvertOptions: (opts) => set((s) => ({ convertOptions: { ...s.convertOptions, ...opts } })),
   setExtractOptions: (opts) => set((s) => ({ extractOptions: { ...s.extractOptions, ...opts } })),
   setCompressOptions: (opts) => set((s) => ({ compressOptions: { ...s.compressOptions, ...opts } })),
@@ -179,6 +183,7 @@ export const useAppStore = create<AppState>((set) => ({
   resetBatch: () => set({
     files: [], tasks: [], activeBatchId: null, isProcessing: false, isPaused: false,
     operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', batchOutputDir: '',
+    normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
     convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
     extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
     compressOptions: { targetSizeMB: 0, quality: 'high' }

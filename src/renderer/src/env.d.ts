@@ -19,6 +19,8 @@ declare global {
       probeFile: (filePath: string) => Promise<any>
       getFilePath: (file: File) => string
       registerLocalFile: (filePath: string) => Promise<string>
+      seekLocalFile: (filePath: string, seekTime: number) => Promise<string>
+      clearPlaybackCache: (filePath: string) => Promise<void>
       readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
       getKnownFolders: () => Promise<{ name: string; path: string; icon: string }[]>
       browseDirectory: (dirPath: string) => Promise<{ success: boolean; entries: { name: string; path: string; isDirectory: boolean; size: number; ext: string }[]; parentPath: string; error?: string }>
@@ -32,7 +34,7 @@ declare global {
       onPopoutClosed: (cb: () => void) => () => void
       onReceivePlayerState: (cb: (state: any) => void) => () => void
       getPlayerState: () => Promise<any>
-      normalize: (filePaths: string[], outputDir?: string) => Promise<any>
+      normalize: (filePaths: string[], normalizeOptions?: { I: number; TP: number; LRA: number }, outputDir?: string) => Promise<any>
       boost: (filePaths: string[], percent: number, outputDir?: string) => Promise<any>
       cancelBatch: (batchId: string) => Promise<boolean>
       cancelAll: () => Promise<boolean>

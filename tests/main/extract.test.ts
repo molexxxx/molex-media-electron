@@ -307,4 +307,121 @@ describe('extractAudio', () => {
     const args = mockRunCommand.mock.calls[0][1]
     expect(args).toContain('-b:a')
   })
+
+  /* ---- New audioBitrate / sampleRate / channels options ---- */
+
+  it('uses custom audioBitrate when specified', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k' } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-b:a')
+    expect(args).toContain('320k')
+  })
+
+  it('custom audioBitrate overrides config default', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, audioBitrate: '128k' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'aac', streamIndex: 0, audioBitrate: '256k' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    const bitrateIdx = args.indexOf('-b:a')
+    expect(args[bitrateIdx + 1]).toBe('256k')
+  })
+
+  it('applies sample rate when specified', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, sampleRate: '44100' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-ar')
+    expect(args).toContain('44100')
+  })
+
+  it('does not add -ar when sampleRate is empty', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, sampleRate: '' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-ar')
+  })
+
+  it('sets mono channel when channels is mono', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, channels: 'mono' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-ac')
+    expect(args).toContain('1')
+  })
+
+  it('sets stereo channel when channels is stereo', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, channels: 'stereo' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-ac')
+    expect(args).toContain('2')
+  })
+
+  it('does not add -ac when channels is empty', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 0, channels: '' } })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).not.toContain('-ac')
+  })
+
+  it('combines audioBitrate, sampleRate, and channels', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({
+      extractOptions: {
+        outputFormat: 'mp3',
+        streamIndex: 0,
+        audioBitrate: '192k',
+        sampleRate: '48000',
+        channels: 'stereo'
+      }
+    })
+    const onProgress = vi.fn()
+    await extractAudio(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('192k')
+    expect(args).toContain('-ar')
+    expect(args).toContain('48000')
+    expect(args).toContain('-ac')
+    expect(args).toContain('2')
+  })
 })

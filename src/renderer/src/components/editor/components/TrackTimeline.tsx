@@ -18,6 +18,7 @@ interface TrackTimelineProps {
   onSetOut: () => void
   onSplit: () => void
   onClipSelection: () => void
+  onDeleteSelection: () => void
   onCut: () => void
   onMerge: () => void
   onReplaceAudio: (clipId: string) => void
@@ -46,7 +47,7 @@ function rulerMarks(totalDur: number): { pct: number; label: string }[] {
 }
 
 export function TrackTimeline({
-  currentTime, playing, onSeek, onTogglePlay, onSetIn, onSetOut, onSplit, onClipSelection, onCut,
+  currentTime, playing, onSeek, onTogglePlay, onSetIn, onSetOut, onSplit, onClipSelection, onDeleteSelection, onCut,
   onMerge, onReplaceAudio, onReplaceA1, onBrowseOutputDir, onImportFile
 }: TrackTimelineProps): React.JSX.Element {
   const {
@@ -199,14 +200,27 @@ export function TrackTimeline({
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return
+      const ctrl = e.ctrlKey || e.metaKey
       switch (e.code) {
         case 'Space': e.preventDefault(); onTogglePlay(); break
-        case 'KeyI': e.preventDefault(); onSetIn(); break
-        case 'KeyO': e.preventDefault(); onSetOut(); break
-        case 'KeyS': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); onSplit() } break
-        case 'KeyR': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); resetPoints() } break
+        case 'KeyI': if (!ctrl) { e.preventDefault(); onSetIn() } break
+        case 'KeyO': if (!ctrl) { e.preventDefault(); onSetOut() } break
+        case 'KeyS': if (!ctrl) { e.preventDefault(); onSplit() } break
+        case 'KeyR': if (!ctrl) { e.preventDefault(); resetPoints() } break
+        case 'KeyZ':
+          if (ctrl) {
+            e.preventDefault()
+            useEditorStore.getState().undo()
+          }
+          break
+        case 'KeyY':
+          if (ctrl) {
+            e.preventDefault()
+            useEditorStore.getState().redo()
+          }
+          break
         case 'Delete':
-        case 'Backspace': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); deleteActiveClip() } break
+        case 'Backspace': if (!ctrl) { e.preventDefault(); deleteActiveClip() } break
       }
     }
     window.addEventListener('keydown', onKey)
@@ -796,7 +810,7 @@ export function TrackTimeline({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
               <button onClick={onSetIn} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/20 transition-all shadow-sm" title="Set In (I)">
                 In [{formatTime(clip.inPoint)}]
               </button>
@@ -813,12 +827,31 @@ export function TrackTimeline({
                 </svg>
                 Split
               </button>
-              <button onClick={onClipSelection} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 border border-violet-500/20 transition-all shadow-sm flex items-center gap-1" title="Crop to selection — keep only the In/Out region">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
-                  <rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="16" x2="18" y2="16"/>
-                </svg>
-                Clip
-              </button>
+              <div className="relative group/clip">
+                <button className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 border border-violet-500/20 transition-all shadow-sm flex items-center gap-1" title="Clip selection options">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                    <rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="16" x2="18" y2="16"/>
+                  </svg>
+                  Clip
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="shrink-0 ml-0.5">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <div className="absolute left-0 top-full mt-1 min-w-[140px] py-1 bg-surface-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover/clip:opacity-100 group-hover/clip:visible transition-all z-50">
+                  <button onClick={onClipSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-200 hover:bg-violet-500/20 hover:text-violet-200 transition-colors flex items-center gap-2">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-violet-400">
+                      <rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="16" x2="18" y2="16"/>
+                    </svg>
+                    Keep Selection
+                  </button>
+                  <button onClick={onDeleteSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-200 hover:bg-red-500/20 hover:text-red-200 transition-colors flex items-center gap-2">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-red-400">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Delete Selection
+                  </button>
+                </div>
+              </div>
               {clips.length > 1 && (
                 <button onClick={() => deleteActiveClip()} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-red-500/10 text-red-300/80 hover:bg-red-500/20 hover:text-red-300 border border-red-500/15 transition-all shadow-sm flex items-center gap-1" title="Delete selected clip (Del)">
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">

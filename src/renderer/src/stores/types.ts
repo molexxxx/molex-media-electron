@@ -7,29 +7,27 @@
 export type View = 'dashboard' | 'batch' | 'editor' | 'player' | 'settings' | 'logs'
 export type Operation = 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
 
+export interface NormalizeOptions {
+  I: number
+  TP: number
+  LRA: number
+}
+
 export interface Preset {
   id: string
   name: string
   description: string
-  category: 'streaming' | 'broadcast' | 'podcast' | 'music' | 'video' | 'custom'
-  normalization: { I: number; TP: number; LRA: number }
+  normalization: NormalizeOptions
   audioCodec: string
   audioBitrate: string
-  videoCodec?: string
-  videoBitrate?: string
 }
 
 export const BUILTIN_PRESETS: Preset[] = [
-  { id: 'defaults', name: 'Defaults', description: 'Uses your global normalization settings', category: 'custom', normalization: { I: -16, TP: -1.5, LRA: 11 }, audioCodec: 'inherit', audioBitrate: '256k' },
-  { id: 'youtube', name: 'YouTube', description: 'Optimized for YouTube uploads', category: 'streaming', normalization: { I: -14, TP: -1, LRA: 11 }, audioCodec: 'aac', audioBitrate: '256k', videoCodec: 'copy', videoBitrate: '' },
-  { id: 'spotify', name: 'Spotify', description: 'Spotify loudness target (-14 LUFS)', category: 'streaming', normalization: { I: -14, TP: -1, LRA: 9 }, audioCodec: 'aac', audioBitrate: '320k' },
-  { id: 'apple-music', name: 'Apple Music', description: 'Apple Music / iTunes standard', category: 'streaming', normalization: { I: -16, TP: -1, LRA: 12 }, audioCodec: 'aac', audioBitrate: '256k' },
-  { id: 'podcast', name: 'Podcast', description: 'Spoken word optimized (-16 LUFS)', category: 'podcast', normalization: { I: -16, TP: -1.5, LRA: 8 }, audioCodec: 'aac', audioBitrate: '128k' },
-  { id: 'broadcast', name: 'Broadcast TV', description: 'EBU R128 broadcast standard', category: 'broadcast', normalization: { I: -23, TP: -1, LRA: 15 }, audioCodec: 'ac3', audioBitrate: '448k' },
-  { id: 'cinema', name: 'Cinema / Film', description: 'Theatrical mix standard', category: 'broadcast', normalization: { I: -24, TP: -2, LRA: 20 }, audioCodec: 'eac3', audioBitrate: '640k' },
-  { id: 'plex', name: 'Plex / Home Media', description: 'Optimal for Plex, Emby, Jellyfin streaming', category: 'streaming', normalization: { I: -18, TP: -1.5, LRA: 13 }, audioCodec: 'aac', audioBitrate: '320k', videoCodec: 'copy', videoBitrate: '' },
-  { id: 'tiktok', name: 'TikTok / Reels', description: 'Short form social media', category: 'streaming', normalization: { I: -14, TP: -1, LRA: 7 }, audioCodec: 'aac', audioBitrate: '192k' },
-  { id: 'cd', name: 'CD Master', description: 'CD mastering standard', category: 'music', normalization: { I: -9, TP: -0.3, LRA: 8 }, audioCodec: 'flac', audioBitrate: '0' },
+  { id: 'defaults', name: 'Defaults', description: 'Uses your global normalization settings', normalization: { I: -16, TP: -1.5, LRA: 11 }, audioCodec: 'inherit', audioBitrate: '256k' },
+  { id: 'dialogue', name: 'Dialogue', description: 'Speech / podcast (-16 LUFS, tight LRA)', normalization: { I: -16, TP: -1.5, LRA: 8 }, audioCodec: 'aac', audioBitrate: '128k' },
+  { id: 'music', name: 'Music', description: 'Streaming platforms (-14 LUFS)', normalization: { I: -14, TP: -1, LRA: 11 }, audioCodec: 'aac', audioBitrate: '320k' },
+  { id: 'broadcast', name: 'Broadcast', description: 'EBU R128 / ATSC A/85 (-23 LUFS)', normalization: { I: -23, TP: -1, LRA: 15 }, audioCodec: 'ac3', audioBitrate: '448k' },
+  { id: 'cinema', name: 'Cinema', description: 'Film / theatrical mix (-24 LUFS)', normalization: { I: -24, TP: -2, LRA: 20 }, audioCodec: 'eac3', audioBitrate: '640k' },
 ]
 
 export interface ConvertOptions {
@@ -45,11 +43,17 @@ export interface ConvertOptions {
 export interface ExtractOptions {
   outputFormat: string
   streamIndex: number
+  audioBitrate?: string
+  sampleRate?: string
+  channels?: string
 }
 
 export interface CompressOptions {
   targetSizeMB: number
   quality: 'low' | 'medium' | 'high' | 'lossless'
+  videoCodec?: string
+  speed?: string
+  audioBitrate?: string
 }
 
 export interface FileItem {
@@ -77,6 +81,7 @@ export interface ProcessingTask {
   operation: Operation
   boostPercent?: number
   preset?: string
+  normalizeOptions?: NormalizeOptions
   status: 'queued' | 'analyzing' | 'processing' | 'finalizing' | 'complete' | 'error' | 'cancelled'
   progress: number
   message: string
@@ -117,6 +122,7 @@ export interface AppConfig {
   showTrayNotification: boolean
   autoUpdate: boolean
   ytdlpBrowser: string
+  sidebarCollapsed: boolean
 }
 
 export interface SystemInfo {

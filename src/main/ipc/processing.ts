@@ -84,8 +84,8 @@ async function runBatchOperation(
 /** Register batch processing and process-control IPC handlers. */
 export function registerProcessingIPC(): void {
   // --- Batch operations ---
-  ipcMain.handle('process:normalize', async (_, filePaths: string[], outputDir?: string) => {
-    return runBatchOperation(filePaths, 'normalize', { outputDir: outputDir || undefined })
+  ipcMain.handle('process:normalize', async (_, filePaths: string[], normalizeOptions?: any, outputDir?: string) => {
+    return runBatchOperation(filePaths, 'normalize', { normalizeOptions: normalizeOptions || undefined, outputDir: outputDir || undefined })
   })
 
   ipcMain.handle('process:boost', async (_, filePaths: string[], boostPercent: number, outputDir?: string) => {

@@ -9,7 +9,7 @@
  */
 
 import { protocol, net } from 'electron'
-import { createReadStream, statSync } from 'fs'
+import { openSync, readSync, closeSync, statSync, existsSync } from 'fs'
 import { extname } from 'path'
 import { logger } from './logger'
 import { resolveStreamToken } from './ytdlp'
@@ -61,71 +61,96 @@ const MIME_TYPES: Record<string, string> = {
   '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac',
   '.wma': 'audio/x-ms-wma', '.opus': 'audio/opus', '.webm': 'audio/webm',
   '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.avi': 'video/x-msvideo',
-  '.mov': 'video/quicktime', '.ts': 'video/mp2t'
+  '.mov': 'video/quicktime', '.ts': 'video/mp2t', '.m4v': 'video/mp4',
+  '.wmv': 'video/x-ms-wmv', '.flv': 'video/x-flv', '.ogv': 'video/ogg',
+  '.mpg': 'video/mpeg', '.mpeg': 'video/mpeg', '.3gp': 'video/3gpp',
+  '.mts': 'video/mp2t', '.m2ts': 'video/mp2t', '.aiff': 'audio/aiff',
+  '.ac3': 'audio/ac3'
 }
 
 /**
- * Serve a local file with proper Range request support for seeking.
- * Uses a pull-based ReadableStream so Chromium can control the read rate.
+ * Serve a local file with proper HTTP Range support for seeking.
+ *
+ * Reads the requested byte range into a `Buffer` using synchronous
+ * `fs.readSync` — this is reliable with Electron's Chromium layer
+ * (unlike `Readable.toWeb()` which produces Node.js Web Streams that
+ * can cause PIPELINE_ERROR_READ on seek).  For large files without a
+ * Range header the response is capped at {@link MAX_CHUNK} bytes and
+ * returned as 206 so the media element requests subsequent ranges.
+ *
+ * @internal Exported for testing only.
  */
-function serveLocalFile(filePath: string, request: Request): Response {
+
+export function serveLocalFile(filePath: string, request: Request): Response {
   try {
+    if (!existsSync(filePath)) {
+      return new Response('File not found', { status: 404 })
+    }
+
     const stat = statSync(filePath)
     const total = stat.size
+    if (total === 0) {
+      return new Response(null, { status: 204 })
+    }
+
     const ext = extname(filePath).toLowerCase()
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
     const rangeHeader = request.headers.get('Range')
 
+    // Cap open-ended range requests to avoid huge buffer allocations.
+    // The browser sends `bytes=0-` on first load and seeks with
+    // `bytes=N-` (no end) — without a cap these can try to alloc
+    // hundreds of MB for large extracted audio files.
+    const MAX_CHUNK = 2 * 1024 * 1024 // 2 MB
+
     let start = 0
     let end = total - 1
+    let openEnded = true
 
     if (rangeHeader) {
       const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader)
       if (match) {
         start = parseInt(match[1], 10)
+        openEnded = !match[2]
         end = match[2] ? parseInt(match[2], 10) : total - 1
       }
+
+      // Validate range
+      if (start >= total || start < 0 || end < start) {
+        return new Response(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${total}` }
+        })
+      }
+      end = Math.min(end, total - 1)
     }
 
-    // Clamp to valid range
-    if (start >= total) start = total - 1
-    if (end >= total) end = total - 1
+    // Only cap when no explicit end byte was given (open-ended).
+    // Precise ranges like bytes=100-200 are served exactly.
+    if (openEnded && (end - start + 1) > MAX_CHUNK) {
+      end = Math.min(start + MAX_CHUNK - 1, total - 1)
+    }
 
     const chunkSize = end - start + 1
-    const stream = createReadStream(filePath, { start, end })
+    const fd = openSync(filePath, 'r')
+    const buffer = Buffer.alloc(chunkSize)
+    readSync(fd, buffer, 0, chunkSize, start)
+    closeSync(fd)
 
-    const body = new ReadableStream({
-      start(controller) {
-        stream.on('data', (chunk: Buffer) => {
-          try { controller.enqueue(new Uint8Array(chunk)) } catch { /* closed */ }
-        })
-        stream.on('end', () => {
-          try { controller.close() } catch { /* already closed */ }
-        })
-        stream.on('error', (err) => {
-          logger.error(`media:// stream error for ${filePath}: ${err.message}`)
-          try { controller.error(err) } catch { /* already closed */ }
-        })
-      },
-      cancel() {
-        stream.destroy()
-      }
-    })
-
-    const status = rangeHeader ? 206 : 200
     const headers: Record<string, string> = {
       'Content-Type': contentType,
       'Content-Length': String(chunkSize),
-      'Accept-Ranges': 'bytes'
-    }
-    if (rangeHeader) {
-      headers['Content-Range'] = `bytes ${start}-${end}/${total}`
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'no-cache',
+      'Content-Range': `bytes ${start}-${end}/${total}`
     }
 
-    return new Response(body, { status, headers })
+    // Always 206 — tells the media element that Range requests are
+    // supported and communicates the full file size via Content-Range.
+    return new Response(buffer, { status: 206, headers })
   } catch (err: any) {
-    logger.error(`media:// local file failed: ${err.message}`)
-    return new Response('File not found', { status: 404 })
+    logger.error(`media:// local file error: ${err.message}`)
+    return new Response('File read error', { status: 500 })
   }
 }
 

@@ -4,7 +4,7 @@
  * indicator, and per-track controls.
  */
 
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import type { Track } from '../types'
 
 interface KnownFolder {
@@ -129,6 +129,16 @@ export function PlaylistPanel({
   const [knownFolders, setKnownFolders] = useState<KnownFolder[]>([])
   const [confirmFolder, setConfirmFolder] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<ExpandedState>({})
+  const activeRef = useRef<HTMLDivElement | null>(null)
+
+  // Scroll active track into view when trackIdx changes
+  useEffect(() => {
+    if (trackIdx >= 0) {
+      requestAnimationFrame(() => {
+        activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      })
+    }
+  }, [trackIdx])
 
   useEffect(() => {
     if (showFolders && knownFolders.length === 0) {
@@ -313,6 +323,7 @@ export function PlaylistPanel({
             {playlist.map((t, idx) => (
               <div
                 key={t.id}
+                ref={idx === trackIdx ? activeRef : null}
                 draggable
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}

@@ -70,8 +70,11 @@ export async function extractAudio(
 
     const args = ['-y', '-i', task.filePath, '-threads', '0', '-vn', '-map', `0:a:${opts.streamIndex}`, '-c:a', codec]
     if (codec !== 'copy' && codec !== 'pcm_s16le' && codec !== 'flac') {
-      args.push('-b:a', config.audioBitrate)
+      args.push('-b:a', opts.audioBitrate || config.audioBitrate)
     }
+    if (opts.sampleRate) args.push('-ar', opts.sampleRate)
+    if (opts.channels === 'mono') args.push('-ac', '1')
+    else if (opts.channels === 'stereo') args.push('-ac', '2')
     args.push(outPath)
 
     const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {

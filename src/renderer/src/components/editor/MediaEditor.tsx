@@ -187,6 +187,10 @@ export default function MediaEditor(): React.JSX.Element {
     store.clipToSelection()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleDeleteSelection = useCallback(() => {
+    store.deleteSelection()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // -- Export --
   const handleRemux = useCallback(async () => {
     store.setProcessing(true)
@@ -336,6 +340,7 @@ export default function MediaEditor(): React.JSX.Element {
             onSetOut={setOut}
             onSplit={handleSplit}
             onClipSelection={handleClipSelection}
+            onDeleteSelection={handleDeleteSelection}
             onCut={handleExport}
             onMerge={handleExport}
             onReplaceAudio={handleReplaceAudio}

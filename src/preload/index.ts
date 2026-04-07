@@ -36,7 +36,7 @@ const api = {
   probeFile: (filePath: string) => ipcRenderer.invoke('files:probe', filePath),
 
   // Processing
-  normalize: (filePaths: string[], outputDir?: string) => ipcRenderer.invoke('process:normalize', filePaths, outputDir),
+  normalize: (filePaths: string[], normalizeOptions?: any, outputDir?: string) => ipcRenderer.invoke('process:normalize', filePaths, normalizeOptions, outputDir),
   boost: (filePaths: string[], percent: number, outputDir?: string) => ipcRenderer.invoke('process:boost', filePaths, percent, outputDir),
   convert: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:convert', filePaths, options, outputDir),
   extract: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:extract', filePaths, options, outputDir),
@@ -64,6 +64,8 @@ const api = {
   // File utilities
   getFilePath: (file: File) => webUtils.getPathForFile(file),
   registerLocalFile: (filePath: string) => ipcRenderer.invoke('files:registerLocalFile', filePath),
+  seekLocalFile: (filePath: string, seekTime: number) => ipcRenderer.invoke('files:seekLocalFile', filePath, seekTime),
+  clearPlaybackCache: (filePath: string) => ipcRenderer.invoke('files:clearPlaybackCache', filePath),
   readFileBuffer: (filePath: string) => ipcRenderer.invoke('files:readFileBuffer', filePath),
   getKnownFolders: () => ipcRenderer.invoke('files:knownFolders'),
   browseDirectory: (dirPath: string) => ipcRenderer.invoke('files:browse', dirPath),

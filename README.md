@@ -33,7 +33,7 @@
 ### Batch Audio Processing
 
 - **Loudness Normalization** — ITU-R BS.1770-4 two-pass analysis with configurable Integrated Loudness (LUFS), True Peak (dBFS), and Loudness Range (LU)
-- **10 Built-in Presets** — YouTube, Spotify, Apple Music, Podcast, Broadcast TV, Cinema/Film, Plex/Home Media, TikTok/Reels, CD Master, and Defaults
+- **5 Category Presets** — Defaults, Dialogue, Music, Broadcast, and Cinema — each with tuned I/TP/LRA targets; Advanced mode exposes manual sliders for fine-grained control
 - **Volume Boost / Reduce** — Percentage-based amplifier applied to all audio streams; preserves channel layout and sample rate
 - **Format Conversion** — Configurable video codec, audio codec, bitrate, resolution, and framerate; stream-copy or full re-encode modes
 - **Audio Extraction** — Demux audio from video into MP3, AAC, FLAC, WAV, OGG, Opus, or M4A
@@ -61,12 +61,12 @@
 ### Media Player
 
 - **Local Playback** — Play audio and video files from your filesystem with full playlist management; seamless large file support (2 GiB+)
-- **YouTube Streaming** — Resolve and stream audio from YouTube videos and playlists via yt-dlp (auto-downloaded)
+- **URL Streaming** — Resolve and stream audio from YouTube videos, playlists, and direct audio URLs via yt-dlp (auto-downloaded)
 - **8 Visualizations** — DMT, Space, Milkdrop, Plasma, Bars, Wave, Circular, and Horizon — all real-time canvas rendering via Web Audio API
 - **Beat Detection** — Per-frame analysis across sub-bass, bass, low-mid, mid, high-mid, and treble bands with beat-reactive visuals
 - **Audio Quality** — Best / Good / Low quality presets for YouTube stream selection
-- **Playlist Features** — Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, folder browser with system shortcuts
-- **Transport Bar** — Gradient seek bar, play/pause, prev/next, shuffle, repeat, volume slider with mute toggle
+- **Playlist Features** — Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, auto-scroll to active track, folder browser with system shortcuts
+- **Transport Bar** — Custom seek bar with visual thumb and fill, play/pause, prev/next, shuffle, repeat, volume slider with mute toggle
 - **Popout Player** — Always-on-top window with compact transport, pin/unpin, 3 size presets, custom size memory, state transfer, and auto-resume playback
 - **URL Input & History** — Paste YouTube URLs or direct audio links; persisted history with title, track count, and date
 - **Cookie Caching** — Transparent browser cookie export for authenticated YouTube content with auto-retry on auth failures
