@@ -21,7 +21,7 @@ interface PlayerHeaderProps {
   onToggleUrlInput: () => void
   onPopout: () => void
   onFileSelect: () => void
-  onBrowse: () => void
+  onClearPlaylist?: () => void
 }
 
 /* -- Tooltip wrapper ------------------------------------------------ */
@@ -90,7 +90,7 @@ const VIS_ICONS: Record<VisMode, React.JSX.Element> = {
 export function PlayerHeader({
   track, popout, isPoppedOut, visMode, audioQuality, showPlaylist,
   playlistLength, onCycleQuality, onCycleVisMode, onTogglePlaylist,
-  onToggleUrlInput, onPopout, onFileSelect, onBrowse
+  onToggleUrlInput, onPopout, onFileSelect, onClearPlaylist
 }: PlayerHeaderProps): React.JSX.Element {
   const [addOpen, setAddOpen] = useState(false)
   const addRef = useRef<HTMLDivElement>(null)
@@ -175,15 +175,6 @@ export function PlayerHeader({
           {addOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-800 border border-surface-600 shadow-2xl z-50 overflow-hidden animate-fade-in">
               <button
-                onClick={() => { setAddOpen(false); onBrowse() }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400/80 shrink-0">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
-                File Browser
-              </button>
-              <button
                 onClick={() => { setAddOpen(false); onFileSelect() }}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
               >
@@ -204,6 +195,20 @@ export function PlayerHeader({
                 </svg>
                 External Link
               </button>
+              {onClearPlaylist && playlistLength > 0 && (
+                <>
+                  <div className="border-t border-white/5" />
+                  <button
+                    onClick={() => { setAddOpen(false); onClearPlaylist() }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                    Clear Playlist
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

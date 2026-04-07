@@ -4,7 +4,7 @@
  * and global IPC handlers for window controls and player state transfer.
  */
 
-import { BrowserWindow, shell, dialog, ipcMain, Menu } from 'electron'
+import { BrowserWindow, shell, ipcMain, Menu } from 'electron'
 import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
 import { getConfigSync, saveConfig, getConfig } from './config'
@@ -46,7 +46,8 @@ export function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 
@@ -68,28 +69,7 @@ export function createWindow(): void {
     e.preventDefault()
 
     if (config.showTrayNotification !== false) {
-      dialog.showMessageBox(mainWindow!, {
-        type: 'question',
-        title: 'Minimize to Tray',
-        message: 'molexMedia will continue running in the system tray.',
-        detail: 'You can restore it by double-clicking the tray icon, or quit from the tray context menu.\n\nTo close immediately instead, disable "Minimize to Tray" in Settings.',
-        buttons: ['Minimize to Tray', 'Quit'],
-        defaultId: 0,
-        cancelId: 1,
-        checkboxLabel: 'Don\'t ask again',
-        checkboxChecked: false
-      }).then(({ response, checkboxChecked }) => {
-        if (checkboxChecked) {
-          saveConfig({ showTrayNotification: false })
-        }
-        if (response === 1) {
-          isQuitting = true
-          const { app } = require('electron')
-          app.quit()
-          return
-        }
-        mainWindow?.hide()
-      })
+      mainWindow?.webContents.send('close:confirm')
       return
     }
 
@@ -175,7 +155,8 @@ export function createPopoutWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 
@@ -236,6 +217,20 @@ export function registerGlobalIPC(): void {
   })
   ipcMain.on('window:close', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+
+  // Close confirmation response from renderer
+  ipcMain.on('close:response', (_event, action: 'minimize' | 'quit', dontAskAgain: boolean) => {
+    if (dontAskAgain) {
+      saveConfig({ showTrayNotification: false })
+    }
+    if (action === 'quit') {
+      isQuitting = true
+      const { app } = require('electron')
+      app.quit()
+      return
+    }
+    mainWindow?.hide()
   })
 
   // Popout player

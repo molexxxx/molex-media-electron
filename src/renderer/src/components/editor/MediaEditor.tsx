@@ -65,7 +65,7 @@ export default function MediaEditor(): React.JSX.Element {
     // Add placeholder clip in probing state
     const placeholder: EditorClip = {
       id: clipId, name: file.name, path: filePath, objectUrl,
-      duration: 0, isVideo, inPoint: 0, outPoint: 0, loadingState: 'probing',
+      duration: 0, isVideo, inPoint: 0, outPoint: 0, sourceStart: 0, loadingState: 'probing',
       clipVolume: 1, clipMuted: false
     }
     useEditorStore.getState().addClip(placeholder)
@@ -122,7 +122,7 @@ export default function MediaEditor(): React.JSX.Element {
 
     const placeholder: EditorClip = {
       id: clipId, name, path: filePath, objectUrl: '',
-      duration: 0, isVideo, inPoint: 0, outPoint: 0, loadingState: 'probing',
+      duration: 0, isVideo, inPoint: 0, outPoint: 0, sourceStart: 0, loadingState: 'probing',
       clipVolume: 1, clipMuted: false
     }
     useEditorStore.getState().addClip(placeholder)
@@ -178,58 +178,16 @@ export default function MediaEditor(): React.JSX.Element {
     store.setOutPoint(currentTime)
   }, [currentTime]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -- Export --
-  const handleCut = useCallback(async () => {
+  const handleSplit = useCallback(() => {
     if (!clip) return
-    store.setProcessing(true)
-    store.setMessage('')
-    store.setExportProgress(0)
-    const { cutMode, outputFormat, outputDir, gifOptions } = useEditorStore.getState()
-    const opts = {
-      mode: cutMode,
-      outputFormat: outputFormat || undefined,
-      outputDir: outputDir || undefined,
-      gifOptions: outputFormat === 'gif' ? gifOptions : undefined
-    }
-    try {
-      const result = await window.api.cutMedia(clip.path, clip.inPoint, clip.outPoint, opts)
-      store.setMessage(result?.success
-        ? `Saved: ${result.outputPath.split(/[\\/]/).pop()}`
-        : `Error: ${result?.error || 'Cut failed'}`)
-    } catch (err: any) {
-      store.setMessage(`Error: ${err.message}`)
-    } finally {
-      store.setProcessing(false)
-      store.setExportProgress(0)
-    }
-  }, [clip]) // eslint-disable-line react-hooks/exhaustive-deps
+    store.splitClip(clip.id, currentTime)
+  }, [clip?.id, currentTime]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleMerge = useCallback(async () => {
-    if (!store.canMerge()) return
-    store.setProcessing(true)
-    store.setMessage('')
-    store.setExportProgress(0)
-    const { clips, cutMode, outputFormat, outputDir, gifOptions } = useEditorStore.getState()
-    const opts = {
-      mode: cutMode,
-      outputFormat: outputFormat || undefined,
-      outputDir: outputDir || undefined,
-      gifOptions: outputFormat === 'gif' ? gifOptions : undefined
-    }
-    try {
-      const segments = clips.map((c) => ({ path: c.path, inPoint: c.inPoint, outPoint: c.outPoint }))
-      const result = await window.api.mergeMedia(segments, opts)
-      store.setMessage(result?.success
-        ? `Merged: ${result.outputPath.split(/[\\/]/).pop()}`
-        : `Error: ${result?.error || 'Merge failed'}`)
-    } catch (err: any) {
-      store.setMessage(`Error: ${err.message}`)
-    } finally {
-      store.setProcessing(false)
-      store.setExportProgress(0)
-    }
+  const handleClipSelection = useCallback(() => {
+    store.clipToSelection()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // -- Export --
   const handleRemux = useCallback(async () => {
     store.setProcessing(true)
     await inspect.handleRemux()
@@ -255,7 +213,9 @@ export default function MediaEditor(): React.JSX.Element {
         offset: 0,
         volume: 1,
         muted: false,
-        objectUrl
+        objectUrl,
+        trimIn: 0,
+        trimOut: isFinite(dur) ? dur : 0
       })
     }
     input.click()
@@ -281,7 +241,9 @@ export default function MediaEditor(): React.JSX.Element {
         offset: 0,
         volume: 1,
         muted: false,
-        objectUrl
+        objectUrl,
+        trimIn: 0,
+        trimOut: isFinite(dur) ? dur : 0
       })
       // Auto-mute source audio so replacement takes over
       const clip = s.clips.find((c) => c.id === clipId)
@@ -290,28 +252,48 @@ export default function MediaEditor(): React.JSX.Element {
     input.click()
   }, [])
 
-  // -- Export with audio replacement (single clip) --
-  const handleExportWithAudioReplace = useCallback(async () => {
-    if (!clip || !clip.audioReplacement) return
+  // -- Unified export: sends the full timeline state through one pipeline --
+  const handleExport = useCallback(async () => {
+    const { clips, cutMode, outputFormat, outputDir, gifOptions } = useEditorStore.getState()
+    if (clips.length === 0) return
+
     store.setProcessing(true)
     store.setMessage('')
     store.setExportProgress(0)
-    const { outputDir } = useEditorStore.getState()
+
+    const opts = {
+      mode: cutMode,
+      outputFormat: outputFormat || undefined,
+      outputDir: outputDir || undefined,
+      gifOptions: outputFormat === 'gif' ? gifOptions : undefined
+    }
+
     try {
-      const result = await window.api.replaceAudio(clip.path, clip.audioReplacement.path, {
-        outputDir: outputDir || undefined,
-        audioOffset: clip.audioReplacement.offset || undefined
-      })
+      const segments = clips.map((c) => ({
+        path: c.path,
+        inPoint: c.inPoint,
+        outPoint: c.outPoint,
+        ...(c.audioReplacement ? {
+          audioReplacement: {
+            path: c.audioReplacement.path,
+            offset: c.audioReplacement.offset || 0,
+            trimIn: c.audioReplacement.trimIn || 0,
+            trimOut: c.audioReplacement.trimOut || c.audioReplacement.duration
+          }
+        } : {})
+      }))
+
+      const result = await window.api.mergeMedia(segments, opts)
       store.setMessage(result?.success
         ? `Saved: ${result.outputPath.split(/[\\/]/).pop()}`
-        : `Error: ${result?.error || 'Replace audio failed'}`)
+        : `Error: ${result?.error || 'Export failed'}`)
     } catch (err: any) {
       store.setMessage(`Error: ${err.message}`)
     } finally {
       store.setProcessing(false)
       store.setExportProgress(0)
     }
-  }, [clip]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // -- Import file via native dialog --
   const handleImportFile = useCallback(() => {
@@ -352,8 +334,10 @@ export default function MediaEditor(): React.JSX.Element {
             onTogglePlay={togglePlay}
             onSetIn={setIn}
             onSetOut={setOut}
-            onCut={clip?.audioReplacement ? handleExportWithAudioReplace : handleCut}
-            onMerge={handleMerge}
+            onSplit={handleSplit}
+            onClipSelection={handleClipSelection}
+            onCut={handleExport}
+            onMerge={handleExport}
             onReplaceAudio={handleReplaceAudio}
             onReplaceA1={handleReplaceA1Audio}
             onBrowseOutputDir={browseOutputDir}

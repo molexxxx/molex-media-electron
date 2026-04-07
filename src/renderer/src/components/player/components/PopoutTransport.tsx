@@ -26,20 +26,21 @@ interface PopoutTransportProps {
   onPlayNext: () => void
   onPlayPrev: () => void
   onSeek: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onSeekStart: () => void
+  onSeekEnd: (e: React.ChangeEvent<HTMLInputElement> | React.MouseEvent | React.TouchEvent) => void
   onVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onToggleShuffle: () => void
   onCycleRepeat: () => void
   onCycleVisMode: () => void
   onTogglePlaylist: () => void
   onFileSelect: () => void
-  onBrowse: () => void
 }
 
 export function PopoutTransport({
   track, playing, currentTime, duration, volume, shuffle, repeat,
   visMode, showPlaylist, playlistLength, onTogglePlay, onPlayNext,
-  onPlayPrev, onSeek, onVolumeChange, onToggleShuffle, onCycleRepeat,
-  onCycleVisMode, onTogglePlaylist, onFileSelect, onBrowse
+  onPlayPrev, onSeek, onSeekStart, onSeekEnd, onVolumeChange, onToggleShuffle, onCycleRepeat,
+  onCycleVisMode, onTogglePlaylist, onFileSelect
 }: PopoutTransportProps): React.JSX.Element {
   const seekPct = duration > 0 ? (currentTime / duration) * 100 : 0
   const volPct = volume * 100
@@ -57,15 +58,6 @@ export function PopoutTransport({
           title={`Visualization: ${VIS_LABELS[visMode]}`}
         >
           {VIS_LABELS[visMode]}
-        </button>
-        <button
-          onClick={onBrowse}
-          className="shrink-0 w-5 h-5 flex items-center justify-center rounded bg-surface-800/60 text-surface-500 hover:text-surface-200 transition-colors"
-          title="Browse files"
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
         </button>
         <button
           onClick={onFileSelect}
@@ -89,6 +81,10 @@ export function PopoutTransport({
             step={0.1}
             value={currentTime}
             onChange={onSeek}
+            onMouseDown={onSeekStart}
+            onMouseUp={onSeekEnd}
+            onTouchStart={onSeekStart}
+            onTouchEnd={onSeekEnd}
             className="seek-slider w-full h-3"
             style={{ background: 'transparent' }}
           />

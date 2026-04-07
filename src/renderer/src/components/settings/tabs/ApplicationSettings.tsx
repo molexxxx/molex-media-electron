@@ -33,9 +33,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
   const updateError = useAppStore((s) => s.updateError)
   const downloadPercent = useAppStore((s) => s.updateDownloadPercent)
   const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
-  const setUpdateVersion = useAppStore((s) => s.setUpdateVersion)
   const setUpdateError = useAppStore((s) => s.setUpdateError)
-  const setDownloadPercent = useAppStore((s) => s.setUpdateDownloadPercent)
 
   const [browsers, setBrowsers] = useState<BrowserOption[]>([])
   const [cookieStatus, setCookieStatus] = useState<CookieStatus>('idle')
@@ -46,16 +44,6 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
   useEffect(() => {
     window.api.getInstalledBrowsers?.().then(setBrowsers).catch(() => {})
     window.api.getCookieInfo?.().then(setCookieInfo).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    const cleanup = window.api.onUpdaterStatus?.((info: any) => {
-      setUpdateStatus(info.status)
-      if (info.version) setUpdateVersion(info.version)
-      if (info.error) setUpdateError(info.error)
-      if (info.percent != null) setDownloadPercent(info.percent)
-    })
-    return cleanup
   }, [])
 
   const checkNow = useCallback(async () => {
@@ -272,7 +260,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
         <SettingRow
           label="Cached Cookies"
           description={cookieInfo?.exists
-            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} — refreshes every 24h`
+            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} — refreshes every 7 days`
             : 'No cookies cached — will export on next YouTube request'}
         >
           <button

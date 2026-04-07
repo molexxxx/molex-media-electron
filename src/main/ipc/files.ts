@@ -97,6 +97,11 @@ export function registerFilesIPC(): void {
     return probeMedia(filePath)
   })
 
+  // --- Read local file as buffer for blob URL creation ---
+  ipcMain.handle('files:readFileBuffer', async (_, filePath: string) => {
+    return fs.readFileSync(filePath)
+  })
+
   // --- Register local file for media:// protocol access ---
   ipcMain.handle('files:registerLocalFile', async (_, filePath: string) => {
     const token = registerPreviewFile(filePath)

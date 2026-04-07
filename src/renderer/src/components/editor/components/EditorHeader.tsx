@@ -8,7 +8,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { formatTime, ALL_EXTS } from '../types'
-import { FileBrowser } from '../../shared'
 
 interface EditorHeaderProps {
   onLoadFile: (file: File) => void
@@ -16,13 +15,13 @@ interface EditorHeaderProps {
 }
 
 export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps): React.JSX.Element {
-  const { editorTab, setEditorTab, activeClip, clipDuration, loadingCount } = useEditorStore()
+  const { editorTab, setEditorTab, activeClip, clipDuration, loadingCount, hasClips, resetEditor } = useEditorStore()
   const clip = activeClip()
   const dur = clipDuration()
   const loading = loadingCount()
+  const showClear = hasClips()
 
   const [addOpen, setAddOpen] = useState(false)
-  const [showBrowser, setShowBrowser] = useState(false)
   const addRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
@@ -51,11 +50,6 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
     if (!dirPath) return
     const scanned = await window.api.scanDirectory(dirPath)
     for (const item of scanned) onLoadFilePath(item.path)
-  }, [onLoadFilePath])
-
-  const handleBrowseSelect = useCallback((paths: string[]) => {
-    for (const p of paths) onLoadFilePath(p)
-    setShowBrowser(false)
   }, [onLoadFilePath])
 
   return (
@@ -93,6 +87,18 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
             ))}
           </div>
 
+          {/* Clear all */}
+          {showClear && (
+            <button
+              onClick={resetEditor}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+              title="Reset editor to default state"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline mr-1 -mt-0.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <span className="hidden sm:inline">Clear</span>
+            </button>
+          )}
+
           {/* Add dropdown */}
           <div ref={addRef} className="relative">
             <button
@@ -105,13 +111,6 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
             </button>
             {addOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 glass-panel rounded-xl shadow-2xl z-50 py-1.5 animate-fade-in">
-                <button
-                  onClick={() => { setAddOpen(false); setShowBrowser(true) }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-surface-200 hover:bg-white/5 rounded-lg mx-0 transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-400"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-                  File Browser
-                </button>
                 <button
                   onClick={handleChooseFiles}
                   className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-surface-200 hover:bg-white/5 rounded-lg mx-0 transition-colors"
@@ -131,14 +130,6 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
           </div>
         </div>
       </div>
-
-      <FileBrowser
-        open={showBrowser}
-        onClose={() => setShowBrowser(false)}
-        onSelect={handleBrowseSelect}
-        extensions={ALL_EXTS}
-        title="Add Media Files"
-      />
     </>
   )
 }

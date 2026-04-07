@@ -55,15 +55,14 @@ export default function Settings(): React.JSX.Element {
   }
 
   const update = <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => {
-    setLocalConfig({ ...localConfig, [key]: val })
+    setLocalConfig((prev) => prev ? { ...prev, [key]: val } : prev)
     scheduleAutoSave()
   }
 
   const updateNorm = (key: 'I' | 'TP' | 'LRA', val: number) => {
-    setLocalConfig({
-      ...localConfig,
-      normalization: { ...localConfig.normalization, [key]: val }
-    })
+    setLocalConfig((prev) =>
+      prev ? { ...prev, normalization: { ...prev.normalization, [key]: val } } : prev
+    )
     scheduleAutoSave()
   }
 

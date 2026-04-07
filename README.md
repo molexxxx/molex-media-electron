@@ -22,6 +22,8 @@
 
 <br/>
 
+<img alt="Dashboard" src=".github/assets/dashboard.png" width="700" />
+
 </div>
 
 ---
@@ -46,11 +48,11 @@
 - **Multi-clip Workspace** — Load multiple audio and video clips, each independently probed with format/stream details
 - **Trim & Cut** — In/out point editing with two modes: fast (stream-copy, keyframe-aligned) or precise (re-encode, frame-accurate)
 - **Merge / Concatenate** — Combine 2+ trimmed segments into a single file via FFmpeg concat demuxer
-- **Replace Audio Track** — Swap a video's audio with another file while preserving the video stream
+- **Replace Audio Track (A2)** — Swap a video's audio with another file while preserving the video stream; inline trim handles on the A2 timeline track for trimming the replacement audio in/out points
 - **GIF Export** — Two-pass palette generation for high-quality GIFs with configurable loop, FPS (1-30), and width
 - **Remux** — Losslessly keep/drop individual streams, edit metadata tags, and set per-stream disposition flags
 - **Stream Inspector** — Detailed FFprobe viewer with container info, per-stream codec/resolution/channels/sample rate, and metadata editor
-- **Interactive Timeline** — Draggable scrubber with in/out handles, time markers, and selected-region highlight
+- **Interactive Timeline** — NLE-style timeline with V1, A1, and A2 tracks; draggable scrubber with in/out handles, time markers, and selected-region highlight
 - **Playback Controls** — Volume slider, speed selector (0.25x–2x), and keyboard shortcuts (Space, I, O, R)
 - **Drag-to-reorder** — Visual multi-clip track lane with proportional clip blocks, audio replacement badges, and drag-and-drop sequencing
 - **Video & Waveform Preview** — Native `<video>` for video clips, canvas waveform for audio-only; automatic transcoding for non-browser formats
@@ -58,14 +60,14 @@
 
 ### Media Player
 
-- **Local Playback** — Play audio files from your filesystem with full playlist management
+- **Local Playback** — Play audio and video files from your filesystem with full playlist management; seamless large file support (2 GiB+)
 - **YouTube Streaming** — Resolve and stream audio from YouTube videos and playlists via yt-dlp (auto-downloaded)
 - **8 Visualizations** — DMT, Space, Milkdrop, Plasma, Bars, Wave, Circular, and Horizon — all real-time canvas rendering via Web Audio API
 - **Beat Detection** — Per-frame analysis across sub-bass, bass, low-mid, mid, high-mid, and treble bands with beat-reactive visuals
 - **Audio Quality** — Best / Good / Low quality presets for YouTube stream selection
 - **Playlist Features** — Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, folder browser with system shortcuts
 - **Transport Bar** — Gradient seek bar, play/pause, prev/next, shuffle, repeat, volume slider with mute toggle
-- **Popout Player** — Always-on-top window with compact transport, pin/unpin, 3 size presets, custom size memory, and state transfer
+- **Popout Player** — Always-on-top window with compact transport, pin/unpin, 3 size presets, custom size memory, state transfer, and auto-resume playback
 - **URL Input & History** — Paste YouTube URLs or direct audio links; persisted history with title, track count, and date
 - **Cookie Caching** — Transparent browser cookie export for authenticated YouTube content with auto-retry on auth failures
 
@@ -76,7 +78,7 @@
 - **Dashboard** — Quick stats, workflow launchers, tool cards with animated canvas backgrounds, system info, and recent activity feed
 - **File Browser** — VLC-style modal with known-folder shortcuts (Music, Videos, Desktop) and multi-file/folder selection
 - **System Tray** — Icon with context menu, live batch progress in tooltip, and minimize-to-tray behavior
-- **Auto-updater** — Check / download / install from GitHub Releases with progress forwarding
+- **Auto-updater** — Check / download / install from GitHub Releases with progress forwarding and persistent update status from startup
 - **Custom Title Bar** — Frameless drag region with logo, version badge, processing indicator, and window controls
 - **Collapsible Sidebar** — Dashboard, Batch, Editor, Player, Settings, Logs — auto-collapses on narrow windows with icon-only tooltips
 - **Live Processing Panel** — Sidebar-embedded task list with progress bars, pause/cancel controls
@@ -84,6 +86,7 @@
 - **Drag-and-drop Everywhere** — Drop files onto batch queue, editor, player, or processing view
 - **Responsive Design** — Adaptive layouts for sidebar, editor clip list, and timeline
 - **Settings** — Audio codec/bitrate/fallback, worker count, output directory, overwrite mode, notifications, tray behavior, browser cookie management, reset to defaults
+- **Reset to Defaults** — Each tool (Batch, Editor, Player) has a dedicated reset action that restores all options, state, and UI to factory defaults
 
 ---
 

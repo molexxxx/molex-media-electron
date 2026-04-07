@@ -257,17 +257,34 @@ export interface MergeSegment {
   path: string
   inPoint: number
   outPoint: number
+  /** Optional A2 audio replacement for this segment. */
+  audioReplacement?: {
+    path: string
+    offset: number
+    trimIn: number
+    trimOut: number
+  }
 }
 
 /**
- * Merge (concatenate) multiple trimmed segments into a single file
- * using FFmpeg's concat demuxer.
+ * Export the timeline: trim, mix A2 audio, and concatenate segments
+ * into a single output file.
  *
- * Each segment is first cut to a temp file (using {@link buildCutArgs}),
- * then the temp files are concatenated.  All temp files are cleaned up
- * afterward.
+ * Handles all editor export scenarios:
+ * - Single segment (trim/cut)
+ * - Single segment with A2 audio overlay
+ * - Multiple segments (split + rearrange)
+ * - Multiple segments with per-segment A2 audio
  *
- * @param segments - Ordered list of segments to merge (min 2).
+ * In **precise** mode (default) all segments are processed in a single
+ * FFmpeg filter_complex pass using `trim`/`atrim` + `concat`, which
+ * eliminates boundary artifacts between segments.  A2 audio is mixed
+ * (overlaid) with `amix` rather than replacing the original track.
+ *
+ * In **fast** mode segments are stream-copied individually and joined
+ * with the concat demuxer.
+ *
+ * @param segments - Ordered list of segments to export (min 1).
  * @param options  - Cut mode and optional output format override.
  * @returns Result object with `success`, optional `outputPath`, and optional `error`.
  */
@@ -277,23 +294,162 @@ export async function mergeMedia(
   onProgress?: EditorProgressCallback
 ): Promise<{ success: boolean; outputPath?: string; error?: string }> {
   const config = await getConfig()
-  const mode = options.mode || 'precise'
+  const mode = options.outputFormat === 'gif' ? 'precise' : (options.mode || 'precise')
 
-  if (segments.length < 2) return { success: false, error: 'Need at least 2 segments' }
+  if (segments.length < 1) return { success: false, error: 'No segments provided' }
+
+  // Single segment without A2 — delegate to simple cutMedia
+  if (segments.length === 1 && !segments[0].audioReplacement) {
+    return cutMedia(segments[0].path, segments[0].inPoint, segments[0].outPoint, options, onProgress)
+  }
 
   const srcExt = path.extname(segments[0].path)
   const outExt = options.outputFormat ? `.${options.outputFormat.replace(/^\./, '')}` : srcExt
   const dir = options.outputDir || config.outputDirectory || path.dirname(segments[0].path)
-  const outputPath = path.join(dir, `merged_${Date.now()}${outExt}`)
-  const concatFile = path.join(dir, `.molexmedia_concat_${Date.now()}.txt`)
+  const base = path.basename(segments[0].path, srcExt)
+  const outputPath = segments.length === 1
+    ? path.join(dir, `${base}_export${outExt}`)
+    : path.join(dir, `merged_${Date.now()}${outExt}`)
 
-  logger.info(`Merging ${segments.length} segments (mode=${mode})`)
+  const AUDIO_ONLY_EXTS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus']
+  const hasVideo = !AUDIO_ONLY_EXTS.includes(srcExt.toLowerCase())
+  const hasA2 = segments.some((s) => s.audioReplacement)
 
-  onProgress?.({ percent: 0, message: 'Preparing segments...' })
+  logger.info(`Exporting ${segments.length} segment(s) (mode=${mode}${hasA2 ? ', with A2' : ''})`)
+  onProgress?.({ percent: 0, message: 'Preparing export...' })
+
+  if (mode === 'precise') {
+    return mergePrecise(config.ffmpegPath, segments, outputPath, hasVideo, onProgress)
+  }
+  return mergeFast(config.ffmpegPath, segments, outputPath, outExt, dir, hasVideo, onProgress)
+}
+
+/**
+ * Precise merge: single-pass filter_complex with trim + concat.
+ * Produces seamless boundaries and mixes A2 audio with the original.
+ */
+async function mergePrecise(
+  ffmpegPath: string,
+  segments: MergeSegment[],
+  outputPath: string,
+  hasVideo: boolean,
+  onProgress?: EditorProgressCallback
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  // Collect unique input files and assign FFmpeg input indices
+  const inputPaths: string[] = []
+  const pathToIdx = new Map<string, number>()
+
+  for (const seg of segments) {
+    if (!pathToIdx.has(seg.path)) {
+      pathToIdx.set(seg.path, inputPaths.length)
+      inputPaths.push(seg.path)
+    }
+    if (seg.audioReplacement && !pathToIdx.has(seg.audioReplacement.path)) {
+      pathToIdx.set(seg.audioReplacement.path, inputPaths.length)
+      inputPaths.push(seg.audioReplacement.path)
+    }
+  }
+
+  // Build filter graph
+  const filters: string[] = []
+  const concatParts: string[] = []
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i]
+    const srcIdx = pathToIdx.get(seg.path)!
+    const segDur = seg.outPoint - seg.inPoint
+
+    if (hasVideo) {
+      filters.push(
+        `[${srcIdx}:v]trim=start=${seg.inPoint}:end=${seg.outPoint},setpts=PTS-STARTPTS[v${i}]`
+      )
+    }
+
+    if (seg.audioReplacement) {
+      const a2Idx = pathToIdx.get(seg.audioReplacement.path)!
+      const a2TrimIn = seg.audioReplacement.trimIn ?? 0
+      const a2TrimOut = seg.audioReplacement.trimOut ?? (a2TrimIn + segDur)
+      const a2Offset = seg.audioReplacement.offset || 0
+      filters.push(
+        `[${srcIdx}:a]atrim=start=${seg.inPoint}:end=${seg.outPoint},asetpts=PTS-STARTPTS[a${i}_orig]`
+      )
+      const delayFilter = a2Offset > 0 ? `,adelay=${Math.round(a2Offset * 1000)}|${Math.round(a2Offset * 1000)}` : ''
+      filters.push(
+        `[${a2Idx}:a]atrim=start=${a2TrimIn}:end=${a2TrimOut},asetpts=PTS-STARTPTS${delayFilter}[a${i}_a2]`
+      )
+      filters.push(
+        `[a${i}_orig][a${i}_a2]amix=inputs=2:duration=first:dropout_transition=0[a${i}]`
+      )
+    } else {
+      filters.push(
+        `[${srcIdx}:a]atrim=start=${seg.inPoint}:end=${seg.outPoint},asetpts=PTS-STARTPTS[a${i}]`
+      )
+    }
+
+    concatParts.push(hasVideo ? `[v${i}][a${i}]` : `[a${i}]`)
+  }
+
+  // Final concat
+  const concatV = hasVideo ? 1 : 0
+  const concatOuts = hasVideo ? '[vout][aout]' : '[aout]'
+  filters.push(
+    `${concatParts.join('')}concat=n=${segments.length}:v=${concatV}:a=1${concatOuts}`
+  )
+
+  const totalDuration = segments.reduce((sum, s) => sum + (s.outPoint - s.inPoint), 0)
+
+  const args = [
+    '-y',
+    ...inputPaths.flatMap((p) => ['-i', p]),
+    '-filter_complex', filters.join('; '),
+    ...(hasVideo ? ['-map', '[vout]'] : []),
+    '-map', '[aout]',
+    '-c:a', 'aac', '-b:a', '256k',
+    outputPath
+  ]
 
   try {
-    // First, cut each segment to a temp file
-    const tempFiles: string[] = []
+    const { promise } = runCommand(ffmpegPath, args, (line) => {
+      if (!onProgress || totalDuration <= 0) return
+      const progress = parseProgress(line)
+      if (progress) {
+        const pct = Math.min(95, Math.round((progress.time / totalDuration) * 95))
+        onProgress({ percent: pct, message: `Exporting... ${pct}%${progress.speed ? ` @ ${progress.speed}` : ''}` })
+      }
+    })
+    const result = await promise
+    if (result.code !== 0 && !result.killed) {
+      logger.error(`Merge failed: ${result.stderr.slice(-500)}`)
+      onProgress?.({ percent: 0, message: '' })
+      return { success: false, error: 'Export failed' }
+    }
+    onProgress?.({ percent: 100, message: 'Complete' })
+    logger.success(`Merged ${segments.length} segments → ${outputPath}`)
+    return { success: true, outputPath }
+  } catch (err: any) {
+    logger.error(`Merge error: ${err.message}`)
+    onProgress?.({ percent: 0, message: '' })
+    return { success: false, error: err.message }
+  }
+}
+
+/**
+ * Fast merge: stream-copy each segment, concatenate with concat demuxer.
+ * A2 segments get audio mixed via amix (audio is re-encoded for those).
+ */
+async function mergeFast(
+  ffmpegPath: string,
+  segments: MergeSegment[],
+  outputPath: string,
+  outExt: string,
+  dir: string,
+  hasVideo: boolean,
+  onProgress?: EditorProgressCallback
+): Promise<{ success: boolean; outputPath?: string; error?: string }> {
+  const concatFile = path.join(dir, `.molexmedia_concat_${Date.now()}.txt`)
+  const tempFiles: string[] = []
+
+  try {
     const totalSegments = segments.length
 
     for (let i = 0; i < segments.length; i++) {
@@ -302,36 +458,66 @@ export async function mergeMedia(
       const tempPath = path.join(dir, `.molexmedia_seg_${Date.now()}_${i}${outExt}`)
       const segBase = Math.round((i / (totalSegments + 1)) * 90)
 
-      onProgress?.({ percent: segBase, message: `Cutting segment ${i + 1}/${totalSegments}...` })
+      onProgress?.({ percent: segBase, message: `Processing segment ${i + 1}/${totalSegments}...` })
 
-      const args = buildCutArgs(seg.path, seg.inPoint, seg.outPoint, tempPath, mode)
+      let args: string[]
+      if (seg.audioReplacement) {
+        // Mix A2 audio with original using amix (not replace)
+        const a2TrimIn = seg.audioReplacement.trimIn ?? 0
+        const a2TrimOut = seg.audioReplacement.trimOut ?? (a2TrimIn + segDuration)
+        const a2Offset = seg.audioReplacement.offset || 0
+        const delayFilter = a2Offset > 0 ? `adelay=${Math.round(a2Offset * 1000)}|${Math.round(a2Offset * 1000)},` : ''
+        const filterComplex = `[1:a]atrim=start=${a2TrimIn}:end=${a2TrimOut},asetpts=PTS-STARTPTS,${delayFilter}apad[a2p]; [0:a][a2p]amix=inputs=2:duration=first:dropout_transition=0[aout]`
+        args = [
+          '-y',
+          '-ss', String(seg.inPoint),
+          '-i', seg.path,
+          '-i', seg.audioReplacement.path,
+          '-t', String(segDuration),
+          '-filter_complex', filterComplex,
+          ...(hasVideo ? ['-map', '0:v', '-c:v', 'copy'] : []),
+          '-map', '[aout]',
+          '-c:a', 'aac', '-b:a', '256k',
+          '-avoid_negative_ts', 'make_zero',
+          tempPath
+        ]
+      } else {
+        args = buildCutArgs(seg.path, seg.inPoint, seg.outPoint, tempPath, 'fast')
+      }
 
-      const { promise } = runCommand(config.ffmpegPath, args, (line) => {
+      const { promise } = runCommand(ffmpegPath, args, (line) => {
         if (!onProgress || segDuration <= 0) return
         const progress = parseProgress(line)
         if (progress) {
           const segPct = Math.min(1, progress.time / segDuration)
           const pct = Math.round(segBase + segPct * (90 / (totalSegments + 1)))
-          onProgress({ percent: Math.min(90, pct), message: `Cutting segment ${i + 1}/${totalSegments}... ${Math.round(segPct * 100)}%` })
+          onProgress({ percent: Math.min(90, pct), message: `Processing segment ${i + 1}/${totalSegments}... ${Math.round(segPct * 100)}%` })
         }
       })
       const result = await promise
       if (result.code !== 0 && !result.killed) {
-        // Cleanup temp files
-        for (const f of tempFiles) { try { fs.unlinkSync(f) } catch { /* best-effort */ } }
+        cleanupTempFiles([...tempFiles, concatFile])
+        logger.error(`Segment ${i + 1} failed: ${result.stderr.slice(-300)}`)
         onProgress?.({ percent: 0, message: '' })
-        return { success: false, error: `Failed to cut segment ${i + 1}` }
+        return { success: false, error: `Failed to process segment ${i + 1}` }
       }
       tempFiles.push(tempPath)
     }
 
-    // Write concat list
+    // Single segment — no concat needed, just rename temp to output
+    if (segments.length === 1) {
+      fs.renameSync(tempFiles[0], outputPath)
+      onProgress?.({ percent: 100, message: 'Complete' })
+      logger.success(`Exported: ${outputPath}`)
+      return { success: true, outputPath }
+    }
+
+    // Multiple segments — concat
     const concatContent = tempFiles.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n')
     fs.writeFileSync(concatFile, concatContent, 'utf-8')
 
     onProgress?.({ percent: 90, message: 'Merging segments...' })
 
-    // Merge
     const args = [
       '-y',
       '-f', 'concat',
@@ -341,12 +527,10 @@ export async function mergeMedia(
       outputPath
     ]
 
-    const { promise } = runCommand(config.ffmpegPath, args)
+    const { promise } = runCommand(ffmpegPath, args)
     const result = await promise
 
-    // Cleanup temp files
-    for (const f of tempFiles) { try { fs.unlinkSync(f) } catch { /* best-effort */ } }
-    try { fs.unlinkSync(concatFile) } catch { /* best-effort */ }
+    cleanupTempFiles([...tempFiles, concatFile])
 
     if (result.code !== 0 && !result.killed) {
       logger.error(`Merge failed: ${result.stderr.slice(-300)}`)
@@ -358,11 +542,16 @@ export async function mergeMedia(
     logger.success(`Merged ${segments.length} segments → ${outputPath}`)
     return { success: true, outputPath }
   } catch (err: any) {
-    try { fs.unlinkSync(concatFile) } catch { /* best-effort */ }
-    logger.error(`Merge error: ${err.message}`)
+    cleanupTempFiles([...tempFiles, concatFile])
+    logger.error(`Export error: ${err.message}`)
     onProgress?.({ percent: 0, message: '' })
     return { success: false, error: err.message }
   }
+}
+
+/** Best-effort cleanup of temporary files. */
+function cleanupTempFiles(files: string[]): void {
+  for (const f of files) { try { fs.unlinkSync(f) } catch { /* best-effort */ } }
 }
 
 /* ------------------------------------------------------------------ */
@@ -467,6 +656,10 @@ export interface ReplaceAudioOptions {
   outputDir?: string
   /** Offset in seconds to delay the replacement audio. Positive delays audio start. */
   audioOffset?: number
+  /** Trim start point in seconds (absolute position in source file). */
+  inPoint?: number
+  /** Trim end point in seconds (absolute position in source file). */
+  outPoint?: number
 }
 
 /**
@@ -499,8 +692,12 @@ export async function replaceAudio(
   logger.info(`Replacing audio: ${path.basename(videoPath)} ← ${path.basename(audioPath)}`)
   onProgress?.({ percent: 0, message: 'Replacing audio track...' })
 
+  const hasTrim = options.inPoint != null && options.outPoint != null && (options.inPoint > 0 || options.outPoint < Infinity)
+  const duration = hasTrim ? options.outPoint! - options.inPoint! : undefined
+
   const args = [
     '-y',
+    ...(hasTrim ? ['-ss', String(options.inPoint)] : []),
     '-i', videoPath,
     ...(options.audioOffset ? ['-itsoffset', String(options.audioOffset)] : []),
     '-i', audioPath,
@@ -508,6 +705,7 @@ export async function replaceAudio(
     '-map', '1:a',
     '-c:v', 'copy',
     '-c:a', 'aac', '-b:a', '256k',
+    ...(duration != null ? ['-t', String(duration)] : []),
     '-shortest',
     outputPath
   ]

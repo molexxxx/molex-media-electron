@@ -8,25 +8,20 @@
  * configuration forms.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../stores/appStore'
 import type { FileItem } from '../../stores/types'
 import { OperationPanel } from './components/OperationPanel'
 import { FileTable } from './components/FileTable'
-import { FileBrowser } from '../shared'
 
 export default function FileQueue(): React.JSX.Element {
   const {
-    files, addFiles, updateFile, removeFile, clearFiles,
+    files, addFiles, updateFile, removeFile, resetBatch,
     operation, config, batchOutputDir, setBatchOutputDir
   } = useAppStore()
   const [scanning, setScanning] = useState(false)
-  const [showBrowser, setShowBrowser] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const addRef = useRef<HTMLDivElement>(null)
-
-  const MEDIA_EXTS = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'wmv', 'webm', 'm4v', 'mpg', 'mpeg', 'ts',
-    'mp3', 'wav', 'flac', 'ogg', 'm4a', 'wma', 'aac', 'opus']
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -37,16 +32,6 @@ export default function FileQueue(): React.JSX.Element {
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
   }, [addOpen])
-
-  const handleBrowseSelect = useCallback((paths: string[]) => {
-    const items: FileItem[] = paths.map((p) => ({
-      path: p,
-      name: p.split(/[\\/]/).pop() || p,
-      size: 0,
-      ext: (p.match(/\.[^.]+$/) || [''])[0].toLowerCase()
-    }))
-    addFiles(items)
-  }, [addFiles])
 
   // Auto-probe newly added files for metadata
   useEffect(() => {
@@ -149,7 +134,7 @@ export default function FileQueue(): React.JSX.Element {
         </div>
         <div className="flex items-center gap-1.5">
           {files.length > 0 && (
-            <button onClick={clearFiles} className="px-2.5 py-1.5 text-xs text-surface-500 hover:text-red-400 rounded-lg transition-colors">
+            <button onClick={resetBatch} className="px-2.5 py-1.5 text-xs text-surface-500 hover:text-red-400 rounded-lg transition-colors" title="Reset to default state">
               Clear
             </button>
           )}
@@ -171,15 +156,6 @@ export default function FileQueue(): React.JSX.Element {
             </button>
             {addOpen && (
               <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-800 border border-surface-600 shadow-2xl z-50 overflow-hidden animate-fade-in">
-                <button
-                  onClick={() => { setAddOpen(false); setShowBrowser(true) }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400/80 shrink-0">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                  </svg>
-                  File Browser
-                </button>
                 <button
                   onClick={() => { setAddOpen(false); handleAddFiles() }}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
@@ -253,13 +229,6 @@ export default function FileQueue(): React.JSX.Element {
         )}
       </div>
 
-      <FileBrowser
-        open={showBrowser}
-        onClose={() => setShowBrowser(false)}
-        onSelect={handleBrowseSelect}
-        extensions={MEDIA_EXTS}
-        title="Browse Media Files"
-      />
     </div>
   )
 }

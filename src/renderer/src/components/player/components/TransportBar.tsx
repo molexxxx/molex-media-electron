@@ -21,6 +21,8 @@ interface TransportBarProps {
   onPlayNext: () => void
   onPlayPrev: () => void
   onSeek: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onSeekStart: () => void
+  onSeekEnd: (e: React.ChangeEvent<HTMLInputElement> | React.MouseEvent | React.TouchEvent) => void
   onVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   onToggleShuffle: () => void
   onCycleRepeat: () => void
@@ -28,7 +30,7 @@ interface TransportBarProps {
 
 export function TransportBar({
   track, playing, currentTime, duration, volume, shuffle, repeat,
-  playlistLength, onTogglePlay, onPlayNext, onPlayPrev, onSeek,
+  playlistLength, onTogglePlay, onPlayNext, onPlayPrev, onSeek, onSeekStart, onSeekEnd,
   onVolumeChange, onToggleShuffle, onCycleRepeat
 }: TransportBarProps): React.JSX.Element {
   const seekPct = duration > 0 ? (currentTime / duration) * 100 : 0
@@ -49,6 +51,10 @@ export function TransportBar({
             step={0.1}
             value={currentTime}
             onChange={onSeek}
+            onMouseDown={onSeekStart}
+            onMouseUp={onSeekEnd}
+            onTouchStart={onSeekStart}
+            onTouchEnd={onSeekEnd}
             className="seek-slider w-full h-4"
             style={{ background: 'transparent' }}
           />

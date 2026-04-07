@@ -11,7 +11,7 @@
 import React, { useState, useEffect } from 'react'
 import { useIPC } from './hooks/useIPC'
 import { useAppStore, View, FileItem } from './stores/appStore'
-import { TitleBar, Sidebar } from './components/layout'
+import { TitleBar, Sidebar, CloseConfirmModal } from './components/layout'
 import { PopoutShell } from './components/layout/components/PopoutShell'
 import { Dashboard } from './components/dashboard'
 import { FileQueue } from './components/batch'
@@ -27,6 +27,21 @@ function App(): React.JSX.Element {
   const isPopout = window.location.hash === '#popout'
 
   const { currentView, showSetup, ffmpegChecking, goBack } = useAppStore()
+
+  // Global updater status listener — captures events from auto-check on startup
+  const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
+  const setUpdateVersion = useAppStore((s) => s.setUpdateVersion)
+  const setUpdateError = useAppStore((s) => s.setUpdateError)
+  const setUpdateDownloadPercent = useAppStore((s) => s.setUpdateDownloadPercent)
+  useEffect(() => {
+    const cleanup = window.api.onUpdaterStatus?.((info: any) => {
+      setUpdateStatus(info.status)
+      if (info.version) setUpdateVersion(info.version)
+      if (info.error) setUpdateError(info.error)
+      if (info.percent != null) setUpdateDownloadPercent(info.percent)
+    })
+    return cleanup
+  }, [setUpdateStatus, setUpdateVersion, setUpdateError, setUpdateDownloadPercent])
 
   // Global drop fallback: files dropped anywhere in the window get added to batch
   const { addFiles, setView } = useAppStore()
@@ -178,6 +193,7 @@ function App(): React.JSX.Element {
           )}
         </main>
       </div>
+      <CloseConfirmModal />
     </div>
   )
 }

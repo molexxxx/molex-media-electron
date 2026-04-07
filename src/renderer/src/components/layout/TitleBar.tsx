@@ -15,7 +15,7 @@ export default function TitleBar(): React.JSX.Element {
 
   return (
     <div className="drag-region h-10 flex items-center justify-between bg-surface-950/80 border-b border-white/5 px-4 shrink-0">
-      <div className="flex items-center gap-2.5 no-drag">
+      <div className="flex items-center gap-2.5">
         <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-amber-400 pulse-ring' : 'bg-accent-500'}`} />
         <span className="text-xs font-semibold tracking-widest uppercase text-surface-300">
           molex<span className="text-accent-400">Media</span>

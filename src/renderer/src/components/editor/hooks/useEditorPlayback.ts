@@ -20,6 +20,8 @@ export function useEditorPlayback(clip: EditorClip | null) {
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number>(0)
+  const lastSrcRef = useRef<string>('')
+  const wantPlayRef = useRef(false)
 
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -30,8 +32,17 @@ export function useEditorPlayback(clip: EditorClip | null) {
     const audio = audioRef.current
     if (!audio) return
 
-    audio.src = clip.previewUrl || clip.objectUrl
+    const src = clip.previewUrl || clip.objectUrl
+    // Only reload if URL changed (split clips share the same URL)
+    if (audio.src !== src && src) audio.src = src
     audio.currentTime = clip.inPoint
+
+    // Auto-play if advancing from a different-source clip
+    if (wantPlayRef.current) {
+      wantPlayRef.current = false
+      if (ctxRef.current?.state === 'suspended') ctxRef.current.resume()
+      audio.play().catch(() => setPlaying(false))
+    }
 
     if (!ctxRef.current) ctxRef.current = new AudioContext()
     const actx = ctxRef.current
@@ -62,15 +73,31 @@ export function useEditorPlayback(clip: EditorClip | null) {
     const video = videoRef.current
     if (!video) return
     const src = clip.previewUrl || clip.objectUrl
-    // Only update src if it actually changed (avoid redundant reloads)
-    if (video.src !== src) {
+    if (!src) return
+    // Only reload media if the URL actually changed (split clips share the same URL)
+    if (lastSrcRef.current !== src) {
       video.preload = 'auto'
       video.src = src
+      lastSrcRef.current = src
     }
-    const seekOnce = (): void => { video.currentTime = clip.inPoint }
+    // Always seek to the clip's inPoint (handles clip switches within same source)
+    const seekOnce = (): void => {
+      video.currentTime = clip.inPoint
+      if (wantPlayRef.current) {
+        wantPlayRef.current = false
+        video.play().catch(() => setPlaying(false))
+      }
+    }
     if (video.readyState >= 1) seekOnce()
     else video.addEventListener('loadedmetadata', seekOnce, { once: true })
-    return () => { video.removeEventListener('loadedmetadata', seekOnce) }
+    const onError = (): void => {
+      console.error('[useEditorPlayback] video load error:', video.error?.message, 'src:', src)
+    }
+    video.addEventListener('error', onError)
+    return () => {
+      video.removeEventListener('loadedmetadata', seekOnce)
+      video.removeEventListener('error', onError)
+    }
   }, [clip?.id, clip?.loadingState, clip?.previewUrl, clip?.objectUrl]) // re-run when clip becomes ready or src changes
 
   // -- Sync media element when inPoint moves ahead of playhead --
@@ -158,11 +185,39 @@ export function useEditorPlayback(clip: EditorClip | null) {
       if (el.currentTime < clip.inPoint - tol) {
         el.currentTime = clip.inPoint
       } else if (el.currentTime >= clip.outPoint) {
-        el.pause()
-        el.currentTime = clip.outPoint
-        const a2 = a2AudioRef.current
-        if (a2 && !a2.paused) a2.pause()
-        setPlaying(false)
+        // Auto-advance to the next clip/segment if available
+        const state = useEditorStore.getState()
+        // Guard: if store already advanced past this clip, bail
+        if (state.clips[state.activeIdx]?.id !== clip.id) return
+
+        const nextIdx = state.activeIdx + 1
+        if (nextIdx < state.clips.length) {
+          const nextClip = state.clips[nextIdx]
+          const nextSrc = nextClip.previewUrl || nextClip.objectUrl
+          const curSrc = clip.previewUrl || clip.objectUrl
+          // Pause A2 of current clip before advancing
+          const a2 = a2AudioRef.current
+          if (a2 && !a2.paused) a2.pause()
+          // Switch active clip without resetting playing state
+          useEditorStore.setState({ activeIdx: nextIdx })
+
+          if (nextSrc === curSrc && nextClip.isVideo === clip.isVideo) {
+            // Same source — seek and keep playing
+            el.currentTime = nextClip.inPoint
+            setCurrentTime(nextClip.inPoint)
+          } else {
+            // Different source — pause, let source effects reload + auto-play
+            el.pause()
+            wantPlayRef.current = true
+          }
+        } else {
+          // Last clip — stop
+          el.pause()
+          el.currentTime = clip.outPoint
+          const a2 = a2AudioRef.current
+          if (a2 && !a2.paused) a2.pause()
+          setPlaying(false)
+        }
       }
 
       // A2 sync — start/stop based on offset

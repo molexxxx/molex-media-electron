@@ -68,6 +68,7 @@ interface AppState {
   isPaused: boolean
   setIsPaused: (paused: boolean) => void
   clearTasks: () => void
+  resetBatch: () => void
 
   // Stats
   totalProcessed: number
@@ -175,6 +176,14 @@ export const useAppStore = create<AppState>((set) => ({
   setIsPaused: (paused) => set({ isPaused: paused }),
   clearTasks: () => set({ tasks: [], activeBatchId: null, isPaused: false }),
 
+  resetBatch: () => set({
+    files: [], tasks: [], activeBatchId: null, isProcessing: false, isPaused: false,
+    operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', batchOutputDir: '',
+    convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
+    extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
+    compressOptions: { targetSizeMB: 0, quality: 'high' }
+  }),
+
   totalProcessed: 0,
   totalErrors: 0,
   incrementProcessed: () => set((s) => ({ totalProcessed: s.totalProcessed + 1 })),
@@ -199,13 +208,19 @@ export const useAppStore = create<AppState>((set) => ({
 
   sidebarCollapsed: false,
   setSidebarCollapsed: (collapsed) => {
-    set({ sidebarCollapsed: collapsed })
+    set((s) => ({
+      sidebarCollapsed: collapsed,
+      config: s.config ? { ...s.config, sidebarCollapsed: collapsed } : s.config
+    }))
     window.api?.saveConfig({ sidebarCollapsed: collapsed }).catch(() => {})
   },
   toggleSidebar: () => set((s) => {
     const next = !s.sidebarCollapsed
     window.api?.saveConfig({ sidebarCollapsed: next }).catch(() => {})
-    return { sidebarCollapsed: next }
+    return {
+      sidebarCollapsed: next,
+      config: s.config ? { ...s.config, sidebarCollapsed: next } : s.config
+    }
   }),
 
   updateStatus: 'idle',

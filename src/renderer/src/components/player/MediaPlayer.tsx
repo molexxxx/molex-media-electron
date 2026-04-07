@@ -10,14 +10,13 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { VisMode, AudioQuality } from '../../visualizations'
-import { type Track, AUDIO_EXTS, isYouTubeUrl } from './types'
+import { type Track, MEDIA_EXTS, isYouTubeUrl } from './types'
 import { useVisualizer } from './hooks/useVisualizer'
 import { TransportBar } from './components/TransportBar'
 import { PopoutTransport } from './components/PopoutTransport'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { PlayerHeader } from './components/PlayerHeader'
 import { UrlInputBar } from './components/UrlInputBar'
-import { FileBrowser } from '../shared'
 
 export default function MediaPlayer({ popout = false }: { popout?: boolean }): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -46,7 +45,6 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const [urlHistory, setUrlHistory] = useState<{ url: string; title: string; trackCount: number; addedAt: number }[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [isPoppedOut, setIsPoppedOut] = useState(false)
-  const [showBrowser, setShowBrowser] = useState(false)
   const pendingPlayRef = useRef<number | null>(null)
   const pendingSeekRef = useRef<number | null>(null)
   const pendingPauseRef = useRef(false)
@@ -141,14 +139,42 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       }
     }
 
+    // Lazily convert local file paths to blob URLs (same as addFiles path)
+    // Falls back to media:// streaming for files too large to buffer (>2 GiB)
+    if (!audioSrc && !isYouTube && t.filePath) {
+      try {
+        const buffer = await window.api.readFileBuffer(t.filePath)
+        const ext = t.name.split('.').pop()?.toLowerCase() || ''
+        const mimeMap: Record<string, string> = {
+          mp3: 'audio/mpeg', wav: 'audio/wav', flac: 'audio/flac', ogg: 'audio/ogg',
+          m4a: 'audio/mp4', aac: 'audio/aac', wma: 'audio/x-ms-wma', opus: 'audio/opus',
+          webm: 'audio/webm', mp4: 'video/mp4', mkv: 'video/x-matroska', avi: 'video/x-msvideo',
+          mov: 'video/quicktime', m4v: 'video/mp4', wmv: 'video/x-ms-wmv',
+          mpg: 'video/mpeg', mpeg: 'video/mpeg', '3gp': 'video/3gpp', flv: 'video/x-flv',
+          ts: 'video/mp2t', mts: 'video/mp2t', m2ts: 'video/mp2t', ogv: 'video/ogg'
+        }
+        const blob = new Blob([buffer], { type: mimeMap[ext] || 'application/octet-stream' })
+        audioSrc = URL.createObjectURL(blob)
+        setPlaylist((prev) => prev.map((tr, i) => i === idx ? { ...tr, src: audioSrc, isBlob: true } : tr))
+      } catch {
+        // File too large for buffer — fall back to media:// streaming
+        try {
+          audioSrc = await window.api.registerLocalFile(t.filePath)
+          setPlaylist((prev) => prev.map((tr, i) => i === idx ? { ...tr, src: audioSrc, isBlob: false } : tr))
+        } catch (err2: any) {
+          setError(`Failed to load file: ${err2.message}`)
+          autoSkip()
+          return
+        }
+      }
+    }
+
     if (!audioSrc) {
       setError('No audio source available')
       autoSkip()
       return
     }
 
-    // Successful start — reset skip counter and retry tracker
-    skipCountRef.current = 0
     ytRetryRef.current = null
 
     // Tear down previous — remove src BEFORE creating new element
@@ -189,13 +215,17 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
 
     audio.addEventListener('loadedmetadata', () => {
       setDuration(audio.duration)
+      // Track loaded successfully — reset consecutive-skip counter
+      skipCountRef.current = 0
       // Restore seek position from state transfer (popout transition)
       if (pendingSeekRef.current != null) {
         audio.currentTime = pendingSeekRef.current
         pendingSeekRef.current = null
       }
     })
-    audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime))
+    audio.addEventListener('timeupdate', () => {
+      if (!seekingRef.current) setCurrentTime(audio.currentTime)
+    })
     audio.addEventListener('ended', () => {
       setPlaying(false)
       // Use refs for up-to-date values (this closure captures nothing stale)
@@ -281,7 +311,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     const newTracks: Track[] = []
     for (const f of files) {
       const ext = f.name.split('.').pop()?.toLowerCase() || ''
-      if (!AUDIO_EXTS.includes(ext)) continue
+      if (!MEDIA_EXTS.includes(ext)) continue
       const fp = window.api.getFilePath(f)
       newTracks.push({
         id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -435,35 +465,13 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = true
-    input.accept = AUDIO_EXTS.map((e) => `.${e}`).join(',')
+    input.accept = MEDIA_EXTS.map((e) => `.${e}`).join(',')
     input.onchange = () => {
       const files = Array.from(input.files || [])
       if (files.length > 0) addFiles(files)
     }
     input.click()
   }, [addFiles])
-
-  // -- Browse handler: converts file paths to tracks --
-  const handleBrowseSelect = useCallback(async (paths: string[]) => {
-    const newTracks: Track[] = []
-    for (const p of paths) {
-      const ext = p.split('.').pop()?.toLowerCase() || ''
-      if (!AUDIO_EXTS.includes(ext)) continue
-      const mediaUrl = await window.api.registerLocalFile(p)
-      newTracks.push({
-        id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: p.split(/[\\/]/).pop() || p,
-        src: mediaUrl,
-        isBlob: false,
-        filePath: p
-      })
-    }
-    if (newTracks.length === 0) return
-    const startIdx = playlist.length
-    setPlaylist((prev) => [...prev, ...newTracks])
-    setShowPlaylist(true)
-    schedulePlay(startIdx)
-  }, [playlist.length, schedulePlay])
 
   // -- Playback controls --
   const togglePlay = useCallback(() => {
@@ -481,6 +489,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
 
   const playNext = useCallback(() => {
     if (playlist.length === 0) return
+    skipCountRef.current = 0
     playTrack(nextIndex(trackIdx))
   }, [playlist.length, trackIdx, nextIndex, playTrack])
 
@@ -491,6 +500,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       audioRef.current.currentTime = 0
       return
     }
+    skipCountRef.current = 0
     playTrack(nextIndex(trackIdx, -1))
   }, [playlist.length, trackIdx, nextIndex, playTrack])
 
@@ -532,6 +542,15 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     setTrackIdx(-1)
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() }
     setPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+    setError(null)
+    setUrlInput('')
+    setShowUrlInput(false)
+    setResolving(false)
+    setShowHistory(false)
+    skipCountRef.current = 0
+    ytRetryRef.current = null
   }, [playlist])
 
   // Load all media files from a folder into the playlist
@@ -540,24 +559,21 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       const result = await window.api.browseDirectory(folderPath)
       if (!result.success) return
       const audioFiles = result.entries.filter(
-        (e: any) => !e.isDirectory && AUDIO_EXTS.includes(e.ext.replace('.', ''))
+        (e: any) => !e.isDirectory && MEDIA_EXTS.includes(e.ext.replace('.', ''))
       )
       if (audioFiles.length === 0) return
-      const newTracks: Track[] = []
-      for (const f of audioFiles) {
-        const mediaUrl = await window.api.registerLocalFile(f.path)
-        newTracks.push({
-          id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          name: f.name,
-          src: mediaUrl,
-          isBlob: false,
-          filePath: f.path
-        })
-      }
+      const newTracks: Track[] = audioFiles.map((f) => ({
+        id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: f.name,
+        src: '',
+        isBlob: false,
+        filePath: f.path
+      }))
       if (mode === 'replace') {
         playlist.forEach((t) => { if (t.isBlob) URL.revokeObjectURL(t.src) })
         if (audioRef.current) { audioRef.current.pause(); audioRef.current.removeAttribute('src'); audioRef.current.load() }
         setPlaying(false)
+        setTrackIdx(-1)
         setPlaylist(newTracks)
         schedulePlay(0)
       } else {
@@ -572,10 +588,28 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     setRepeat((r) => r === 'off' ? 'all' : r === 'all' ? 'one' : 'off')
   }, [])
 
-  const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const seekingRef = useRef(false)
+
+  const seekStart = useCallback(() => { seekingRef.current = true }, [])
+
+  const seekEnd = useCallback((e: React.ChangeEvent<HTMLInputElement> | React.MouseEvent | React.TouchEvent) => {
+    seekingRef.current = false
     const audio = audioRef.current
     if (!audio) return
-    audio.currentTime = parseFloat(e.target.value)
+    const val = 'target' in e && (e.target as HTMLInputElement).value != null
+      ? parseFloat((e.target as HTMLInputElement).value)
+      : currentTime
+    audio.currentTime = val
+  }, [currentTime])
+
+  const seek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value)
+    setCurrentTime(val)
+    // If not in a drag gesture (e.g. keyboard arrow keys), commit immediately
+    if (!seekingRef.current) {
+      const audio = audioRef.current
+      if (audio) audio.currentTime = val
+    }
   }, [])
 
   const changeVolume = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -637,24 +671,19 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const restoreFromState = useCallback(async (state: any) => {
     if (!state) return
     if (state.playlist) {
-      // Re-register local/blob tracks for fresh media:// tokens;
+      // Re-register local/blob tracks: clear src so playTrack lazily loads them;
       // YouTube tracks get src cleared so playTrack re-resolves on demand.
-      const restored: Track[] = await Promise.all(
-        state.playlist.map(async (t: Track) => {
-          // Blob or local file with a filePath → re-register for a fresh token
-          if (t.filePath && (!t.src || t.isBlob)) {
-            try {
-              const mediaUrl = await window.api.registerLocalFile(t.filePath)
-              return { ...t, src: mediaUrl, isBlob: false }
-            } catch { /* fall through */ }
-          }
-          // YouTube tracks: ensure src is cleared so playTrack re-resolves
-          if (t.videoUrl) {
-            return { ...t, src: '' }
-          }
-          return t
-        })
-      )
+      const restored: Track[] = state.playlist.map((t: Track) => {
+        // Local file with a filePath → clear src so playTrack reads fresh blob
+        if (t.filePath && !t.videoUrl) {
+          return { ...t, src: '', isBlob: false }
+        }
+        // YouTube tracks: ensure src is cleared so playTrack re-resolves
+        if (t.videoUrl) {
+          return { ...t, src: '' }
+        }
+        return t
+      })
       setPlaylist(restored)
     }
     if (state.volume != null) setVolume(state.volume)
@@ -820,23 +849,16 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             onPlayNext={playNext}
             onPlayPrev={playPrev}
             onSeek={seek}
+            onSeekStart={seekStart}
+            onSeekEnd={seekEnd}
             onVolumeChange={changeVolume}
             onToggleShuffle={() => setShuffle((s) => !s)}
             onCycleRepeat={cycleRepeat}
             onCycleVisMode={cycleVisMode}
             onTogglePlaylist={() => setShowPlaylist((v) => !v)}
             onFileSelect={handleFileSelect}
-            onBrowse={() => setShowBrowser(true)}
           />
         </div>
-
-        <FileBrowser
-          open={showBrowser}
-          onClose={() => setShowBrowser(false)}
-          onSelect={handleBrowseSelect}
-          extensions={AUDIO_EXTS}
-          title="Browse Audio Files"
-        />
       </div>
     )
   }
@@ -878,7 +900,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           onToggleUrlInput={() => setShowUrlInput((v) => !v)}
           onPopout={handlePopout}
           onFileSelect={handleFileSelect}
-          onBrowse={() => setShowBrowser(true)}
+          onClearPlaylist={clearPlaylist}
         />
 
         {showUrlInput && (
@@ -970,19 +992,13 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           onPlayNext={playNext}
           onPlayPrev={playPrev}
           onSeek={seek}
+          onSeekStart={seekStart}
+          onSeekEnd={seekEnd}
           onVolumeChange={changeVolume}
           onToggleShuffle={() => setShuffle((s) => !s)}
           onCycleRepeat={cycleRepeat}
         />
       </div>
-
-      <FileBrowser
-        open={showBrowser}
-        onClose={() => setShowBrowser(false)}
-        onSelect={handleBrowseSelect}
-        extensions={AUDIO_EXTS}
-        title="Browse Audio Files"
-      />
     </div>
   )
 }

@@ -12,7 +12,7 @@ import { useAppStore, FileItem } from '../../stores/appStore'
 import { TaskCard } from './components/TaskCard'
 
 export default function ProcessingView(): React.JSX.Element {
-  const { tasks, isProcessing, isPaused, activeBatchId, clearTasks, addFiles, setView } = useAppStore()
+  const { tasks, isProcessing, isPaused, activeBatchId, resetBatch, addFiles, setView } = useAppStore()
   const [dragOver, setDragOver] = useState(false)
 
   const completed = tasks.filter((t) => t.status === 'complete').length
@@ -106,7 +106,7 @@ export default function ProcessingView(): React.JSX.Element {
           )}
           {!isProcessing && tasks.length > 0 && (
             <button
-              onClick={clearTasks}
+              onClick={() => { resetBatch(); setView('batch') }}
               className="px-4 py-1.5 text-sm font-medium text-surface-400 hover:text-surface-200 bg-surface-700/50 hover:bg-surface-600/50 rounded-lg transition-all"
             >
               Clear Results

@@ -15,18 +15,6 @@ import { logger } from './logger'
 import { resolveStreamToken } from './ytdlp'
 
 /* ------------------------------------------------------------------ */
-/*  MIME type lookup for local audio/video files                       */
-/* ------------------------------------------------------------------ */
-
-const MIME_TYPES: Record<string, string> = {
-  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac',
-  '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac',
-  '.wma': 'audio/x-ms-wma', '.opus': 'audio/opus', '.webm': 'audio/webm',
-  '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.avi': 'video/x-msvideo',
-  '.mov': 'video/quicktime', '.ts': 'video/mp2t'
-}
-
-/* ------------------------------------------------------------------ */
 /*  Preview file registry (editor playback for non-browser formats)    */
 /* ------------------------------------------------------------------ */
 
@@ -64,8 +52,21 @@ export function registerMediaScheme(): void {
   ])
 }
 
+/* ------------------------------------------------------------------ */
+/*  MIME type lookup for local audio/video files                       */
+/* ------------------------------------------------------------------ */
+
+const MIME_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.aac': 'audio/aac',
+  '.wma': 'audio/x-ms-wma', '.opus': 'audio/opus', '.webm': 'audio/webm',
+  '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.avi': 'video/x-msvideo',
+  '.mov': 'video/quicktime', '.ts': 'video/mp2t'
+}
+
 /**
  * Serve a local file with proper Range request support for seeking.
+ * Uses a pull-based ReadableStream so Chromium can control the read rate.
  */
 function serveLocalFile(filePath: string, request: Request): Response {
   try {
@@ -75,56 +76,53 @@ function serveLocalFile(filePath: string, request: Request): Response {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream'
     const rangeHeader = request.headers.get('Range')
 
-    const wrapStream = (stream: ReturnType<typeof createReadStream>): ReadableStream => {
-      let closed = false
-      return new ReadableStream({
-        start(controller) {
-          stream.on('data', (chunk: Buffer) => {
-            if (!closed) {
-              try { controller.enqueue(chunk) } catch { closed = true }
-            }
-          })
-          stream.on('end', () => {
-            if (!closed) { closed = true; try { controller.close() } catch { /* ok */ } }
-          })
-          stream.on('error', (err) => {
-            if (!closed) { closed = true; try { controller.error(err) } catch { /* ok */ } }
-          })
-        },
-        cancel() {
-          closed = true
-          stream.destroy()
-        }
-      })
-    }
+    let start = 0
+    let end = total - 1
 
     if (rangeHeader) {
       const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader)
       if (match) {
-        const start = parseInt(match[1], 10)
-        const end = match[2] ? parseInt(match[2], 10) : total - 1
-        const chunkSize = end - start + 1
-
-        return new Response(wrapStream(createReadStream(filePath, { start, end })) as any, {
-          status: 206,
-          headers: {
-            'Content-Type': contentType,
-            'Content-Range': `bytes ${start}-${end}/${total}`,
-            'Content-Length': String(chunkSize),
-            'Accept-Ranges': 'bytes'
-          }
-        })
+        start = parseInt(match[1], 10)
+        end = match[2] ? parseInt(match[2], 10) : total - 1
       }
     }
 
-    return new Response(wrapStream(createReadStream(filePath)) as any, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': String(total),
-        'Accept-Ranges': 'bytes'
+    // Clamp to valid range
+    if (start >= total) start = total - 1
+    if (end >= total) end = total - 1
+
+    const chunkSize = end - start + 1
+    const stream = createReadStream(filePath, { start, end })
+
+    const body = new ReadableStream({
+      start(controller) {
+        stream.on('data', (chunk: Buffer) => {
+          try { controller.enqueue(new Uint8Array(chunk)) } catch { /* closed */ }
+        })
+        stream.on('end', () => {
+          try { controller.close() } catch { /* already closed */ }
+        })
+        stream.on('error', (err) => {
+          logger.error(`media:// stream error for ${filePath}: ${err.message}`)
+          try { controller.error(err) } catch { /* already closed */ }
+        })
+      },
+      cancel() {
+        stream.destroy()
       }
     })
+
+    const status = rangeHeader ? 206 : 200
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Content-Length': String(chunkSize),
+      'Accept-Ranges': 'bytes'
+    }
+    if (rangeHeader) {
+      headers['Content-Range'] = `bytes ${start}-${end}/${total}`
+    }
+
+    return new Response(body, { status, headers })
   } catch (err: any) {
     logger.error(`media:// local file failed: ${err.message}`)
     return new Response('File not found', { status: 404 })
@@ -137,8 +135,10 @@ function serveLocalFile(filePath: string, request: Request): Response {
  */
 export function registerMediaHandler(): void {
   protocol.handle('media', async (request) => {
-    const token = decodeURIComponent(request.url.replace('media://', '').replace(/\/$/, ''))
-    logger.info(`media:// request for token=${token.slice(0, 8)}...`)
+    const raw = request.url
+    const token = decodeURIComponent(raw.replace('media://', '').replace(/\/$/, ''))
+    const rangeInfo = request.headers.get('Range') || 'none'
+    logger.info(`media:// url=${raw.slice(0, 50)}... range=${rangeInfo}`)
 
     // Check preview files first (editor playback previews)
     const previewPath = previewFiles.get(token)

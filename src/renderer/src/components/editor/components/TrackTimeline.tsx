@@ -16,6 +16,8 @@ interface TrackTimelineProps {
   onTogglePlay: () => void
   onSetIn: () => void
   onSetOut: () => void
+  onSplit: () => void
+  onClipSelection: () => void
   onCut: () => void
   onMerge: () => void
   onReplaceAudio: (clipId: string) => void
@@ -44,17 +46,17 @@ function rulerMarks(totalDur: number): { pct: number; label: string }[] {
 }
 
 export function TrackTimeline({
-  currentTime, playing, onSeek, onTogglePlay, onSetIn, onSetOut, onCut,
+  currentTime, playing, onSeek, onTogglePlay, onSetIn, onSetOut, onSplit, onClipSelection, onCut,
   onMerge, onReplaceAudio, onReplaceA1, onBrowseOutputDir, onImportFile
 }: TrackTimelineProps): React.JSX.Element {
   const {
     clips, activeIdx, processing, exportProgress, message, cutMode, outputFormat,
     outputDir, gifOptions, volume, playbackRate,
-    setActiveIdx, moveClip, canMerge, removeClip, setAudioOffset,
+    setActiveIdx, moveClip, canMerge, removeClip,
     setCutMode, setOutputFormat, setOutputDir, setGifOptions, resetPoints,
     setVolume, setPlaybackRate, setClipVolume, toggleClipMute,
     setA2Volume, toggleA2Mute, setClipInPoint, setClipOutPoint,
-    activeClip, clipDuration
+    activeClip, clipDuration, deleteActiveClip
   } = useEditorStore()
 
   const [dragIdx, setDragIdx] = useState<number | null>(null)
@@ -62,6 +64,10 @@ export function TrackTimeline({
   const [zoom, setZoom] = useState(1)
   const trackAreaRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  /* ---- A2 cross-segment drag ---- */
+  const a2RowRef = useRef<HTMLDivElement>(null)
+  const [a2DragClipId, setA2DragClipId] = useState<string | null>(null)
 
   /* ---- trim handle state ---- */
   const trimRef = useRef<{
@@ -74,7 +80,7 @@ export function TrackTimeline({
   const duration = clipDuration()
 
   /* ---- sequence metrics ---- */
-  const totalDur = clips.reduce((acc, c) => acc + (c.outPoint - c.inPoint), 0)
+  const totalDur = clips.reduce((acc, c) => acc + c.duration, 0)
   const hasReplacementAudio = clips.some((c) => c.audioReplacement)
   // A1 always shown — video clips have source audio, audio clips are audio-only
   const hasAudioTrack = clips.length > 0
@@ -82,20 +88,25 @@ export function TrackTimeline({
   // Cumulative start-time of each clip in merge sequence
   const clipStarts: number[] = []
   let cum = 0
-  for (const c of clips) { clipStarts.push(cum); cum += c.outPoint - c.inPoint }
+  for (const c of clips) { clipStarts.push(cum); cum += c.duration }
 
-  // Playhead position as percentage
+  // Playhead position — convert source-relative currentTime to clip-relative
   const active = clips[activeIdx]
+  const relTime = active ? currentTime - active.sourceStart : 0
   const seqTime = active
-    ? clipStarts[activeIdx] + Math.max(0, Math.min(currentTime - active.inPoint, active.outPoint - active.inPoint))
+    ? clipStarts[activeIdx] + Math.max(0, Math.min(relTime, active.duration))
     : 0
   const playheadPct = totalDur > 0 ? Math.min(100, (seqTime / totalDur) * 100) : 0
   const marks = rulerMarks(totalDur)
 
-  // In/out bracket positions for the active clip
-  const activeSegDur = active ? active.outPoint - active.inPoint : 0
-  const inBracketPct = totalDur > 0 && active ? (clipStarts[activeIdx] / totalDur) * 100 : 0
-  const outBracketPct = totalDur > 0 && active ? ((clipStarts[activeIdx] + activeSegDur) / totalDur) * 100 : 100
+  // In/out bracket positions — when brackets cover the full segment, show full timeline (no dimming)
+  const isFullRange = active &&
+    (active.inPoint - active.sourceStart) <= 0.05 &&
+    ((active.sourceStart + active.duration) - active.outPoint) <= 0.05
+  const inBracketPct = isFullRange ? 0
+    : totalDur > 0 && active ? ((clipStarts[activeIdx] + (active.inPoint - active.sourceStart)) / totalDur) * 100 : 0
+  const outBracketPct = isFullRange ? 100
+    : totalDur > 0 && active ? ((clipStarts[activeIdx] + (active.outPoint - active.sourceStart)) / totalDur) * 100 : 100
 
   const srcExt = clip?.name.split('.').pop()?.toLowerCase() || ''
   const formats = clip?.isVideo ? OUTPUT_FORMATS.video : OUTPUT_FORMATS.audio
@@ -113,15 +124,66 @@ export function TrackTimeline({
 
     // Find which clip this falls into
     for (let i = 0; i < clips.length; i++) {
-      const segDur = clips[i].outPoint - clips[i].inPoint
+      const segDur = clips[i].duration
       if (seqT <= clipStarts[i] + segDur || i === clips.length - 1) {
-        if (i !== activeIdx) setActiveIdx(i)
-        const localT = clips[i].inPoint + Math.max(0, Math.min(segDur, seqT - clipStarts[i]))
-        onSeek(localT)
+        if (i !== activeIdx) {
+          // Silent switch — don't reset playing state during scrub
+          useEditorStore.setState({ activeIdx: i })
+        }
+        const localT = Math.max(0, Math.min(segDur, seqT - clipStarts[i]))
+        // Convert clip-relative to source-relative
+        onSeek(localT + clips[i].sourceStart)
         break
       }
     }
   }, [clips, clipStarts, totalDur, activeIdx, setActiveIdx, onSeek])
+
+  const handleA2DragStart = useCallback((clipId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const row = a2RowRef.current
+    if (!row) return
+    const s0 = useEditorStore.getState()
+    const srcClip = s0.clips.find((c) => c.id === clipId)
+    if (!srcClip?.audioReplacement) return
+    setA2DragClipId(clipId)
+    const startX = e.clientX
+    const rowWidth = row.getBoundingClientRect().width
+    const total = s0.clips.reduce((a, c) => a + c.duration, 0)
+    let cumBefore = 0
+    for (const c of s0.clips) { if (c.id === clipId) break; cumBefore += c.duration }
+    const startAbs = cumBefore + srcClip.audioReplacement.offset
+    let curSourceId = clipId
+    const onMove = (ev: MouseEvent): void => {
+      const dx = ev.clientX - startX
+      const timeDelta = (dx / rowWidth) * total
+      const newAbs = Math.max(0, Math.min(total - 0.01, startAbs + timeDelta))
+      const st = useEditorStore.getState()
+      let acc = 0
+      let targetIdx = st.clips.length - 1
+      for (let i = 0; i < st.clips.length; i++) {
+        if (newAbs >= acc && newAbs < acc + st.clips[i].duration) { targetIdx = i; break }
+        acc += st.clips[i].duration
+      }
+      const targetClip = st.clips[targetIdx]
+      const relOff = Math.max(0, Math.round((newAbs - acc) * 100) / 100)
+      if (targetClip.id !== curSourceId) {
+        if (targetClip.audioReplacement) return
+        st.moveA2ToClip(curSourceId, targetIdx, relOff)
+        curSourceId = targetClip.id
+        setA2DragClipId(targetClip.id)
+      } else {
+        st.setAudioOffset(curSourceId, relOff)
+      }
+    }
+    const onUp = (): void => {
+      setA2DragClipId(null)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
 
   const handleRulerMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return
@@ -141,12 +203,15 @@ export function TrackTimeline({
         case 'Space': e.preventDefault(); onTogglePlay(); break
         case 'KeyI': e.preventDefault(); onSetIn(); break
         case 'KeyO': e.preventDefault(); onSetOut(); break
+        case 'KeyS': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); onSplit() } break
         case 'KeyR': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); resetPoints() } break
+        case 'Delete':
+        case 'Backspace': if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); deleteActiveClip() } break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onTogglePlay, onSetIn, onSetOut]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onTogglePlay, onSetIn, onSetOut, onSplit, deleteActiveClip]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- zoom: Ctrl+wheel to zoom, plain wheel to scroll ---- */
   useEffect(() => {
@@ -310,7 +375,7 @@ export function TrackTimeline({
             onMouseDown={handleRulerMouseDown}
           >
             {clips.map((clip, i) => {
-              const segDur = clip.outPoint - clip.inPoint
+              const segDur = clip.duration
               const isActive = i === activeIdx
               const isDragging = dragIdx === i
               const isDropTarget = dropIdx === i && dragIdx !== i
@@ -325,7 +390,7 @@ export function TrackTimeline({
                   onDrop={(e) => handleDrop(e, i)}
                   onClick={(e) => { e.stopPropagation(); setActiveIdx(i) }}
                   onMouseDown={(e) => e.stopPropagation()}
-                  className={`group relative cursor-pointer transition-all duration-150 border-r border-white/5 last:border-r-0 overflow-hidden ${
+                  className={`group relative cursor-pointer transition-all duration-150 border-r border-white/5 last:border-r-0 overflow-hidden rounded-md mx-px first:ml-0 last:mr-0 ${
                     isDragging ? 'opacity-30' : ''
                   } ${isDropTarget ? 'ring-1 ring-accent-400 ring-inset' : ''} ${
                     isActive ? 'bg-accent-500/12' : 'bg-surface-900/40 hover:bg-surface-800/50'
@@ -396,13 +461,13 @@ export function TrackTimeline({
                     </div>
                     <span className="text-[9px] font-mono text-surface-500 mt-0.5">{formatTime(segDur)}</span>
                     {/* Trim indicators — show available media beyond current edges */}
-                    {(clip.inPoint > 0.1 || clip.outPoint < clip.duration - 0.1) && (
+                    {((clip.inPoint - clip.sourceStart) > 0.1 || clip.outPoint < (clip.sourceStart + clip.duration) - 0.1) && (
                       <div className="flex items-center gap-1 mt-px">
-                        {clip.inPoint > 0.1 && (
-                          <span className="text-[6px] text-blue-400/40 font-mono">◁{formatTime(clip.inPoint)}</span>
+                        {(clip.inPoint - clip.sourceStart) > 0.1 && (
+                          <span className="text-[6px] text-blue-400/40 font-mono">◁{formatTime(clip.inPoint - clip.sourceStart)}</span>
                         )}
-                        {clip.outPoint < clip.duration - 0.1 && (
-                          <span className="text-[6px] text-emerald-400/40 font-mono">{formatTime(clip.duration - clip.outPoint)}▷</span>
+                        {clip.outPoint < (clip.sourceStart + clip.duration) - 0.1 && (
+                          <span className="text-[6px] text-emerald-400/40 font-mono">{formatTime((clip.sourceStart + clip.duration) - clip.outPoint)}▷</span>
                         )}
                       </div>
                     )}
@@ -432,12 +497,12 @@ export function TrackTimeline({
               onMouseDown={handleRulerMouseDown}
             >
               {clips.map((clip, i) => {
-                const segDur = clip.outPoint - clip.inPoint
+                const segDur = clip.duration
                 const isActive = i === activeIdx
                 return (
                   <div
                     key={`a1-${clip.id}`}
-                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 cursor-pointer ${
+                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 cursor-pointer rounded-md mx-px first:ml-0 last:mr-0 ${
                       isActive ? 'bg-green-500/5' : ''
                     }`}
                     style={{ flexGrow: segDur, flexShrink: 0, flexBasis: 0 }}
@@ -544,16 +609,17 @@ export function TrackTimeline({
           {/* A2 — Replacement audio track */}
           {hasReplacementAudio && (
             <div
+              ref={a2RowRef}
               className="h-8 flex border-t border-white/5 bg-surface-950/5 cursor-pointer"
               onMouseDown={handleRulerMouseDown}
             >
               {clips.map((clip, i) => {
-                const segDur = clip.outPoint - clip.inPoint
+                const segDur = clip.duration
                 const isActive = i === activeIdx
                 return (
                   <div
                     key={`a2-${clip.id}`}
-                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 ${
+                    className={`relative overflow-hidden border-r border-white/5 last:border-r-0 rounded-md mx-px first:ml-0 last:mr-0 ${
                       isActive && clip.audioReplacement ? 'bg-amber-500/5' : ''
                     }`}
                     style={{ flexGrow: segDur, flexShrink: 0, flexBasis: 0 }}
@@ -566,8 +632,9 @@ export function TrackTimeline({
                         clipId={clip.id}
                         clipDuration={segDur}
                         replacement={clip.audioReplacement}
+                        isDragging={a2DragClipId === clip.id}
+                        onDragStart={(cid, ev) => handleA2DragStart(cid, ev)}
                         onRemove={() => useEditorStore.getState().setAudioReplacement(clip.id, undefined)}
-                        onOffsetChange={(offset) => setAudioOffset(clip.id, offset)}
                         onReplace={() => onReplaceAudio(clip.id)}
                         onToggleMute={() => toggleA2Mute(clip.id)}
                         onVolumeChange={(v) => setA2Volume(clip.id, v)}
@@ -582,59 +649,59 @@ export function TrackTimeline({
           {/* In/Out bracket markers — span all tracks */}
           {active && totalDur > 0 && (
             <>
+              {/* Dimmed regions outside in/out — dark overlay for excluded areas */}
+              {inBracketPct > 0.1 && (
+                <div className="absolute top-0 bottom-0 bg-black/45 pointer-events-none z-[5]" style={{ left: 0, width: `${inBracketPct}%` }} />
+              )}
+              {outBracketPct < 99.9 && (
+                <div className="absolute top-0 bottom-0 bg-black/45 pointer-events-none z-[5]" style={{ left: `${outBracketPct}%`, right: 0 }} />
+              )}
+              {/* Highlighted selection region — subtle bright overlay */}
+              {(inBracketPct > 0.1 || outBracketPct < 99.9) && (
+                <div className="absolute top-0 bottom-0 bg-white/[0.03] border-y border-white/[0.06] pointer-events-none z-[5]" style={{ left: `${inBracketPct}%`, width: `${outBracketPct - inBracketPct}%` }} />
+              )}
               {/* In-point bracket (blue) */}
               <div
                 className="absolute top-0 bottom-0 z-10 pointer-events-none"
                 style={{ left: `${inBracketPct}%` }}
               >
-                <div className="absolute top-0 left-0 w-[2px] h-full bg-blue-400/25" />
-                {/* Top handle — rounded pill grip */}
+                <div className="absolute top-0 left-0 w-[2px] h-full bg-blue-400/50" />
+                {/* Top handle */}
                 <div
-                  className="absolute -top-0.5 -left-[5px] w-3 h-4 pointer-events-auto cursor-col-resize group/inhandle"
+                  className="absolute -top-0.5 -left-[6px] w-[14px] h-5 pointer-events-auto cursor-col-resize group/inhandle"
                   onMouseDown={(e) => handleTrimStart(e, active.id, 'left', activeIdx)}
                 >
-                  <div className="w-full h-full rounded-sm bg-blue-500/80 group-hover/inhandle:bg-blue-400 transition-colors shadow-[0_0_6px_rgba(59,130,246,0.3)] flex items-center justify-center">
-                    <div className="flex gap-px">
-                      <div className="w-px h-2 bg-blue-200/60 rounded-full" />
-                      <div className="w-px h-2 bg-blue-200/60 rounded-full" />
+                  <div className="w-full h-full rounded-[3px] bg-blue-500 group-hover/inhandle:bg-blue-400 transition-colors shadow-[0_0_8px_rgba(59,130,246,0.4)] flex items-center justify-center border border-blue-300/30">
+                    <div className="flex gap-[2px]">
+                      <div className="w-[1.5px] h-2.5 bg-blue-200/70 rounded-full" />
+                      <div className="w-[1.5px] h-2.5 bg-blue-200/70 rounded-full" />
                     </div>
                   </div>
                 </div>
                 {/* Bottom bracket foot */}
-                <div className="absolute bottom-0 left-0 w-3 h-[2px] bg-blue-400/50 rounded-r" />
-                {/* Vertical glow on active drag */}
-                <div className="absolute top-4 bottom-0 left-0 w-[2px] bg-gradient-to-b from-blue-400/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 w-3 h-[2px] bg-blue-400/60 rounded-r" />
               </div>
               {/* Out-point bracket (emerald) */}
               <div
                 className="absolute top-0 bottom-0 z-10 pointer-events-none"
                 style={{ left: `${outBracketPct}%` }}
               >
-                <div className="absolute top-0 right-0 w-[2px] h-full bg-emerald-400/25" />
-                {/* Top handle — rounded pill grip */}
+                <div className="absolute top-0 right-0 w-[2px] h-full bg-emerald-400/50" />
+                {/* Top handle */}
                 <div
-                  className="absolute -top-0.5 -right-[5px] w-3 h-4 pointer-events-auto cursor-col-resize group/outhandle"
+                  className="absolute -top-0.5 -right-[6px] w-[14px] h-5 pointer-events-auto cursor-col-resize group/outhandle"
                   onMouseDown={(e) => handleTrimStart(e, active.id, 'right', activeIdx)}
                 >
-                  <div className="w-full h-full rounded-sm bg-emerald-500/80 group-hover/outhandle:bg-emerald-400 transition-colors shadow-[0_0_6px_rgba(16,185,129,0.3)] flex items-center justify-center">
-                    <div className="flex gap-px">
-                      <div className="w-px h-2 bg-emerald-200/60 rounded-full" />
-                      <div className="w-px h-2 bg-emerald-200/60 rounded-full" />
+                  <div className="w-full h-full rounded-[3px] bg-emerald-500 group-hover/outhandle:bg-emerald-400 transition-colors shadow-[0_0_8px_rgba(16,185,129,0.4)] flex items-center justify-center border border-emerald-300/30">
+                    <div className="flex gap-[2px]">
+                      <div className="w-[1.5px] h-2.5 bg-emerald-200/70 rounded-full" />
+                      <div className="w-[1.5px] h-2.5 bg-emerald-200/70 rounded-full" />
                     </div>
                   </div>
                 </div>
                 {/* Bottom bracket foot */}
-                <div className="absolute bottom-0 right-0 w-3 h-[2px] bg-emerald-400/50 rounded-l" />
-                {/* Vertical glow on active drag */}
-                <div className="absolute top-4 bottom-0 right-0 w-[2px] bg-gradient-to-b from-emerald-400/40 to-transparent" />
+                <div className="absolute bottom-0 right-0 w-3 h-[2px] bg-emerald-400/60 rounded-l" />
               </div>
-              {/* Dimmed regions outside in/out */}
-              {inBracketPct > 0.1 && (
-                <div className="absolute top-0 bottom-0 bg-black/15 pointer-events-none" style={{ left: 0, width: `${inBracketPct}%` }} />
-              )}
-              {outBracketPct < 99.9 && (
-                <div className="absolute top-0 bottom-0 bg-black/15 pointer-events-none" style={{ left: `${outBracketPct}%`, right: 0 }} />
-              )}
             </>
           )}
 
@@ -643,18 +710,18 @@ export function TrackTimeline({
             className="absolute top-0 bottom-0 z-20 pointer-events-none"
             style={{ left: `${playheadPct}%` }}
           >
-            <div className="absolute top-0 left-[-0.5px] w-px h-full bg-white/90" />
-            {/* Top playhead triangle */}
+            <div className="absolute top-0 left-[-0.5px] w-px h-full bg-red-400/90" />
+            {/* Top playhead handle — red pill */}
             <div
-              className="absolute -top-[1px] -left-[5px] pointer-events-auto cursor-col-resize"
+              className="absolute -top-[1px] -left-[6px] pointer-events-auto cursor-col-resize group/playhead"
               onMouseDown={(e) => { e.stopPropagation(); handleRulerMouseDown(e) }}
             >
-              <svg width="11" height="8" viewBox="0 0 11 8" className="drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]">
-                <path d="M5.5 8L0 0h11L5.5 8z" fill="white" />
-              </svg>
+              <div className="w-[13px] h-[18px] rounded-[3px] bg-red-500 group-hover/playhead:bg-red-400 transition-colors shadow-[0_0_8px_rgba(239,68,68,0.5)] flex items-center justify-center border border-red-300/30">
+                <div className="w-[1.5px] h-2.5 bg-red-200/70 rounded-full" />
+              </div>
             </div>
             {/* Bottom playhead marker */}
-            <div className="absolute -bottom-[1px] -left-[2px] w-[5px] h-[3px] bg-white/80 rounded-t" />
+            <div className="absolute -bottom-[1px] -left-[2px] w-[5px] h-[3px] bg-red-400/80 rounded-t" />
           </div>
         </div>
         </div>
@@ -678,7 +745,7 @@ export function TrackTimeline({
                 )}
               </button>
               <span className="text-[11px] font-mono text-surface-300 tabular-nums">
-                {formatTime(currentTime)} <span className="text-surface-600">/</span> {formatTime(clip.duration)}
+                {formatTime(currentTime - (clip?.sourceStart ?? 0))} <span className="text-surface-600">/</span> {formatTime(clip.duration)}
               </span>
 
               {/* Volume */}
@@ -739,6 +806,27 @@ export function TrackTimeline({
               <button onClick={() => resetPoints()} className="px-2.5 py-1 text-[10px] font-medium rounded-lg text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 border border-white/[0.06] transition-all" title="Reset (R)">
                 Reset
               </button>
+              <div className="w-px h-4 bg-surface-700/50 mx-0.5 hidden sm:block" />
+              <button onClick={onSplit} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-orange-500/15 text-orange-300 hover:bg-orange-500/25 border border-orange-500/20 transition-all shadow-sm flex items-center gap-1" title="Split at playhead (S)">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                  <line x1="8" y1="19" x2="12" y2="6"/><line x1="16" y1="19" x2="12" y2="6"/><line x1="12" y1="2" x2="12" y2="6"/>
+                </svg>
+                Split
+              </button>
+              <button onClick={onClipSelection} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 border border-violet-500/20 transition-all shadow-sm flex items-center gap-1" title="Crop to selection — keep only the In/Out region">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                  <rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="16" x2="18" y2="16"/>
+                </svg>
+                Clip
+              </button>
+              {clips.length > 1 && (
+                <button onClick={() => deleteActiveClip()} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-red-500/10 text-red-300/80 hover:bg-red-500/20 hover:text-red-300 border border-red-500/15 transition-all shadow-sm flex items-center gap-1" title="Delete selected clip (Del)">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                  </svg>
+                  Delete
+                </button>
+              )}
               {canMerge() && (
                 <>
                   <div className="w-px h-4 bg-surface-700/50 mx-0.5 hidden sm:block" />
@@ -875,52 +963,102 @@ export function TrackTimeline({
 interface AudioBlockProps {
   clipId: string
   clipDuration: number
-  replacement: { name: string; duration: number; offset: number; volume: number; muted: boolean }
+  replacement: { name: string; duration: number; offset: number; volume: number; muted: boolean; trimIn: number; trimOut: number }
+  isDragging: boolean
+  onDragStart: (clipId: string, e: React.MouseEvent) => void
   onRemove: () => void
-  onOffsetChange: (offset: number) => void
   onReplace: () => void
   onToggleMute: () => void
   onVolumeChange: (volume: number) => void
 }
 
-function AudioBlock({ clipDuration, replacement, onRemove, onOffsetChange, onReplace, onToggleMute, onVolumeChange }: AudioBlockProps): React.JSX.Element {
+function AudioBlock({ clipId, clipDuration, replacement, isDragging, onDragStart, onRemove, onReplace, onToggleMute, onVolumeChange }: AudioBlockProps): React.JSX.Element {
   const slotRef = useRef<HTMLDivElement>(null)
-  const [dragging, setDragging] = useState(false)
+  const trimDragRef = useRef<{
+    edge: 'left' | 'right'; startX: number; startTrimIn: number; startTrimOut: number; secPerPx: number
+  } | null>(null)
+  const [trimming, setTrimming] = useState<string | null>(null)
 
-  const { offset, duration: audioDur, name } = replacement
-  const span = Math.max(clipDuration, offset + audioDur)
-  const leftPct = span > 0 ? (offset / span) * 100 : 0
-  const widthPct = span > 0 ? (audioDur / span) * 100 : 100
+  const { offset, trimIn, trimOut, name } = replacement
+  // Trimmed audio duration after applying in/out trim
+  const trimmedDur = trimOut - trimIn
+
+  // Position relative to the segment (clip) duration:
+  // offset is where in the segment the A2 starts playing
+  const leftPct = clipDuration > 0 ? (offset / clipDuration) * 100 : 0
+  const widthPct = clipDuration > 0 ? (trimmedDur / clipDuration) * 100 : 100
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Don't start drag if we're trimming
+    if (trimming) return
+    onDragStart(clipId, e)
+  }, [clipId, onDragStart, trimming])
+
+  const handleTrimMouseDown = useCallback((e: React.MouseEvent, edge: 'left' | 'right') => {
     e.preventDefault()
     e.stopPropagation()
-    const slot = slotRef.current
-    if (!slot) return
-    setDragging(true)
-    const rect = slot.getBoundingClientRect()
-    const startX = e.clientX
-    const startOff = offset
-    const onMove = (ev: MouseEvent): void => {
-      const dSec = ((ev.clientX - startX) / rect.width) * span
-      onOffsetChange(Math.max(0, Math.round((startOff + dSec) * 100) / 100))
+    const slotEl = slotRef.current
+    if (!slotEl) return
+    const slotWidth = slotEl.getBoundingClientRect().width
+    const secPerPx = clipDuration / slotWidth
+    trimDragRef.current = { edge, startX: e.clientX, startTrimIn: trimIn, startTrimOut: trimOut, secPerPx }
+    setTrimming(`${clipId}-${edge}`)
+  }, [clipId, clipDuration, trimIn, trimOut])
+
+  useEffect(() => {
+    if (!trimming) return
+    const onMove = (e: MouseEvent): void => {
+      const t = trimDragRef.current
+      if (!t) return
+      const deltaSec = (e.clientX - t.startX) * t.secPerPx
+      const store = useEditorStore.getState()
+      if (t.edge === 'left') {
+        store.setA2TrimIn(clipId, t.startTrimIn + deltaSec)
+      } else {
+        store.setA2TrimOut(clipId, t.startTrimOut + deltaSec)
+      }
     }
-    const onUp = (): void => { setDragging(false); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    const onUp = (): void => { trimDragRef.current = null; setTrimming(null) }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [offset, span, onOffsetChange])
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+  }, [trimming, clipId])
 
   return (
     <div ref={slotRef} className="relative h-full">
       <div
         onMouseDown={handleMouseDown}
         className={`absolute top-0.5 bottom-0.5 rounded transition-colors overflow-hidden ${
-          dragging
+          isDragging
             ? 'bg-amber-500/20 border border-amber-400/40 cursor-grabbing shadow-[0_0_8px_rgba(245,158,11,0.15)]'
             : 'bg-amber-500/10 border border-amber-500/20 cursor-grab hover:bg-amber-500/15 hover:border-amber-400/30'
         }`}
-        style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: '40px' }}
+        style={{ left: `${Math.max(0, leftPct)}%`, width: `${widthPct}%`, minWidth: '30px' }}
       >
+        {/* Left trim handle */}
+        <div
+          onMouseDown={(e) => handleTrimMouseDown(e, 'left')}
+          className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/a2tl ${
+            trimming?.endsWith('-left') ? 'bg-amber-400/30' : 'hover:bg-amber-400/20'
+          }`}
+        >
+          <div className={`absolute left-0 top-0 bottom-0 w-[2px] rounded-r transition-colors ${
+            trimming?.endsWith('-left') ? 'bg-amber-400' : 'bg-transparent group-hover/a2tl:bg-amber-400/60'
+          }`} />
+        </div>
+
+        {/* Right trim handle */}
+        <div
+          onMouseDown={(e) => handleTrimMouseDown(e, 'right')}
+          className={`absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10 transition-colors group/a2tr ${
+            trimming?.endsWith('-right') ? 'bg-amber-400/30' : 'hover:bg-amber-400/20'
+          }`}
+        >
+          <div className={`absolute right-0 top-0 bottom-0 w-[2px] rounded-l transition-colors ${
+            trimming?.endsWith('-right') ? 'bg-amber-400' : 'bg-transparent group-hover/a2tr:bg-amber-400/60'
+          }`} />
+        </div>
+
         {/* Waveform */}
         <div className="absolute inset-0 flex items-center gap-px opacity-20 pointer-events-none overflow-hidden px-0.5">
           {Array.from({ length: 16 }, (_, i) => (

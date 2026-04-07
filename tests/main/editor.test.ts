@@ -279,13 +279,13 @@ describe('editor', () => {
   })
 
   describe('mergeMedia', () => {
-    it('returns error when fewer than 2 segments', async () => {
-      const result = await mergeMedia([{ path: '/a.mp4', inPoint: 0, outPoint: 10 }])
+    it('returns error when no segments provided', async () => {
+      const result = await mergeMedia([])
       expect(result.success).toBe(false)
-      expect(result.error).toContain('2 segments')
+      expect(result.error).toContain('No segments')
     })
 
-    it('cuts segments then concatenates them', async () => {
+    it('uses single filter_complex pass in precise mode', async () => {
       mockRunCommand.mockReturnValue({
         promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
         process: {}
@@ -300,11 +300,13 @@ describe('editor', () => {
       expect(result.success).toBe(true)
       expect(result.outputPath).toContain('merged_')
 
-      // Should call runCommand 3 times: 2 segment cuts + 1 concat
-      expect(mockRunCommand).toHaveBeenCalledTimes(3)
+      // Precise mode uses a single filter_complex call
+      expect(mockRunCommand).toHaveBeenCalledTimes(1)
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-filter_complex')
     })
 
-    it('returns error when a segment cut fails', async () => {
+    it('returns error when merge fails', async () => {
       mockRunCommand.mockReturnValueOnce({
         promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'bad' }),
         process: {}
@@ -317,24 +319,7 @@ describe('editor', () => {
 
       const result = await mergeMedia(segments)
       expect(result.success).toBe(false)
-      expect(result.error).toContain('segment 1')
-    })
-
-    it('returns error when concat fails', async () => {
-      // First two cuts succeed, concat fails
-      mockRunCommand
-        .mockReturnValueOnce({ promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }), process: {} })
-        .mockReturnValueOnce({ promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }), process: {} })
-        .mockReturnValueOnce({ promise: Promise.resolve({ code: 1, killed: false, stdout: '', stderr: 'concat error' }), process: {} })
-
-      const segments = [
-        { path: '/a.mp4', inPoint: 0, outPoint: 10 },
-        { path: '/b.mp4', inPoint: 0, outPoint: 10 }
-      ]
-
-      const result = await mergeMedia(segments)
-      expect(result.success).toBe(false)
-      expect(result.error).toContain('merge failed')
+      expect(result.error).toContain('failed')
     })
   })
 
@@ -482,11 +467,9 @@ describe('editor', () => {
       const progress = vi.fn()
       await mergeMedia(segments, {}, progress)
 
-      // Trigger stderr callbacks for segment cuts
-      for (let i = 0; i < 2; i++) {
-        const cb = mockRunCommand.mock.calls[i][2]
-        if (cb) cb('time=00:00:05.00')
-      }
+      // Single filter_complex call — trigger stderr callback
+      const cb = mockRunCommand.mock.calls[0][2]
+      if (cb) cb('time=00:00:05.00')
 
       expect(progress).toHaveBeenCalled()
     })

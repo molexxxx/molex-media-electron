@@ -12,7 +12,11 @@ export interface Track {
   filePath?: string
 }
 
-export const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus', 'webm', 'mp4']
+export const MEDIA_EXTS = [
+  'mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus',
+  'mp4', 'webm', 'mkv', 'avi', 'mov', 'flv', 'wmv', 'm4v',
+  'ts', 'mpg', 'mpeg', '3gp', 'mts', 'm2ts', 'ogv'
+]
 
 const YT_REGEX = /(?:youtube\.com|youtu\.be)\//i
 

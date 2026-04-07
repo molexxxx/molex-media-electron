@@ -162,7 +162,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
                     </span>
                     {task.status === 'complete' && (
                       <button
-                        onClick={() => window.api.showInFolder(task.filePath)}
+                        onClick={() => window.api.showInFolder(task.outputPath || task.filePath)}
                         className="text-[9px] text-accent-400 hover:text-accent-300 font-medium opacity-0 group-hover:opacity-100 transition-all shrink-0"
                       >
                         Show

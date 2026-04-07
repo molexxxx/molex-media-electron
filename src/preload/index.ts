@@ -50,10 +50,10 @@ const api = {
 
   // Editor
   cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
-  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
+  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
   probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
-  replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number }) => ipcRenderer.invoke('editor:replaceAudio', videoPath, audioPath, options),
+  replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => ipcRenderer.invoke('editor:replaceAudio', videoPath, audioPath, options),
   createPreview: (filePath: string) => ipcRenderer.invoke('editor:createPreview', filePath),
   onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => {
     const listener = (_: any, progress: any) => cb(progress)
@@ -64,6 +64,7 @@ const api = {
   // File utilities
   getFilePath: (file: File) => webUtils.getPathForFile(file),
   registerLocalFile: (filePath: string) => ipcRenderer.invoke('files:registerLocalFile', filePath),
+  readFileBuffer: (filePath: string) => ipcRenderer.invoke('files:readFileBuffer', filePath),
   getKnownFolders: () => ipcRenderer.invoke('files:knownFolders'),
   browseDirectory: (dirPath: string) => ipcRenderer.invoke('files:browse', dirPath),
 
@@ -144,6 +145,13 @@ const api = {
   windowMaximize: () => ipcRenderer.send('window:maximize'),
   windowClose: () => ipcRenderer.send('window:close'),
   showTextContextMenu: () => ipcRenderer.send('context-menu:text'),
+  onCloseConfirm: (cb: () => void) => {
+    const listener = () => cb()
+    ipcRenderer.on('close:confirm', listener)
+    return () => ipcRenderer.removeListener('close:confirm', listener)
+  },
+  closeConfirmResponse: (action: 'minimize' | 'quit', dontAskAgain: boolean) =>
+    ipcRenderer.send('close:response', action, dontAskAgain),
 
   // Navigation (from tray context menu)
   onNavigate: (cb: (view: string) => void) => {

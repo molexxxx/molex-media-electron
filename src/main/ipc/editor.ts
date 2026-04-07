@@ -58,8 +58,8 @@ export function registerEditorIPC(): void {
     return result
   })
 
-  ipcMain.handle('editor:merge', async (_, segments: { path: string; inPoint: number; outPoint: number }[], options?: CutOptions) => {
-    const label = `Merge ${segments.length} segments`
+  ipcMain.handle('editor:merge', async (_, segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: CutOptions) => {
+    const label = segments.length === 1 ? 'Export' : `Merge ${segments.length} segments`
     const task = createEditorTask(segments[0]?.path || '', label)
     sendToAll('process:batch-started', { batchId: task.id, tasks: [task] })
 
@@ -128,7 +128,7 @@ export function registerEditorIPC(): void {
     }
   })
 
-  ipcMain.handle('editor:replaceAudio', async (_, videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number }) => {
+  ipcMain.handle('editor:replaceAudio', async (_, videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => {
     const task = createEditorTask(videoPath, `${path.basename(videoPath)} (replace audio)`)
     sendToAll('process:batch-started', { batchId: task.id, tasks: [task] })
 

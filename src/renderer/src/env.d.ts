@@ -19,6 +19,7 @@ declare global {
       probeFile: (filePath: string) => Promise<any>
       getFilePath: (file: File) => string
       registerLocalFile: (filePath: string) => Promise<string>
+      readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
       getKnownFolders: () => Promise<{ name: string; path: string; icon: string }[]>
       browseDirectory: (dirPath: string) => Promise<{ success: boolean; entries: { name: string; path: string; isDirectory: boolean; size: number; ext: string }[]; parentPath: string; error?: string }>
       popoutPlayer: (state?: any) => Promise<void>
@@ -48,6 +49,8 @@ declare global {
       windowMaximize: () => void
       windowClose: () => void
       showTextContextMenu: () => void
+      onCloseConfirm: (cb: () => void) => () => void
+      closeConfirmResponse: (action: 'minimize' | 'quit', dontAskAgain: boolean) => void
       onNavigate: (cb: (view: string) => void) => () => void
       resolvePlaylist: (url: string) => Promise<{ success: boolean; entries: any[]; error?: string }>
       getStreamUrl: (videoUrl: string, quality?: string) => Promise<{ success: boolean; mediaUrl?: string; title?: string; duration?: number | null; error?: string }>
@@ -60,10 +63,11 @@ declare global {
       extract: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
       compress: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
       cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
-      mergeMedia: (segments: { path: string; inPoint: number; outPoint: number }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
+      mergeMedia: (segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
       probeDetailed: (filePath: string) => Promise<any>
       remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => Promise<{ success: boolean; outputPath?: string; error?: string }>
       createPreview: (filePath: string) => Promise<{ success: boolean; previewUrl?: string; error?: string }>
+      replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => Promise<any>
       onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => () => void
       getUrlHistory: () => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>
       removeUrlHistory: (url: string) => Promise<{ url: string; title: string; trackCount: number; addedAt: number }[]>

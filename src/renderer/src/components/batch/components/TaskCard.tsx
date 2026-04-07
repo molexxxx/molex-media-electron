@@ -24,7 +24,7 @@ export function TaskCard({ task }: TaskCardProps): React.JSX.Element {
         </span>
         {task.status === 'complete' && (
           <button
-            onClick={() => window.api.showInFolder(task.filePath)}
+            onClick={() => window.api.showInFolder(task.outputPath || task.filePath)}
             className="text-2xs text-accent-400 hover:text-accent-300 font-medium transition-colors"
           >
             Show
