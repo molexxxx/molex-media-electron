@@ -181,35 +181,6 @@ export function drawHorizon(
       ctx.stroke()
     }
 
-    // Snow caps — bright tips on the tallest peaks of mid-to-front layers
-    if (depth > 0.25) {
-      for (let i = 1; i < points.length - 1; i++) {
-        const prev = points[i - 1].y
-        const curr = points[i].y
-        const next = points[i + 1].y
-        // Local peak detection
-        if (curr < prev && curr < next) {
-          const peakHeight = yBase - curr
-          const threshold = (H - vanishY) * (0.06 + depth * 0.08)
-          if (peakHeight > threshold) {
-            const snowAlpha = Math.min(0.6, (peakHeight / threshold - 1) * 0.3 + 0.05 + band * 0.15)
-            const snowH = Math.min(peakHeight * 0.2, 8 + depth * 4)
-            const snowW = segW * (1.5 + depth * 1.5)
-            const grad = ctx.createLinearGradient(0, curr, 0, curr + snowH)
-            grad.addColorStop(0, `rgba(220, 230, 255, ${snowAlpha})`)
-            grad.addColorStop(1, 'transparent')
-            ctx.fillStyle = grad
-            ctx.beginPath()
-            ctx.moveTo(points[i].x - snowW / 2, curr + snowH * 0.5)
-            ctx.lineTo(points[i].x, curr)
-            ctx.lineTo(points[i].x + snowW / 2, curr + snowH * 0.5)
-            ctx.closePath()
-            ctx.fill()
-          }
-        }
-      }
-    }
-
     // Inter-layer fog/mist — semi-transparent gradient between layers
     if (layer > 0 && layer < layers - 1) {
       const fogY = yBase - (H - vanishY) * depth * 0.05
