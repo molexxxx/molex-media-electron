@@ -57,7 +57,7 @@ export function OperationPanel({ onStart, startLabel }: {
     files, operation, setOperation,
     boostPercent, setBoostPercent,
     selectedPreset, setSelectedPreset,
-    normalizeOptions, setNormalizeOptions,
+    setNormalizeOptions,
     convertOptions, setConvertOptions,
     extractOptions, setExtractOptions,
     compressOptions, setCompressOptions,

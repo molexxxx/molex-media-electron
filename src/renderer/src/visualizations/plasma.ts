@@ -24,7 +24,7 @@ import type { AudioFeatures, PlasmaState } from './types'
 export function drawPlasma(
   ctx: CanvasRenderingContext2D,
   freq: Uint8Array,
-  time: Uint8Array,
+  _time: Uint8Array,
   W: number,
   H: number,
   state: PlasmaState,
