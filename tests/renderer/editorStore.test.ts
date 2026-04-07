@@ -901,4 +901,281 @@ describe('editorStore', () => {
       expect(useEditorStore.getState().clips).toHaveLength(0)
     })
   })
+
+  describe('setAudioOffset', () => {
+    it('updates offset on a clip with audioReplacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().setAudioOffset(clip.id, 5.5)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.offset).toBe(5.5)
+    })
+
+    it('no-ops when clip has no audioReplacement', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioOffset(clip.id, 5)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+  })
+
+  describe('moveA2ToClip', () => {
+    it('moves audio replacement from one clip to another', () => {
+      const c1 = makeClip({ id: 'c1' })
+      const c2 = makeClip({ id: 'c2' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 2, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().moveA2ToClip('c1', 1, 3)
+      const s = useEditorStore.getState()
+      expect(s.clips[0].audioReplacement).toBeUndefined()
+      expect(s.clips[1].audioReplacement).toBeDefined()
+      expect(s.clips[1].audioReplacement!.offset).toBe(3)
+    })
+
+    it('no-ops when source clip has no A2', () => {
+      const c1 = makeClip({ id: 'c1' })
+      const c2 = makeClip({ id: 'c2' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      useEditorStore.getState().moveA2ToClip('c1', 1, 0)
+      expect(useEditorStore.getState().clips[1].audioReplacement).toBeUndefined()
+    })
+
+    it('no-ops when target already has A2', () => {
+      const c1 = makeClip({ id: 'c1' })
+      const c2 = makeClip({ id: 'c2' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().addClip(c2)
+      const a2 = { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 }
+      useEditorStore.getState().setAudioReplacement('c1', a2)
+      useEditorStore.getState().setAudioReplacement('c2', { ...a2, path: '/b.mp3' })
+      useEditorStore.getState().moveA2ToClip('c1', 1, 0)
+      // Source should still have its A2
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeDefined()
+    })
+  })
+
+  describe('setA2TrimIn', () => {
+    it('sets trim-in on a clip with A2', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().setA2TrimIn(clip.id, 5)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimIn).toBe(5)
+    })
+
+    it('clamps trimIn to not exceed trimOut - 0.05', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 10 })
+      useEditorStore.getState().setA2TrimIn(clip.id, 15) // exceeds trimOut
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimIn).toBe(10 - 0.05)
+    })
+
+    it('clamps trimIn to minimum 0', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().setA2TrimIn(clip.id, -5)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimIn).toBe(0)
+    })
+
+    it('no-ops when clip has no A2', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setA2TrimIn(clip.id, 5)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+  })
+
+  describe('setA2TrimOut', () => {
+    it('sets trim-out on a clip with A2', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().setA2TrimOut(clip.id, 20)
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimOut).toBe(20)
+    })
+
+    it('clamps trimOut to duration max', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().setA2TrimOut(clip.id, 50) // exceeds duration
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimOut).toBe(30)
+    })
+
+    it('clamps trimOut to trimIn + 0.05 minimum', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement(clip.id, { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 10, trimOut: 30 })
+      useEditorStore.getState().setA2TrimOut(clip.id, 5) // less than trimIn
+      expect(useEditorStore.getState().clips[0].audioReplacement!.trimOut).toBe(10.05)
+    })
+
+    it('no-ops when clip has no A2', () => {
+      const clip = makeClip()
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setA2TrimOut(clip.id, 20)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+  })
+
+  describe('clipToSelection', () => {
+    it('trims clip to in/out selection', () => {
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 10, outPoint: 50 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().clipToSelection()
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(1)
+      expect(s.clips[0].sourceStart).toBe(10)
+      expect(s.clips[0].duration).toBe(40)
+      expect(s.clips[0].inPoint).toBe(10)
+      expect(s.clips[0].outPoint).toBe(50)
+    })
+
+    it('adjusts A2 offset when clipping to selection', () => {
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 10, outPoint: 50 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 5, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().clipToSelection()
+      const s = useEditorStore.getState()
+      // Offset was 5, new sourceStart = 10, original sourceStart = 0 → offset = max(0, 5 - (10 - 0)) = 0
+      expect(s.clips[0].audioReplacement!.offset).toBe(0)
+    })
+
+    it('no-ops when in/out span the full clip', () => {
+      const clip = makeClip({ duration: 60, inPoint: 0, outPoint: 60 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().clipToSelection()
+      expect(useEditorStore.getState().clips).toHaveLength(1)
+      expect(useEditorStore.getState().clips[0].duration).toBe(60)
+    })
+
+    it('no-ops when no clips exist', () => {
+      useEditorStore.getState().clipToSelection()
+      expect(useEditorStore.getState().clips).toHaveLength(0)
+    })
+
+    it('works with in-point only (out at full extent)', () => {
+      const clip = makeClip({ duration: 60, inPoint: 20, outPoint: 60 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().clipToSelection()
+      const s = useEditorStore.getState()
+      expect(s.clips[0].sourceStart).toBe(20)
+      expect(s.clips[0].duration).toBe(40)
+    })
+  })
+
+  describe('resetEditor', () => {
+    it('clears all clips and resets UI state', () => {
+      useEditorStore.getState().addClip(makeClip())
+      useEditorStore.getState().addClip(makeClip())
+      useEditorStore.setState({ cutMode: 'fast' as any, outputFormat: 'mkv', outputDir: '/test', processing: true, exportProgress: 50 })
+      useEditorStore.getState().resetEditor()
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(0)
+      expect(s.activeIdx).toBe(0)
+      expect(s.playing).toBe(false)
+      expect(s.cutMode).toBe('precise')
+      expect(s.outputFormat).toBe('mp4')
+      expect(s.outputDir).toBe('')
+      expect(s.processing).toBe(false)
+      expect(s.exportProgress).toBe(0)
+      expect(s.volume).toBe(1)
+      expect(s.playbackRate).toBe(1)
+    })
+
+    it('resets gif options to defaults', () => {
+      useEditorStore.setState({ gifOptions: { loop: false, fps: 5, width: 100 } })
+      useEditorStore.getState().resetEditor()
+      const s = useEditorStore.getState()
+      expect(s.gifOptions).toEqual({ loop: true, fps: 15, width: 480 })
+    })
+  })
+
+  describe('splitClip – A2 assignment in 3-segment split', () => {
+    it('assigns A2 to middle segment when A2 offset is in the middle range', () => {
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 10, outPoint: 50 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 15, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 30) // playhead ignored
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(3)
+      // A2 starts at offset=15 → source time = 0+15 = 15, in range [10,50)
+      expect(s.clips[0].audioReplacement).toBeUndefined()
+      expect(s.clips[1].audioReplacement).toBeDefined()
+      expect(s.clips[2].audioReplacement).toBeUndefined()
+      // New offset = 15 - (10 - 0) = 5
+      expect(s.clips[1].audioReplacement!.offset).toBe(5)
+    })
+
+    it('assigns A2 to left segment when A2 offset is before in-point', () => {
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 20, outPoint: 50 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 5, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 30)
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(3)
+      expect(s.clips[0].audioReplacement).toBeDefined()
+      expect(s.clips[0].audioReplacement!.offset).toBe(5)
+      expect(s.clips[1].audioReplacement).toBeUndefined()
+      expect(s.clips[2].audioReplacement).toBeUndefined()
+    })
+
+    it('assigns A2 to right segment when A2 offset is after out-point', () => {
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 10, outPoint: 30 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 40, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 20)
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(3)
+      expect(s.clips[0].audioReplacement).toBeUndefined()
+      expect(s.clips[1].audioReplacement).toBeUndefined()
+      expect(s.clips[2].audioReplacement).toBeDefined()
+      // New offset = 40 - (30 - 0) = 10
+      expect(s.clips[2].audioReplacement!.offset).toBe(10)
+    })
+
+    it('assigns A2 to first segment as fallback when offset=0 and no L segment', () => {
+      // Only out-point set (no in-point) → 2 segments, A2 offset=0 starts at beginning
+      const clip = makeClip({ id: 'c1', duration: 60, inPoint: 0, outPoint: 40 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 20)
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(2)
+      // A2 offset=0 → source time 0, falls in [0, 40) → left segment
+      expect(s.clips[0].audioReplacement).toBeDefined()
+      expect(s.clips[0].audioReplacement!.offset).toBe(0)
+    })
+  })
+
+  describe('splitClip – playhead split with A2', () => {
+    it('assigns A2 to left half when A2 starts before split point', () => {
+      const clip = makeClip({ id: 'c1', duration: 60 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 10, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 30)
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(2)
+      expect(s.clips[0].audioReplacement).toBeDefined()
+      expect(s.clips[0].audioReplacement!.offset).toBe(10)
+      expect(s.clips[1].audioReplacement).toBeUndefined()
+    })
+
+    it('assigns A2 to right half when A2 starts at or after split point', () => {
+      const clip = makeClip({ id: 'c1', duration: 60 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setAudioReplacement('c1', { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 40, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 })
+      useEditorStore.getState().splitClip('c1', 30)
+      const s = useEditorStore.getState()
+      expect(s.clips).toHaveLength(2)
+      expect(s.clips[0].audioReplacement).toBeUndefined()
+      expect(s.clips[1].audioReplacement).toBeDefined()
+      // offset = max(0, 40 - (30 - 0)) = 10
+      expect(s.clips[1].audioReplacement!.offset).toBe(10)
+    })
+  })
 })
