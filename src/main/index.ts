@@ -37,6 +37,9 @@ registerMediaScheme()
 app.commandLine.appendSwitch('disk-cache-size', '0')
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 
+// Allow autoplay without user gesture (needed for popout player resume)
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 // --- Single instance lock -----------------------
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 

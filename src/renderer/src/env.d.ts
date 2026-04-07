@@ -31,6 +31,7 @@ declare global {
       returnPlayerState: (state: any) => void
       onPopoutClosed: (cb: () => void) => () => void
       onReceivePlayerState: (cb: (state: any) => void) => () => void
+      getPlayerState: () => Promise<any>
       normalize: (filePaths: string[], outputDir?: string) => Promise<any>
       boost: (filePaths: string[], percent: number, outputDir?: string) => Promise<any>
       cancelBatch: (batchId: string) => Promise<boolean>

@@ -86,6 +86,7 @@ const api = {
     ipcRenderer.on('player:receiveState', listener)
     return () => ipcRenderer.removeListener('player:receiveState', listener)
   },
+  getPlayerState: () => ipcRenderer.invoke('player:getPendingState'),
 
   // YouTube / yt-dlp
   resolvePlaylist: (url: string) => ipcRenderer.invoke('ytdlp:resolve', url),

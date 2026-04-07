@@ -707,6 +707,11 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     const cleanup = window.api.onReceivePlayerState?.((state: any) => {
       restoreFromState(state)
     })
+    // Pull pending state in case the push from did-finish-load arrived
+    // before React mounted and registered the listener above.
+    window.api.getPlayerState?.().then((state: any) => {
+      if (state) restoreFromState(state)
+    })
     return cleanup
   }, [popout, restoreFromState])
 

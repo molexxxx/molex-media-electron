@@ -46,8 +46,7 @@ export function createWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false,
-      autoplayPolicy: 'no-user-gesture-required'
+      nodeIntegration: false
     }
   })
 
@@ -155,8 +154,7 @@ export function createPopoutWindow(): void {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
       contextIsolation: true,
-      nodeIntegration: false,
-      autoplayPolicy: 'no-user-gesture-required'
+      nodeIntegration: false
     }
   })
 
@@ -167,9 +165,10 @@ export function createPopoutWindow(): void {
   }
 
   popoutWindow.webContents.on('did-finish-load', () => {
+    // Send state eagerly; the popout also pulls via player:getPendingState
+    // in case this fires before React registers its listener.
     if (pendingPlayerState && popoutWindow && !popoutWindow.isDestroyed()) {
       popoutWindow.webContents.send('player:receiveState', pendingPlayerState)
-      pendingPlayerState = null
     }
   })
 
@@ -240,6 +239,14 @@ export function registerGlobalIPC(): void {
 
   ipcMain.handle('player:isPopout', () => {
     return popoutWindow !== null && !popoutWindow.isDestroyed()
+  })
+
+  // Pull-based state transfer: popout calls this after React mounts
+  // to get any pending state that may have arrived before the listener.
+  ipcMain.handle('player:getPendingState', () => {
+    const state = pendingPlayerState
+    pendingPlayerState = null
+    return state
   })
 
   ipcMain.on('player:returnState', (_event, playerState: any) => {
