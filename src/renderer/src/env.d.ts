@@ -83,6 +83,7 @@ declare global {
       checkForUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>
       downloadUpdate: () => Promise<{ success: boolean; error?: string }>
       installUpdate: () => Promise<void>
+      getUpdaterStatus: () => Promise<{ status: string; version?: string; error?: string; percent?: number }>
       onUpdaterStatus: (cb: (status: any) => void) => () => void
     }
   }

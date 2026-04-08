@@ -169,6 +169,7 @@ const api = {
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   downloadUpdate: () => ipcRenderer.invoke('updater:download'),
   installUpdate: () => ipcRenderer.invoke('updater:install'),
+  getUpdaterStatus: () => ipcRenderer.invoke('updater:get-status'),
   onUpdaterStatus: (cb: (status: any) => void) => {
     const listener = (_: any, status: any) => cb(status)
     ipcRenderer.on('updater:status', listener)

@@ -20,6 +20,7 @@ import { LogViewer } from './components/logs'
 import { MediaEditor } from './components/editor'
 import { MediaPlayer } from './components/player'
 import { SetupWizard } from './components/setup'
+import { AmbientBackground } from './components/dashboard/components/DashboardBackground'
 
 function App(): React.JSX.Element {
   useIPC()
@@ -40,6 +41,15 @@ function App(): React.JSX.Element {
       if (info.error) setUpdateError(info.error)
       if (info.percent != null) setUpdateDownloadPercent(info.percent)
     })
+    // Re-hydrate cached status after renderer reload (Ctrl+R)
+    window.api.getUpdaterStatus?.().then((info: any) => {
+      if (info && info.status && info.status !== 'idle') {
+        setUpdateStatus(info.status)
+        if (info.version) setUpdateVersion(info.version)
+        if (info.error) setUpdateError(info.error)
+        if (info.percent != null) setUpdateDownloadPercent(info.percent)
+      }
+    }).catch(() => {})
     return cleanup
   }, [setUpdateStatus, setUpdateVersion, setUpdateError, setUpdateDownloadPercent])
 
@@ -171,7 +181,8 @@ function App(): React.JSX.Element {
   ]
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex relative">
+      <AmbientBackground />
       {/* Sidebar — full height of window */}
       <div className="shrink-0 h-full">
         <Sidebar />
@@ -184,8 +195,10 @@ function App(): React.JSX.Element {
             mounted.has(id) ? (
               <div
                 key={id}
-                className="absolute inset-0 overflow-auto p-3 sm:p-4 md:p-6"
-                style={{ display: currentView === id ? 'block' : 'none' }}
+                className={`absolute inset-0 p-3 sm:p-4 md:p-6 ${
+                  id === 'logs' ? 'flex flex-col overflow-hidden' : 'overflow-auto'
+                }`}
+                style={{ display: currentView === id ? (id === 'logs' ? 'flex' : 'block') : 'none' }}
               >
                 {el}
               </div>

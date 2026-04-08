@@ -25,24 +25,31 @@ export async function initUpdater(): Promise<void> {
     autoUpdater.forceDevUpdateConfig = true
   }
 
+  // Cache last status so renderers can query it after reload
+  let lastStatus: Record<string, unknown> = { status: 'idle' }
+  const broadcast = (payload: Record<string, unknown>): void => {
+    lastStatus = payload
+    sendToAll('updater:status', payload)
+  }
+
   // --- Forward events to renderer ---
   autoUpdater.on('checking-for-update', () => {
     logger.info('Checking for updates…')
-    sendToAll('updater:status', { status: 'checking' })
+    broadcast({ status: 'checking' })
   })
 
   autoUpdater.on('update-available', (info) => {
     logger.info(`Update available: v${info.version}`)
-    sendToAll('updater:status', { status: 'available', version: info.version, releaseNotes: info.releaseNotes })
+    broadcast({ status: 'available', version: info.version, releaseNotes: info.releaseNotes })
   })
 
   autoUpdater.on('update-not-available', (info) => {
     logger.info(`App is up to date (v${info.version})`)
-    sendToAll('updater:status', { status: 'up-to-date', version: info.version })
+    broadcast({ status: 'up-to-date', version: info.version })
   })
 
   autoUpdater.on('download-progress', (progress) => {
-    sendToAll('updater:status', {
+    broadcast({
       status: 'downloading',
       percent: Math.round(progress.percent),
       bytesPerSecond: progress.bytesPerSecond,
@@ -53,15 +60,16 @@ export async function initUpdater(): Promise<void> {
 
   autoUpdater.on('update-downloaded', (info) => {
     logger.info(`Update downloaded: v${info.version}`)
-    sendToAll('updater:status', { status: 'downloaded', version: info.version })
+    broadcast({ status: 'downloaded', version: info.version })
   })
 
   autoUpdater.on('error', (err) => {
     logger.error(`Update error: ${err.message}`)
-    sendToAll('updater:status', { status: 'error', error: err.message })
+    broadcast({ status: 'error', error: err.message })
   })
 
   // --- IPC handlers ---
+  ipcMain.handle('updater:get-status', () => lastStatus)
   ipcMain.handle('updater:check', async () => {
     try {
       const timeout = new Promise<never>((_, reject) =>
