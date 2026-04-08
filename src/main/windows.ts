@@ -41,7 +41,9 @@ export function createWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#080b14',
-    icon: path.join(__dirname, '../../resources/icon.png'),
+    icon: process.platform === 'win32'
+      ? path.join(__dirname, '../../build/icon.ico')
+      : path.join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -149,7 +151,9 @@ export function createPopoutWindow(): void {
     titleBarStyle: 'hidden',
     alwaysOnTop: true,
     backgroundColor: '#080b14',
-    icon: path.join(__dirname, '../../resources/icon.png'),
+    icon: process.platform === 'win32'
+      ? path.join(__dirname, '../../build/icon.ico')
+      : path.join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       sandbox: false,
