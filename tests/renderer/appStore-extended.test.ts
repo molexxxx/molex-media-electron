@@ -23,7 +23,7 @@ describe('appStore – extended coverage', () => {
         defaultOutputDir: '/out',
         audioBitrate: '320k',
         maxWorkers: 4,
-        overwriteOriginal: false,
+        afterProcessing: 'keep-both',
         outputDirectory: '/out',
         preserveMetadata: true,
         preserveSubtitles: true,

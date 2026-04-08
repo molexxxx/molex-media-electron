@@ -34,7 +34,7 @@ const baseConfig = {
   ffprobePath: '/usr/bin/ffprobe',
   outputDirectory: '',
   tempSuffix: '_temp',
-  overwriteOriginal: false,
+  afterProcessing: 'keep-both',
   preserveSubtitles: true
 }
 

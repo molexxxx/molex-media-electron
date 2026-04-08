@@ -45,7 +45,7 @@ const baseConfig = {
   fallbackCodec: 'ac3',
   audioBitrate: '256k',
   tempSuffix: '_temp',
-  overwriteOriginal: true,
+  afterProcessing: 'replace',
   outputDirectory: '',
   preserveSubtitles: true,
   preserveMetadata: true
@@ -189,8 +189,8 @@ describe('normalizeFile', () => {
     expect(result.status).toBe('error')
   })
 
-  it('uses output directory when overwriteOriginal is false', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/output' })
+  it('uses output directory when afterProcessing is keep-both', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/output' })
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
       input_thresh: '-30.0', target_offset: '4.0'
@@ -232,7 +232,7 @@ describe('normalizeFile', () => {
   })
 
   it('handles audio-only file with non-inherit codec', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, audioCodec: 'aac', overwriteOriginal: false, outputDirectory: '/output' })
+    mockGetConfig.mockResolvedValue({ ...baseConfig, audioCodec: 'aac', afterProcessing: 'keep-both', outputDirectory: '/output' })
     mockProbeMedia.mockResolvedValue({
       ...sampleProbe,
       videoStreams: [],
@@ -256,8 +256,8 @@ describe('normalizeFile', () => {
     expect(result.status).toBe('complete')
   })
 
-  it('uses task.outputDir when overwriteOriginal is false and outputDir is set', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+  it('uses task.outputDir when afterProcessing is keep-both and outputDir is set', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '' })
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
       input_thresh: '-30.0', target_offset: '4.0'
@@ -376,7 +376,7 @@ describe('normalizeFile', () => {
   })
 
   it('falls back to path.dirname when both outputDir and outputDirectory empty', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '' })
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
       input_thresh: '-30.0', target_offset: '4.0'
@@ -536,7 +536,7 @@ describe('normalizeFile', () => {
     expect(result.status).toBe('cancelled')
   })
 
-  it('sets outputPath to filePath when overwriteOriginal is true', async () => {
+  it('sets outputPath to filePath when afterProcessing is replace', async () => {
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
       input_thresh: '-30.0', target_offset: '4.0'
@@ -556,8 +556,8 @@ describe('normalizeFile', () => {
     expect(result.outputPath).toBe(task.filePath)
   })
 
-  it('sets outputPath with normalized_ prefix when overwriteOriginal is false', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/out' })
+  it('sets outputPath with normalized_ prefix when afterProcessing is keep-both', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/out' })
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
       input_thresh: '-30.0', target_offset: '4.0'
@@ -599,7 +599,7 @@ describe('normalizeFile', () => {
 
   it('creates output directory when it does not exist', async () => {
     const fs = await import('fs')
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/new/dir' })
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/new/dir' })
     vi.mocked(fs.existsSync).mockReturnValue(false)
     const loudnessJson = JSON.stringify({
       input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',

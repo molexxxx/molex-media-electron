@@ -39,7 +39,7 @@ const baseConfig = {
   fallbackCodec: 'ac3',
   audioBitrate: '256k',
   tempSuffix: '_temp',
-  overwriteOriginal: true,
+  afterProcessing: 'replace',
   outputDirectory: '',
   preserveSubtitles: true,
   preserveMetadata: true
@@ -175,8 +175,8 @@ describe('boostFile', () => {
     expect(result.status).toBe('complete')
   })
 
-  it('uses output directory when overwriteOriginal is false', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/output' })
+  it('uses output directory when afterProcessing is keep-both', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/output' })
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
       process: { kill: vi.fn() }
@@ -205,8 +205,8 @@ describe('boostFile', () => {
     expect(killMock).toHaveBeenCalledWith('SIGTERM')
   })
 
-  it('uses task.outputDir when overwriteOriginal is false', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+  it('uses task.outputDir when afterProcessing is keep-both', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '' })
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
       process: { kill: vi.fn() }
@@ -292,7 +292,7 @@ describe('boostFile', () => {
   })
 
   it('falls back to path.dirname when no outputDir configured', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '' })
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '' })
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
       process: { kill: vi.fn() }
@@ -302,8 +302,8 @@ describe('boostFile', () => {
     expect(result.status).toBe('complete')
   })
 
-  it('sets outputPath to filePath when overwriteOriginal is true', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: true })
+  it('sets outputPath to filePath when afterProcessing is replace', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'replace' })
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
       process: { kill: vi.fn() }
@@ -315,8 +315,8 @@ describe('boostFile', () => {
     expect(result.outputPath).toBe(task.filePath)
   })
 
-  it('sets outputPath with boosted_ prefix when overwriteOriginal is false', async () => {
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/out' })
+  it('sets outputPath with boosted_ prefix when afterProcessing is keep-both', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/out' })
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
       process: { kill: vi.fn() }
@@ -343,7 +343,7 @@ describe('boostFile', () => {
 
   it('creates output directory when it does not exist', async () => {
     const fs = await import('fs')
-    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/new/dir' })
+    mockGetConfig.mockResolvedValue({ ...baseConfig, afterProcessing: 'keep-both', outputDirectory: '/new/dir' })
     vi.mocked(fs.existsSync).mockReturnValue(false)
     mockRunCommand.mockReturnValue({
       promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
