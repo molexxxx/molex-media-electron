@@ -37,7 +37,8 @@ export interface AppConfig {
   ffprobePath: string
   theme: 'dark' | 'light'
   outputDirectory: string
-  overwriteOriginal: boolean
+  afterProcessing: 'replace' | 'keep-both'
+  confirmReplace: boolean
   preserveSubtitles: boolean
   preserveMetadata: boolean
   showNotifications: boolean
@@ -72,7 +73,8 @@ const DEFAULT_CONFIG: AppConfig = {
   ffprobePath: '',
   theme: 'dark',
   outputDirectory: '',
-  overwriteOriginal: true,
+  afterProcessing: 'keep-both',
+  confirmReplace: true,
   preserveSubtitles: true,
   preserveMetadata: true,
   showNotifications: true,
@@ -115,6 +117,15 @@ let cachedConfig: AppConfig | null = null
 export async function loadConfig(): Promise<AppConfig> {
   const store = await getStore()
   cachedConfig = { ...DEFAULT_CONFIG }
+
+  // Migrate legacy overwriteOriginal boolean → afterProcessing enum
+  const legacy = store.get('overwriteOriginal')
+  if (typeof legacy === 'boolean') {
+    const migrated = legacy ? 'replace' : 'keep-both'
+    store.set('afterProcessing', migrated)
+    store.delete('overwriteOriginal')
+  }
+
   for (const key of Object.keys(DEFAULT_CONFIG) as (keyof AppConfig)[]) {
     const val = store.get(key)
     if (val !== undefined) {
@@ -124,6 +135,12 @@ export async function loadConfig(): Promise<AppConfig> {
   if (cachedConfig.maxWorkers <= 0) {
     const os = await import('os')
     cachedConfig.maxWorkers = Math.max(1, os.cpus().length)
+  }
+  // Resolve default output directory to user's Videos/MolexMedia
+  if (!cachedConfig.outputDirectory) {
+    try {
+      cachedConfig.outputDirectory = path.join(app.getPath('videos'), 'MolexMedia')
+    } catch { /* videos path unavailable */ }
   }
   return cachedConfig
 }

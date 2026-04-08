@@ -122,7 +122,8 @@ export interface AppConfig {
   ffprobePath: string
   theme: 'dark' | 'light'
   outputDirectory: string
-  overwriteOriginal: boolean
+  afterProcessing: 'replace' | 'keep-both'
+  confirmReplace: boolean
   preserveSubtitles: boolean
   preserveMetadata: boolean
   showNotifications: boolean

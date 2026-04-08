@@ -61,7 +61,11 @@ export async function convertFile(
     onProgress(task)
 
     // Determine where the final file should land
-    const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
+    // When replacing, always output next to the original so we can delete it
+    const replaceMode = config.afterProcessing === 'replace'
+    const outDir = replaceMode
+      ? path.dirname(task.filePath)
+      : (task.outputDir || config.outputDirectory || path.dirname(task.filePath))
     ensureDir(outDir)
     const baseName = path.basename(task.filePath, path.extname(task.filePath))
     const inputExt = path.extname(task.filePath).toLowerCase()
@@ -69,12 +73,8 @@ export async function convertFile(
     const sameDir = path.resolve(outDir) === path.resolve(path.dirname(task.filePath))
     const wouldCollide = inputExt === outputExt && sameDir
 
-    // When overwriteOriginal is on and output lands in the same directory,
-    // delete the original after a successful convert (even across formats).
-    const shouldDeleteOriginal = config.overwriteOriginal && sameDir
-
     let finalPath: string
-    if (wouldCollide && config.overwriteOriginal) {
+    if (wouldCollide && replaceMode) {
       // Same format, same dir, overwrite: final IS the original path
       finalPath = task.filePath
     } else if (wouldCollide) {
@@ -151,8 +151,8 @@ export async function convertFile(
     if (path.resolve(finalPath) === path.resolve(task.filePath)) {
       // Same path (same format overwrite): delete original first
       fs.unlinkSync(task.filePath)
-    } else if (shouldDeleteOriginal && inputExt !== outputExt) {
-      // Cross-format overwrite: delete the old file (different extension)
+    } else if (replaceMode && inputExt !== outputExt) {
+      // Cross-format replace: delete the old file (different extension)
       fs.unlinkSync(task.filePath)
     }
     fs.renameSync(tempPath, finalPath)

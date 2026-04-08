@@ -279,7 +279,7 @@ export async function normalizeFile(
 
     validateOutput(tempPath, 'Normalize')
 
-    if (config.overwriteOriginal) {
+    if (config.afterProcessing === 'replace') {
       fs.unlinkSync(task.filePath)
       fs.renameSync(tempPath, task.filePath)
       task.outputPath = task.filePath

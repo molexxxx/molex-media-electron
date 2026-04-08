@@ -181,7 +181,7 @@ export async function boostFile(
 
     validateOutput(tempPath, 'Boost')
 
-    if (config.overwriteOriginal) {
+    if (config.afterProcessing === 'replace') {
       fs.unlinkSync(task.filePath)
       fs.renameSync(tempPath, task.filePath)
       task.outputPath = task.filePath

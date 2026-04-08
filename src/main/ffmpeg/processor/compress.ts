@@ -154,7 +154,7 @@ export async function compressFile(
 
     validateOutput(tempPath, 'Compression')
 
-    if (config.overwriteOriginal) {
+    if (config.afterProcessing === 'replace') {
       fs.unlinkSync(task.filePath)
       fs.renameSync(tempPath, task.filePath)
       task.outputPath = task.filePath
