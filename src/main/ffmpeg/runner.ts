@@ -67,6 +67,9 @@ export function runCommand(
 
     proc.on('close', (code) => {
       activeProcesses.delete(proc)
+      if (code !== 0 && !proc.killed && stderr) {
+        logger.ffmpeg('STDERR', stderr.slice(-2000))
+      }
       resolve({ stdout, stderr, code: code ?? 1, killed: proc.killed })
     })
 

@@ -136,6 +136,60 @@ export function cleanupTemp(tempPath: string): void {
 }
 
 /**
+ * Rename/move a file, falling back to copy+delete when the source and
+ * destination are on different drives/filesystems (EXDEV).
+ */
+export function safeRename(src: string, dest: string): void {
+  try {
+    fs.renameSync(src, dest)
+  } catch (err: any) {
+    if (err.code === 'EXDEV') {
+      fs.copyFileSync(src, dest)
+      fs.unlinkSync(src)
+    } else {
+      throw err
+    }
+  }
+}
+
+/**
+ * Ensure a directory exists, creating it recursively if needed.
+ */
+export function ensureDir(dirPath: string): void {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
+}
+
+/**
+ * Validate that a temp/output file is non-empty after processing.
+ * Cleans up and throws if the file is zero bytes.
+ */
+export function validateOutput(filePath: string, label: string): void {
+  const stat = fs.statSync(filePath)
+  if (stat.size === 0) {
+    cleanupTemp(filePath)
+    throw new Error(`${label} produced an empty file`)
+  }
+}
+
+/**
+ * Extracts the most meaningful error line(s) from FFmpeg stderr output.
+ * Falls back to the last non-empty line if no known error pattern is found.
+ */
+export function extractFFmpegError(stderr: string): string {
+  if (!stderr) return 'Unknown error (no output)'
+  const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean)
+  // Look for common FFmpeg error patterns (most specific first)
+  const errorLines = lines.filter((l) =>
+    /^(Error|.*error.*:|.*Invalid.*|.*No such.*|.*not found.*|.*Unsupported.*|.*Could not.*|.*does not.*|.*Unknown.*codec|.*Encoder.*not found|.*Decoder.*not found|.*Permission denied|.*already exists)/i.test(l)
+  )
+  if (errorLines.length > 0) return errorLines.slice(-3).join(' | ')
+  // Fall back to last 2 meaningful lines
+  return lines.slice(-2).join(' | ')
+}
+
+/**
  * Recursively walk {@link dirPath} and collect files whose extensions
  * match the given allow-list (e.g. `[".mp3", ".flac"]`).
  */

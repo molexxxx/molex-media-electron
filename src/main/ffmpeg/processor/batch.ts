@@ -106,7 +106,12 @@ export async function processBatch(
       } else if (task.operation === 'compress') {
         result = await compressFile(task, onProgress, abortSignal)
       } else {
-        result = await normalizeFile(task, onProgress, abortSignal)
+        task.status = 'error'
+        task.error = `Unknown operation: ${task.operation}`
+        task.message = `Error: unknown operation "${task.operation}"`
+        task.completedAt = Date.now()
+        onProgress(task)
+        result = task
       }
       results.push(result)
     }

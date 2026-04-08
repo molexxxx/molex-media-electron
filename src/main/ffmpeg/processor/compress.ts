@@ -18,7 +18,11 @@ import {
   type TaskProgressCallback,
   createTempPath,
   cleanupTemp,
-  formatElapsed
+  formatElapsed,
+  extractFFmpegError,
+  safeRename,
+  ensureDir,
+  validateOutput
 } from './types'
 
 /**
@@ -132,16 +136,23 @@ export async function compressFile(
       }
     })
 
-    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'), { once: true })
     const result = await promise
 
     if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(tempPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
-    if (result.code !== 0) { cleanupTemp(tempPath); throw new Error(`Compression failed (code ${result.code})`) }
+    if (result.code !== 0) {
+      cleanupTemp(tempPath)
+      const reason = extractFFmpegError(result.stderr)
+      logger.ffmpeg('ERROR', result.stderr.slice(-1500))
+      throw new Error(`Compression failed: ${reason}`)
+    }
 
     task.status = 'finalizing'
     task.message = 'Finalizing...'
     task.progress = 96
     onProgress(task)
+
+    validateOutput(tempPath, 'Compression')
 
     if (config.overwriteOriginal) {
       fs.unlinkSync(task.filePath)
@@ -149,8 +160,9 @@ export async function compressFile(
       task.outputPath = task.filePath
     } else {
       const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
+      ensureDir(outDir)
       const outPath = path.join(outDir, `compressed_${path.basename(task.filePath)}`)
-      fs.renameSync(tempPath, outPath)
+      safeRename(tempPath, outPath)
       task.outputPath = outPath
     }
 

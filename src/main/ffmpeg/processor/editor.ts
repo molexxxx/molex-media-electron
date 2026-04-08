@@ -79,6 +79,12 @@ export async function cutMedia(
   onProgress?: EditorProgressCallback
 ): Promise<{ success: boolean; outputPath?: string; error?: string }> {
   const config = await getConfig()
+
+  // Validate time range
+  if (!Number.isFinite(inPoint) || !Number.isFinite(outPoint) || inPoint < 0 || outPoint <= inPoint) {
+    return { success: false, error: `Invalid time range: ${inPoint}s → ${outPoint}s` }
+  }
+
   const mode = options.outputFormat === 'gif' ? 'precise' : (options.mode || 'precise')
   const srcExt = path.extname(filePath)
   const outExt = options.outputFormat ? `.${options.outputFormat.replace(/^\./, '')}` : srcExt

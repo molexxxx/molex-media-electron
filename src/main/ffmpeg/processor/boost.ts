@@ -20,7 +20,11 @@ import {
   stripMolexTag,
   createTempPath,
   cleanupTemp,
-  formatElapsed
+  formatElapsed,
+  extractFFmpegError,
+  safeRename,
+  ensureDir,
+  validateOutput
 } from './types'
 
 /**
@@ -150,7 +154,7 @@ export async function boostFile(
     if (abortSignal) {
       abortSignal.signal.addEventListener('abort', () => {
         proc.kill('SIGTERM')
-      })
+      }, { once: true })
     }
 
     const result = await promise
@@ -165,7 +169,9 @@ export async function boostFile(
 
     if (result.code !== 0) {
       cleanupTemp(tempPath)
-      throw new Error(`FFmpeg encode failed (code ${result.code})`)
+      const reason = extractFFmpegError(result.stderr)
+      logger.ffmpeg('ERROR', result.stderr.slice(-1500))
+      throw new Error(`Boost failed: ${reason}`)
     }
 
     task.status = 'finalizing'
@@ -173,17 +179,21 @@ export async function boostFile(
     task.progress = 96
     onProgress(task)
 
+    validateOutput(tempPath, 'Boost')
+
     if (config.overwriteOriginal) {
       fs.unlinkSync(task.filePath)
       fs.renameSync(tempPath, task.filePath)
+      task.outputPath = task.filePath
     } else {
       const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
+      ensureDir(outDir)
       const outPath = path.join(outDir, `boosted_${path.basename(task.filePath)}`)
-      fs.renameSync(tempPath, outPath)
+      safeRename(tempPath, outPath)
+      task.outputPath = outPath
     }
 
-    const stat = fs.statSync(task.filePath)
-    task.outputSize = stat.size
+    task.outputSize = fs.statSync(task.outputPath!).size
     task.status = 'complete'
     task.progress = 100
     task.completedAt = Date.now()

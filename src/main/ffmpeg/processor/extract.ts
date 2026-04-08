@@ -17,7 +17,10 @@ import {
   type ProcessingTask,
   type TaskProgressCallback,
   cleanupTemp,
-  formatElapsed
+  formatElapsed,
+  extractFFmpegError,
+  ensureDir,
+  validateOutput
 } from './types'
 
 /**
@@ -52,6 +55,9 @@ export async function extractAudio(
     const totalDuration = parseFloat(info.format.duration) || 0
 
     if (info.audioStreams.length === 0) throw new Error('No audio streams found')
+    if (opts.streamIndex >= info.audioStreams.length) {
+      throw new Error(`Audio stream ${opts.streamIndex} not found (file has ${info.audioStreams.length} audio stream${info.audioStreams.length === 1 ? '' : 's'})`)
+    }
 
     logger.info(`Extracting audio: ${task.fileName} stream ${opts.streamIndex} → .${opts.outputFormat}`)
 
@@ -61,6 +67,7 @@ export async function extractAudio(
     onProgress(task)
 
     const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
+    ensureDir(outDir)
     const baseName = path.basename(task.filePath, path.extname(task.filePath))
     const outPath = path.join(outDir, `${baseName}_audio.${opts.outputFormat}`)
 
@@ -87,16 +94,22 @@ export async function extractAudio(
       }
     })
 
-    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'), { once: true })
     const result = await promise
 
     if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(outPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
-    if (result.code !== 0) { cleanupTemp(outPath); throw new Error(`Audio extraction failed (code ${result.code})`) }
+    if (result.code !== 0) {
+      cleanupTemp(outPath)
+      const reason = extractFFmpegError(result.stderr)
+      logger.ffmpeg('ERROR', result.stderr.slice(-1500))
+      throw new Error(`Extraction failed: ${reason}`)
+    }
 
     task.status = 'complete'
     task.progress = 100
     task.completedAt = Date.now()
     task.outputPath = outPath
+    validateOutput(outPath, 'Extraction')
     task.outputSize = fs.statSync(outPath).size
     task.message = `Extracted audio in ${formatElapsed(task.startedAt!, task.completedAt)}`
     logger.success(`Extracted: ${task.fileName} → ${path.basename(outPath)} (${formatFileSize(task.outputSize)})`)

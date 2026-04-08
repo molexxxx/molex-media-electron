@@ -17,7 +17,9 @@ import {
   type ProcessingTask,
   type TaskProgressCallback,
   cleanupTemp,
-  formatElapsed
+  formatElapsed,
+  extractFFmpegError,
+  ensureDir
 } from './types'
 
 /**
@@ -58,9 +60,32 @@ export async function convertFile(
     task.progress = 5
     onProgress(task)
 
+    // Determine where the final file should land
     const outDir = task.outputDir || config.outputDirectory || path.dirname(task.filePath)
+    ensureDir(outDir)
     const baseName = path.basename(task.filePath, path.extname(task.filePath))
-    const outPath = path.join(outDir, `${baseName}.${opts.outputFormat}`)
+    const inputExt = path.extname(task.filePath).toLowerCase()
+    const outputExt = `.${opts.outputFormat.toLowerCase()}`
+    const sameDir = path.resolve(outDir) === path.resolve(path.dirname(task.filePath))
+    const wouldCollide = inputExt === outputExt && sameDir
+
+    // When overwriteOriginal is on and output lands in the same directory,
+    // delete the original after a successful convert (even across formats).
+    const shouldDeleteOriginal = config.overwriteOriginal && sameDir
+
+    let finalPath: string
+    if (wouldCollide && config.overwriteOriginal) {
+      // Same format, same dir, overwrite: final IS the original path
+      finalPath = task.filePath
+    } else if (wouldCollide) {
+      // Same format, same dir, no overwrite: add suffix
+      finalPath = path.join(outDir, `${baseName}_converted.${opts.outputFormat}`)
+    } else {
+      finalPath = path.join(outDir, `${baseName}.${opts.outputFormat}`)
+    }
+
+    // FFmpeg cannot write to the same path it reads from — always use a temp file
+    const tempPath = path.join(outDir, `${baseName}_converting_${Date.now()}.${opts.outputFormat}`)
 
     const args: string[] = ['-y', '-i', task.filePath, '-threads', '0']
 
@@ -92,7 +117,7 @@ export async function convertFile(
       args.push('-map', '0', '-c:s', 'copy')
     }
 
-    args.push(outPath)
+    args.push(tempPath)
 
     const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
       const progress = parseProgress(line)
@@ -104,19 +129,41 @@ export async function convertFile(
       }
     })
 
-    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'))
+    if (abortSignal) abortSignal.signal.addEventListener('abort', () => proc.kill('SIGTERM'), { once: true })
     const result = await promise
 
-    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(outPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
-    if (result.code !== 0) { cleanupTemp(outPath); throw new Error(`FFmpeg convert failed (code ${result.code})`) }
+    if (result.killed || abortSignal?.signal.aborted) { cleanupTemp(tempPath); task.status = 'cancelled'; task.message = 'Cancelled'; onProgress(task); return task }
+    if (result.code !== 0) {
+      cleanupTemp(tempPath)
+      const reason = extractFFmpegError(result.stderr)
+      logger.ffmpeg('ERROR', result.stderr.slice(-1500))
+      throw new Error(`Convert failed: ${reason}`)
+    }
+
+    // Validate temp output before placing it
+    const tempStat = fs.statSync(tempPath)
+    if (tempStat.size === 0) {
+      cleanupTemp(tempPath)
+      throw new Error('Convert produced an empty file')
+    }
+
+    // Swap temp into final location
+    if (path.resolve(finalPath) === path.resolve(task.filePath)) {
+      // Same path (same format overwrite): delete original first
+      fs.unlinkSync(task.filePath)
+    } else if (shouldDeleteOriginal && inputExt !== outputExt) {
+      // Cross-format overwrite: delete the old file (different extension)
+      fs.unlinkSync(task.filePath)
+    }
+    fs.renameSync(tempPath, finalPath)
 
     task.status = 'complete'
     task.progress = 100
     task.completedAt = Date.now()
-    task.outputPath = outPath
-    task.outputSize = fs.statSync(outPath).size
+    task.outputPath = finalPath
+    task.outputSize = fs.statSync(finalPath).size
     task.message = `Converted to ${opts.outputFormat.toUpperCase()} in ${formatElapsed(task.startedAt!, task.completedAt)}`
-    logger.success(`Converted: ${task.fileName} → ${path.basename(outPath)} (${formatFileSize(task.inputSize!)} → ${formatFileSize(task.outputSize)})`)
+    logger.success(`Converted: ${task.fileName} → ${path.basename(finalPath)} (${formatFileSize(task.inputSize!)} → ${formatFileSize(task.outputSize)})`)
     onProgress(task)
     return task
   } catch (err: any) {

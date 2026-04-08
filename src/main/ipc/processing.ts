@@ -10,6 +10,7 @@
 
 import { ipcMain } from 'electron'
 import * as path from 'path'
+import * as fs from 'fs'
 import { getConfig } from '../config'
 import { logger } from '../logger'
 import {
@@ -47,8 +48,27 @@ async function runBatchOperation(
   operation: ProcessingTask['operation'],
   extras: Partial<ProcessingTask> = {}
 ): Promise<{ batchId: string; results: ProcessingTask[] }> {
+  // Validate inputs
+  if (!Array.isArray(filePaths) || filePaths.length === 0) {
+    throw new Error('No files provided for processing')
+  }
+
+  const validOps: ProcessingTask['operation'][] = ['normalize', 'boost', 'convert', 'extract', 'compress']
+  if (!validOps.includes(operation)) {
+    throw new Error(`Invalid operation: ${operation}`)
+  }
+
+  // Filter out empty/non-existent paths upfront
+  const validPaths = filePaths.filter((f) => {
+    if (!f || typeof f !== 'string') return false
+    try { return fs.existsSync(f) } catch { return false }
+  })
+  if (validPaths.length === 0) {
+    throw new Error('None of the provided files exist')
+  }
+
   const config = await getConfig()
-  const tasks: ProcessingTask[] = filePaths.map((f, i) => ({
+  const tasks: ProcessingTask[] = validPaths.map((f, i) => ({
     id: `task-${Date.now()}-${i}`,
     filePath: f,
     fileName: path.basename(f),
@@ -89,7 +109,9 @@ export function registerProcessingIPC(): void {
   })
 
   ipcMain.handle('process:boost', async (_, filePaths: string[], boostPercent: number, outputDir?: string) => {
-    return runBatchOperation(filePaths, 'boost', { boostPercent, outputDir: outputDir || undefined })
+    const bp = Number(boostPercent)
+    if (!Number.isFinite(bp)) throw new Error('Invalid boost percentage')
+    return runBatchOperation(filePaths, 'boost', { boostPercent: Math.max(-100, Math.min(1000, bp)), outputDir: outputDir || undefined })
   })
 
   ipcMain.handle('process:convert', async (_, filePaths: string[], convertOptions: any, outputDir?: string) => {
@@ -102,6 +124,62 @@ export function registerProcessingIPC(): void {
 
   ipcMain.handle('process:compress', async (_, filePaths: string[], compressOptions: any, outputDir?: string) => {
     return runBatchOperation(filePaths, 'compress', { compressOptions, outputDir: outputDir || undefined })
+  })
+
+  // --- Mixed-operation batch (per-file operation assignments) ---
+  ipcMain.handle('process:batch-queue', async (_, taskSpecs: Array<{
+    filePath: string; operation: string; outputDir?: string;
+    boostPercent?: number; normalizeOptions?: any; convertOptions?: any; extractOptions?: any; compressOptions?: any
+  }>) => {
+    if (!Array.isArray(taskSpecs) || taskSpecs.length === 0) {
+      throw new Error('No tasks provided')
+    }
+
+    const validOps = new Set(['normalize', 'boost', 'convert', 'extract', 'compress'])
+    const config = await getConfig()
+
+    // Filter to valid specs upfront
+    const validSpecs = taskSpecs.filter((spec) => {
+      if (!spec.filePath || typeof spec.filePath !== 'string') return false
+      if (!validOps.has(spec.operation)) return false
+      try { return fs.existsSync(spec.filePath) } catch { return false }
+    })
+    if (validSpecs.length === 0) {
+      throw new Error('No valid tasks after validation')
+    }
+
+    const tasks: ProcessingTask[] = validSpecs.map((spec, i) => ({
+      id: `task-${Date.now()}-${i}`,
+      filePath: spec.filePath,
+      fileName: path.basename(spec.filePath),
+      operation: spec.operation as ProcessingTask['operation'],
+      status: 'queued' as const,
+      progress: 0,
+      message: 'Waiting...',
+      boostPercent: spec.boostPercent,
+      normalizeOptions: spec.normalizeOptions,
+      convertOptions: spec.convertOptions,
+      extractOptions: spec.extractOptions,
+      compressOptions: spec.compressOptions,
+      outputDir: spec.outputDir || undefined
+    }))
+
+    const abort = new AbortController()
+    const batchId = `batch-${Date.now()}`
+    activeTasks.set(batchId, abort)
+
+    startBatch(tasks)
+    sendToAll('process:batch-started', { batchId, tasks })
+
+    try {
+      const results = await processBatch(tasks, config.maxWorkers, onTaskProgressWithTray, abort)
+      await notifyBatchComplete(results)
+      sendToAll('process:batch-complete', { batchId, results })
+      return { batchId, results }
+    } finally {
+      activeTasks.delete(batchId)
+      endBatch()
+    }
   })
 
   // --- Cancel ---

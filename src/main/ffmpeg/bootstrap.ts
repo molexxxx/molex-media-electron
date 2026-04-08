@@ -133,12 +133,13 @@ async function verifyBinary(binPath: string): Promise<boolean> {
  * @param onProgress - Optional callback receiving `(downloaded, total)` byte counts.
  * @returns The downloaded file contents as a Buffer.
  */
-function followRedirects(url: string, onProgress?: (downloaded: number, total: number) => void): Promise<Buffer> {
+function followRedirects(url: string, onProgress?: (downloaded: number, total: number) => void, depth = 0): Promise<Buffer> {
+  if (depth > 10) return Promise.reject(new Error('Too many redirects'))
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http
     const req = protocol.get(url, { headers: { 'User-Agent': 'molexMedia/3.0' } }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        followRedirects(res.headers.location, onProgress).then(resolve).catch(reject)
+        followRedirects(res.headers.location, onProgress, depth + 1).then(resolve).catch(reject)
         return
       }
 

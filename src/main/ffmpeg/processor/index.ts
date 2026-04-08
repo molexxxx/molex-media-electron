@@ -19,7 +19,10 @@ export {
   createTempPath,
   cleanupTemp,
   formatElapsed,
-  findMediaFiles
+  findMediaFiles,
+  safeRename,
+  ensureDir,
+  validateOutput
 } from './types'
 
 // Operations
