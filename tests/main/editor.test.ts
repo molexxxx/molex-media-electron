@@ -117,6 +117,36 @@ describe('editor', () => {
       expect(result.error).toBe('spawn failed')
     })
 
+    it('returns error for NaN time range', async () => {
+      const result = await cutMedia('/media/video.mp4', NaN, 10)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid time range')
+    })
+
+    it('returns error for Infinity time range', async () => {
+      const result = await cutMedia('/media/video.mp4', 0, Infinity)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid time range')
+    })
+
+    it('returns error when inPoint is negative', async () => {
+      const result = await cutMedia('/media/video.mp4', -5, 10)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid time range')
+    })
+
+    it('returns error when outPoint equals inPoint', async () => {
+      const result = await cutMedia('/media/video.mp4', 10, 10)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid time range')
+    })
+
+    it('returns error when outPoint is before inPoint', async () => {
+      const result = await cutMedia('/media/video.mp4', 20, 5)
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Invalid time range')
+    })
+
     it('uses outputDirectory from config when set', async () => {
       mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '/output' })
       mockRunCommand.mockReturnValue({

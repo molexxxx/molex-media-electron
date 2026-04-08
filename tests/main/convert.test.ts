@@ -344,4 +344,18 @@ describe('convertFile', () => {
     const args = mockRunCommand.mock.calls[0][1]
     expect(args).not.toContain('-c:s')
   })
+
+  it('creates output directory when it does not exist', async () => {
+    const fs = await import('fs')
+    mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '/new/dir' })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await convertFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
+  })
 })

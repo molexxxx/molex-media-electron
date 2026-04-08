@@ -8,13 +8,19 @@ vi.mock('fs', () => ({
   existsSync: vi.fn(),
   unlinkSync: vi.fn(),
   readdirSync: vi.fn(),
-  mkdirSync: vi.fn()
+  mkdirSync: vi.fn(),
+  statSync: vi.fn(),
+  renameSync: vi.fn(),
+  copyFileSync: vi.fn()
 }))
 
 import * as fs from 'fs'
 import {
   cleanupTemp,
-  findMediaFiles
+  findMediaFiles,
+  safeRename,
+  ensureDir,
+  validateOutput
 } from '../../src/main/ffmpeg/processor'
 
 describe('cleanupTemp', () => {
@@ -34,7 +40,7 @@ describe('cleanupTemp', () => {
 
   it('swallows errors silently', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true)
-    vi.mocked(fs.unlinkSync).mockImplementation(() => { throw new Error('EACCES') })
+    vi.mocked(fs.unlinkSync).mockImplementationOnce(() => { throw new Error('EACCES') })
     expect(() => cleanupTemp('/tmp/locked.mp3')).not.toThrow()
   })
 })
@@ -105,5 +111,68 @@ describe('findMediaFiles', () => {
     const results = findMediaFiles('/music', ['.mp3'])
     const names = results.map((r) => r.split(/[\\/]/).pop())
     expect(names).toEqual(['a.mp3', 'b.mp3', 'c.mp3'])
+  })
+})
+
+describe('safeRename', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('uses renameSync when same filesystem', () => {
+    safeRename('/tmp/src.mp3', '/tmp/dest.mp3')
+    expect(fs.renameSync).toHaveBeenCalledWith('/tmp/src.mp3', '/tmp/dest.mp3')
+    expect(fs.copyFileSync).not.toHaveBeenCalled()
+  })
+
+  it('falls back to copy+delete on EXDEV error', () => {
+    const err = new Error('EXDEV') as any
+    err.code = 'EXDEV'
+    vi.mocked(fs.renameSync).mockImplementation(() => { throw err })
+    safeRename('/mnt/a/src.mp3', '/mnt/b/dest.mp3')
+    expect(fs.copyFileSync).toHaveBeenCalledWith('/mnt/a/src.mp3', '/mnt/b/dest.mp3')
+    expect(fs.unlinkSync).toHaveBeenCalledWith('/mnt/a/src.mp3')
+  })
+
+  it('rethrows non-EXDEV errors', () => {
+    const err = new Error('EACCES') as any
+    err.code = 'EACCES'
+    vi.mocked(fs.renameSync).mockImplementation(() => { throw err })
+    expect(() => safeRename('/tmp/src.mp3', '/tmp/dest.mp3')).toThrow('EACCES')
+  })
+})
+
+describe('ensureDir', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('creates directory when it does not exist', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    ensureDir('/output/new')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/output/new', { recursive: true })
+  })
+
+  it('does nothing when directory already exists', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    ensureDir('/output/existing')
+    expect(fs.mkdirSync).not.toHaveBeenCalled()
+  })
+})
+
+describe('validateOutput', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('passes when file has non-zero size', () => {
+    vi.mocked(fs.statSync).mockReturnValue({ size: 5000000 } as any)
+    expect(() => validateOutput('/tmp/out.mp3', 'Test')).not.toThrow()
+  })
+
+  it('throws when file is zero bytes', () => {
+    vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any)
+    expect(() => validateOutput('/tmp/out.mp3', 'Boost')).toThrow('Boost produced an empty file')
+  })
+
+  it('cleans up zero-byte file', () => {
+    vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any)
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    try { validateOutput('/tmp/out.mp3', 'Test') } catch { /* expected */ }
+    expect(fs.unlinkSync).toHaveBeenCalledWith('/tmp/out.mp3')
   })
 })

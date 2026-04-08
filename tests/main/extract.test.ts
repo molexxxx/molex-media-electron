@@ -424,4 +424,47 @@ describe('extractAudio', () => {
     expect(args).toContain('-ac')
     expect(args).toContain('2')
   })
+
+  it('returns error when streamIndex exceeds available streams', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [{ index: 1, codec_name: 'aac', channels: 2, sample_rate: '48000' }]
+    })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({ extractOptions: { outputFormat: 'mp3', streamIndex: 5 } })
+    const onProgress = vi.fn()
+    const result = await extractAudio(task, onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('stream 5 not found')
+  })
+
+  it('returns error when output file is empty (validateOutput)', async () => {
+    const fs = await import('fs')
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    vi.mocked(fs.statSync).mockReturnValueOnce({ size: 0 } as any)
+    const onProgress = vi.fn()
+    const result = await extractAudio(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('empty file')
+  })
+
+  it('creates output directory when it does not exist', async () => {
+    const fs = await import('fs')
+    mockGetConfig.mockResolvedValue({ ...baseConfig, outputDirectory: '/new/dir' })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await extractAudio(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
+  })
 })

@@ -515,4 +515,43 @@ describe('compressFile', () => {
     expect(args).toContain('-cpu-used')
     expect(args).toContain('8')
   })
+
+  it('sets outputPath with compressed_ prefix when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/out' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(result.outputPath).toContain('compressed_')
+  })
+
+  it('returns error when output file is empty (validateOutput)', async () => {
+    const fs = await import('fs')
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    vi.mocked(fs.statSync).mockReturnValueOnce({ size: 0 } as any)
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('empty file')
+  })
+
+  it('creates output directory when it does not exist', async () => {
+    const fs = await import('fs')
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/new/dir' })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await compressFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
+  })
 })

@@ -232,5 +232,28 @@ describe('bootstrap', () => {
         Object.defineProperty(process, 'platform', { value: originalPlatform })
       }
     })
+
+    it('rejects after too many redirects', async () => {
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', { value: 'win32' })
+
+      // Every response is a redirect, exceeding the depth limit of 10
+      mockHttpsGet.mockImplementation((_url: string, _opts: any, callback: any) => {
+        const res = new EventEmitter() as any
+        res.statusCode = 302
+        res.headers = { location: 'https://example.com/redirect' }
+        const req = new EventEmitter() as any
+        req.setTimeout = vi.fn()
+        process.nextTick(() => callback(res))
+        return req
+      })
+
+      const onProgress = vi.fn()
+      try {
+        await expect(downloadFFmpeg(onProgress)).rejects.toThrow('Too many redirects')
+      } finally {
+        Object.defineProperty(process, 'platform', { value: originalPlatform })
+      }
+    })
   })
 })

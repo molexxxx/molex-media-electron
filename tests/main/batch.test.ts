@@ -158,12 +158,14 @@ describe('processBatch', () => {
     expect(onProgress.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
-  it('defaults unknown operations to normalizeFile', async () => {
+  it('errors on unknown operations instead of falling through', async () => {
     const task = makeTask('t1', 'normalize')
     ;(task as any).operation = 'unknown_op'
     const onProgress = vi.fn()
-    await processBatch([task], 1, onProgress)
-    expect(mockNormalize).toHaveBeenCalledTimes(1)
+    const results = await processBatch([task], 1, onProgress)
+    expect(results[0].status).toBe('error')
+    expect(results[0].error).toContain('Unknown operation')
+    expect(mockNormalize).not.toHaveBeenCalled()
   })
 
   it('pauses and resumes during batch processing', async () => {

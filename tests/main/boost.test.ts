@@ -301,4 +301,57 @@ describe('boostFile', () => {
     const result = await boostFile(makeTask({ outputDir: '' }), onProgress)
     expect(result.status).toBe('complete')
   })
+
+  it('sets outputPath to filePath when overwriteOriginal is true', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: true })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask()
+    const onProgress = vi.fn()
+    const result = await boostFile(task, onProgress)
+    expect(result.status).toBe('complete')
+    expect(result.outputPath).toBe(task.filePath)
+  })
+
+  it('sets outputPath with boosted_ prefix when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/out' })
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(result.outputPath).toContain('boosted_')
+  })
+
+  it('returns error when output file is empty (validateOutput)', async () => {
+    const fs = await import('fs')
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    // First call from statSync for validateOutput returns 0, second for outputSize is normal
+    vi.mocked(fs.statSync).mockReturnValueOnce({ size: 0 } as any)
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('empty file')
+  })
+
+  it('creates output directory when it does not exist', async () => {
+    const fs = await import('fs')
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/new/dir' })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await boostFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
+  })
 })

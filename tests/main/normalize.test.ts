@@ -228,7 +228,7 @@ describe('normalizeFile', () => {
     const onProgress = vi.fn()
     const result = await normalizeFile(makeTask(), onProgress)
     expect(result.status).toBe('error')
-    expect(result.error).toContain('FFmpeg encode failed')
+    expect(result.error).toContain('Normalize encode failed')
   })
 
   it('handles audio-only file with non-inherit codec', async () => {
@@ -534,5 +534,88 @@ describe('normalizeFile', () => {
     const onProgress = vi.fn()
     const result = await normalizeFile(makeTask(), onProgress)
     expect(result.status).toBe('cancelled')
+  })
+
+  it('sets outputPath to filePath when overwriteOriginal is true', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask()
+    const onProgress = vi.fn()
+    const result = await normalizeFile(task, onProgress)
+    expect(result.status).toBe('complete')
+    expect(result.outputPath).toBe(task.filePath)
+  })
+
+  it('sets outputPath with normalized_ prefix when overwriteOriginal is false', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/out' })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(result.outputPath).toContain('normalized_')
+  })
+
+  it('returns error when output file is empty (validateOutput)', async () => {
+    const fs = await import('fs')
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    vi.mocked(fs.statSync).mockReturnValueOnce({ size: 0 } as any)
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('error')
+    expect(result.error).toContain('empty file')
+  })
+
+  it('creates output directory when it does not exist', async () => {
+    const fs = await import('fs')
+    mockGetConfig.mockResolvedValue({ ...baseConfig, overwriteOriginal: false, outputDirectory: '/new/dir' })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
   })
 })
