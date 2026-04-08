@@ -37,8 +37,7 @@ export function TransportBar({
   const volPct = volume * 100
 
   return (
-    <div className="shrink-0 rounded-xl px-3 sm:px-4 py-3 space-y-2"
-      style={{ background: 'rgba(15, 19, 32, 0.65)', backdropFilter: 'blur(24px)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
+    <div className="shrink-0 rounded-xl px-3 sm:px-4 py-3 space-y-2 bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm"
     >
       {/* Seek bar */}
       <div className="flex items-center gap-2 sm:gap-2.5 group/seek">

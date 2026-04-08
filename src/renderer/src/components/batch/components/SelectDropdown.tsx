@@ -105,7 +105,7 @@ export function SelectDropdown({ value, onChange, items, className }: {
     <div ref={ref} className={`relative ${className ?? ''}`}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 bg-surface-800/60 border border-surface-700 rounded-lg px-2.5 py-1.5 text-xs text-white hover:border-surface-600 focus:outline-none focus:border-accent-500 transition-colors"
+        className="w-full flex items-center gap-2 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-surface-200 hover:border-white/[0.12] focus:outline-none focus:border-accent-500/50 transition-colors"
       >
         <span className="truncate flex-1 text-left">{activeLabel}</span>
         <svg

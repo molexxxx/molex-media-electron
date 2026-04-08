@@ -10,7 +10,7 @@
 
 import React from 'react'
 import { useAppStore } from '../../stores/appStore'
-import { StatCard } from './components/StatCard'
+import { StatBar } from './components/StatCard'
 import { ToolCard, drawEditorBg, drawPlayerBg } from './components/ToolCard'
 import { SystemInfo } from './components/SystemInfo'
 
@@ -53,45 +53,43 @@ export default function Dashboard(): React.JSX.Element {
 
   return (
     <div className="flex flex-col min-h-full animate-fade-in">
-      {/* Header */}
+      {/* Header + Inline Stats */}
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-xs text-surface-400 mt-0.5">Media processing toolkit — audio, video, and everything in between</p>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-        <StatCard label="Batch" value={files.length} sub={files.length === 1 ? 'file ready' : 'files ready'} color="text-accent-400" />
-        <StatCard label="Processing" value={activeTasks.length} sub={isProcessing ? 'active now' : 'idle'} color={isProcessing ? 'text-amber-400' : 'text-surface-300'} />
-        <StatCard label="Completed" value={totalProcessed} sub="this session" color="text-emerald-400" />
-        <StatCard label="Errors" value={totalErrors} sub="this session" color={totalErrors > 0 ? 'text-red-400' : 'text-surface-300'} />
+        <h1 className="text-xl font-medium text-surface-200 tracking-tight">Dashboard</h1>
+        <div className="flex items-center justify-between gap-4 mt-1.5 flex-wrap">
+          <p className="text-xs text-surface-400">Media processing toolkit — audio, video, and everything in between</p>
+          <StatBar stats={[
+            { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
+            { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-amber-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-amber-400 animate-pulse' : 'bg-surface-600' },
+            { label: 'Done', value: totalProcessed, color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
+            { label: 'Errors', value: totalErrors, color: totalErrors > 0 ? 'text-red-400' : 'text-surface-400', dotColor: totalErrors > 0 ? 'bg-red-400' : 'bg-surface-600' },
+          ]} />
+        </div>
       </div>
 
       {/* Workflow Actions */}
       <div className="mb-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Workflow</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div className="flex flex-col sm:grid sm:grid-cols-5 gap-1.5 sm:gap-2">
           {quickActions.map((action) => (
             <button
               key={action.op}
               onClick={() => { setOperation(action.op); setView('batch') }}
-              className={`rounded-xl px-2 py-3 text-center group border border-white/[0.06] ${action.hoverBorder} transition-all duration-200`}
-              style={{ background: 'rgba(30, 37, 56, 0.6)', backdropFilter: 'blur(12px)' }}
+              className={`rounded-xl group bg-white/[0.03] border border-white/[0.06] ${action.hoverBorder} transition-all duration-200 backdrop-blur-sm hover:bg-white/[0.05] flex items-center gap-3 px-3 py-2.5 sm:flex-col sm:px-2 sm:py-3 sm:text-center sm:gap-0`}
             >
-              <div className={`w-9 h-9 mx-auto rounded-lg border flex items-center justify-center mb-2 ${action.boxClass} ${action.iconClass}`}>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 sm:mx-auto rounded-lg border flex items-center justify-center sm:mb-2 ${action.boxClass} ${action.iconClass}`}>
                 {action.icon}
               </div>
               <h4 className="text-xs font-semibold text-surface-200 group-hover:text-white transition-colors truncate">{action.label}</h4>
-              <p className="text-2xs text-surface-500 mt-0.5 hidden sm:block">{action.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Tools — Editor & Player */}
-      <div className="flex-1 flex flex-col min-h-[120px] sm:min-h-[180px] mb-4">
+      <div className="flex-1 flex flex-col min-h-0">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Tools</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Editor card */}
           <ToolCard
             onClick={() => setView('editor')}
@@ -124,7 +122,9 @@ export default function Dashboard(): React.JSX.Element {
         </div>
       </div>
 
-      <SystemInfo systemInfo={systemInfo} ffmpegVersion={ffmpegVersion} config={config} />
+      <div className="mt-auto pt-3">
+        <SystemInfo systemInfo={systemInfo} ffmpegVersion={ffmpegVersion} config={config} />
+      </div>
     </div>
   )
 }

@@ -54,10 +54,10 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
 
   return (
     <>
-      <div className="glass-bar rounded-2xl px-4 sm:px-5 py-3 flex items-center justify-between shrink-0 gap-3 relative z-30">
+      <div className="flex items-center justify-between shrink-0 gap-3 relative z-30">
         {/* Left — title + subtitle */}
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Editor</h1>
+          <h1 className="text-lg sm:text-xl font-medium text-surface-200 tracking-tight">Editor</h1>
           <p className="text-xs text-surface-400 mt-0.5 truncate">
             {clip
               ? <>{clip.name} <span className="text-surface-600">—</span> {formatTime(dur)} selected</>
@@ -71,15 +71,15 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
         {/* Right — tabs + add dropdown */}
         <div className="flex items-center gap-2.5">
           {/* Tab switcher */}
-          <div className="flex bg-surface-900/80 rounded-xl p-1 gap-0.5">
+          <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 gap-1 backdrop-blur-sm">
             {(['trim', 'inspect'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setEditorTab(tab)}
                 className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 capitalize ${
                   editorTab === tab
-                    ? 'bg-accent-500/20 text-accent-200 border border-accent-500/25 shadow-sm'
-                    : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60 border border-transparent'
+                    ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm'
+                    : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'
                 }`}
               >
                 {tab === 'trim' ? 'Trim' : 'Inspect'}
@@ -103,7 +103,7 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
           <div ref={addRef} className="relative">
             <button
               onClick={() => setAddOpen((o) => !o)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                 addOpen ? 'bg-accent-500/25 text-accent-200 border border-accent-500/30' : 'bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30'
               }`}
             >
@@ -112,19 +112,20 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className={`transition-transform duration-200 ${addOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6"/></svg>
             </button>
             {addOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 glass-panel rounded-xl shadow-2xl z-50 py-1.5 animate-fade-in">
+              <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl z-50 overflow-hidden animate-fade-in">
                 <button
                   onClick={handleChooseFiles}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-surface-200 hover:bg-white/5 rounded-lg mx-0 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-400"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   Choose Files
                 </button>
+                <div className="border-t border-white/[0.06]" />
                 <button
                   onClick={handleAddFolder}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-surface-200 hover:bg-white/5 rounded-lg mx-0 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-400"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                   Add Folder
                 </button>
               </div>

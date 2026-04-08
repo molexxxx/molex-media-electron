@@ -319,7 +319,7 @@ export default function MediaEditor(): React.JSX.Element {
         onLoadFilePath={loadFilePath}
       />
 
-      <div className={store.editorTab === 'trim' ? 'flex-1 flex flex-col gap-4 min-h-0' : 'hidden'}>
+      <div className={store.editorTab === 'trim' ? `${store.clips.length > 0 ? 'flex-1' : ''} flex flex-col gap-4 min-h-0 pr-1` : 'hidden'}>
         <PreviewArea
           clip={clip}
           videoRef={videoRef}
@@ -351,7 +351,16 @@ export default function MediaEditor(): React.JSX.Element {
         )}
       </div>
 
-      <div className={store.editorTab === 'inspect' ? 'flex-1 min-h-0 overflow-auto space-y-4 pr-1' : 'hidden'}>
+      <div
+        className={store.editorTab === 'inspect' ? 'flex-1 min-h-0 overflow-auto space-y-4 pr-1' : 'hidden'}
+        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation() }}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          for (const file of Array.from(e.dataTransfer.files)) loadFile(file)
+        }}
+      >
         <InspectTab
           hasClip={!!clip}
           probing={inspect.probing}

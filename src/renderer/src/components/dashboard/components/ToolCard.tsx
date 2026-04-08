@@ -54,8 +54,7 @@ export function ToolCard({ onClick, accentClass, title, desc, icon, drawBg }: {
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl text-left group relative overflow-hidden flex flex-col h-full border border-white/[0.06] ${c.hoverBorder} transition-all duration-200`}
-      style={{ background: 'rgba(30, 37, 56, 0.4)', backdropFilter: 'blur(12px)' }}
+      className={`rounded-xl text-left group relative overflow-hidden flex flex-col h-44 bg-white/[0.03] border border-white/[0.06] ${c.hoverBorder} transition-all duration-200 backdrop-blur-sm hover:bg-white/[0.05]`}
     >
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-[1]" />
       <div className="relative z-10 flex items-end justify-between flex-1 p-5">

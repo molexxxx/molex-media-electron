@@ -7,13 +7,14 @@
  * mid-batch. Uses shared status constants for consistent styling.
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useAppStore, FileItem } from '../../stores/appStore'
 import { TaskCard } from './components/TaskCard'
 
 export default function ProcessingView(): React.JSX.Element {
   const { tasks, isProcessing, isPaused, activeBatchId, resetBatch, addFiles, setView } = useAppStore()
   const [dragOver, setDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
 
   const completed = tasks.filter((t) => t.status === 'complete').length
   const errors = tasks.filter((t) => t.status === 'error').length
@@ -38,6 +39,7 @@ export default function ProcessingView(): React.JSX.Element {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    dragCounterRef.current = 0
     setDragOver(false)
     const items: FileItem[] = []
     for (const file of Array.from(e.dataTransfer.files)) {
@@ -59,19 +61,25 @@ export default function ProcessingView(): React.JSX.Element {
   return (
     <div
       className="space-y-5 animate-fade-in min-h-full flex flex-col relative"
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-      onDragLeave={() => setDragOver(false)}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; setDragOver(true) }}
+      onDragLeave={(e) => { e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; setDragOver(false) } }}
       onDrop={handleDrop}
     >
       {dragOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm rounded-xl border-2 border-dashed border-accent-400/40 pointer-events-none">
-          <p className="text-accent-300 font-semibold">Drop files to add to batch</p>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-accent-500/[0.06] backdrop-blur-sm rounded-2xl border border-accent-400 pointer-events-none">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full border-2 border-dashed border-accent-400/60 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-300"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <p className="text-accent-300 font-semibold">Drop to add</p>
+          </div>
         </div>
       )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Processing</h1>
+          <h1 className="text-2xl font-medium text-surface-200 tracking-tight">Processing</h1>
           <p className="text-sm text-surface-400 mt-0.5">
             {isProcessing
               ? isPaused

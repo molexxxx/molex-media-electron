@@ -23,33 +23,34 @@ interface UrlInputBarProps {
   onLoadHistory: () => void
   onLoadFromHistory: (url: string) => void
   onRemoveFromHistory: (url: string) => void
+  onDismiss?: () => void
 }
 
 export function UrlInputBar({
   urlInput, resolving, showHistory, urlHistory,
   onUrlChange, onAddUrl, onToggleHistory, onLoadHistory,
-  onLoadFromHistory, onRemoveFromHistory
+  onLoadFromHistory, onRemoveFromHistory, onDismiss
 }: UrlInputBarProps): React.JSX.Element {
   return (
     <div className="shrink-0 space-y-2">
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <input
           type="url"
           value={urlInput}
           onChange={(e) => onUrlChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onAddUrl()}
+          onKeyDown={(e) => { if (e.key === 'Enter') onAddUrl(); if (e.key === 'Escape' && onDismiss) onDismiss() }}
           placeholder="Paste YouTube playlist, video URL, or direct audio link..."
-          className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface-800 border border-surface-600 text-white placeholder-surface-500 focus:border-accent-500 focus:outline-none transition-colors"
+          className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface-900/80 border border-white/[0.06] text-surface-200 placeholder-surface-600 focus:border-accent-500/50 hover:border-white/[0.12] focus:outline-none transition-colors"
           autoFocus
         />
         <button
           onClick={() => { onToggleHistory(); if (!showHistory) onLoadHistory() }}
-          className={`px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
-            showHistory ? 'bg-accent-600/20 border-accent-500 text-accent-300' : 'bg-surface-800 border-surface-600 text-surface-300 hover:text-white hover:border-accent-500'
+          className={`px-2.5 py-2 rounded-lg border transition-colors ${
+            showHistory ? 'bg-accent-500/15 border-accent-500/25 text-accent-300' : 'bg-surface-900/80 border-white/[0.06] text-surface-400 hover:text-surface-200 hover:border-white/[0.12]'
           }`}
           title="URL History"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline -mt-0.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
           </svg>
         </button>
@@ -60,13 +61,24 @@ export function UrlInputBar({
         >
           {resolving ? 'Resolving...' : 'Add'}
         </button>
+        {onDismiss && (
+          <button
+            onClick={onDismiss}
+            className="p-2 rounded-lg text-surface-500 hover:text-surface-200 transition-colors"
+            title="Close URL input"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
       {showHistory && urlHistory.length > 0 && (
-        <div className="max-h-48 overflow-y-auto rounded-lg bg-surface-800 border border-surface-600 scrollbar-thin">
+        <div className="max-h-48 overflow-y-auto rounded-lg bg-surface-900/80 border border-white/[0.06] scrollbar-thin">
           {urlHistory.map((h) => (
             <div
               key={h.url}
-              className="group flex items-center gap-2 px-3 py-2 hover:bg-surface-700/50 cursor-pointer transition-colors"
+              className="group flex items-center gap-2 px-3 py-2 hover:bg-white/[0.04] cursor-pointer transition-colors"
               onClick={() => onLoadFromHistory(h.url)}
             >
               <div className="flex-1 min-w-0">
@@ -87,7 +99,7 @@ export function UrlInputBar({
         </div>
       )}
       {showHistory && urlHistory.length === 0 && (
-        <div className="px-3 py-4 text-center text-xs text-surface-500 rounded-lg bg-surface-800 border border-surface-600">
+        <div className="px-3 py-4 text-center text-xs text-surface-500 rounded-lg bg-surface-900/80 border border-white/[0.06]">
           No history yet — resolved playlists will appear here
         </div>
       )}

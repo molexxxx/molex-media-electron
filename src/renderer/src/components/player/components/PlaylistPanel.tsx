@@ -215,9 +215,9 @@ export function PlaylistPanel({
   }, [])
 
   return (
-    <div className={`${vertical ? 'w-full max-h-48' : 'h-full'} shrink-0 flex flex-col glass rounded-2xl border border-white/5 overflow-hidden`}>
+    <div className={`${vertical ? 'w-full max-h-48' : 'h-full'} shrink-0 flex flex-col rounded-2xl bg-surface-900/90 border border-white/[0.06] backdrop-blur-md overflow-hidden`}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <span className="text-sm font-semibold text-white">Playlist</span>
+        <span className="text-sm font-medium text-surface-200">Playlist</span>
         <div className="flex items-center gap-1">
           {onLoadFolder && (
             <button

@@ -13,10 +13,12 @@ import { QueueList } from './components/QueueList'
 export default function FileQueue(): React.JSX.Element {
   const {
     files, addFiles, updateFile, resetBatch,
-    config, batchOutputDir, setBatchOutputDir, tasks, isProcessing
+    config, batchOutputDir, setBatchOutputDir, tasks, isProcessing, setView
   } = useAppStore()
   const [scanning, setScanning] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
+  const [showReplaceWarning, setShowReplaceWarning] = useState(false)
+  const [dontAskReplace, setDontAskReplace] = useState(false)
   const addRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
@@ -28,6 +30,14 @@ export default function FileQueue(): React.JSX.Element {
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
   }, [addOpen])
+
+  // Dismiss replace warning on Escape
+  useEffect(() => {
+    if (!showReplaceWarning) return
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') cancelReplace() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showReplaceWarning])
 
   // Auto-probe newly added files for metadata
   useEffect(() => {
@@ -84,6 +94,16 @@ export default function FileQueue(): React.JSX.Element {
 
   const handleStart = async () => {
     if (files.length === 0) return
+    const { config: cfg } = useAppStore.getState()
+    if (cfg?.afterProcessing === 'replace' && cfg?.confirmReplace) {
+      setShowReplaceWarning(true)
+      return
+    }
+    await doStart()
+  }
+
+  const doStart = async () => {
+    setShowReplaceWarning(false)
     const { batchOutputDir } = useAppStore.getState()
     const outputDir = batchOutputDir || undefined
 
@@ -101,6 +121,20 @@ export default function FileQueue(): React.JSX.Element {
     await window.api.startBatchQueue(taskSpecs)
   }
 
+  const confirmReplace = async () => {
+    if (dontAskReplace) {
+      await window.api.saveConfig({ confirmReplace: false })
+      useAppStore.getState().setConfig({ ...config!, confirmReplace: false })
+    }
+    setDontAskReplace(false)
+    await doStart()
+  }
+
+  const cancelReplace = () => {
+    setShowReplaceWarning(false)
+    setDontAskReplace(false)
+  }
+
   const activeTasks = tasks.filter(
     (t) => t.status === 'processing' || t.status === 'analyzing' || t.status === 'finalizing'
   ).length
@@ -111,7 +145,7 @@ export default function FileQueue(): React.JSX.Element {
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-white">Batch<span className="hidden sm:inline"> Processor</span></h1>
+          <h1 className="text-xl font-medium text-surface-200 tracking-tight">Batch<span className="hidden sm:inline"> Processor</span></h1>
           <p className="text-xs text-surface-500 mt-0.5">
             {isProcessing
               ? `${activeTasks} active · ${completedTasks}/${tasks.length} done`
@@ -155,24 +189,24 @@ export default function FileQueue(): React.JSX.Element {
               </svg>
             </button>
             {addOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-800 border border-surface-600 shadow-2xl z-50 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl z-50 overflow-hidden animate-fade-in">
                 <button
                   onClick={() => { setAddOpen(false); handleAddFiles() }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0">
                     <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
                     <polyline points="14,2 14,8 20,8" />
                   </svg>
                   Choose Files
                 </button>
-                <div className="border-t border-white/5" />
+                <div className="border-t border-white/[0.06]" />
                 <button
                   onClick={() => { setAddOpen(false); handleAddFolder() }}
                   disabled={scanning}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-surface-700 transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-400 shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                     <line x1="12" y1="11" x2="12" y2="17" /><line x1="9" y1="14" x2="15" y2="14" />
                   </svg>
@@ -198,8 +232,8 @@ export default function FileQueue(): React.JSX.Element {
           value={batchOutputDir}
           onChange={(e) => setBatchOutputDir(e.target.value)}
           placeholder={
-            config?.overwriteOriginal
-              ? 'Overwrite originals (global setting)'
+            config?.afterProcessing === 'replace'
+              ? 'Replace originals (global setting)'
               : config?.outputDirectory
                 ? config.outputDirectory
                 : 'Same as source (global setting)'
@@ -228,6 +262,76 @@ export default function FileQueue(): React.JSX.Element {
           </button>
         )}
       </div>
+
+      {/* Replace originals confirmation modal */}
+      {showReplaceWarning && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={cancelReplace}
+        >
+          <div
+            className="w-full max-w-sm mx-4 rounded-2xl bg-surface-900 border border-white/10 shadow-2xl overflow-hidden animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-surface-100">Replace original files?</h3>
+                <p className="text-xs text-surface-400 mt-1 leading-relaxed">
+                  Original files will be <span className="text-amber-400 font-medium">permanently deleted</span> after
+                  each file is successfully processed. This cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-5 pb-3 flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div
+                  className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${
+                    dontAskReplace
+                      ? 'bg-accent-500 border-accent-500'
+                      : 'border-surface-600 group-hover:border-surface-500'
+                  }`}
+                  onClick={() => setDontAskReplace(!dontAskReplace)}
+                >
+                  {dontAskReplace && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-xs text-surface-400 select-none" onClick={() => setDontAskReplace(!dontAskReplace)}>Don&apos;t ask again</span>
+              </label>
+              <button
+                onClick={() => { cancelReplace(); setView('settings') }}
+                className="text-2xs text-accent-400 hover:text-accent-300 transition-colors"
+              >
+                Change in Settings →
+              </button>
+            </div>
+
+            <div className="px-5 pb-5 flex items-center gap-2">
+              <button
+                onClick={confirmReplace}
+                className="flex-1 px-4 py-2 text-xs font-semibold rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/20 transition-colors"
+              >
+                Replace &amp; Process
+              </button>
+              <button
+                onClick={cancelReplace}
+                className="flex-1 px-4 py-2 text-xs font-semibold rounded-lg bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-surface-100 border border-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

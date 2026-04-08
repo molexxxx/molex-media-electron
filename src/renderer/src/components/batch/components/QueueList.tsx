@@ -307,12 +307,12 @@ export function QueueList({ files, onAddFiles }: {
 
   return (
     <div
-      className={`flex-1 min-h-[180px] rounded-xl border-2 border-dashed transition-all duration-200 flex flex-col ${
+      className={`flex-1 min-h-[180px] rounded-2xl transition-all duration-200 flex flex-col relative overflow-hidden ${
         dragOver
-          ? 'border-accent-400 bg-accent-500/5'
+          ? 'border border-accent-400 bg-accent-500/[0.04]'
           : files.length === 0
-            ? 'border-surface-700/50 bg-surface-900/30'
-            : 'border-transparent bg-transparent'
+            ? 'border border-dashed border-white/[0.06] bg-white/[0.02]'
+            : 'border border-transparent bg-transparent'
       }`}
       onDragOver={(e) => {
         if (!e.dataTransfer.types.includes('text/queue-index')) {
@@ -339,16 +339,16 @@ export function QueueList({ files, onAddFiles }: {
     >
       {files.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-          <div className="w-14 h-14 rounded-2xl bg-surface-800/50 border border-surface-700/50 flex items-center justify-center mb-3">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-500">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-center mb-4">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-500">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17,8 12,3 7,8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
           </div>
-          <p className="text-surface-400 text-sm font-medium mb-1">Drop files here to queue</p>
-          <p className="text-surface-600 text-xs">Files inherit the selected operation above</p>
-          <p className="text-surface-700 text-2xs mt-2 font-mono">MP4 MKV AVI MOV MP3 WAV FLAC OGG M4A AAC +more</p>
+          <p className="text-surface-400 text-sm font-medium">Drop files here to queue</p>
+          <p className="text-surface-600 text-2xs mt-1.5">Files inherit the selected operation above</p>
+          <p className="text-surface-700 text-2xs mt-3 font-mono">MP4 MKV AVI MOV MP3 WAV FLAC OGG M4A AAC +more</p>
         </div>
       ) : (
         <div className="flex-1 overflow-auto py-1 px-1" onDragEnd={handleDragEnd}>

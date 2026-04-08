@@ -13,6 +13,7 @@ import {
 } from '../presets'
 import { PresetDropdown } from './PresetDropdown'
 import { SelectDropdown } from './SelectDropdown'
+import { FixedTip } from '../../shared/ui'
 
 /* ------------------------------------------------------------------ */
 /*  Operation definitions                                              */
@@ -128,19 +129,19 @@ export function OperationPanel(): React.JSX.Element {
       {/* Operation selector row */}
       <div className="relative flex items-center gap-0.5 px-1.5 py-1.5 overflow-visible z-10">
         {OP_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => { setOperation(tab.id); if (tab.id !== operation) setExpanded(false) }}
-            title={tab.tip}
-            className={`group/tab relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              operation === tab.id
-                ? 'bg-accent-600/20 text-accent-300'
-                : 'text-surface-500 hover:text-surface-200 hover:bg-surface-800/50'
-            }`}
-          >
-            <span className={operation === tab.id ? 'text-accent-400' : 'text-surface-600 group-hover/tab:text-surface-400'}>{tab.icon}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
+          <FixedTip key={tab.id} label={tab.tip}>
+            <button
+              onClick={() => { setOperation(tab.id) }}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                operation === tab.id
+                  ? 'bg-accent-600/20 text-accent-300'
+                  : 'text-surface-500 hover:text-surface-200 hover:bg-surface-800/50'
+              }`}
+            >
+              <span className={operation === tab.id ? 'text-accent-400' : 'text-surface-600 hover:text-surface-400'}>{tab.icon}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          </FixedTip>
         ))}
 
         {/* Summary + expand toggle */}
@@ -210,10 +211,10 @@ function NormalizeConfig({ selectedPreset, onApplyPreset }: {
           <button
             key={p.id}
             onClick={() => onApplyPreset(p.id)}
-            className={`px-2 py-0.5 text-2xs font-medium rounded-md transition-all ${
+            className={`px-2.5 py-1 text-2xs font-medium rounded-lg transition-all ${
               selectedPreset === p.id
-                ? 'bg-accent-600 text-white'
-                : 'text-surface-500 hover:text-surface-200 hover:bg-surface-800/60'
+                ? 'bg-accent-500/20 text-accent-200 border border-accent-500/25 shadow-sm'
+                : 'text-surface-500 hover:text-surface-200 hover:bg-surface-800/50 border border-transparent'
             }`}
             title={p.description}
           >
@@ -364,13 +365,15 @@ function ConvertConfig({ options, setOptions, conflicts }: {
   return (
     <div className="space-y-3">
       {/* Preset */}
-      <div className="flex items-center gap-2">
-        <label className="text-2xs text-surface-500 shrink-0">Preset</label>
-        <PresetDropdown categories={PRESET_CATEGORIES} activeId={activePresetId}
-          onSelect={(p) => { if (!p.id) { setActivePresetId(''); return }; applyPreset(p) }} />
+      <div className="flex items-center gap-3">
+        <div>
+          <label className={lbl}>Preset</label>
+          <PresetDropdown categories={PRESET_CATEGORIES} activeId={activePresetId}
+            onSelect={(p) => { if (!p.id) { setActivePresetId(''); return }; applyPreset(p) }} />
+        </div>
         {activePresetId && (() => {
           const p = PRESET_CATEGORIES.flatMap((c) => c.presets).find((x) => x.id === activePresetId)
-          return p ? <span className="text-2xs text-surface-600 truncate">{p.description}</span> : null
+          return p ? <span className="text-2xs text-surface-600 truncate mt-4">{p.description}</span> : null
         })()}
       </div>
 
@@ -540,7 +543,7 @@ function ExtractConfig({ options, setOptions }: {
         <label className={lbl}>Stream</label>
         <input type="number" min="0" max="10" value={options.streamIndex}
           onChange={(e) => setOptions({ streamIndex: parseInt(e.target.value, 10) || 0 })}
-          className="w-14 bg-surface-800/60 border border-surface-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center focus:outline-none focus:border-accent-500 transition-colors" />
+          className="w-14 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50 hover:border-white/[0.12] transition-colors" />
       </div>
       <div>
         <label className={lbl}>Bitrate</label>
@@ -597,8 +600,10 @@ function CompressConfig({ options, setOptions }: {
         <div className="flex items-center gap-0.5">
           {(['lossless', 'high', 'medium', 'low'] as const).map((q) => (
             <button key={q} onClick={() => setOptions({ quality: q, ...QUALITY_PRESETS[q] })}
-              className={`px-2 py-0.5 text-2xs font-medium rounded-md transition-all ${
-                options.quality === q ? 'bg-accent-600 text-white' : 'text-surface-500 hover:text-surface-300 hover:bg-surface-700/60'
+              className={`px-2.5 py-1 text-2xs font-medium rounded-lg transition-all ${
+                options.quality === q
+                  ? 'bg-accent-500/20 text-accent-200 border border-accent-500/25 shadow-sm'
+                  : 'text-surface-500 hover:text-surface-300 hover:bg-surface-800/50 border border-transparent'
               }`}
             >
               {q.charAt(0).toUpperCase() + q.slice(1)}
@@ -634,7 +639,7 @@ function CompressConfig({ options, setOptions }: {
           <label className={lbl}>Target MB</label>
           <input type="number" min="0" value={options.targetSizeMB}
             onChange={(e) => setOptions({ targetSizeMB: parseFloat(e.target.value) || 0 })}
-            className="w-16 bg-surface-800/60 border border-surface-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono text-center focus:outline-none focus:border-accent-500 transition-colors"
+            className="w-16 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50 hover:border-white/[0.12] transition-colors"
             title="0 = use CRF quality" />
         </div>
       </div>

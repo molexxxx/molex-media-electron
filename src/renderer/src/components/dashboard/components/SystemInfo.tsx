@@ -1,19 +1,18 @@
 /**
  * @module components/dashboard/SystemInfo
- * @description System information panel displaying FFmpeg version, paths, and OS details.
+ * @description Minimal system info footer with pill badges.
  */
 
 import React from 'react'
 import type { AppConfig, SystemInfo as SystemInfoType } from '../../../stores/types'
 
-function InfoRow({ label, value, ok }: { label: string; value: string; ok?: boolean }): React.JSX.Element {
+function Pill({ children, accent }: { children: React.ReactNode; accent?: boolean }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between gap-2 py-0.5 min-w-0">
-      <span className="text-surface-500 text-xs shrink-0">{label}</span>
-      <span className={`font-mono text-xs truncate ${ok === true ? 'text-emerald-400' : ok === false ? 'text-red-400' : 'text-surface-300'}`}>
-        {value}
-      </span>
-    </div>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono ${
+      accent ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/15' : 'text-surface-400 bg-white/[0.03] border border-white/[0.04]'
+    }`}>
+      {children}
+    </span>
   )
 }
 
@@ -33,24 +32,15 @@ export function SystemInfo({ systemInfo, ffmpegVersion, config }: {
   config: AppConfig | null
 }): React.JSX.Element {
   return (
-    <div className="glass rounded-xl p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">System</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
-        <InfoRow label="FFmpeg" value={ffmpegVersion || 'Not installed'} ok={!!ffmpegVersion} />
-        <InfoRow label="Platform" value={formatPlatform(systemInfo?.platform, systemInfo?.arch)} />
-        <InfoRow label="CPU Cores" value={String(systemInfo?.cpus || '—')} />
-        <InfoRow label="Workers" value={String(config?.maxWorkers || '—')} />
-        <InfoRow label="Audio Codec" value={config?.audioCodec || '—'} />
-        <InfoRow label="Bitrate" value={config?.audioBitrate || '—'} />
-        <InfoRow
-          label="Target LUFS"
-          value={config ? `I=${config.normalization.I} TP=${config.normalization.TP} LRA=${config.normalization.LRA}` : '—'}
-        />
-        <InfoRow
-          label="Memory"
-          value={systemInfo ? `${formatBytes(systemInfo.freeMemory)} free / ${formatBytes(systemInfo.totalMemory)}` : '—'}
-        />
-      </div>
+    <div className="flex items-center gap-2 flex-wrap py-2 border-t border-white/[0.04]">
+      <span className="text-2xs text-surface-600 uppercase tracking-wider font-semibold mr-1">Sys</span>
+      <Pill accent={!!ffmpegVersion}>FFmpeg {ffmpegVersion ? '✓' : '✗'}</Pill>
+      <Pill>{formatPlatform(systemInfo?.platform, systemInfo?.arch)}</Pill>
+      <Pill>{systemInfo?.cpus || '—'} cores</Pill>
+      <Pill>{config?.maxWorkers || '—'} workers</Pill>
+      <Pill>{config?.audioCodec || '—'}</Pill>
+      <Pill>{config?.audioBitrate || '—'}</Pill>
+      {systemInfo && <Pill>{formatBytes(systemInfo.freeMemory)} free</Pill>}
     </div>
   )
 }

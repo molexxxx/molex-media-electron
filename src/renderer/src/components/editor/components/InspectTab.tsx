@@ -105,13 +105,13 @@ export function InspectTab({
 }: InspectTabProps): React.JSX.Element {
   if (!hasClip) {
     return (
-      <div className="flex-1 flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-surface-800/50 flex items-center justify-center border border-white/[0.04]">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-500"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div className="flex-1 flex items-center justify-center h-64 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02]">
+        <div className="text-center px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/[0.04]">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-surface-500"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
-          <p className="text-surface-400 text-sm font-medium">No file to inspect</p>
-          <p className="text-surface-600 text-2xs mt-1">Add a file to view streams and metadata</p>
+          <p className="text-surface-400 text-sm font-medium">Drop a file to inspect</p>
+          <p className="text-surface-600 text-2xs mt-1.5">or use <span className="text-accent-400/80">+ Add</span> above to view streams and metadata</p>
         </div>
       </div>
     )

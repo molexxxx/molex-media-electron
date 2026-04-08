@@ -44,18 +44,19 @@ export function TrimTab({
   return (
     <>
       {/* Main area: Preview + Clip List */}
+      {clip ? (
       <div className="flex-1 flex gap-4 min-h-0">
         {/* Preview */}
         <div
-          className={`flex-1 relative rounded-2xl overflow-hidden border transition-colors ${
-            dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
+          className={`flex-1 relative rounded-2xl overflow-hidden border transition-all duration-300 ${
+            dragging ? 'border-accent-400 bg-accent-500/[0.04]' : 'border-dashed border-white/[0.06] bg-white/[0.02]'
           }`}
           onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; onSetDragging(true) }}
           onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
           onDragLeave={(e) => { e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; onSetDragging(false) } }}
           onDrop={onDrop}
         >
-          {clip && clip.isVideo && (
+          {clip.isVideo && (
             <video
               ref={videoRef}
               className="absolute inset-0 w-full h-full object-contain bg-black"
@@ -64,23 +65,17 @@ export function TrimTab({
               muted={false}
             />
           )}
-          {clip && !clip.isVideo && (
+          {!clip.isVideo && (
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
           )}
-          {!clip && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mx-auto text-surface-600 mb-3">
-                  <path d="M15.6 11.6L22 7v10l-6.4-4.6" />
-                  <rect x="2" y="6" width="14" height="12" rx="2" />
-                </svg>
-                <p className="text-surface-500 text-sm">Drop media files here to begin</p>
-              </div>
-            </div>
-          )}
           {dragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm z-10">
-              <p className="text-accent-300 font-semibold text-lg">Drop to add</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-accent-500/[0.06] backdrop-blur-sm z-10">
+              <div className="w-12 h-12 mb-3 rounded-full border-2 border-dashed border-accent-400/60 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-300">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+              <p className="text-accent-300 font-semibold">Drop to add</p>
             </div>
           )}
           <audio ref={audioRef} className="hidden" />
@@ -130,6 +125,38 @@ export function TrimTab({
           </div>
         )}
       </div>
+      ) : (
+      <div
+        className="flex-1 flex items-center justify-center h-64 rounded-2xl border border-dashed border-white/[0.06] bg-white/[0.02]"
+        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); dragCounterRef.current++; onSetDragging(true) }}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+        onDragLeave={(e) => { e.stopPropagation(); dragCounterRef.current--; if (dragCounterRef.current <= 0) { dragCounterRef.current = 0; onSetDragging(false) } }}
+        onDrop={onDrop}
+      >
+        {dragging ? (
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-12 h-12 mb-3 rounded-full border-2 border-dashed border-accent-400/60 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-300">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <p className="text-accent-300 font-semibold">Drop to add</p>
+          </div>
+        ) : (
+          <div className="text-center px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/[0.04]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-surface-500">
+                <path d="M15.6 11.6L22 7v10l-6.4-4.6" />
+                <rect x="2" y="6" width="14" height="12" rx="2" />
+              </svg>
+            </div>
+            <p className="text-surface-400 text-sm font-medium">Drop media files here</p>
+            <p className="text-surface-600 text-2xs mt-1.5">or use <span className="text-accent-400/80">+ Add</span> above</p>
+          </div>
+        )}
+        <audio ref={audioRef} className="hidden" />
+      </div>
+      )}
 
       {/* Timeline */}
       {clip && (

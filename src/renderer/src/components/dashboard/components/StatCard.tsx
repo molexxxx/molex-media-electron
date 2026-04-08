@@ -1,21 +1,27 @@
 /**
- * @module components/dashboard/StatCard
- * @description Compact statistic card showing a label, value, and optional subtitle.
+ * @module components/dashboard/StatBar
+ * @description Compact inline status bar replacing individual stat cards.
  */
 
 import React from 'react'
 
-export function StatCard({ label, value, sub, color }: {
+interface Stat {
   label: string
   value: string | number
-  sub?: string
   color: string
-}): React.JSX.Element {
+  dotColor: string
+}
+
+export function StatBar({ stats }: { stats: Stat[] }): React.JSX.Element {
   return (
-    <div className="glass rounded-xl p-3 flex flex-col gap-0.5">
-      <span className="text-2xs font-semibold uppercase tracking-wider text-surface-500">{label}</span>
-      <span className={`text-xl font-bold ${color}`}>{value}</span>
-      {sub && <span className="text-2xs text-surface-500">{sub}</span>}
+    <div className="flex items-center gap-3 sm:gap-5">
+      {stats.map((s) => (
+        <div key={s.label} className="flex items-center gap-1.5 sm:gap-2">
+          <span className={`w-1.5 h-1.5 rounded-full ${s.dotColor}`} />
+          <span className={`text-xs sm:text-sm font-bold tabular-nums ${s.color}`}>{s.value}</span>
+          <span className="text-2xs text-surface-500 uppercase tracking-wider font-medium">{s.label}</span>
+        </div>
+      ))}
     </div>
   )
 }

@@ -38,6 +38,8 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState<'off' | 'all' | 'one'>('off')
   const [showPlaylist, setShowPlaylist] = useState(false)
+  const [playlistWidth, setPlaylistWidth] = useState(256) // default w-64, not persisted
+  const playlistResizing = useRef(false)
   const [urlInput, setUrlInput] = useState('')
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [resolving, setResolving] = useState(false)
@@ -500,6 +502,25 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
 
   const dragCounter = useRef(0)
 
+  // Playlist resize via left-edge drag handle (desktop only, not persisted)
+  const startPlaylistResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    playlistResizing.current = true
+    const startX = e.clientX
+    const startW = playlistWidth
+    const onMove = (ev: MouseEvent): void => {
+      const delta = startX - ev.clientX
+      setPlaylistWidth(Math.max(180, Math.min(600, startW + delta)))
+    }
+    const onUp = (): void => {
+      playlistResizing.current = false
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [playlistWidth])
+
   useEffect(() => {
     const el = dropRef.current
     if (!el) return
@@ -921,19 +942,22 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
         {/* Canvas area with playlist overlay */}
         <div
           ref={dropRef}
-          className={`flex-1 relative rounded-xl overflow-hidden border transition-colors ${
-            dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
+          className={`flex-1 relative rounded-2xl overflow-hidden border transition-colors ${
+            dragging ? 'border-accent-400/60 bg-accent-500/[0.04]' : 'border-white/[0.06] bg-white/[0.02]'
           }`}
         >
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
           {!track && !error && !resolving && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mx-auto text-surface-600 mb-2">
-                  <path d="M9 18V5l12-2v13" />
-                  <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                </svg>
-                <p className="text-surface-500 text-xs">Drop files or add tracks</p>
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-center">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-surface-500">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
+                <p className="text-surface-400 text-sm font-medium">Drop files or add tracks</p>
+                <p className="text-surface-600 text-2xs mt-1.5">Paste YouTube links or browse to play</p>
               </div>
             </div>
           )}
@@ -948,8 +972,13 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             </div>
           )}
           {dragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm pointer-events-none z-10">
-              <p className="text-accent-300 font-semibold text-sm">Drop to add</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/[0.06] backdrop-blur-sm pointer-events-none z-10">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full border-2 border-dashed border-accent-400/60 flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-300"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <p className="text-accent-300 font-semibold text-sm">Drop to add</p>
+              </div>
             </div>
           )}
           {/* Playlist overlay — slides up from bottom of canvas */}
@@ -1055,6 +1084,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             onLoadHistory={loadHistory}
             onLoadFromHistory={loadFromHistory}
             onRemoveFromHistory={removeFromHistory}
+            onDismiss={() => setShowUrlInput(false)}
           />
         )}
 
@@ -1064,7 +1094,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           className={`relative rounded-2xl overflow-hidden border transition-colors ${
             track ? 'flex-1' : 'flex-1 sm:flex-1 min-h-[120px]'
           } ${
-            dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
+            dragging ? 'border-accent-400/60 bg-accent-500/[0.04]' : 'border-white/[0.06] bg-white/[0.02]'
           }`}
         >
           <canvas
@@ -1073,13 +1103,16 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           />
           {!track && !error && !resolving && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="mx-auto text-surface-600 mb-3">
-                  <path d="M9 18V5l12-2v13" />
-                  <circle cx="6" cy="18" r="3" />
-                  <circle cx="18" cy="16" r="3" />
-                </svg>
-                <p className="text-surface-500 text-sm">Drop audio files, paste YouTube links, or browse</p>
+              <div className="text-center px-4">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-surface-500">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
+                <p className="text-surface-400 text-sm font-medium">Drop audio files to play</p>
+                <p className="text-surface-600 text-2xs mt-1.5">Paste YouTube links or browse to stream</p>
               </div>
             </div>
           )}
@@ -1097,15 +1130,28 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             </div>
           )}
           {dragging && (
-            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/10 backdrop-blur-sm pointer-events-none z-10">
-              <p className="text-accent-300 font-semibold text-lg">Drop to add</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-accent-500/[0.06] backdrop-blur-sm pointer-events-none z-10">
+              <div className="text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full border-2 border-dashed border-accent-400/60 flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-300"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <p className="text-accent-300 font-semibold">Drop to add</p>
+              </div>
             </div>
           )}
           {/* Playlist overlay — floats on top of the canvas */}
           {showPlaylist && (
             <>
               <div className="absolute inset-0 z-[19]" onClick={() => setShowPlaylist(false)} />
-              <div className="absolute top-0 right-0 bottom-0 z-20 w-full sm:w-64 sm:max-w-[60%]">
+              <div
+                className="absolute top-0 right-0 bottom-0 z-20 w-full sm:max-w-[75%]"
+                style={{ width: window.innerWidth >= 640 ? playlistWidth : undefined }}
+              >
+              {/* Resize handle — left edge, desktop only */}
+              <div
+                onMouseDown={startPlaylistResize}
+                className="hidden sm:block absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-30 hover:bg-accent-500/20 active:bg-accent-500/30 transition-colors"
+              />
               <PlaylistPanel
                 playlist={playlist}
                 trackIdx={trackIdx}
