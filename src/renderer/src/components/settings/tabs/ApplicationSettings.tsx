@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import type { AppConfig } from '../../../stores/appStore'
 import { useAppStore } from '../../../stores/appStore'
-import { SettingGroup, SettingRow, Toggle } from '../../shared/ui'
+import { SettingGroup, SettingRow, Toggle, Select } from '../../shared/ui'
 
 interface BrowserOption { name: string; label: string }
 type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
@@ -115,6 +115,30 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
 
   return (
     <div className="space-y-5">
+      <SettingGroup title="Window Behavior">
+        <SettingRow label="Minimize to Tray" description="Close button hides to system tray instead of quitting">
+          <Toggle checked={config.minimizeToTray} onChange={(v) => {
+            onUpdate('minimizeToTray', v)
+            if (!v) onUpdate('showTrayNotification', false)
+          }} />
+        </SettingRow>
+        {config.minimizeToTray && (
+          <SettingRow label="Confirm on Close" description="Ask whether to minimize or quit each time you close">
+            <Toggle checked={config.showTrayNotification} onChange={(v) => onUpdate('showTrayNotification', v)} />
+          </SettingRow>
+        )}
+        <SettingRow label="Sidebar Collapsed" description="Start with the sidebar collapsed on launch">
+          <Toggle checked={config.sidebarCollapsed ?? false} onChange={(v) => {
+            onUpdate('sidebarCollapsed', v as any)
+            useAppStore.setState({ sidebarCollapsed: v })
+          }} />
+        </SettingRow>
+      </SettingGroup>
+      <SettingGroup title="Notifications">
+        <SettingRow label="Desktop Notifications" description="Show a system notification when batch processing completes">
+          <Toggle checked={config.showNotifications} onChange={(v) => onUpdate('showNotifications', v)} />
+        </SettingRow>
+      </SettingGroup>
       <SettingGroup title="Updates">
         <SettingRow label="Automatic Updates" description="Check for updates when the app starts">
           <Toggle checked={config.autoUpdate} onChange={(v) => onUpdate('autoUpdate', v)} />
@@ -124,14 +148,14 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
             {updateStatus === 'downloaded' ? (
               <button
                 onClick={installNow}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
               >
                 Install & Restart
               </button>
             ) : updateStatus === 'available' ? (
               <button
                 onClick={downloadNow}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
               >
                 Download v{updateVersion}
               </button>
@@ -165,30 +189,6 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
           )}
         </div>
       </SettingGroup>
-      <SettingGroup title="Notifications">
-        <SettingRow label="Desktop Notifications" description="Show a system notification when batch processing completes">
-          <Toggle checked={config.showNotifications} onChange={(v) => onUpdate('showNotifications', v)} />
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup title="Window Behavior">
-        <SettingRow label="Minimize to Tray" description="Close button hides to system tray instead of quitting">
-          <Toggle checked={config.minimizeToTray} onChange={(v) => {
-            onUpdate('minimizeToTray', v)
-            if (!v) onUpdate('showTrayNotification', false)
-          }} />
-        </SettingRow>
-        {config.minimizeToTray && (
-          <SettingRow label="Confirm on Close" description="Ask whether to minimize or quit each time you close">
-            <Toggle checked={config.showTrayNotification} onChange={(v) => onUpdate('showTrayNotification', v)} />
-          </SettingRow>
-        )}
-        <SettingRow label="Sidebar Collapsed" description="Start with the sidebar collapsed on launch">
-          <Toggle checked={config.sidebarCollapsed ?? false} onChange={(v) => {
-            onUpdate('sidebarCollapsed', v as any)
-            useAppStore.setState({ sidebarCollapsed: v })
-          }} />
-        </SettingRow>
-      </SettingGroup>
       <SettingGroup title="Paths">
         <SettingRow label="FFmpeg" description="Auto-detected or downloaded on first launch">
           <span className="text-xs text-surface-500 font-mono max-w-[300px] truncate block" title={config.ffmpegPath || 'Not set'}>
@@ -203,17 +203,15 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
       </SettingGroup>
       <SettingGroup title="YouTube Cookies">
         <SettingRow label="Cookie Source Browser" description="Browser to extract YouTube login cookies from for age-restricted or private content">
-          <select
+          <Select
             value={config.ytdlpBrowser || ''}
-            onChange={(e) => handleBrowserSelect(e.target.value)}
+            onChange={(v) => handleBrowserSelect(v)}
             disabled={cookieStatus === 'exporting'}
-            className="rounded-lg text-xs bg-surface-800/60 border border-surface-700 text-surface-200 px-2 py-1.5 transition-colors focus:border-accent-500 outline-none"
-          >
-            <option value="">Auto-detect</option>
-            {browsers.map((b) => (
-              <option key={b.name} value={b.name}>{b.label}</option>
-            ))}
-          </select>
+            options={[
+              { value: '', label: 'Auto-detect' },
+              ...browsers.map((b) => ({ value: b.name, label: b.label }))
+            ]}
+          />
         </SettingRow>
         {/* Confirm dialog */}
         {cookieStatus === 'confirming' && pendingBrowser && (
@@ -232,7 +230,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={confirmCookieExport}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
               >
                 Browser is closed — continue
               </button>
@@ -279,17 +277,28 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
         </SettingRow>
       </SettingGroup>
       <SettingGroup title="About">
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <div className="text-xs text-surface-400 space-y-1">
             <p><span className="text-surface-300 font-medium">molexMedia</span> v{config.version}</p>
             <p>Media processing toolkit powered by FFmpeg</p>
           </div>
-          <button
-            onClick={onResetDefaults}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-700 hover:bg-surface-600 text-surface-300 hover:text-white transition-colors"
-          >
-            Reset to Defaults
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => window.api.openExternal('https://github.com/tonywied17/molex-media-electron')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-700 hover:bg-surface-600 text-surface-300 hover:text-white transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              GitHub
+            </button>
+            <button
+              onClick={onResetDefaults}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-700 hover:bg-surface-600 text-surface-300 hover:text-white transition-colors"
+            >
+              Reset to Defaults
+            </button>
+          </div>
         </div>
       </SettingGroup>
     </div>

@@ -57,4 +57,11 @@ export function registerSystemIPC(): void {
   ipcMain.handle('shell:openPath', async (_, filePath: string) => {
     shell.showItemInFolder(filePath)
   })
+
+  ipcMain.handle('shell:openExternal', async (_, url: string) => {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      shell.openExternal(url)
+    }
+  })
 }

@@ -58,7 +58,7 @@ export default function ProcessingView(): React.JSX.Element {
 
   return (
     <div
-      className="space-y-5 animate-fade-in h-full flex flex-col relative"
+      className="space-y-5 animate-fade-in min-h-full flex flex-col relative"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}

@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAppStore, LogEntry } from '../../stores/appStore'
+import { useAppStore, type LogEntry } from '../../stores/appStore'
 
 const LEVEL_STYLES: Record<string, { color: string; bg: string; label: string }> = {
   info: { color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'INF' },
@@ -27,6 +27,7 @@ export default function LogViewer(): React.JSX.Element {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [autoScroll, setAutoScroll] = useState(true)
+  const [copied, setCopied] = useState<'all' | number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const filteredLogs = logs.filter((log) => {
@@ -37,9 +38,14 @@ export default function LogViewer(): React.JSX.Element {
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      // Defer to next frame so DOM has rendered the new entries
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+        }
+      })
     }
-  }, [filteredLogs.length, autoScroll])
+  }, [logs.length, autoScroll])
 
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return
@@ -66,14 +72,31 @@ export default function LogViewer(): React.JSX.Element {
   ]
 
   return (
-    <div className="space-y-4 animate-fade-in h-full flex flex-col">
+    <div className="space-y-4 animate-fade-in min-h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white">Logs</h1>
-          <p className="text-sm text-surface-400 mt-0.5">{logs.length} entries · {filteredLogs.length} visible</p>
+          <h1 className="text-xl font-bold text-white">Logs</h1>
+          <p className="text-xs text-surface-400 mt-0.5">{logs.length} entries · {filteredLogs.length} visible</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const text = filteredLogs
+                .map((l) => {
+                  const time = l.timestamp.split(' ')[1]?.substring(0, 8) || l.timestamp.substring(11, 19)
+                  const label = (LEVEL_STYLES[l.level] || LEVEL_STYLES.info).label
+                  return `${time}  ${label}  ${l.message}`
+                })
+                .join('\n')
+              navigator.clipboard.writeText(text)
+              setCopied('all')
+              setTimeout(() => setCopied(null), 1500)
+            }}
+            className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-700/50 hover:bg-surface-600/50 rounded-lg transition-all"
+          >
+            {copied === 'all' ? 'Copied!' : `Copy ${filter !== 'all' ? 'Filtered' : 'All'}`}
+          </button>
           <button
             onClick={handleOpenLogDir}
             className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-700/50 hover:bg-surface-600/50 rounded-lg transition-all"
@@ -90,8 +113,8 @@ export default function LogViewer(): React.JSX.Element {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex items-center gap-3">
-        <div className="flex bg-surface-800 rounded-lg p-0.5 gap-0.5">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="flex bg-surface-800 rounded-lg p-0.5 gap-0.5 shrink-0 flex-wrap">
           {filters.map((f) => (
             <button
               key={f.id}
@@ -112,31 +135,33 @@ export default function LogViewer(): React.JSX.Element {
           ))}
         </div>
 
-        <div className="flex-1 relative">
-          <svg
-            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-500"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search logs..."
-            className="w-full bg-surface-800 border border-surface-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-surface-600 focus:outline-none focus:border-accent-500 transition-colors"
-          />
-        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex-1 relative min-w-0">
+            <svg
+              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-surface-500"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search logs..."
+              className="w-full bg-surface-800 border border-surface-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-surface-600 focus:outline-none focus:border-accent-500 transition-colors"
+            />
+          </div>
 
-        <button
-          onClick={() => setAutoScroll(!autoScroll)}
-          className={`px-2.5 py-1.5 text-2xs font-medium rounded-lg transition-all ${
-            autoScroll ? 'bg-accent-600/20 text-accent-300' : 'text-surface-500 hover:text-surface-300 bg-surface-800'
-          }`}
-        >
-          Auto-scroll {autoScroll ? 'ON' : 'OFF'}
-        </button>
+          <button
+            onClick={() => setAutoScroll(!autoScroll)}
+            className={`shrink-0 px-2.5 py-1.5 text-2xs font-medium rounded-lg transition-all whitespace-nowrap ${
+              autoScroll ? 'bg-accent-600/20 text-accent-300' : 'text-surface-500 hover:text-surface-300 bg-surface-800'
+            }`}
+          >
+            Auto-scroll {autoScroll ? 'ON' : 'OFF'}
+          </button>
+        </div>
       </div>
 
       {/* Log entries */}
@@ -150,14 +175,27 @@ export default function LogViewer(): React.JSX.Element {
             {logs.length === 0 ? 'No log entries yet' : 'No entries match filter'}
           </div>
         ) : (
-          filteredLogs.map((log, i) => <LogLine key={i} entry={log} />)
+          filteredLogs.map((log, i) => (
+            <LogLine
+              key={i}
+              entry={log}
+              copied={copied === i}
+              onCopy={() => {
+                const time = log.timestamp.split(' ')[1]?.substring(0, 8) || log.timestamp.substring(11, 19)
+                const label = (LEVEL_STYLES[log.level] || LEVEL_STYLES.info).label
+                navigator.clipboard.writeText(`${time}  ${label}  ${log.message}`)
+                setCopied(i)
+                setTimeout(() => setCopied(null), 1500)
+              }}
+            />
+          ))
         )}
       </div>
     </div>
   )
 }
 
-function LogLine({ entry }: { entry: LogEntry }): React.JSX.Element {
+function LogLine({ entry, copied, onCopy }: { entry: LogEntry; copied: boolean; onCopy: () => void }): React.JSX.Element {
   const style = LEVEL_STYLES[entry.level] || LEVEL_STYLES.info
   const time = entry.timestamp.split(' ')[1]?.substring(0, 8) || entry.timestamp.substring(11, 19)
 
@@ -165,7 +203,18 @@ function LogLine({ entry }: { entry: LogEntry }): React.JSX.Element {
     <div className="flex items-start gap-2 px-2 py-0.5 hover:bg-surface-800/30 rounded transition-colors group leading-relaxed">
       <span className="text-surface-600 shrink-0 w-16">{time}</span>
       <span className={`shrink-0 w-7 text-center font-bold ${style.color}`}>{style.label}</span>
-      <span className="text-surface-300 break-all flex-1">{entry.message}</span>
+      <span className="text-surface-300 break-all flex-1 select-text">{entry.message}</span>
+      <button
+        onClick={onCopy}
+        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-surface-500 hover:text-surface-300 p-0.5"
+        title="Copy line"
+      >
+        {copied ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+        )}
+      </button>
     </div>
   )
 }

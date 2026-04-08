@@ -106,7 +106,7 @@ export default function SetupWizard(): React.JSX.Element {
               <div className="flex gap-3">
                 <button
                   onClick={handleDownload}
-                  className="flex-1 py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-glow hover:shadow-glow-lg"
+                  className="flex-1 py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150"
                 >
                   Download FFmpeg
                 </button>
@@ -159,7 +159,7 @@ export default function SetupWizard(): React.JSX.Element {
               </div>
               <button
                 onClick={handleDone}
-                className="w-full py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-glow"
+                className="w-full py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150"
               >
                 Get Started
               </button>

@@ -1,23 +1,19 @@
 ﻿/**
  * @module components/batch/FileQueue
- * @description Batch file queue with operation selector and processing controls.
- *
- * Manages the file list for batch operations (normalize, boost, convert,
- * extract, compress). Supports drag-and-drop file addition, folder scanning,
- * auto-probing for codec metadata, preset selection, and per-operation
- * configuration forms.
+ * @description Batch file queue with operation selector, drag-reorderable
+ * queue list, per-file operation badges, and inline progress.
  */
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../stores/appStore'
 import type { FileItem } from '../../stores/types'
 import { OperationPanel } from './components/OperationPanel'
-import { FileTable } from './components/FileTable'
+import { QueueList } from './components/QueueList'
 
 export default function FileQueue(): React.JSX.Element {
   const {
-    files, addFiles, updateFile, removeFile, resetBatch,
-    operation, config, batchOutputDir, setBatchOutputDir
+    files, addFiles, updateFile, resetBatch,
+    config, batchOutputDir, setBatchOutputDir, tasks, isProcessing
   } = useAppStore()
   const [scanning, setScanning] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -88,63 +84,66 @@ export default function FileQueue(): React.JSX.Element {
 
   const handleStart = async () => {
     if (files.length === 0) return
-    const paths = files.map((f) => f.path)
     const { batchOutputDir } = useAppStore.getState()
     const outputDir = batchOutputDir || undefined
 
-    if (operation === 'normalize') {
-      const { normalizeOptions } = useAppStore.getState()
-      await window.api.normalize(paths, normalizeOptions, outputDir)
-    } else if (operation === 'boost') {
-      const { boostPercent } = useAppStore.getState()
-      await window.api.boost(paths, boostPercent, outputDir)
-    } else if (operation === 'convert') {
-      const { convertOptions } = useAppStore.getState()
-      await window.api.convert(paths, convertOptions, outputDir)
-    } else if (operation === 'extract') {
-      const { extractOptions } = useAppStore.getState()
-      await window.api.extract(paths, extractOptions, outputDir)
-    } else if (operation === 'compress') {
-      const { compressOptions } = useAppStore.getState()
-      await window.api.compress(paths, compressOptions, outputDir)
-    }
+    const taskSpecs = files.map((f) => ({
+      filePath: f.path,
+      operation: f.operation || useAppStore.getState().operation,
+      outputDir,
+      boostPercent: f.boostPercent,
+      normalizeOptions: f.normalizeOptions,
+      convertOptions: f.convertOptions,
+      extractOptions: f.extractOptions,
+      compressOptions: f.compressOptions,
+    }))
+
+    await window.api.startBatchQueue(taskSpecs)
   }
 
-  const startLabel = (() => {
-    const n = files.length
-    const s = n !== 1 ? 's' : ''
-    const labels: Record<string, string> = {
-      normalize: `Normalize ${n} File${s}`,
-      boost: `Adjust ${n} File${s}`,
-      convert: `Convert ${n} File${s}`,
-      extract: `Extract ${n} File${s}`,
-      compress: `Compress ${n} File${s}`,
-    }
-    return labels[operation] || `Process ${n} File${s}`
-  })()
+  const activeTasks = tasks.filter(
+    (t) => t.status === 'processing' || t.status === 'analyzing' || t.status === 'finalizing'
+  ).length
+  const completedTasks = tasks.filter((t) => t.status === 'complete').length
 
   return (
-    <div className="space-y-4 animate-fade-in h-full flex flex-col">
+    <div className="space-y-3 animate-fade-in min-h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Batch Processor</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-white">Batch<span className="hidden sm:inline"> Processor</span></h1>
           <p className="text-xs text-surface-500 mt-0.5">
-            {files.length === 0 ? 'Add files to get started' : `${files.length} file${files.length !== 1 ? 's' : ''} ready`}
+            {isProcessing
+              ? `${activeTasks} active · ${completedTasks}/${tasks.length} done`
+              : files.length === 0
+                ? 'Add files to get started'
+                : `${files.length} file${files.length !== 1 ? 's' : ''} queued`}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          {files.length > 0 && (
-            <button onClick={resetBatch} className="px-2.5 py-1.5 text-xs text-surface-500 hover:text-red-400 rounded-lg transition-colors" title="Reset to default state">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+          {files.length > 0 && !isProcessing && (
+            <button onClick={resetBatch} className="px-2.5 py-1.5 text-xs text-surface-500 hover:text-red-400 rounded-lg transition-colors" title="Clear queue">
               Clear
+            </button>
+          )}
+          {files.length > 0 && !isProcessing && (
+            <button
+              onClick={handleStart}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Process {files.length}
             </button>
           )}
           {/* Add dropdown */}
           <div ref={addRef} className="relative">
             <button
               onClick={() => setAddOpen((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                addOpen ? 'bg-accent-600 text-white' : 'bg-accent-600 hover:bg-accent-500 text-white shadow-glow hover:shadow-glow-lg'
+              disabled={isProcessing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all disabled:opacity-40 ${
+                addOpen ? 'bg-accent-500/25 text-accent-200 border border-accent-500/30' : 'bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30'
               }`}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -185,11 +184,11 @@ export default function FileQueue(): React.JSX.Element {
         </div>
       </div>
 
-      <OperationPanel onStart={handleStart} startLabel={startLabel} />
-      <FileTable files={files} onRemoveFile={removeFile} onAddFiles={addFiles} />
+      <OperationPanel />
+      <QueueList files={files} onAddFiles={addFiles} />
 
       {/* Output directory — compact inline bar */}
-      <div className="flex items-center gap-2 shrink-0 glass rounded-lg px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 shrink-0 rounded-lg border border-white/[0.06] bg-surface-900/40 px-3 py-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-surface-500 shrink-0">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
         </svg>

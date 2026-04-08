@@ -116,10 +116,10 @@ export function PlayerHeader({
           {track ? track.name : 'Drop files, paste URLs, or browse'}
         </p>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
         {/* Audio quality */}
         <Tip label={`Quality: ${QUALITY_LABELS[audioQuality]}`}>
-          <button onClick={onCycleQuality} className={btnCls}>
+          <button onClick={onCycleQuality} className={`${btnCls} hidden sm:flex`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
@@ -130,7 +130,7 @@ export function PlayerHeader({
 
         {/* Visualizer mode — unique icon per mode */}
         <Tip label={VIS_LABELS[visMode]}>
-          <button onClick={onCycleVisMode} className={btnCls}>
+          <button onClick={onCycleVisMode} className={`${btnCls} hidden sm:flex`}>
             {VIS_ICONS[visMode]}
           </button>
         </Tip>
@@ -164,7 +164,7 @@ export function PlayerHeader({
             <button
               onClick={() => setAddOpen((v) => !v)}
               className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                addOpen ? 'bg-accent-600 text-white' : 'bg-accent-600 hover:bg-accent-500 text-white'
+                addOpen ? 'bg-accent-500/25 text-accent-200 border border-accent-500/30' : 'bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20'
               }`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

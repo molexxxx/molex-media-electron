@@ -18,7 +18,7 @@ export default function Settings(): React.JSX.Element {
   const { config, setConfig } = useAppStore()
   const [localConfig, setLocalConfig] = useState<AppConfig | null>(null)
   const [saved, setSaved] = useState(false)
-  const [activeTab, setActiveTab] = useState<SettingsTab>('audio')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('application')
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const localConfigRef = useRef<AppConfig | null>(null)
 
@@ -72,9 +72,9 @@ export default function Settings(): React.JSX.Element {
   }
 
   const tabs: { id: SettingsTab; label: string }[] = [
+    { id: 'application', label: 'Application' },
     { id: 'audio', label: 'Audio' },
     { id: 'processing', label: 'Processing' },
-    { id: 'application', label: 'Application' },
   ]
 
   const handleResetDefaults = async () => {
@@ -100,11 +100,11 @@ export default function Settings(): React.JSX.Element {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Settings</h1>
-          <p className="text-sm text-surface-400 mt-0.5">Configure media processing, codecs, and application preferences</p>
+    <div className="space-y-4 sm:space-y-5 animate-fade-in max-w-3xl">
+      <div className="flex items-start sm:items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-white">Settings</h1>
+          <p className="text-xs text-surface-400 mt-0.5">Configure media processing, codecs, and application preferences</p>
         </div>
         <span className={`text-xs font-medium transition-opacity duration-300 ${saved ? 'opacity-100 text-emerald-400' : 'opacity-0'}`}>
           ✓ Saved

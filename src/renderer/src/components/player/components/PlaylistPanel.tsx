@@ -253,7 +253,7 @@ export function PlaylistPanel({
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => handleConfirm('replace')}
-              className="flex-1 px-2 py-1.5 text-2xs font-medium rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+              className="flex-1 px-2 py-1.5 text-2xs font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 transition-colors"
             >
               Replace
             </button>

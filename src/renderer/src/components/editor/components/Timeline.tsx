@@ -7,6 +7,7 @@
 import React, { type RefObject, useEffect } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { formatTime, OUTPUT_FORMATS } from '../types'
+import { Select } from '../../shared/ui'
 
 interface TimelineProps {
   currentTime: number
@@ -154,16 +155,13 @@ export function Timeline({
 
           {/* Speed control */}
           <div className="hidden sm:flex items-center gap-1">
-            <select
-              value={playbackRate}
-              onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-              className="bg-surface-900/80 text-surface-300 rounded-lg px-1.5 py-0.5 text-2xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
+            <Select
+              value={String(playbackRate)}
+              onChange={(v) => setPlaybackRate(parseFloat(v))}
+              options={SPEED_OPTIONS.map((s) => ({ value: String(s), label: `${s}x` }))}
+              compact
               title="Playback speed"
-            >
-              {SPEED_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}x</option>
-              ))}
-            </select>
+            />
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -219,16 +217,12 @@ export function Timeline({
         <div className="w-px h-4 bg-surface-700/50 hidden sm:block" />
         <div className="flex items-center gap-1.5">
           <span className="text-surface-500 font-medium">Format:</span>
-          <select
+          <Select
             value={outputFormat}
-            onChange={(e) => setOutputFormat(e.target.value)}
-            className="bg-surface-900/80 text-surface-200 rounded-lg px-2.5 py-1 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
-          >
-            <option value="">Same as source (.{srcExt})</option>
-            {formats.map((fmt) => (
-              <option key={fmt} value={fmt}>.{fmt}</option>
-            ))}
-          </select>
+            onChange={(v) => setOutputFormat(v)}
+            options={[{ value: '', label: `Same as source (.${srcExt})` }, ...formats.map((fmt) => ({ value: fmt, label: `.${fmt}` }))]}
+            compact
+          />
         </div>
         {cutMode === 'fast' && clip.isVideo && outputFormat !== 'gif' && (
           <span className="text-yellow-500/60 text-2xs ml-auto">
@@ -269,17 +263,18 @@ export function Timeline({
           <div className="w-px h-4 bg-surface-700/50" />
           <div className="flex items-center gap-1.5">
             <span className="text-surface-500 font-medium">Width:</span>
-            <select
-              value={gifOptions.width}
-              onChange={(e) => setGifOptions({ width: parseInt(e.target.value) })}
-              className="bg-surface-900/80 text-surface-200 rounded-lg px-2.5 py-1 text-xs border border-white/[0.06] hover:border-white/[0.1] focus:border-accent-500/50 outline-none transition-colors cursor-pointer"
-            >
-              <option value={320}>320px</option>
-              <option value={480}>480px</option>
-              <option value={640}>640px</option>
-              <option value={800}>800px</option>
-              <option value={-1}>Original</option>
-            </select>
+            <Select
+              value={String(gifOptions.width)}
+              onChange={(v) => setGifOptions({ width: parseInt(v) })}
+              options={[
+                { value: '320', label: '320px' },
+                { value: '480', label: '480px' },
+                { value: '640', label: '640px' },
+                { value: '800', label: '800px' },
+                { value: '-1', label: 'Original' }
+              ]}
+              compact
+            />
           </div>
         </div>
       )}

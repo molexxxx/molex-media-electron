@@ -41,6 +41,7 @@ const api = {
   convert: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:convert', filePaths, options, outputDir),
   extract: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:extract', filePaths, options, outputDir),
   compress: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:compress', filePaths, options, outputDir),
+  startBatchQueue: (taskSpecs: any[]) => ipcRenderer.invoke('process:batch-queue', taskSpecs),
   cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
   cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
   getActiveCount: () => ipcRenderer.invoke('process:activeCount'),
@@ -137,6 +138,7 @@ const api = {
   // System
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
   showInFolder: (filePath: string) => ipcRenderer.invoke('shell:openPath', filePath),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 
   // URL History
   getUrlHistory: () => ipcRenderer.invoke('history:get'),

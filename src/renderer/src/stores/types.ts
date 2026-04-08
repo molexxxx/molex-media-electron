@@ -72,6 +72,14 @@ export interface FileItem {
   bitrate?: string
   width?: number
   height?: number
+  // Per-file operation assignment (stamped by addFiles from global state if omitted)
+  operation?: Operation
+  boostPercent?: number
+  selectedPreset?: string | null
+  normalizeOptions?: NormalizeOptions
+  convertOptions?: ConvertOptions
+  extractOptions?: ExtractOptions
+  compressOptions?: CompressOptions
 }
 
 export interface ProcessingTask {

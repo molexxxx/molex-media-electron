@@ -76,7 +76,7 @@ export function CloseConfirmModal(): React.JSX.Element | null {
         <div className="px-5 pb-5 flex items-center gap-2">
           <button
             onClick={() => respond('minimize')}
-            className="flex-1 px-4 py-2 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 text-white transition-colors"
+            className="flex-1 px-4 py-2 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 transition-colors"
           >
             Minimize to Tray
           </button>

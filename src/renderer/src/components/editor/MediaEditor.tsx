@@ -313,7 +313,7 @@ export default function MediaEditor(): React.JSX.Element {
   }, [loadFile])
 
   return (
-    <div className="flex flex-col h-full animate-fade-in gap-4">
+    <div className="flex flex-col min-h-full animate-fade-in gap-4">
       <EditorHeader
         onLoadFile={loadFile}
         onLoadFilePath={loadFilePath}

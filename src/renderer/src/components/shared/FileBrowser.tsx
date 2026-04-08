@@ -497,7 +497,7 @@ export function FileBrowser({
                 <button
                   onClick={handleConfirm}
                   disabled={selected.size === 0}
-                  className="px-3 py-1 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-all"
+                  className="px-3 py-1 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 disabled:opacity-30 disabled:cursor-not-allowed text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-all"
                 >
                   Add{selected.size > 0 ? ` (${selected.size})` : ''}
                 </button>

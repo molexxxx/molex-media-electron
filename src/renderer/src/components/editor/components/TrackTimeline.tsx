@@ -8,6 +8,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { formatTime, OUTPUT_FORMATS } from '../types'
+import { Select } from '../../shared/ui'
 
 interface TrackTimelineProps {
   currentTime: number
@@ -783,13 +784,14 @@ export function TrackTimeline({
               </div>
 
               {/* Speed */}
-              <select
-                value={playbackRate}
-                onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                className="hidden sm:block bg-surface-900/80 text-surface-300 rounded-lg px-1.5 py-0.5 text-[10px] border border-white/5 outline-none cursor-pointer"
-              >
-                {SPEED_OPTIONS.map((s) => <option key={s} value={s}>{s}x</option>)}
-              </select>
+              <div className="hidden sm:block">
+                <Select
+                  value={String(playbackRate)}
+                  onChange={(v) => setPlaybackRate(parseFloat(v))}
+                  options={SPEED_OPTIONS.map((s) => ({ value: String(s), label: `${s}x` }))}
+                  compact
+                />
+              </div>
 
               {/* Zoom */}
               <div className="hidden sm:flex items-center gap-1 ml-1">
@@ -810,18 +812,18 @@ export function TrackTimeline({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-              <button onClick={onSetIn} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/20 transition-all shadow-sm" title="Set In (I)">
-                In [{formatTime(clip.inPoint)}]
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button onClick={onSetIn} className="px-2 sm:px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/20 transition-all shadow-sm" title="Set In (I)">
+                In <span className="hidden sm:inline">[{formatTime(clip.inPoint)}]</span>
               </button>
-              <button onClick={onSetOut} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/20 transition-all shadow-sm" title="Set Out (O)">
-                Out [{formatTime(clip.outPoint)}]
+              <button onClick={onSetOut} className="px-2 sm:px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/20 transition-all shadow-sm" title="Set Out (O)">
+                Out <span className="hidden sm:inline">[{formatTime(clip.outPoint)}]</span>
               </button>
-              <button onClick={() => resetPoints()} className="px-2.5 py-1 text-[10px] font-medium rounded-lg text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 border border-white/[0.06] transition-all" title="Reset (R)">
+              <button onClick={() => resetPoints()} className="px-2 sm:px-2.5 py-1 text-[10px] font-medium rounded-lg text-surface-400 hover:text-surface-200 bg-surface-800/60 hover:bg-surface-700/60 border border-white/[0.06] transition-all" title="Reset (R)">
                 Reset
               </button>
               <div className="w-px h-4 bg-surface-700/50 mx-0.5 hidden sm:block" />
-              <button onClick={onSplit} className="px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-orange-500/15 text-orange-300 hover:bg-orange-500/25 border border-orange-500/20 transition-all shadow-sm flex items-center gap-1" title="Split at playhead (S)">
+              <button onClick={onSplit} className="px-2 sm:px-2.5 py-1 text-[10px] font-semibold rounded-lg bg-orange-500/15 text-orange-300 hover:bg-orange-500/25 border border-orange-500/20 transition-all shadow-sm flex items-center gap-1" title="Split at playhead (S)">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
                   <line x1="8" y1="19" x2="12" y2="6"/><line x1="16" y1="19" x2="12" y2="6"/><line x1="12" y1="2" x2="12" y2="6"/>
                 </svg>
@@ -900,14 +902,15 @@ export function TrackTimeline({
             <div className="w-px h-3.5 bg-surface-700/50 hidden sm:block" />
             <div className="flex items-center gap-1">
               <span className="text-surface-500 font-medium">Format:</span>
-              <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}
-                className="bg-surface-900/80 text-surface-200 rounded-md px-2 py-0.5 text-[10px] border border-white/5 outline-none cursor-pointer">
-                <option value="">.{srcExt}</option>
-                {formats.map((f) => <option key={f} value={f}>.{f}</option>)}
-              </select>
+              <Select
+                value={outputFormat}
+                onChange={(v) => setOutputFormat(v)}
+                options={[{ value: '', label: `.${srcExt}` }, ...formats.map((f) => ({ value: f, label: `.${f}` }))]}
+                compact
+              />
             </div>
             <div className="w-px h-3.5 bg-surface-700/50 hidden sm:block" />
-            <div className="flex items-center gap-1 flex-1 min-w-0">
+            <div className="flex items-center gap-1 w-full sm:w-auto sm:flex-1 min-w-0">
               <span className="text-surface-500 font-medium shrink-0">Out:</span>
               <input type="text" value={outputDir} onChange={(e) => setOutputDir(e.target.value)} placeholder="Same as source"
                 className="flex-1 min-w-0 bg-surface-900/80 text-surface-200 rounded-md px-2 py-0.5 text-[10px] border border-white/5 outline-none truncate" />
@@ -934,12 +937,16 @@ export function TrackTimeline({
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-surface-500">Width:</span>
-                <select value={gifOptions.width} onChange={(e) => setGifOptions({ width: parseInt(e.target.value) })}
-                  className="bg-surface-900/80 text-surface-200 rounded-md px-2 py-0.5 text-[10px] border border-white/5 outline-none cursor-pointer">
-                  <option value={320}>320px</option><option value={480}>480px</option>
-                  <option value={640}>640px</option><option value={800}>800px</option>
-                  <option value={-1}>Original</option>
-                </select>
+                <Select
+                  value={String(gifOptions.width)}
+                  onChange={(v) => setGifOptions({ width: parseInt(v) })}
+                  options={[
+                    { value: '320', label: '320px' }, { value: '480', label: '480px' },
+                    { value: '640', label: '640px' }, { value: '800', label: '800px' },
+                    { value: '-1', label: 'Original' }
+                  ]}
+                  compact
+                />
               </div>
             </div>
           )}

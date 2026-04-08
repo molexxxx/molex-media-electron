@@ -8,9 +8,9 @@ import type { AppConfig, SystemInfo as SystemInfoType } from '../../../stores/ty
 
 function InfoRow({ label, value, ok }: { label: string; value: string; ok?: boolean }): React.JSX.Element {
   return (
-    <div className="flex items-center justify-between py-0.5">
-      <span className="text-surface-500 text-xs">{label}</span>
-      <span className={`font-mono text-xs ${ok === true ? 'text-emerald-400' : ok === false ? 'text-red-400' : 'text-surface-300'}`}>
+    <div className="flex items-center justify-between gap-2 py-0.5 min-w-0">
+      <span className="text-surface-500 text-xs shrink-0">{label}</span>
+      <span className={`font-mono text-xs truncate ${ok === true ? 'text-emerald-400' : ok === false ? 'text-red-400' : 'text-surface-300'}`}>
         {value}
       </span>
     </div>
@@ -35,7 +35,7 @@ export function SystemInfo({ systemInfo, ffmpegVersion, config }: {
   return (
     <div className="glass rounded-xl p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-2">System</h3>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
         <InfoRow label="FFmpeg" value={ffmpegVersion || 'Not installed'} ok={!!ffmpegVersion} />
         <InfoRow label="Platform" value={formatPlatform(systemInfo?.platform, systemInfo?.arch)} />
         <InfoRow label="CPU Cores" value={String(systemInfo?.cpus || '—')} />

@@ -200,14 +200,14 @@
   }
 
   .btn-accent {
-    background: linear-gradient(135deg, var(--color-accent-600) 0%, var(--color-accent-500) 100%);
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, var(--color-accent-700) 0%, var(--color-accent-600) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     transition: all 200ms;
   }
 
   .btn-accent:hover {
-    background: linear-gradient(135deg, var(--color-accent-500) 0%, var(--color-accent-400) 100%);
-    box-shadow: 0 0 30px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, var(--color-accent-600) 0%, var(--color-accent-500) 100%);
+    box-shadow: 0 0 16px rgba(124, 58, 237, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transform: translateY(-0.5px);
   }
 
@@ -312,14 +312,16 @@
   }
 
   .play-btn {
-    background: linear-gradient(135deg, var(--color-accent-600) 0%, var(--color-accent-500) 100%);
-    box-shadow: 0 2px 16px rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid rgba(124, 58, 237, 0.25);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
     transition: all 200ms;
   }
 
   .play-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--color-accent-500) 0%, var(--color-accent-400) 100%);
-    box-shadow: 0 4px 24px rgba(124, 58, 237, 0.45);
+    background: rgba(124, 58, 237, 0.3);
+    border-color: rgba(124, 58, 237, 0.35);
+    box-shadow: 0 2px 12px rgba(124, 58, 237, 0.18);
     transform: scale(1.06);
   }
 

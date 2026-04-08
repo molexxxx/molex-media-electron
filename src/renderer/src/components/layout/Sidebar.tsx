@@ -128,9 +128,9 @@ function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element {
 }
 
 export default function Sidebar(): React.JSX.Element {
-  const { currentView, setView, files, logs, sidebarCollapsed, setSidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
+  const { currentView, setView, files, logs, lastSeenErrorCount, sidebarCollapsed, setSidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
 
-  const errorCount = logs.filter((l) => l.level === 'error').length
+  const unseenErrors = logs.filter((l) => l.level === 'error').length - lastSeenErrorCount
   const hasUpdate = updateStatus === 'available' || updateStatus === 'downloaded'
 
   // Auto-collapse on narrow windows (resize only — initial state comes from persisted config)
@@ -168,7 +168,7 @@ export default function Sidebar(): React.JSX.Element {
       label: 'System',
       items: [
         { id: 'settings', label: 'Settings', icon: icons.settings, badge: hasUpdate ? -1 : undefined },
-        { id: 'logs', label: 'Logs', icon: icons.logs, badge: errorCount || undefined }
+        { id: 'logs', label: 'Logs', icon: icons.logs, badge: unseenErrors > 0 ? unseenErrors : undefined }
       ]
     }
   ]

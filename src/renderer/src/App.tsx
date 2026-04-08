@@ -184,7 +184,7 @@ function App(): React.JSX.Element {
             mounted.has(id) ? (
               <div
                 key={id}
-                className="absolute inset-0 overflow-auto p-6"
+                className="absolute inset-0 overflow-auto p-3 sm:p-4 md:p-6"
                 style={{ display: currentView === id ? 'block' : 'none' }}
               >
                 {el}

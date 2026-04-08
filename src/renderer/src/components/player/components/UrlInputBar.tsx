@@ -56,7 +56,7 @@ export function UrlInputBar({
         <button
           onClick={onAddUrl}
           disabled={resolving}
-          className="px-4 py-2 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-50 text-white transition-colors"
+          className="px-4 py-2 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 disabled:opacity-50 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
         >
           {resolving ? 'Resolving...' : 'Add'}
         </button>

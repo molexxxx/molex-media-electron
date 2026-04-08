@@ -185,7 +185,7 @@ export function TrimTab({
             <div className="flex items-center gap-2">
               <button
                 onClick={onTogglePlay}
-                className="w-9 h-9 rounded-full bg-accent-600 hover:bg-accent-500 flex items-center justify-center text-white transition-all shadow-glow hover:shadow-glow-lg"
+                className="w-9 h-9 rounded-full bg-accent-500/20 hover:bg-accent-500/30 border border-accent-500/25 flex items-center justify-center text-accent-300 transition-all"
               >
                 {playing ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>
@@ -211,7 +211,7 @@ export function TrimTab({
               <button
                 onClick={onCut}
                 disabled={processing || clipDuration <= 0}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-40 text-white shadow-glow hover:shadow-glow-lg transition-all"
+                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 disabled:opacity-40 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-all"
               >
                 {processing ? 'Exporting...' : 'Export Clip'}
               </button>

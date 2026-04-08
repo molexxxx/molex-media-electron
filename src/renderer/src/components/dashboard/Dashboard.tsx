@@ -13,7 +13,7 @@ import { useAppStore } from '../../stores/appStore'
 import { StatCard } from './components/StatCard'
 import { ToolCard, drawEditorBg, drawPlayerBg } from './components/ToolCard'
 import { SystemInfo } from './components/SystemInfo'
-import { RecentActivity } from './components/RecentActivity'
+
 
 export default function Dashboard(): React.JSX.Element {
   const { systemInfo, ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, setOperation, tasks } = useAppStore()
@@ -52,7 +52,7 @@ export default function Dashboard(): React.JSX.Element {
   ]
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
+    <div className="flex flex-col min-h-full animate-fade-in">
       {/* Header */}
       <div className="mb-4">
         <h1 className="text-xl font-bold text-white">Dashboard</h1>
@@ -60,7 +60,7 @@ export default function Dashboard(): React.JSX.Element {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <StatCard label="Batch" value={files.length} sub={files.length === 1 ? 'file ready' : 'files ready'} color="text-accent-400" />
         <StatCard label="Processing" value={activeTasks.length} sub={isProcessing ? 'active now' : 'idle'} color={isProcessing ? 'text-amber-400' : 'text-surface-300'} />
         <StatCard label="Completed" value={totalProcessed} sub="this session" color="text-emerald-400" />
@@ -70,28 +70,28 @@ export default function Dashboard(): React.JSX.Element {
       {/* Workflow Actions */}
       <div className="mb-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Workflow</h3>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {quickActions.map((action) => (
             <button
               key={action.op}
               onClick={() => { setOperation(action.op); setView('batch') }}
-              className={`flex-1 rounded-xl px-3 py-3 text-center group border border-white/[0.06] ${action.hoverBorder} transition-all duration-200`}
+              className={`rounded-xl px-2 py-3 text-center group border border-white/[0.06] ${action.hoverBorder} transition-all duration-200`}
               style={{ background: 'rgba(30, 37, 56, 0.6)', backdropFilter: 'blur(12px)' }}
             >
               <div className={`w-9 h-9 mx-auto rounded-lg border flex items-center justify-center mb-2 ${action.boxClass} ${action.iconClass}`}>
                 {action.icon}
               </div>
-              <h4 className="text-xs font-semibold text-surface-200 group-hover:text-white transition-colors">{action.label}</h4>
-              <p className="text-2xs text-surface-500 mt-0.5">{action.desc}</p>
+              <h4 className="text-xs font-semibold text-surface-200 group-hover:text-white transition-colors truncate">{action.label}</h4>
+              <p className="text-2xs text-surface-500 mt-0.5 hidden sm:block">{action.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Tools — Editor & Player */}
-      <div className="flex-1 flex flex-col min-h-[180px] mb-4">
+      <div className="flex-1 flex flex-col min-h-[120px] sm:min-h-[180px] mb-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Tools</h3>
-        <div className="grid grid-cols-2 gap-3 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
           {/* Editor card */}
           <ToolCard
             onClick={() => setView('editor')}
@@ -125,8 +125,6 @@ export default function Dashboard(): React.JSX.Element {
       </div>
 
       <SystemInfo systemInfo={systemInfo} ffmpegVersion={ffmpegVersion} config={config} />
-
-      {tasks.length > 0 && <RecentActivity tasks={tasks} />}
     </div>
   )
 }

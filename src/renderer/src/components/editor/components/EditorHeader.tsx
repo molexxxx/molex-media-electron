@@ -78,8 +78,8 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
                 onClick={() => setEditorTab(tab)}
                 className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 capitalize ${
                   editorTab === tab
-                    ? 'btn-accent text-white'
-                    : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60'
+                    ? 'bg-accent-500/20 text-accent-200 border border-accent-500/25 shadow-sm'
+                    : 'text-surface-400 hover:text-surface-200 hover:bg-surface-800/60 border border-transparent'
                 }`}
               >
                 {tab === 'trim' ? 'Trim' : 'Inspect'}
@@ -103,7 +103,9 @@ export function EditorHeader({ onLoadFile, onLoadFilePath }: EditorHeaderProps):
           <div ref={addRef} className="relative">
             <button
               onClick={() => setAddOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl btn-accent text-white"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+                addOpen ? 'bg-accent-500/25 text-accent-200 border border-accent-500/30' : 'bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30'
+              }`}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               <span className="hidden sm:inline">Add</span>

@@ -60,7 +60,7 @@ export function PresetDropdown({ categories, activeId, onSelect }: {
       {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 bg-surface-800/60 border border-surface-700 rounded-lg px-3 py-1.5 text-xs text-white hover:border-surface-600 focus:outline-none focus:border-accent-500 transition-colors min-w-[220px]"
+        className="flex items-center gap-2 bg-surface-800/60 border border-surface-700 rounded-lg px-3 py-1.5 text-xs text-white hover:border-surface-600 focus:outline-none focus:border-accent-500 transition-colors w-full sm:min-w-[220px]"
       >
         {active ? (
           <>
@@ -81,7 +81,7 @@ export function PresetDropdown({ categories, activeId, onSelect }: {
 
       {/* Dropdown panel — rendered via portal to escape overflow-hidden */}
       {open && pos && createPortal(
-        <div ref={panelRef} className="fixed z-[9999] w-[340px] max-h-[400px] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in" style={{ top: pos.top, left: pos.left }}>
+        <div ref={panelRef} className="fixed z-[9999] w-[min(340px,calc(100vw-2rem))] max-h-[400px] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in" style={{ top: pos.top, left: pos.left }}>
           {/* Custom option */}
           <button
             onClick={() => { onSelect({ id: '', label: 'Custom', description: '', icon: '', options: {} }); setOpen(false) }}

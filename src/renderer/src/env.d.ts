@@ -36,6 +36,10 @@ declare global {
       getPlayerState: () => Promise<any>
       normalize: (filePaths: string[], normalizeOptions?: { I: number; TP: number; LRA: number }, outputDir?: string) => Promise<any>
       boost: (filePaths: string[], percent: number, outputDir?: string) => Promise<any>
+      startBatchQueue: (taskSpecs: Array<{
+        filePath: string; operation: string; outputDir?: string;
+        boostPercent?: number; normalizeOptions?: any; convertOptions?: any; extractOptions?: any; compressOptions?: any
+      }>) => Promise<any>
       cancelBatch: (batchId: string) => Promise<boolean>
       cancelAll: () => Promise<boolean>
       getActiveCount: () => Promise<number>
@@ -48,6 +52,7 @@ declare global {
       onLogEntry: (cb: (entry: any) => void) => () => void
       getSystemInfo: () => Promise<any>
       showInFolder: (filePath: string) => Promise<void>
+      openExternal: (url: string) => Promise<void>
       windowMinimize: () => void
       windowMaximize: () => void
       windowClose: () => void

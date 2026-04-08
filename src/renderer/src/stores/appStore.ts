@@ -41,6 +41,8 @@ interface AppState {
   updateFile: (path: string, data: Partial<FileItem>) => void
   removeFile: (path: string) => void
   clearFiles: () => void
+  reorderFiles: (fromIndex: number, toIndex: number) => void
+  updateFileOperation: (path: string, operation: Operation, options?: Partial<FileItem>) => void
 
   // Processing
   operation: Operation
@@ -82,6 +84,7 @@ interface AppState {
   logs: LogEntry[]
   addLog: (entry: LogEntry) => void
   clearLogs: () => void
+  lastSeenErrorCount: number
 
   // System
   systemInfo: SystemInfo | null
@@ -116,7 +119,8 @@ export const useAppStore = create<AppState>((set) => ({
   viewHistory: [],
   setView: (view) => set((s) => ({
     currentView: view,
-    viewHistory: s.currentView !== view ? [...s.viewHistory.slice(-19), s.currentView] : s.viewHistory
+    viewHistory: s.currentView !== view ? [...s.viewHistory.slice(-19), s.currentView] : s.viewHistory,
+    ...(view === 'logs' ? { lastSeenErrorCount: s.logs.filter((l) => l.level === 'error').length } : {})
   })),
   goBack: () => set((s) => {
     if (s.viewHistory.length === 0) return {}
@@ -139,7 +143,20 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => {
       const existingPaths = new Set(state.files.map((f) => f.path))
       const unique = newFiles.filter((f) => !existingPaths.has(f.path))
-      return { files: [...state.files, ...unique] }
+      // Stamp each new file with the currently selected operation + options
+      const stamped = unique.map((f) => ({
+        ...f,
+        operation: f.operation || state.operation,
+        ...(f.operation ? {} : {
+          boostPercent: state.boostPercent,
+          selectedPreset: state.selectedPreset,
+          normalizeOptions: { ...state.normalizeOptions },
+          convertOptions: { ...state.convertOptions },
+          extractOptions: { ...state.extractOptions },
+          compressOptions: { ...state.compressOptions },
+        })
+      }))
+      return { files: [...state.files, ...stamped] }
     }),
   updateFile: (filePath, data) =>
     set((state) => ({
@@ -148,6 +165,19 @@ export const useAppStore = create<AppState>((set) => ({
   removeFile: (filePath) =>
     set((state) => ({ files: state.files.filter((f) => f.path !== filePath) })),
   clearFiles: () => set({ files: [] }),
+  reorderFiles: (fromIndex, toIndex) =>
+    set((state) => {
+      const files = [...state.files]
+      const [item] = files.splice(fromIndex, 1)
+      files.splice(toIndex, 0, item)
+      return { files }
+    }),
+  updateFileOperation: (filePath, operation, options) =>
+    set((state) => ({
+      files: state.files.map((f) =>
+        f.path === filePath ? { ...f, operation, ...options } : f
+      )
+    })),
 
   operation: 'convert',
   boostPercent: 10,
@@ -195,12 +225,13 @@ export const useAppStore = create<AppState>((set) => ({
   incrementErrors: () => set((s) => ({ totalErrors: s.totalErrors + 1 })),
 
   logs: [],
+  lastSeenErrorCount: 0,
   addLog: (entry) =>
     set((state) => {
       const logs = [...state.logs, entry]
       return { logs: logs.length > 5000 ? logs.slice(-2500) : logs }
     }),
-  clearLogs: () => set({ logs: [] }),
+  clearLogs: () => set({ logs: [], lastSeenErrorCount: 0 }),
 
   systemInfo: null,
   setSystemInfo: (info) => set({ systemInfo: info }),

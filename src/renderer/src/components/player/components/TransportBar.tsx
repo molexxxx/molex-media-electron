@@ -37,12 +37,12 @@ export function TransportBar({
   const volPct = volume * 100
 
   return (
-    <div className="shrink-0 rounded-xl px-4 py-3 space-y-2"
+    <div className="shrink-0 rounded-xl px-3 sm:px-4 py-3 space-y-2"
       style={{ background: 'rgba(15, 19, 32, 0.65)', backdropFilter: 'blur(24px)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
     >
       {/* Seek bar */}
-      <div className="flex items-center gap-2.5 group/seek">
-        <span className="text-2xs text-surface-500 font-mono w-9 text-right select-none tabular-nums">{formatTime(currentTime)}</span>
+      <div className="flex items-center gap-2 sm:gap-2.5 group/seek">
+        <span className="text-2xs text-surface-500 font-mono w-8 sm:w-9 text-right select-none tabular-nums">{formatTime(currentTime)}</span>
         <div className="relative flex-1 flex items-center h-5 cursor-pointer group/bar">
           {/* Track background */}
           <div className="absolute left-0 right-0 h-1 rounded-full bg-white/8 group-hover/bar:h-1.5 transition-all" />
@@ -71,13 +71,13 @@ export function TransportBar({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
-        <span className="text-2xs text-surface-500 font-mono w-9 select-none tabular-nums">{formatTime(duration)}</span>
+        <span className="text-2xs text-surface-500 font-mono w-8 sm:w-9 select-none tabular-nums">{formatTime(duration)}</span>
       </div>
 
       {/* Controls row */}
       <div className="flex items-center">
         {/* Track name — left */}
-        <div className="flex-1 min-w-0 pr-3">
+        <div className="flex-1 min-w-0 pr-2 hidden sm:block">
           {track ? (
             <span className="text-xs text-surface-300 font-medium truncate block">{track.name}</span>
           ) : (
@@ -86,11 +86,11 @@ export function TransportBar({
         </div>
 
         {/* Centered transport */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Shuffle */}
           <button
             onClick={onToggleShuffle}
-            className={`transport-btn w-8 h-8 ${shuffle ? 'transport-btn-active' : ''}`}
+            className={`transport-btn w-7 h-7 sm:w-8 sm:h-8 hidden sm:flex ${shuffle ? 'transport-btn-active' : ''}`}
             title="Shuffle"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -130,7 +130,7 @@ export function TransportBar({
           {/* Repeat */}
           <button
             onClick={onCycleRepeat}
-            className={`transport-btn w-8 h-8 relative ${repeat !== 'off' ? 'transport-btn-active' : ''}`}
+            className={`transport-btn w-7 h-7 sm:w-8 sm:h-8 relative hidden sm:flex ${repeat !== 'off' ? 'transport-btn-active' : ''}`}
             title={`Repeat: ${repeat}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -144,7 +144,7 @@ export function TransportBar({
         </div>
 
         {/* Volume — right */}
-        <div className="flex-1 flex items-center justify-end gap-2 pl-3 group/vol">
+        <div className="flex-1 flex items-center justify-end gap-2 pl-2 sm:pl-3 min-w-0 group/vol">
           <button
             className="transport-btn w-7 h-7"
             onClick={() => {
@@ -170,7 +170,7 @@ export function TransportBar({
               )}
             </svg>
           </button>
-          <div className="relative flex items-center w-20 h-4 cursor-pointer group/vol">
+          <div className="relative items-center w-20 h-4 cursor-pointer group/vol hidden sm:flex">
             {/* Track background */}
             <div className="absolute left-0 right-0 h-1 rounded-full bg-white/10" />
             {/* Filled portion */}

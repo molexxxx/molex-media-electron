@@ -652,6 +652,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     setShowHistory(false)
     skipCountRef.current = 0
     ytRetryRef.current = null
+    setVisMode('dmt')
   }, [playlist])
 
   // Load all media files from a folder into the playlist
@@ -1004,7 +1005,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   // -- Main window layout --
   return (
     <div
-      className="flex animate-fade-in gap-4 relative h-full min-w-0"
+      className="flex animate-fade-in gap-4 relative min-h-full min-w-0 overflow-x-hidden"
     >
       <audio ref={audioRef} className="hidden" preload="auto" />
       {/* Popped-out overlay */}
@@ -1060,7 +1061,9 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
         {/* Canvas area */}
         <div
           ref={dropRef}
-          className={`flex-1 relative rounded-2xl overflow-hidden border transition-colors ${
+          className={`relative rounded-2xl overflow-hidden border transition-colors ${
+            track ? 'flex-1' : 'flex-1 sm:flex-1 min-h-[120px]'
+          } ${
             dragging ? 'border-accent-400 bg-accent-500/5' : 'border-white/5 bg-surface-900/50'
           }`}
         >
@@ -1102,7 +1105,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           {showPlaylist && (
             <>
               <div className="absolute inset-0 z-[19]" onClick={() => setShowPlaylist(false)} />
-              <div className="absolute top-0 right-0 bottom-0 z-20 w-64 max-w-[60%]">
+              <div className="absolute top-0 right-0 bottom-0 z-20 w-full sm:w-64 sm:max-w-[60%]">
               <PlaylistPanel
                 playlist={playlist}
                 trackIdx={trackIdx}
