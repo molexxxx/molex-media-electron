@@ -128,7 +128,7 @@ function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element {
 }
 
 export default function Sidebar(): React.JSX.Element {
-  const { currentView, setView, files, logs, lastSeenErrorCount, sidebarCollapsed, setSidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
+  const { currentView, setView, files, logs, lastSeenErrorCount, sidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
 
   const unseenErrors = logs.filter((l) => l.level === 'error').length - lastSeenErrorCount
   const hasUpdate = updateStatus === 'available' || updateStatus === 'downloaded'
