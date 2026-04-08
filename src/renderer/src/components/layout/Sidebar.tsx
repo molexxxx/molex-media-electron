@@ -133,15 +133,22 @@ export default function Sidebar(): React.JSX.Element {
   const unseenErrors = logs.filter((l) => l.level === 'error').length - lastSeenErrorCount
   const hasUpdate = updateStatus === 'available' || updateStatus === 'downloaded'
 
-  // Auto-collapse on narrow windows (resize only — initial state comes from persisted config)
+  // Auto-collapse on narrow windows; restore to saved config preference when wide again
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 840px)')
     const onChange = (e: MediaQueryListEvent): void => {
-      setSidebarCollapsed(e.matches)
+      if (e.matches) {
+        // Only update visual state — don't persist so the user's preference is preserved
+        useAppStore.setState({ sidebarCollapsed: true })
+      } else {
+        // Restore the user's persisted preference
+        const saved = useAppStore.getState().config?.sidebarCollapsed ?? false
+        useAppStore.setState({ sidebarCollapsed: saved })
+      }
     }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [setSidebarCollapsed])
+  }, [])
 
   const collapsed = sidebarCollapsed
 

@@ -185,7 +185,7 @@ export const useAppStore = create<AppState>((set) => ({
   normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
   convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
   extractOptions: { outputFormat: 'mp3', streamIndex: 0, audioBitrate: '', sampleRate: '', channels: '' },
-  compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'medium', audioBitrate: '' },
+  compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'slow', audioBitrate: '256k' },
   setOperation: (op) => set({ operation: op }),
   setBoostPercent: (pct) => set({ boostPercent: pct }),
   setSelectedPreset: (id) => set({ selectedPreset: id }),
@@ -216,7 +216,7 @@ export const useAppStore = create<AppState>((set) => ({
     normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
     convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
     extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
-    compressOptions: { targetSizeMB: 0, quality: 'high' }
+    compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'slow', audioBitrate: '256k' }
   }),
 
   totalProcessed: 0,
