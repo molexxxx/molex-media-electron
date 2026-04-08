@@ -417,4 +417,122 @@ describe('normalizeFile', () => {
     const result = await normalizeFile(makeTask(), onProgress)
     expect(result.status).toBe('complete')
   })
+
+  it('uses non-inherit audioCodec with explicit codec name', async () => {
+    mockGetConfig.mockResolvedValue({ ...baseConfig, audioCodec: 'libopus', audioBitrate: '128k' })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[1][1]
+    expect(args).toContain('-c:a')
+    expect(args).toContain('libopus')
+    expect(args).toContain('-b:a')
+    expect(args).toContain('128k')
+    // Should NOT contain per-stream codec args like -c:a:0
+    expect(args).not.toContain('-c:a:0')
+  })
+
+  it('uses fallbackCodec when stream codec_name is undefined with inherit mode', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [{ index: 1, channels: 2, sample_rate: '48000', channel_layout: 'stereo' }]
+    })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[1][1]
+    expect(args).toContain('ac3') // fallbackCodec
+  })
+
+  it('uses handler_name when title tag is absent', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [{ ...sampleProbe.audioStreams[0], tags: { handler_name: 'SoundHandler' } }]
+    })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[1][1]
+    const metadataIdx = args.findIndex((a: string) => a.includes('metadata:s:a:0'))
+    expect(args[metadataIdx + 1]).toContain('SoundHandler')
+  })
+
+  it('uses default Track N label when no tags present', async () => {
+    mockProbeMedia.mockResolvedValue({
+      ...sampleProbe,
+      audioStreams: [{ ...sampleProbe.audioStreams[0], tags: {} }]
+    })
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('complete')
+    const args = mockRunCommand.mock.calls[1][1]
+    const metadataIdx = args.findIndex((a: string) => a.includes('metadata:s:a:0'))
+    expect(args[metadataIdx + 1]).toContain('Track 1')
+  })
+
+  it('returns cancelled when encode returns killed=true', async () => {
+    const loudnessJson = JSON.stringify({
+      input_i: '-20.0', input_tp: '-3.0', input_lra: '8.0',
+      input_thresh: '-30.0', target_offset: '4.0'
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: loudnessJson }),
+      process: { kill: vi.fn() }
+    })
+    mockRunCommand.mockReturnValueOnce({
+      promise: Promise.resolve({ code: 0, killed: true, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const onProgress = vi.fn()
+    const result = await normalizeFile(makeTask(), onProgress)
+    expect(result.status).toBe('cancelled')
+  })
 })

@@ -1022,6 +1022,107 @@ describe('editorStore', () => {
     })
   })
 
+  /* ------------------------------------------------------------------ */
+  /*  Undo / Redo                                                        */
+  /* ------------------------------------------------------------------ */
+
+  describe('undo / redo', () => {
+    it('canUndo returns false when no history', () => {
+      // Drain any leftover undo stack from previous tests
+      while (useEditorStore.getState().canUndo()) useEditorStore.getState().undo()
+      expect(useEditorStore.getState().canUndo()).toBe(false)
+    })
+
+    it('canRedo returns false when no redo history', () => {
+      // Drain any leftover redo stack from previous tests
+      while (useEditorStore.getState().canRedo()) useEditorStore.getState().redo()
+      // Also drain any undo entries that the redo calls may have created
+      while (useEditorStore.getState().canUndo()) useEditorStore.getState().undo()
+      while (useEditorStore.getState().canRedo()) useEditorStore.getState().redo()
+      // Now perform an action to clear the redo stack
+      resetStore()
+      expect(useEditorStore.getState().canRedo()).toBe(false)
+    })
+
+    it('can undo after an action that pushes history', () => {
+      const clip = makeClip({ id: 'u1', inPoint: 0, outPoint: 120 })
+      useEditorStore.getState().addClip(clip)
+      // setInPoint pushes history
+      useEditorStore.getState().setInPoint(10)
+      expect(useEditorStore.getState().canUndo()).toBe(true)
+      useEditorStore.getState().undo()
+      expect(useEditorStore.getState().clips[0].inPoint).toBe(0)
+    })
+
+    it('can redo after undo', () => {
+      const clip = makeClip({ id: 'u2', inPoint: 0, outPoint: 120 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setInPoint(10)
+      useEditorStore.getState().undo()
+      expect(useEditorStore.getState().canRedo()).toBe(true)
+      useEditorStore.getState().redo()
+      expect(useEditorStore.getState().clips[0].inPoint).toBe(10)
+    })
+
+    it('undo does nothing when stack is empty', () => {
+      const clip = makeClip({ id: 'u3' })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().undo()
+      // Clip should still be there
+      expect(useEditorStore.getState().clips).toHaveLength(1)
+    })
+
+    it('redo does nothing when stack is empty', () => {
+      const clip = makeClip({ id: 'u4' })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().redo()
+      expect(useEditorStore.getState().clips).toHaveLength(1)
+    })
+
+    it('new action clears redo stack', () => {
+      const clip = makeClip({ id: 'u5', inPoint: 0, outPoint: 120 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setInPoint(10)
+      useEditorStore.getState().undo()
+      expect(useEditorStore.getState().canRedo()).toBe(true)
+      // New action should clear redo
+      useEditorStore.getState().setOutPoint(100)
+      expect(useEditorStore.getState().canRedo()).toBe(false)
+    })
+
+    it('stops playing on undo', () => {
+      const clip = makeClip({ id: 'u6', inPoint: 0, outPoint: 120 })
+      useEditorStore.getState().addClip(clip)
+      useEditorStore.getState().setInPoint(10)
+      useEditorStore.setState({ playing: true })
+      useEditorStore.getState().undo()
+      expect(useEditorStore.getState().playing).toBe(false)
+    })
+  })
+
+  /* ------------------------------------------------------------------ */
+  /*  moveA2ToClip edge cases                                            */
+  /* ------------------------------------------------------------------ */
+
+  describe('moveA2ToClip edge cases', () => {
+    it('no-ops when fromClip does not exist', () => {
+      const c1 = makeClip({ id: 'x1' })
+      useEditorStore.getState().addClip(c1)
+      useEditorStore.getState().moveA2ToClip('nonexistent', 0, 0)
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeUndefined()
+    })
+
+    it('no-ops when target index is out of bounds', () => {
+      const c1 = makeClip({ id: 'x2' })
+      useEditorStore.getState().addClip(c1)
+      const a2 = { path: '/a.mp3', name: 'a.mp3', duration: 30, offset: 0, volume: 1, muted: false, objectUrl: 'blob:a', trimIn: 0, trimOut: 30 }
+      useEditorStore.getState().setAudioReplacement('x2', a2)
+      useEditorStore.getState().moveA2ToClip('x2', 99, 0)
+      // Source should still have A2 since move failed
+      expect(useEditorStore.getState().clips[0].audioReplacement).toBeDefined()
+    })
+  })
+
   describe('clipToSelection', () => {
     it('trims clip to in/out selection', () => {
       const clip = makeClip({ id: 'c1', duration: 60, inPoint: 10, outPoint: 50 })

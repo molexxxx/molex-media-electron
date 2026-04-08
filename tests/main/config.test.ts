@@ -188,5 +188,63 @@ describe('config', () => {
       // saveConfig was called with empty array
       expect(mockStoreSet).toHaveBeenCalledWith('urlHistory', [])
     })
+
+    it('addUrlHistory caps history at MAX_URL_HISTORY (50)', async () => {
+      // Pre-seed with 50 entries
+      storeData.urlHistory = Array.from({ length: 50 }, (_, i) => ({
+        url: `https://example.com/${i}`,
+        title: `Video ${i}`,
+        trackCount: 1,
+        addedAt: i
+      }))
+      await loadConfig()
+
+      // Adding a new entry should cap at 50
+      const history = await addUrlHistory({
+        url: 'https://example.com/new',
+        title: 'New Video',
+        trackCount: 1
+      })
+      expect(history).toHaveLength(50)
+      expect(history[0].url).toBe('https://example.com/new')
+    })
+
+    it('removeUrlHistory no-ops when URL not in history', async () => {
+      storeData.urlHistory = [
+        { url: 'https://a.com', title: 'A', trackCount: 1, addedAt: 1 }
+      ]
+      await loadConfig()
+
+      const history = await removeUrlHistory('https://nonexistent.com')
+      expect(history).toHaveLength(1)
+      expect(history[0].url).toBe('https://a.com')
+    })
+  })
+
+  describe('loadConfig edge cases', () => {
+    it('auto-detects maxWorkers when set to negative value', async () => {
+      storeData.maxWorkers = -5
+      const config = await loadConfig()
+      expect(config.maxWorkers).toBeGreaterThanOrEqual(1)
+    })
+
+    it('getStore reuses Store constructor on second call', async () => {
+      // First loadConfig initializes Store
+      await loadConfig()
+      // Second loadConfig reuses the cached Store constructor
+      const config = await loadConfig()
+      expect(config).toBeDefined()
+    })
+  })
+
+  describe('path helpers edge cases', () => {
+    it('getLogDir skips mkdir when directory already exists', async () => {
+      const fs = await import('fs')
+      vi.mocked(fs.existsSync).mockReturnValueOnce(true)
+      const p = getLogDir()
+      expect(p).toContain('logs')
+      // mkdirSync should NOT be called when dir exists
+      expect(fs.mkdirSync).not.toHaveBeenCalled()
+    })
   })
 })

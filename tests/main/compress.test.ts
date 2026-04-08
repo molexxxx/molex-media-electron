@@ -458,4 +458,61 @@ describe('compressFile', () => {
     expect(args).toContain('-cpu-used')
     expect(args).toContain('4')
   })
+
+  it('uses unknown codec fallback to libx264 CRF table', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({ compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libxvid' as any } })
+    const onProgress = vi.fn()
+    await compressFile(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    // Falls back to libx264 CRF table, so CRF should be 18
+    expect(args).toContain('-crf')
+    expect(args).toContain('18')
+  })
+
+  it('target size mode with VP9 uses bitrate instead of CRF', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({ compressOptions: { targetSizeMB: 50, quality: 'high', videoCodec: 'libvpx-vp9' } })
+    const onProgress = vi.fn()
+    await compressFile(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-maxrate')
+    expect(args).toContain('-bufsize')
+  })
+
+  it('audio-only high quality uses 256k bitrate', async () => {
+    mockProbeMedia.mockResolvedValue(audioProbe)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: {}
+    })
+    const task = makeTask({
+      filePath: '/media/song.mp3',
+      fileName: 'song.mp3',
+      compressOptions: { targetSizeMB: 0, quality: 'high' }
+    })
+    const onProgress = vi.fn()
+    await compressFile(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('256k')
+  })
+
+  it('video compression with AV1 veryfast speed', async () => {
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    const task = makeTask({ compressOptions: { targetSizeMB: 0, quality: 'medium', videoCodec: 'libaom-av1', speed: 'veryfast' } })
+    const onProgress = vi.fn()
+    await compressFile(task, onProgress)
+    const args = mockRunCommand.mock.calls[0][1]
+    expect(args).toContain('-cpu-used')
+    expect(args).toContain('8')
+  })
 })

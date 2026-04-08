@@ -203,7 +203,7 @@ export default function Sidebar(): React.JSX.Element {
           </button>
         )}
       </div>
-      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin">
+      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin pr-1">
         {sections.map((section, si) => (
           <div key={si}>
             {section.label && !collapsed && (

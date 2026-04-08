@@ -260,4 +260,119 @@ describe('appStore', () => {
       expect(useAppStore.getState().ffmpegVersion).toBe('')
     })
   })
+
+  describe('sidebar state', () => {
+    it('setSidebarCollapsed sets collapsed state', () => {
+      useAppStore.getState().setSidebarCollapsed(true)
+      expect(useAppStore.getState().sidebarCollapsed).toBe(true)
+    })
+
+    it('toggleSidebar flips collapsed state', () => {
+      expect(useAppStore.getState().sidebarCollapsed).toBe(false)
+      useAppStore.getState().toggleSidebar()
+      expect(useAppStore.getState().sidebarCollapsed).toBe(true)
+      useAppStore.getState().toggleSidebar()
+      expect(useAppStore.getState().sidebarCollapsed).toBe(false)
+    })
+
+    it('setSidebarCollapsed updates config.sidebarCollapsed if config exists', () => {
+      useAppStore.setState({ config: { sidebarCollapsed: false } as any })
+      useAppStore.getState().setSidebarCollapsed(true)
+      expect(useAppStore.getState().config?.sidebarCollapsed).toBe(true)
+    })
+
+    it('setSidebarCollapsed handles null config gracefully', () => {
+      useAppStore.setState({ config: null as any })
+      useAppStore.getState().setSidebarCollapsed(true)
+      expect(useAppStore.getState().sidebarCollapsed).toBe(true)
+    })
+  })
+
+  describe('update state', () => {
+    it('sets update status', () => {
+      useAppStore.getState().setUpdateStatus('available')
+      expect(useAppStore.getState().updateStatus).toBe('available')
+    })
+
+    it('sets update version', () => {
+      useAppStore.getState().setUpdateVersion('4.0.0')
+      expect(useAppStore.getState().updateVersion).toBe('4.0.0')
+    })
+
+    it('sets update error', () => {
+      useAppStore.getState().setUpdateError('Download failed')
+      expect(useAppStore.getState().updateError).toBe('Download failed')
+    })
+
+    it('sets update download percent', () => {
+      useAppStore.getState().setUpdateDownloadPercent(75)
+      expect(useAppStore.getState().updateDownloadPercent).toBe(75)
+    })
+  })
+
+  describe('resetBatch', () => {
+    it('resets all batch state to defaults', () => {
+      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
+      useAppStore.getState().setOperation('normalize')
+      useAppStore.getState().setIsProcessing(true)
+      useAppStore.getState().resetBatch()
+      const s = useAppStore.getState()
+      expect(s.files).toEqual([])
+      expect(s.tasks).toEqual([])
+      expect(s.isProcessing).toBe(false)
+      expect(s.operation).toBe('convert')
+    })
+  })
+
+  describe('misc setters', () => {
+    it('sets config', () => {
+      useAppStore.getState().setConfig({ audioCodec: 'aac' } as any)
+      expect(useAppStore.getState().config?.audioCodec).toBe('aac')
+    })
+
+    it('setFFmpegChecking', () => {
+      useAppStore.getState().setFFmpegChecking(true)
+      expect(useAppStore.getState().ffmpegChecking).toBe(true)
+    })
+
+    it('setShowSetup', () => {
+      useAppStore.getState().setShowSetup(true)
+      expect(useAppStore.getState().showSetup).toBe(true)
+    })
+
+    it('setDownloadProgress', () => {
+      useAppStore.getState().setDownloadProgress({ stage: 'downloading', message: 'test', percent: 50 })
+      expect(useAppStore.getState().downloadProgress?.percent).toBe(50)
+    })
+
+    it('setSystemInfo', () => {
+      useAppStore.getState().setSystemInfo({ platform: 'win32' } as any)
+      expect(useAppStore.getState().systemInfo?.platform).toBe('win32')
+    })
+
+    it('setActiveBatch', () => {
+      useAppStore.getState().setActiveBatch('batch-123')
+      expect(useAppStore.getState().activeBatchId).toBe('batch-123')
+    })
+
+    it('setIsPaused', () => {
+      useAppStore.getState().setIsPaused(true)
+      expect(useAppStore.getState().isPaused).toBe(true)
+    })
+
+    it('setTasks', () => {
+      useAppStore.getState().setTasks([{ id: 't1', status: 'queued' } as any])
+      expect(useAppStore.getState().tasks).toHaveLength(1)
+    })
+
+    it('setBatchOutputDir', () => {
+      useAppStore.getState().setBatchOutputDir('/output')
+      expect(useAppStore.getState().batchOutputDir).toBe('/output')
+    })
+
+    it('setNormalizeOptions merges options', () => {
+      useAppStore.getState().setNormalizeOptions({ I: -14 })
+      expect(useAppStore.getState().normalizeOptions.I).toBe(-14)
+    })
+  })
 })

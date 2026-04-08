@@ -229,6 +229,25 @@ describe('prepareForPlayback', () => {
     expect(mockRunCommand).toHaveBeenCalledTimes(2)
   })
 
+  it('re-extracts when memory-cached file no longer exists on disk', async () => {
+    // First call extracts and caches
+    await prepareForPlayback('/video/vanished.mkv')
+    // Second call — cached path is in memory but file was deleted
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    await prepareForPlayback('/video/vanished.mkv')
+    expect(mockRunCommand).toHaveBeenCalledTimes(2)
+  })
+
+  it('removes corrupted zero-byte disk cache and re-extracts', async () => {
+    // existsSync returns true for the output path on disk
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any)
+    await prepareForPlayback('/video/zerobyte.mp4')
+    // Should have removed empty file and re-extracted
+    expect(fs.unlinkSync).toHaveBeenCalled()
+    expect(mockRunCommand).toHaveBeenCalled()
+  })
+
   it('throws when FFmpeg is not configured', async () => {
     mockGetConfig.mockResolvedValueOnce({ ffmpegPath: '', ffprobePath: '/usr/bin/ffprobe' } as any)
     await expect(prepareForPlayback('/video/clip.mp4')).rejects.toThrow('FFmpeg not configured')
@@ -362,6 +381,38 @@ describe('clearPlaybackCacheFor', () => {
     clearPlaybackCacheFor('/nonexistent/file.mp4')
     expect(fs.unlinkSync).not.toHaveBeenCalled()
   })
+
+  it('removes cached file from memory and disk', async () => {
+    // First, populate the cache by extracting a file
+    vi.mocked(fs.mkdirSync).mockReturnValue(undefined)
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    vi.mocked(fs.readdirSync).mockReturnValue([])
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, stderr: '', killed: false }),
+      process: { kill: vi.fn() }
+    })
+    await prepareForPlayback('/video/cached.mp4')
+
+    // Now clear — the file is in the cache
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    clearPlaybackCacheFor('/video/cached.mp4')
+    expect(fs.unlinkSync).toHaveBeenCalled()
+  })
+
+  it('handles unlinkSync error gracefully when clearing cache', async () => {
+    vi.mocked(fs.mkdirSync).mockReturnValue(undefined)
+    vi.mocked(fs.existsSync).mockReturnValue(false)
+    vi.mocked(fs.readdirSync).mockReturnValue([])
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, stderr: '', killed: false }),
+      process: { kill: vi.fn() }
+    })
+    await prepareForPlayback('/video/cached2.mp4')
+
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.unlinkSync).mockImplementation(() => { throw new Error('EPERM') })
+    expect(() => clearPlaybackCacheFor('/video/cached2.mp4')).not.toThrow()
+  })
 })
 
 /* ------------------------------------------------------------------ */
@@ -378,5 +429,25 @@ describe('cleanupPlaybackTemp', () => {
     vi.mocked(fs.readdirSync).mockReturnValue(['file1.webm' as any, 'file2.m4a' as any])
     cleanupPlaybackTemp()
     expect(fs.unlinkSync).toHaveBeenCalled()
+  })
+
+  it('handles unlinkSync errors during cleanup', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.readdirSync).mockReturnValue(['file1.webm' as any])
+    vi.mocked(fs.unlinkSync).mockImplementation(() => { throw new Error('EBUSY') })
+    expect(() => cleanupPlaybackTemp()).not.toThrow()
+  })
+
+  it('handles rmdirSync error during cleanup', () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true)
+    vi.mocked(fs.readdirSync).mockReturnValue([])
+    vi.mocked(fs.rmdirSync).mockImplementation(() => { throw new Error('ENOTEMPTY') })
+    expect(() => cleanupPlaybackTemp()).not.toThrow()
+  })
+
+  it('does nothing when temp dir is null', () => {
+    // After a previous cleanup, playbackTempDir is null
+    cleanupPlaybackTemp()
+    expect(fs.readdirSync).not.toHaveBeenCalled()
   })
 })
