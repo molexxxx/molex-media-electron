@@ -84,7 +84,8 @@ export default function Settings(): React.JSX.Element {
       fallbackCodec: 'ac3',
       audioBitrate: '256k',
       maxWorkers: 0,
-      overwriteOriginal: true,
+      afterProcessing: 'keep-both',
+      confirmReplace: true,
       preserveSubtitles: true,
       preserveMetadata: true,
       showNotifications: true,
@@ -100,10 +101,10 @@ export default function Settings(): React.JSX.Element {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-fade-in max-w-3xl">
+    <div className="space-y-4 sm:space-y-5 animate-fade-in max-w-4xl mx-auto w-full">
       <div className="flex items-start sm:items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-white">Settings</h1>
+          <h1 className="text-xl font-medium text-surface-200 tracking-tight">Settings</h1>
           <p className="text-xs text-surface-400 mt-0.5">Configure media processing, codecs, and application preferences</p>
         </div>
         <span className={`text-xs font-medium transition-opacity duration-300 ${saved ? 'opacity-100 text-emerald-400' : 'opacity-0'}`}>
@@ -112,15 +113,15 @@ export default function Settings(): React.JSX.Element {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-surface-800/50 rounded-lg p-0.5 gap-0.5">
+      <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 gap-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex-1 ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-all flex-1 ${
               activeTab === tab.id
-                ? 'bg-surface-700 text-white shadow-sm'
-                : 'text-surface-400 hover:text-surface-200'
+                ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm'
+                : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'
             }`}
           >
             {tab.label}

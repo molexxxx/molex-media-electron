@@ -750,7 +750,7 @@ export function TrackTimeline({
             <div className="flex items-center gap-2.5">
               <button
                 onClick={onTogglePlay}
-                className="w-8 h-8 rounded-full btn-accent flex items-center justify-center text-white"
+                className="w-8 h-8 rounded-full bg-accent-500/15 border border-accent-500/25 hover:bg-accent-500/25 hover:border-accent-500/35 flex items-center justify-center text-accent-200 transition-all shadow-sm"
                 title="Play/Pause (Space)"
               >
                 {playing ? (
@@ -780,7 +780,8 @@ export function TrackTimeline({
                 </button>
                 <input type="range" min={0} max={1} step={0.05} value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-14 h-1 accent-accent-500 cursor-pointer" />
+                  className="w-14 range-dark"
+                  style={{ '--range-progress': `${volume * 100}%` } as React.CSSProperties} />
               </div>
 
               {/* Speed */}
@@ -800,7 +801,8 @@ export function TrackTimeline({
                 </svg>
                 <input type="range" min={1} max={10} step={0.25} value={zoom}
                   onChange={(e) => setZoom(parseFloat(e.target.value))}
-                  className="w-14 h-1 accent-accent-500 cursor-pointer"
+                  className="w-14 range-dark"
+                  style={{ '--range-progress': `${((zoom - 1) / 9) * 100}%` } as React.CSSProperties}
                   title={`Zoom: ${zoom.toFixed(1)}x (Ctrl+Scroll)`} />
                 {zoom > 1 && (
                   <button onClick={() => setZoom(1)}
@@ -839,14 +841,14 @@ export function TrackTimeline({
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </button>
-                <div className="absolute left-0 top-full mt-1 min-w-[140px] py-1 bg-surface-800 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover/clip:opacity-100 group-hover/clip:visible transition-all z-50">
-                  <button onClick={onClipSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-200 hover:bg-violet-500/20 hover:text-violet-200 transition-colors flex items-center gap-2">
+                <div className="absolute left-0 bottom-full mb-1 min-w-[140px] py-1 bg-surface-900/95 border border-surface-700/60 rounded-xl shadow-xl shadow-black/40 backdrop-blur-xl opacity-0 invisible group-hover/clip:opacity-100 group-hover/clip:visible transition-all z-50">
+                  <button onClick={onClipSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-300 hover:bg-accent-600/15 hover:text-white transition-colors flex items-center gap-2">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-violet-400">
                       <rect x="6" y="4" width="12" height="16" rx="1"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="16" x2="18" y2="16"/>
                     </svg>
                     Keep Selection
                   </button>
-                  <button onClick={onDeleteSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-200 hover:bg-red-500/20 hover:text-red-200 transition-colors flex items-center gap-2">
+                  <button onClick={onDeleteSelection} className="w-full px-3 py-1.5 text-[10px] text-left text-surface-300 hover:bg-red-500/15 hover:text-red-200 transition-colors flex items-center gap-2">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-red-400">
                       <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                     </svg>
@@ -866,19 +868,19 @@ export function TrackTimeline({
                 <>
                   <div className="w-px h-4 bg-surface-700/50 mx-0.5 hidden sm:block" />
                   <button onClick={onMerge} disabled={processing}
-                    className="px-2.5 py-0.5 text-[10px] font-semibold rounded-md btn-accent text-white disabled:opacity-40">
+                    className="px-2.5 py-0.5 text-[10px] font-semibold rounded-md bg-accent-500/15 text-accent-200 border border-accent-500/25 hover:bg-accent-500/25 disabled:opacity-40 transition-all">
                     Merge All
                   </button>
                 </>
               )}
               <div className="w-px h-4 bg-surface-700/50 mx-0.5 hidden sm:block" />
               <button onClick={onImportFile}
-                className="px-2 py-0.5 text-[10px] font-medium rounded-md text-surface-400 hover:text-accent-300 bg-surface-800/60 hover:bg-accent-500/10 transition-all"
+                className="px-2 py-0.5 text-[10px] font-medium rounded-md text-surface-400 hover:text-accent-200 bg-white/[0.03] hover:bg-accent-500/[0.04] border border-white/[0.06] hover:border-accent-500/15 transition-all"
                 title="Import media file">
                 + Import
               </button>
               <button onClick={onCut} disabled={processing || duration <= 0}
-                className="px-3 py-1 text-[11px] font-semibold rounded-lg btn-accent text-white">
+                className="px-3 py-1 text-[11px] font-semibold rounded-lg bg-accent-500/15 text-accent-200 border border-accent-500/25 hover:bg-accent-500/25 hover:border-accent-500/35 transition-all shadow-sm">
                 {processing ? `Exporting${exportProgress > 0 ? ` ${exportProgress}%` : '...'}` : 'Export'}
               </button>
             </div>
@@ -888,13 +890,13 @@ export function TrackTimeline({
           <div className="flex flex-wrap items-center gap-2 text-[10px]">
             <div className="flex items-center gap-0.5">
               <span className="text-surface-500 font-medium">Mode:</span>
-              <div className="flex bg-surface-900/80 rounded-md p-0.5 gap-0.5">
+              <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-lg p-0.5 gap-0.5 backdrop-blur-sm">
                 <button onClick={() => setCutMode('precise')}
-                  className={`px-2 py-0.5 rounded font-medium transition-all ${cutMode === 'precise' ? 'bg-accent-600/25 text-accent-300' : 'text-surface-400 hover:text-surface-200'}`}>
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${cutMode === 'precise' ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm' : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'}`}>
                   Precise
                 </button>
                 <button onClick={() => setCutMode('fast')}
-                  className={`px-2 py-0.5 rounded font-medium transition-all ${cutMode === 'fast' ? 'bg-accent-600/25 text-accent-300' : 'text-surface-400 hover:text-surface-200'}`}>
+                  className={`px-2 py-0.5 rounded-md font-medium transition-all ${cutMode === 'fast' ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm' : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'}`}>
                   Fast
                 </button>
               </div>

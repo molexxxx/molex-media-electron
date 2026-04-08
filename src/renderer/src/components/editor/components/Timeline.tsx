@@ -115,7 +115,7 @@ export function Timeline({
         <div className="flex items-center gap-3">
           <button
             onClick={onTogglePlay}
-            className="w-9 h-9 rounded-full btn-accent flex items-center justify-center text-white"
+            className="w-9 h-9 rounded-full bg-accent-500/15 border border-accent-500/25 hover:bg-accent-500/25 hover:border-accent-500/35 flex items-center justify-center text-accent-200 transition-all shadow-sm"
             title="Play/Pause (Space)"
           >
             {playing ? (
@@ -148,7 +148,8 @@ export function Timeline({
               min={0} max={1} step={0.05}
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-16 h-1 accent-accent-500 cursor-pointer"
+              className="w-16 range-dark"
+              style={{ '--range-progress': `${volume * 100}%` } as React.CSSProperties}
               title={`Volume: ${Math.round(volume * 100)}%`}
             />
           </div>
@@ -178,7 +179,7 @@ export function Timeline({
           <button
             onClick={onCut}
             disabled={processing || duration <= 0}
-            className="px-4 py-1.5 text-xs font-semibold rounded-xl btn-accent text-white"
+            className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-accent-500/15 text-accent-200 border border-accent-500/25 hover:bg-accent-500/25 hover:border-accent-500/35 transition-all shadow-sm"
           >
             {processing ? `Exporting${exportProgress > 0 ? ` ${exportProgress}%` : '...'}` : 'Export Clip'}
           </button>
@@ -189,13 +190,13 @@ export function Timeline({
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-1">
           <span className="text-surface-500 font-medium mr-0.5">Mode:</span>
-          <div className="flex bg-surface-900/80 rounded-lg p-0.5 gap-0.5">
+          <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-lg p-0.5 gap-0.5 backdrop-blur-sm">
             <button
               onClick={() => setCutMode('precise')}
               className={`px-2.5 py-1 rounded-md font-medium transition-all duration-200 ${
                 cutMode === 'precise'
-                  ? 'bg-accent-600/25 text-accent-300 shadow-sm'
-                  : 'text-surface-400 hover:text-surface-200'
+                  ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm'
+                  : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'
               }`}
               title="Re-encodes for frame-accurate cuts that match the preview exactly"
             >
@@ -205,8 +206,8 @@ export function Timeline({
               onClick={() => setCutMode('fast')}
               className={`px-2.5 py-1 rounded-md font-medium transition-all duration-200 ${
                 cutMode === 'fast'
-                  ? 'bg-accent-600/25 text-accent-300 shadow-sm'
-                  : 'text-surface-400 hover:text-surface-200'
+                  ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm'
+                  : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'
               }`}
               title="Stream-copy mode — fast but may snap to the nearest keyframe (±1-5s for video)"
             >

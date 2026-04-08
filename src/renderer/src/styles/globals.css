@@ -186,6 +186,44 @@
 
   /* ---- Modern editor utilities ---- */
 
+  /* Custom range slider — dark themed */
+  input[type="range"].range-dark {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="range"].range-dark::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent-500) 0%,
+      var(--color-accent-500) var(--range-progress, 0%),
+      rgba(255, 255, 255, 0.08) var(--range-progress, 0%),
+      rgba(255, 255, 255, 0.08) 100%
+    );
+  }
+  input[type="range"].range-dark::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-accent-400);
+    border: 2px solid var(--color-accent-600);
+    margin-top: -4px;
+    box-shadow: 0 0 6px rgba(124, 58, 237, 0.3);
+    transition: transform 150ms, box-shadow 150ms;
+  }
+  input[type="range"].range-dark:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+  }
+  input[type="range"].range-dark::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+  }
+
   .glass-panel {
     background: rgba(26, 31, 48, 0.75);
     backdrop-filter: blur(16px);

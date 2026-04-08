@@ -72,11 +72,11 @@ export default function LogViewer(): React.JSX.Element {
   ]
 
   return (
-    <div className="space-y-4 animate-fade-in min-h-full flex flex-col">
+    <div className="h-full flex flex-col gap-4 animate-fade-in overflow-hidden">
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-white">Logs</h1>
+          <h1 className="text-xl font-medium text-surface-200 tracking-tight">Logs</h1>
           <p className="text-xs text-surface-400 mt-0.5">{logs.length} entries · {filteredLogs.length} visible</p>
         </div>
         <div className="flex items-center gap-2">
@@ -93,13 +93,13 @@ export default function LogViewer(): React.JSX.Element {
               setCopied('all')
               setTimeout(() => setCopied(null), 1500)
             }}
-            className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-700/50 hover:bg-surface-600/50 rounded-lg transition-all"
+            className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-900/80 hover:bg-surface-800/80 border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all"
           >
             {copied === 'all' ? 'Copied!' : `Copy ${filter !== 'all' ? 'Filtered' : 'All'}`}
           </button>
           <button
             onClick={handleOpenLogDir}
-            className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-700/50 hover:bg-surface-600/50 rounded-lg transition-all"
+            className="px-3 py-1.5 text-sm font-medium text-surface-300 hover:text-white bg-surface-900/80 hover:bg-surface-800/80 border border-white/[0.06] hover:border-white/[0.12] rounded-lg transition-all"
           >
             Open Log Dir
           </button>
@@ -114,15 +114,15 @@ export default function LogViewer(): React.JSX.Element {
 
       {/* Filters & Search */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-        <div className="flex bg-surface-800 rounded-lg p-0.5 gap-0.5 shrink-0 flex-wrap">
+        <div className="flex bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 gap-1 shrink-0 overflow-x-auto">
           {filters.map((f) => (
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-2.5 py-1 text-2xs font-medium rounded-md transition-all ${
+              className={`px-2.5 py-1 text-2xs font-medium rounded-lg transition-all whitespace-nowrap ${
                 filter === f.id
-                  ? 'bg-accent-600 text-white'
-                  : 'text-surface-400 hover:text-surface-200'
+                  ? 'bg-accent-500/15 text-accent-200 border border-accent-500/25 shadow-sm'
+                  : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] border border-transparent'
               }`}
             >
               {f.label}
@@ -149,14 +149,16 @@ export default function LogViewer(): React.JSX.Element {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search logs..."
-              className="w-full bg-surface-800 border border-surface-700 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-surface-600 focus:outline-none focus:border-accent-500 transition-colors"
+              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-sm text-surface-200 placeholder-surface-600 focus:outline-none focus:border-accent-500/50 hover:border-white/[0.12] transition-colors"
             />
           </div>
 
           <button
             onClick={() => setAutoScroll(!autoScroll)}
-            className={`shrink-0 px-2.5 py-1.5 text-2xs font-medium rounded-lg transition-all whitespace-nowrap ${
-              autoScroll ? 'bg-accent-600/20 text-accent-300' : 'text-surface-500 hover:text-surface-300 bg-surface-800'
+            className={`shrink-0 px-2.5 py-1.5 text-2xs font-medium rounded-lg transition-all whitespace-nowrap border ${
+              autoScroll
+                ? 'bg-accent-500/20 text-accent-200 border-accent-500/25'
+                : 'text-surface-500 hover:text-surface-300 bg-surface-900/80 border-white/[0.06] hover:border-white/[0.12]'
             }`}
           >
             Auto-scroll {autoScroll ? 'ON' : 'OFF'}
