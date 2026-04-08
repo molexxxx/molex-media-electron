@@ -22,22 +22,6 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`
 }
 
-function formatElapsed(start?: number, end?: number): string {
-  if (!start) return ''
-  const ms = (end || Date.now()) - start
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  return `${m}m ${s % 60}s`
-}
-
-function formatFileSize(bytes?: number): string {
-  if (!bytes) return ''
-  if (bytes < 1024) return `${bytes}B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
-}
-
 const OP_ICONS: Record<string, React.JSX.Element> = {
   normalize: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/></svg>,
   convert: <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/></svg>,
