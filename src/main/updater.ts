@@ -11,13 +11,14 @@
 import { autoUpdater } from 'electron-updater'
 import { app, ipcMain } from 'electron'
 import { logger } from './logger'
-import { getConfig } from './config'
 import { sendToAll } from './ipc/helpers'
 
 /** Initialise the updater: wire events, register IPC, optionally auto-check. */
 export async function initUpdater(): Promise<void> {
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.allowDowngrade = false
+  autoUpdater.disableWebInstaller = false
   autoUpdater.logger = null // we handle logging ourselves
 
   // In dev mode, use dev-app-update.yml so checkForUpdates doesn't hang
@@ -95,10 +96,13 @@ export async function initUpdater(): Promise<void> {
     autoUpdater.quitAndInstall(false, true)
   })
 
-  // --- Auto-check on startup if enabled ---
-  const config = await getConfig()
-  if (config.autoUpdate) {
-    // Small delay so the window is ready to receive events
-    setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5_000)
-  }
+  // --- Auto-check on startup (always, regardless of autoUpdate setting) ---
+  // Small delay so the window is ready to receive events
+  setTimeout(async () => {
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch {
+      // Silently fail — user can retry manually
+    }
+  }, 5_000)
 }
