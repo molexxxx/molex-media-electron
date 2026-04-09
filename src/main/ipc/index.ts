@@ -7,7 +7,7 @@
 import { registerConfigIPC } from './config'
 import { registerFilesIPC } from './files'
 import { registerProcessingIPC } from './processing'
-import { registerEditorIPC } from './editor'
+// Editor IPC — removed during NLE rebuild (Phase 0)
 import { registerMediaIPC } from './media'
 import { registerSystemIPC } from './system'
 
@@ -19,7 +19,7 @@ export function registerIPC(): void {
   registerConfigIPC()
   registerFilesIPC()
   registerProcessingIPC()
-  registerEditorIPC()
+  // registerEditorIPC() — removed during NLE rebuild (Phase 0)
   registerMediaIPC()
   registerSystemIPC()
 }

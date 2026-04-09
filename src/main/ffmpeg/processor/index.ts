@@ -35,6 +35,4 @@ export { compressFile } from './compress'
 // Batch processing
 export { processBatch, pauseProcessing, resumeProcessing, getIsPaused } from './batch'
 
-// Editor operations
-export { cutMedia, mergeMedia, remuxMedia, replaceAudio } from './editor'
-export type { MergeSegment, RemuxOptions, CutOptions, EditorProgress, EditorProgressCallback, ReplaceAudioOptions } from './editor'
+// Editor operations — removed during NLE rebuild (Phase 0)
