@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { formatTimecode, framesToSeconds } from '../shared/TimeDisplay'
 import { Waveform } from '../shared/Waveform'
+import { SpatialCanvas } from '../preview/SpatialCanvas'
 import type { MediaSource, TimelineClip } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ export function Preview(): React.JSX.Element {
   const timeline = useEditorStore((s) => s.timeline)
   const sources = useEditorStore((s) => s.sources)
   const frameRate = useEditorStore((s) => s.project.frameRate)
+  const resolution = useEditorStore((s) => s.project.resolution)
 
   // ---- Derived hit lists ----
   const hits = useMemo(
@@ -95,6 +97,19 @@ export function Preview(): React.JSX.Element {
       return h.trackType === 'audio' || h.source.audioChannels > 0
     })
   }, [hits, videoHit])
+
+  // ---------- Spatial compositing detection ----------
+  // Activate spatial mode if ANY clip has a transform, keyframes, or blend mode
+  const spatialMode = useMemo(() => {
+    return timeline.clips.some(
+      (c) => c.transform || (c.keyframes && c.keyframes.length > 0) || (c.blendMode && c.blendMode !== 'normal')
+    )
+  }, [timeline.clips])
+
+  // All video hits (not just topmost) — needed for spatial canvas
+  const allVideoHits = useMemo(() => {
+    return hits.filter((h) => h.trackType === 'video' && h.source.width > 0)
+  }, [hits])
 
   // ---------- Pre-cache preview URLs for all video sources ----------
   const urlCacheRef = useRef<Map<string, string>>(new Map())
@@ -209,6 +224,134 @@ export function Preview(): React.JSX.Element {
     const onSeeked = (): void => { seekingVideoRef.current = false; el.removeEventListener('seeked', onSeeked) }
     el.addEventListener('seeked', onSeeked)
   }, [playback.currentFrame, videoHit, activeVideoUrl, frameRate])
+
+  // ---------- Spatial mode: hidden <video> element pool ----------
+  // One hidden <video> per unique video source so SpatialCanvas can composite all layers.
+  const spatialVideoPoolRef = useRef<Map<string, HTMLVideoElement>>(new Map())
+  const [spatialVideoElements, setSpatialVideoElements] = useState<Map<string, HTMLVideoElement>>(new Map())
+
+  // Create / destroy pool entries when video sources change while in spatial mode
+  useEffect(() => {
+    if (!spatialMode) {
+      // Tear down pool when leaving spatial mode
+      for (const [, el] of spatialVideoPoolRef.current) {
+        el.pause()
+        el.src = ''
+        el.remove()
+      }
+      spatialVideoPoolRef.current.clear()
+      setSpatialVideoElements(new Map())
+      return
+    }
+
+    const pool = spatialVideoPoolRef.current
+    const neededIds = new Set(videoSourceIds)
+    let changed = false
+
+    // Remove elements for sources no longer in the project
+    for (const [id, el] of pool) {
+      if (!neededIds.has(id)) {
+        el.pause()
+        el.src = ''
+        el.remove()
+        pool.delete(id)
+        changed = true
+      }
+    }
+
+    // Create elements for new video sources
+    for (const src of sources) {
+      if (!neededIds.has(src.id)) continue
+      if (pool.has(src.id)) continue
+
+      const el = document.createElement('video')
+      el.crossOrigin = 'anonymous'
+      el.preload = 'auto'
+      el.playsInline = true
+      el.muted = true // audio comes from existing Web Audio pipeline
+      el.style.display = 'none'
+      document.body.appendChild(el)
+      pool.set(src.id, el)
+      changed = true
+
+      // Set source URL from cache or fetch
+      const cachedUrl = urlCacheRef.current.get(src.id)
+      if (cachedUrl) {
+        el.src = cachedUrl
+      } else {
+        window.api.createPreview(src.filePath).then((r) => {
+          if (r?.success && r.data) {
+            urlCacheRef.current.set(src.id, r.data)
+            if (pool.has(src.id)) {
+              el.src = r.data
+            }
+          }
+        })
+      }
+    }
+
+    if (changed) {
+      setSpatialVideoElements(new Map(pool))
+    }
+  }, [spatialMode, videoSourceIds, sources])
+
+  // Seek pool video elements when PAUSED (scrubbing only)
+  useEffect(() => {
+    if (!spatialMode || playback.isPlaying) return
+    const pool = spatialVideoPoolRef.current
+    for (const hit of allVideoHits) {
+      const el = pool.get(hit.source.id)
+      if (!el || !el.src) continue
+      const offsetFrames = (playback.currentFrame - hit.clip.timelineStart) * hit.clip.speed
+      const sourceFrame = hit.clip.sourceIn + offsetFrames
+      const targetTime = framesToSeconds(sourceFrame, hit.source.frameRate || frameRate)
+      if (Math.abs(el.currentTime - targetTime) > 0.02) {
+        el.currentTime = targetTime
+      }
+    }
+  }, [spatialMode, playback.isPlaying, playback.currentFrame, allVideoHits, frameRate])
+
+  // Play/pause pool elements in sync — seek to correct position once on play start
+  const prevIsPlayingRef = useRef(false)
+  useEffect(() => {
+    if (!spatialMode) return
+    const pool = spatialVideoPoolRef.current
+    const state = useEditorStore.getState()
+    const justStarted = playback.isPlaying && !prevIsPlayingRef.current
+    prevIsPlayingRef.current = playback.isPlaying
+
+    if (playback.isPlaying) {
+      // Seek each pool video to correct position and play
+      for (const hit of allVideoHits) {
+        const el = pool.get(hit.source.id)
+        if (!el || !el.src) continue
+        const offsetFrames = (state.playback.currentFrame - hit.clip.timelineStart) * hit.clip.speed
+        const sourceFrame = hit.clip.sourceIn + offsetFrames
+        const targetTime = framesToSeconds(sourceFrame, hit.source.frameRate || frameRate)
+        el.playbackRate = hit.clip.speed * (state.playback.playbackRate || 1)
+        if (justStarted || Math.abs(el.currentTime - targetTime) > 0.5) {
+          el.currentTime = targetTime
+        }
+        if (el.paused) el.play().catch(() => {})
+      }
+    } else {
+      for (const [, el] of pool) {
+        el.pause()
+      }
+    }
+  }, [spatialMode, playback.isPlaying, allVideoHits, frameRate])
+
+  // Cleanup pool on unmount
+  useEffect(() => {
+    return () => {
+      for (const [, el] of spatialVideoPoolRef.current) {
+        el.pause()
+        el.src = ''
+        el.remove()
+      }
+      spatialVideoPoolRef.current.clear()
+    }
+  }, [])
 
   // ---------- RAF loop: advance currentFrame during playback ----------
   const rafRef = useRef(0)
@@ -635,11 +778,11 @@ export function Preview(): React.JSX.Element {
       tabIndex={0}
       className="relative flex flex-col items-center justify-center h-full bg-black/30 rounded-lg overflow-hidden outline-none focus:ring-1 focus:ring-accent-500/30"
     >
-      {/* Video element - always mounted, shown/hidden via CSS for instant toggling */}
+      {/* Video element - always mounted, hidden when spatial canvas takes over */}
       <video
         ref={videoRef}
         className={
-          videoHit && activeVideoUrl
+          videoHit && activeVideoUrl && !spatialMode
             ? 'max-w-full max-h-[calc(100%-32px)] object-contain'
             : 'absolute w-0 h-0 opacity-0 pointer-events-none'
         }
@@ -647,6 +790,15 @@ export function Preview(): React.JSX.Element {
         preload="auto"
         playsInline
       />
+
+      {/* Spatial compositing canvas — overlays all video layers with transforms */}
+      {spatialMode && containerSize && containerSize.w > 0 && containerSize.h > 0 && (
+        <SpatialCanvas
+          videoElements={spatialVideoElements}
+          width={Math.min(containerSize.w, Math.round((containerSize.h - 32) * (resolution.width / resolution.height)))}
+          height={Math.min(containerSize.h - 32, Math.round(containerSize.w * (resolution.height / resolution.width)))}
+        />
+      )}
 
       {/* Audio-only waveform - shown when no visible video track */}
       {!videoHit && audioOnlyHit && (
@@ -682,8 +834,8 @@ export function Preview(): React.JSX.Element {
         {formatTimecode(playback.currentFrame, frameRate)}
       </div>
 
-      {/* Play/pause overlay */}
-      {hits.length > 0 && (
+      {/* Play/pause overlay — hidden in spatial mode so canvas gizmos receive clicks */}
+      {hits.length > 0 && !spatialMode && (
         <button
           onClick={togglePlayback}
           className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/10"

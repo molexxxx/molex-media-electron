@@ -154,7 +154,10 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
         muted: c.muted,
         volume: c.volume,
         pan: c.pan,
-        speed: c.speed
+        speed: c.speed,
+        transform: c.transform,
+        keyframes: c.keyframes,
+        blendMode: c.blendMode
       })),
       output: {
         filePath: outputPath,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useEditorStore, applyRollTrim, applyRippleTrim, applySlip, applySlide } from '../../src/renderer/src/stores/editorStore'
-import type { MediaSource, TimelineClip, Timeline } from '../../src/renderer/src/components/editor/types'
+import type { MediaSource, TimelineClip, Timeline, ClipTransform, BlendMode } from '../../src/renderer/src/components/editor/types'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1114,6 +1114,130 @@ describe('editorStore', () => {
       expect(state().selectedClipIds).toEqual([])
       expect(state().history.currentIndex).toBe(0)
       expect(state().clipboard).toEqual([])
+    })
+  })
+
+  // =========================================================================
+  // Spatial Compositing
+  // =========================================================================
+
+  describe('Spatial Compositing', () => {
+    beforeEach(() => {
+      addDefaultSource()
+      addClip(0, 0, 100)
+    })
+
+    function clipId(): string {
+      return state().timeline.clips[0].id
+    }
+
+    describe('setClipTransform', () => {
+      it('sets a partial transform on a clip', () => {
+        state().setClipTransform(clipId(), { x: 100, y: 200 })
+        const clip = state().timeline.clips[0]
+        expect(clip.transform).toBeDefined()
+        expect(clip.transform!.x).toBe(100)
+        expect(clip.transform!.y).toBe(200)
+        // defaults filled in
+        expect(clip.transform!.scaleX).toBe(1)
+        expect(clip.transform!.opacity).toBe(1)
+        expect(clip.transform!.anchorX).toBe(0.5)
+      })
+
+      it('merges with existing transform', () => {
+        state().setClipTransform(clipId(), { x: 50, scaleX: 2 })
+        state().setClipTransform(clipId(), { rotation: 45 })
+        const t = state().timeline.clips[0].transform!
+        expect(t.x).toBe(50)
+        expect(t.scaleX).toBe(2)
+        expect(t.rotation).toBe(45)
+      })
+
+      it('pushes history', () => {
+        const before = state().history.currentIndex
+        state().setClipTransform(clipId(), { opacity: 0.5 })
+        expect(state().history.currentIndex).toBe(before + 1)
+      })
+
+      it('ignores non-existent clip', () => {
+        state().setClipTransform('no-such-clip', { x: 999 })
+        expect(state().timeline.clips[0].transform).toBeUndefined()
+      })
+    })
+
+    describe('addKeyframe', () => {
+      const fullTransform: ClipTransform = {
+        x: 100, y: 200, scaleX: 1.5, scaleY: 1.5,
+        rotation: 30, anchorX: 0.5, anchorY: 0.5, opacity: 0.8
+      }
+
+      it('adds a keyframe to a clip', () => {
+        state().addKeyframe(clipId(), 10, fullTransform)
+        const kfs = state().timeline.clips[0].keyframes!
+        expect(kfs).toHaveLength(1)
+        expect(kfs[0].frame).toBe(10)
+        expect(kfs[0].transform.x).toBe(100)
+        expect(kfs[0].easing).toBe('linear')
+      })
+
+      it('replaces keyframe at same frame', () => {
+        state().addKeyframe(clipId(), 10, fullTransform)
+        const updated = { ...fullTransform, x: 999 }
+        state().addKeyframe(clipId(), 10, updated, 'ease-in')
+        const kfs = state().timeline.clips[0].keyframes!
+        expect(kfs).toHaveLength(1)
+        expect(kfs[0].transform.x).toBe(999)
+        expect(kfs[0].easing).toBe('ease-in')
+      })
+
+      it('keeps keyframes sorted by frame', () => {
+        state().addKeyframe(clipId(), 50, fullTransform)
+        state().addKeyframe(clipId(), 10, fullTransform)
+        state().addKeyframe(clipId(), 30, fullTransform)
+        const kfs = state().timeline.clips[0].keyframes!
+        expect(kfs.map((k) => k.frame)).toEqual([10, 30, 50])
+      })
+    })
+
+    describe('removeKeyframe', () => {
+      const tf: ClipTransform = {
+        x: 0, y: 0, scaleX: 1, scaleY: 1,
+        rotation: 0, anchorX: 0.5, anchorY: 0.5, opacity: 1
+      }
+
+      it('removes a keyframe by frame number', () => {
+        state().addKeyframe(clipId(), 10, tf)
+        state().addKeyframe(clipId(), 20, tf)
+        state().removeKeyframe(clipId(), 10)
+        const kfs = state().timeline.clips[0].keyframes!
+        expect(kfs).toHaveLength(1)
+        expect(kfs[0].frame).toBe(20)
+      })
+
+      it('clears keyframes array when last one removed', () => {
+        state().addKeyframe(clipId(), 10, tf)
+        state().removeKeyframe(clipId(), 10)
+        expect(state().timeline.clips[0].keyframes).toBeUndefined()
+      })
+    })
+
+    describe('setClipBlendMode', () => {
+      it('sets blend mode on a clip', () => {
+        state().setClipBlendMode(clipId(), 'multiply')
+        expect(state().timeline.clips[0].blendMode).toBe('multiply')
+      })
+
+      it('changes blend mode', () => {
+        state().setClipBlendMode(clipId(), 'screen')
+        state().setClipBlendMode(clipId(), 'overlay')
+        expect(state().timeline.clips[0].blendMode).toBe('overlay')
+      })
+
+      it('pushes history', () => {
+        const before = state().history.currentIndex
+        state().setClipBlendMode(clipId(), 'add')
+        expect(state().history.currentIndex).toBe(before + 1)
+      })
     })
   })
 
