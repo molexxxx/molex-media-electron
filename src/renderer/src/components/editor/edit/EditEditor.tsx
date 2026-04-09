@@ -13,6 +13,7 @@ import { Timeline } from './Timeline'
 import { ExportDialog } from './ExportDialog'
 import { Preview } from './Preview'
 import { ClipInspector } from './ClipInspector'
+import { TransformInspector } from '../inspect/TransformInspector'
 import { formatTimecode } from '../shared/TimeDisplay'
 
 /** Breakpoint for auto-collapsing source bin */
@@ -29,6 +30,7 @@ export function EditEditor(): React.JSX.Element {
   const [sourceBinWidth, setSourceBinWidth] = useState(220)
   const [sourceBinCollapsed, setSourceBinCollapsed] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [transformPanelOpen, setTransformPanelOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -125,27 +127,52 @@ export function EditEditor(): React.JSX.Element {
         )}
 
         {/* Preview area */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 min-h-0">
-            <Preview />
+        <div className="flex-1 flex min-w-0 relative">
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 min-h-0">
+              <Preview />
+            </div>
+            {/* Controls bar under preview */}
+            <div className="flex items-center justify-between px-2 py-1 border-t border-white/5">
+              <button
+                onClick={() => setSourceBinCollapsed(!sourceBinCollapsed)}
+                title={sourceBinCollapsed ? 'Show source bin' : 'Hide source bin'}
+                className="text-[10px] text-surface-500 hover:text-surface-300 px-2 py-1 border border-white/10 rounded transition-colors min-h-[32px]"
+              >
+                {sourceBinCollapsed ? 'Show Sources' : 'Hide Sources'}
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTransformPanelOpen(!transformPanelOpen)}
+                  title={transformPanelOpen ? 'Hide transform panel' : 'Show transform panel'}
+                  className={`text-[10px] px-2 py-1 border rounded transition-colors min-h-[32px] ${
+                    transformPanelOpen
+                      ? 'text-accent-200 border-accent-500/30 bg-accent-500/15'
+                      : 'text-surface-500 hover:text-surface-300 border-white/10'
+                  }`}
+                >
+                  Transform
+                </button>
+                <button
+                  onClick={() => setExportOpen(true)}
+                  title="Export timeline"
+                  className="px-3 py-1.5 text-[11px] rounded bg-accent-500/15 text-accent-200 hover:bg-accent-500/25 transition-colors border border-accent-500/20 min-h-[32px]"
+                >
+                  Export
+                </button>
+              </div>
+            </div>
           </div>
-          {/* Controls bar under preview */}
-          <div className="flex items-center justify-between px-2 py-1 border-t border-white/5">
-            <button
-              onClick={() => setSourceBinCollapsed(!sourceBinCollapsed)}
-              title={sourceBinCollapsed ? 'Show source bin' : 'Hide source bin'}
-              className="text-[10px] text-surface-500 hover:text-surface-300 px-2 py-1 border border-white/10 rounded transition-colors min-h-[32px]"
-            >
-              {sourceBinCollapsed ? 'Show Sources' : 'Hide Sources'}
-            </button>
-            <button
-              onClick={() => setExportOpen(true)}
-              title="Export timeline"
-              className="px-3 py-1.5 text-[11px] rounded bg-accent-500/15 text-accent-200 hover:bg-accent-500/25 transition-colors border border-accent-500/20 min-h-[32px]"
-            >
-              Export
-            </button>
-          </div>
+
+          {/* Transform Inspector panel (right sidebar) */}
+          {transformPanelOpen && !isMobile && (
+            <div className="w-60 shrink-0 border-l border-white/5 overflow-y-auto bg-surface-900/80">
+              <div className="p-2">
+                <h3 className="text-[10px] font-semibold text-surface-400 uppercase tracking-wide mb-2">Spatial Transform</h3>
+                <TransformInspector />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

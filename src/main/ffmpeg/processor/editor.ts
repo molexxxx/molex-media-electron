@@ -29,6 +29,35 @@ export interface ExportSource {
   durationSeconds: number
 }
 
+export interface ExportClipTransform {
+  x: number
+  y: number
+  scaleX: number
+  scaleY: number
+  rotation: number
+  anchorX: number
+  anchorY: number
+  opacity: number
+}
+
+export type ExportEasingFunction = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out'
+
+export interface ExportTransformKeyframe {
+  frame: number
+  transform: ExportClipTransform
+  easing: ExportEasingFunction
+}
+
+export type ExportBlendMode =
+  | 'normal'
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'add'
+  | 'difference'
+
 export interface ExportClip {
   id: string
   sourceId: string
@@ -40,6 +69,11 @@ export interface ExportClip {
   volume: number // 0–2
   pan: number // -1 (left) to 1 (right)
   speed: number // 1.0 = normal
+  transform?: ExportClipTransform
+  keyframes?: ExportTransformKeyframe[]
+  blendMode?: ExportBlendMode
+  width?: number   // source width (needed for transform calculations)
+  height?: number  // source height (needed for transform calculations)
 }
 
 export interface ExportTrack {
@@ -140,6 +174,216 @@ function trimClipsToRange(
         sourceOut: c.sourceOut - srcTrimEnd
       }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Spatial transform helpers
+// ---------------------------------------------------------------------------
+
+/** FFmpeg blend mode mapping. 'normal' uses standard overlay (no blend filter needed). */
+const FFMPEG_BLEND_MAP: Record<ExportBlendMode, string> = {
+  normal: '',
+  multiply: 'multiply',
+  screen: 'screen',
+  overlay: 'overlay',
+  darken: 'darken',
+  lighten: 'lighten',
+  add: 'addition',
+  difference: 'difference'
+}
+
+/** Easing function for keyframe interpolation (mirrored from renderer). */
+function applyEasing(t: number, easing: ExportEasingFunction): number {
+  switch (easing) {
+    case 'linear': return t
+    case 'ease-in': return t * t
+    case 'ease-out': return t * (2 - t)
+    case 'ease-in-out': return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+  }
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+function lerpAngle(a: number, b: number, t: number): number {
+  let diff = ((b - a + 180) % 360) - 180
+  if (diff < -180) diff += 360
+  return a + diff * t
+}
+
+/**
+ * Check whether a transform is the identity (centered, full-size, no rotation, full opacity).
+ */
+function isIdentityTransform(t: ExportClipTransform, sourceW: number, sourceH: number, outW: number, outH: number): boolean {
+  const fitScale = Math.min(outW / sourceW, outH / sourceH)
+  return (
+    Math.abs(t.x - outW / 2) < 0.5 &&
+    Math.abs(t.y - outH / 2) < 0.5 &&
+    Math.abs(t.scaleX - fitScale) < 0.001 &&
+    Math.abs(t.scaleY - fitScale) < 0.001 &&
+    Math.abs(t.rotation) < 0.01 &&
+    Math.abs(t.anchorX - 0.5) < 0.001 &&
+    Math.abs(t.anchorY - 0.5) < 0.001 &&
+    t.opacity >= 0.999
+  )
+}
+
+/**
+ * Compute the size of a rotated bounding box.
+ */
+function computeRotatedSize(w: number, h: number, rotDeg: number): { rw: number; rh: number } {
+  const rad = Math.abs(rotDeg * Math.PI / 180)
+  const cos = Math.abs(Math.cos(rad))
+  const sin = Math.abs(Math.sin(rad))
+  return {
+    rw: Math.ceil(w * cos + h * sin),
+    rh: Math.ceil(w * sin + h * cos)
+  }
+}
+
+/**
+ * Build per-clip transform filters: scale → rotate → opacity → (produces a label ready for overlay).
+ * Returns the filter strings and the output label, plus the dimensions of the result.
+ */
+function buildClipTransformFilters(
+  transform: ExportClipTransform,
+  sourceW: number,
+  sourceH: number,
+  inputLabel: string,
+  labelFn: () => string
+): { filters: string[]; outputLabel: string; resultW: number; resultH: number } {
+  const filters: string[] = []
+  let current = inputLabel
+
+  const scaledW = Math.round(sourceW * transform.scaleX)
+  const scaledH = Math.round(sourceH * transform.scaleY)
+
+  // 1. Scale (if not 1:1)
+  if (Math.abs(transform.scaleX - 1) > 0.001 || Math.abs(transform.scaleY - 1) > 0.001) {
+    const out = labelFn()
+    // Force even dimensions for encoder compatibility
+    const w = scaledW % 2 === 0 ? scaledW : scaledW + 1
+    const h = scaledH % 2 === 0 ? scaledH : scaledH + 1
+    filters.push(`[${current}]scale=${w}:${h}:flags=lanczos[${out}]`)
+    current = out
+  }
+
+  // 2. Rotation (if non-zero)
+  let finalW = scaledW
+  let finalH = scaledH
+  if (Math.abs(transform.rotation) > 0.01) {
+    const out = labelFn()
+    const rad = transform.rotation * Math.PI / 180
+    const { rw, rh } = computeRotatedSize(scaledW, scaledH, transform.rotation)
+    finalW = rw
+    finalH = rh
+    filters.push(
+      `[${current}]format=rgba,rotate=${rad.toFixed(6)}:ow=rotw(${rad.toFixed(6)}):oh=roth(${rad.toFixed(6)}):c=0x00000000:bilinear=1[${out}]`
+    )
+    current = out
+  }
+
+  // 3. Opacity (if < 1.0)
+  if (transform.opacity < 0.999) {
+    const out = labelFn()
+    filters.push(
+      `[${current}]format=rgba,colorchannelmixer=aa=${transform.opacity.toFixed(4)}[${out}]`
+    )
+    current = out
+  }
+
+  return { filters, outputLabel: current, resultW: finalW, resultH: finalH }
+}
+
+/**
+ * Compute the overlay x:y position in output space.
+ * (transform.x, transform.y) is the CENTER position of the clip.
+ */
+function computeOverlayPos(
+  transform: ExportClipTransform,
+  overlayW: number,
+  overlayH: number
+): { x: number; y: number } {
+  return {
+    x: Math.round(transform.x - overlayW / 2),
+    y: Math.round(transform.y - overlayH / 2)
+  }
+}
+
+/**
+ * Generate a piecewise linear FFmpeg expression for an animated property.
+ * Uses `if(between(t,...), ...)` segments with `eval=frame`.
+ * For v1, non-linear easing is approximated by subdividing into short linear segments (10 subdivisions each).
+ */
+function buildAnimatedExpr(
+  keyframes: ExportTransformKeyframe[],
+  property: keyof ExportClipTransform,
+  fps: number,
+  clipStartFrame: number,
+  isAngle: boolean = false
+): string {
+  if (keyframes.length === 0) return '0'
+  if (keyframes.length === 1) return String(keyframes[0].transform[property])
+
+  const segments: string[] = []
+
+  for (let i = 0; i < keyframes.length - 1; i++) {
+    const left = keyframes[i]
+    const right = keyframes[i + 1]
+    const tStart = framesToSec(left.frame + clipStartFrame, fps)
+    const tEnd = framesToSec(right.frame + clipStartFrame, fps)
+    const vStart = left.transform[property]
+    const vEnd = right.transform[property]
+
+    if (left.easing === 'linear' && !isAngle) {
+      // Simple linear: value = vStart + (vEnd - vStart) * clamp((t - tStart) / (tEnd - tStart), 0, 1)
+      const range = tEnd - tStart
+      if (range > 0) {
+        segments.push(
+          `if(between(t,${sec(tStart)},${sec(tEnd)}),${vStart}+(${vEnd - vStart})*min(max((t-${sec(tStart)})/${sec(range)},0),1)`
+        )
+      }
+    } else {
+      // Non-linear or angle: subdivide into N short linear segments
+      const N = 10
+      for (let j = 0; j < N; j++) {
+        const t0Frac = j / N
+        const t1Frac = (j + 1) / N
+        const eased0 = applyEasing(t0Frac, left.easing)
+        const eased1 = applyEasing(t1Frac, left.easing)
+        const v0 = isAngle
+          ? lerpAngle(vStart as number, vEnd as number, eased0)
+          : lerp(vStart as number, vEnd as number, eased0)
+        const v1 = isAngle
+          ? lerpAngle(vStart as number, vEnd as number, eased1)
+          : lerp(vStart as number, vEnd as number, eased1)
+        const segStart = tStart + t0Frac * (tEnd - tStart)
+        const segEnd = tStart + t1Frac * (tEnd - tStart)
+        const segRange = segEnd - segStart
+        if (segRange > 0) {
+          segments.push(
+            `if(between(t,${sec(segStart)},${sec(segEnd)}),${v0.toFixed(4)}+(${(v1 - v0).toFixed(4)})*min(max((t-${sec(segStart)})/${sec(segRange)},0),1)`
+          )
+        }
+      }
+    }
+  }
+
+  // Clamp: before first keyframe → first value, after last → last value
+  const firstVal = keyframes[0].transform[property]
+  const lastVal = keyframes[keyframes.length - 1].transform[property]
+  const firstT = framesToSec(keyframes[0].frame + clipStartFrame, fps)
+
+  let expr = `if(lt(t,${sec(firstT)}),${firstVal},`
+  for (const seg of segments) {
+    expr += seg + ','
+  }
+  expr += String(lastVal)
+  // Close all ifs
+  expr += ')'.repeat(segments.length + 1)
+
+  return expr
 }
 
 // ---------------------------------------------------------------------------
@@ -328,10 +572,174 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
   // Build per-track filter graphs
   const filters: string[] = []
 
-  const vLabels: string[] = []
-  for (const t of vTracks) {
-    const l = buildVideoTrack(t, active, sourceById, inputMap, filters, fps, outFps, w, h, label)
-    if (l) vLabels.push(l)
+  // Check if any clip has a spatial transform
+  const hasSpatialTransforms = active.some((c) => {
+    if (!c.transform) return false
+    const src = sourceById.get(c.sourceId)
+    if (!src) return false
+    return !isIdentityTransform(c.transform, src.width, src.height, w, h)
+  })
+  const hasKeyframes = active.some((c) => c.keyframes && c.keyframes.length > 0)
+  const hasBlendModes = active.some((c) => c.blendMode && c.blendMode !== 'normal')
+  const useSpatialCompositing = hasSpatialTransforms || hasKeyframes || hasBlendModes
+
+  let vOut: string | null = null
+
+  if (useSpatialCompositing) {
+    // === Spatial compositing path ===
+    // Create black background at output resolution for the full timeline duration
+    const totalDurSec = getExportDurationSeconds(req)
+    const bgLabel = label()
+    filters.push(`color=c=black:s=${w}x${h}:d=${sec(totalDurSec)}:r=${outFps}[${bgLabel}]`)
+    let base = bgLabel
+
+    // Collect all video clips across all visible video tracks, sorted by track index (bottom→top) then timeline position
+    const allVideoClips: { clip: ExportClip; track: ExportTrack }[] = []
+    for (const t of vTracks) {
+      const trackClips = active
+        .filter((c) => c.trackId === t.id)
+        .sort((a, b) => a.timelineStart - b.timelineStart)
+      for (const c of trackClips) {
+        allVideoClips.push({ clip: c, track: t })
+      }
+    }
+
+    // Overlay each clip onto the base with its transform
+    for (const { clip } of allVideoClips) {
+      const src = sourceById.get(clip.sourceId)
+      if (!src || src.width === 0 || src.height === 0) continue
+      const idx = inputMap.get(src.filePath)
+      if (idx == null) continue
+
+      const inSec = framesToSec(clip.sourceIn, src.frameRate)
+      const outSec = framesToSec(clip.sourceOut, src.frameRate)
+      const clipStartSec = framesToSec(clip.timelineStart, fps)
+      const clipDurSec = (outSec - inSec) / clip.speed
+
+      // Trim + speed
+      const trimLabel = label()
+      let chain = `[${idx}:v]trim=start=${sec(inSec)}:end=${sec(outSec)},setpts=PTS-STARTPTS`
+      if (Math.abs(clip.speed - 1) > 0.001) {
+        chain += `,setpts=PTS/${clip.speed}`
+      }
+      chain += `[${trimLabel}]`
+      filters.push(chain)
+
+      let currentLabel = trimLabel
+      const sourceW = clip.width ?? src.width
+      const sourceH = clip.height ?? src.height
+
+      // Determine the transform to apply
+      const transform = clip.transform ?? {
+        x: w / 2, y: h / 2,
+        scaleX: Math.min(w / sourceW, h / sourceH),
+        scaleY: Math.min(w / sourceW, h / sourceH),
+        rotation: 0, anchorX: 0.5, anchorY: 0.5, opacity: 1
+      }
+
+      const hasKF = clip.keyframes && clip.keyframes.length > 0
+
+      if (hasKF) {
+        // Animated transforms: we need eval=frame on the overlay
+        // For animated scale, we scale to max size and use overlay expressions
+        // For v1: apply static intermediate scale, use animated overlay position
+        // Find the max scale across all keyframes for pre-scaling
+        const allKF = clip.keyframes!
+        const maxScaleX = Math.max(transform.scaleX, ...allKF.map((k) => k.transform.scaleX))
+        const maxScaleY = Math.max(transform.scaleY, ...allKF.map((k) => k.transform.scaleY))
+        const preScaleW = Math.round(sourceW * maxScaleX)
+        const preScaleH = Math.round(sourceH * maxScaleY)
+        const preW = preScaleW % 2 === 0 ? preScaleW : preScaleW + 1
+        const preH = preScaleH % 2 === 0 ? preScaleH : preScaleH + 1
+
+        if (preW !== sourceW || preH !== sourceH) {
+          const scaleOut = label()
+          filters.push(`[${currentLabel}]scale=${preW}:${preH}:flags=lanczos[${scaleOut}]`)
+          currentLabel = scaleOut
+        }
+
+        // Opacity animation
+        const hasOpacityAnim = allKF.some((k) => Math.abs(k.transform.opacity - transform.opacity) > 0.001)
+        if (hasOpacityAnim || transform.opacity < 0.999) {
+          const opOut = label()
+          const opExpr = buildAnimatedExpr(allKF, 'opacity', fps, clip.timelineStart)
+          filters.push(`[${currentLabel}]format=rgba,colorchannelmixer=aa='${opExpr}'[${opOut}]`)
+          currentLabel = opOut
+        }
+
+        // Animated overlay position
+        const xExpr = buildAnimatedExpr(allKF, 'x', fps, clip.timelineStart)
+        const yExpr = buildAnimatedExpr(allKF, 'y', fps, clip.timelineStart)
+        const overlayX = `(${xExpr})-(overlay_w/2)`
+        const overlayY = `(${yExpr})-(overlay_h/2)`
+
+        const oOut = label()
+        const blendMode = clip.blendMode ?? 'normal'
+        if (blendMode !== 'normal') {
+          // Pad to output size first, then blend
+          const padOut = label()
+          filters.push(`[${currentLabel}]pad=${w}:${h}:${overlayX}:${overlayY}:color=0x00000000[${padOut}]`)
+          currentLabel = padOut
+          const bm = FFMPEG_BLEND_MAP[blendMode]
+          filters.push(`[${base}][${currentLabel}]blend=all_mode=${bm}:all_opacity=1:shortest=1:eof_action=pass[${oOut}]`)
+        } else {
+          filters.push(
+            `[${base}][${currentLabel}]overlay=x='${overlayX}':y='${overlayY}':eval=frame:format=auto:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
+          )
+        }
+        base = oOut
+      } else {
+        // Static transform: apply scale → rotate → opacity filters, then positioned overlay
+        const { filters: tFilters, outputLabel, resultW, resultH } = buildClipTransformFilters(
+          transform, sourceW, sourceH, currentLabel, label
+        )
+        filters.push(...tFilters)
+        currentLabel = outputLabel
+
+        const pos = computeOverlayPos(transform, resultW, resultH)
+        const oOut = label()
+        const blendMode = clip.blendMode ?? 'normal'
+
+        if (blendMode !== 'normal') {
+          // For non-normal blend modes: pad to output size, then use blend filter
+          const padOut = label()
+          const padX = Math.max(0, pos.x)
+          const padY = Math.max(0, pos.y)
+          filters.push(`[${currentLabel}]pad=${w}:${h}:${padX}:${padY}:color=0x00000000[${padOut}]`)
+          const bm = FFMPEG_BLEND_MAP[blendMode]
+          filters.push(
+            `[${base}][${padOut}]blend=all_mode=${bm}:all_opacity=1:shortest=1:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
+          )
+        } else {
+          filters.push(
+            `[${base}][${currentLabel}]overlay=${pos.x}:${pos.y}:format=auto:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
+          )
+        }
+        base = oOut
+      }
+    }
+
+    vOut = base
+  } else {
+    // === Legacy path (no spatial transforms) — simple scale+pad+concat per track ===
+    const vLabels: string[] = []
+    for (const t of vTracks) {
+      const l = buildVideoTrack(t, active, sourceById, inputMap, filters, fps, outFps, w, h, label)
+      if (l) vLabels.push(l)
+    }
+
+    // Composite video tracks (overlay bottom → top)
+    if (vLabels.length === 1) {
+      vOut = vLabels[0]
+    } else if (vLabels.length > 1) {
+      let base = vLabels[0]
+      for (let i = 1; i < vLabels.length; i++) {
+        const out = label()
+        filters.push(`[${base}][${vLabels[i]}]overlay=0:0:eof_action=pass[${out}]`)
+        base = out
+      }
+      vOut = base
+    }
   }
 
   // Build audio from both audio tracks AND video tracks (embedded audio)
@@ -343,20 +751,6 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
   for (const t of vTracks) {
     const l = buildAudioTrack(t, active, sourceById, inputMap, filters, fps, sr, ch, label)
     if (l) aLabels.push(l)
-  }
-
-  // Composite video tracks (overlay bottom → top)
-  let vOut: string | null = null
-  if (vLabels.length === 1) {
-    vOut = vLabels[0]
-  } else if (vLabels.length > 1) {
-    let base = vLabels[0]
-    for (let i = 1; i < vLabels.length; i++) {
-      const out = label()
-      filters.push(`[${base}][${vLabels[i]}]overlay=0:0:eof_action=pass[${out}]`)
-      base = out
-    }
-    vOut = base
   }
 
   // Mix audio tracks

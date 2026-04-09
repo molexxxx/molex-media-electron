@@ -18,7 +18,11 @@ import type {
   PlaybackState,
   HistoryState,
   HistoryEntry,
-  EditTool
+  EditTool,
+  ClipTransform,
+  TransformKeyframe,
+  EasingFunction,
+  BlendMode
 } from '../components/editor/types'
 
 // ---------------------------------------------------------------------------
@@ -352,6 +356,12 @@ export interface EditorStore {
   setClipVolume: (clipId: string, volume: number) => void
   setClipPan: (clipId: string, pan: number) => void
   toggleClipMuted: (clipId: string) => void
+
+  // Spatial compositing
+  setClipTransform: (clipId: string, transform: Partial<ClipTransform>) => void
+  addKeyframe: (clipId: string, frame: number, transform: ClipTransform, easing?: EasingFunction) => void
+  removeKeyframe: (clipId: string, frame: number) => void
+  setClipBlendMode: (clipId: string, mode: BlendMode) => void
 
   // Clip mode
   clipMode: ClipModeState
@@ -881,6 +891,67 @@ export const useEditorStore = create<EditorStore>((set) => ({
       )
       const newTimeline: Timeline = { ...s.timeline, clips }
       return { timeline: newTimeline, history: pushSnapshot(s.history, 'Toggle mute', newTimeline) }
+    }),
+
+  // === Spatial Compositing ===
+
+  setClipTransform: (clipId, transform) =>
+    set((s) => {
+      const clips = s.timeline.clips.map((c) => {
+        if (c.id !== clipId) return c
+        const existing = c.transform ?? {
+          x: s.project.resolution.width / 2,
+          y: s.project.resolution.height / 2,
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          anchorX: 0.5,
+          anchorY: 0.5,
+          opacity: 1
+        }
+        return { ...c, transform: { ...existing, ...transform } }
+      })
+      const newTimeline: Timeline = { ...s.timeline, clips }
+      return { timeline: newTimeline, history: pushSnapshot(s.history, 'Set transform', newTimeline) }
+    }),
+
+  addKeyframe: (clipId, frame, transform, easing = 'linear') =>
+    set((s) => {
+      const clips = s.timeline.clips.map((c) => {
+        if (c.id !== clipId) return c
+        const keyframes = [...(c.keyframes ?? [])]
+        const existingIdx = keyframes.findIndex((k) => k.frame === frame)
+        const kf: TransformKeyframe = { frame, transform, easing }
+        if (existingIdx >= 0) {
+          keyframes[existingIdx] = kf
+        } else {
+          keyframes.push(kf)
+          keyframes.sort((a, b) => a.frame - b.frame)
+        }
+        return { ...c, keyframes }
+      })
+      const newTimeline: Timeline = { ...s.timeline, clips }
+      return { timeline: newTimeline, history: pushSnapshot(s.history, 'Add keyframe', newTimeline) }
+    }),
+
+  removeKeyframe: (clipId, frame) =>
+    set((s) => {
+      const clips = s.timeline.clips.map((c) => {
+        if (c.id !== clipId) return c
+        const keyframes = (c.keyframes ?? []).filter((k) => k.frame !== frame)
+        return { ...c, keyframes: keyframes.length > 0 ? keyframes : undefined }
+      })
+      const newTimeline: Timeline = { ...s.timeline, clips }
+      return { timeline: newTimeline, history: pushSnapshot(s.history, 'Remove keyframe', newTimeline) }
+    }),
+
+  setClipBlendMode: (clipId, mode) =>
+    set((s) => {
+      const clips = s.timeline.clips.map((c) =>
+        c.id === clipId ? { ...c, blendMode: mode } : c
+      )
+      const newTimeline: Timeline = { ...s.timeline, clips }
+      return { timeline: newTimeline, history: pushSnapshot(s.history, 'Set blend mode', newTimeline) }
     }),
 
   // === Clip Mode ===
