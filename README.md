@@ -48,20 +48,28 @@
 
 ### Media Editor
 
-- **Multi-clip Workspace** — Load multiple audio and video clips, each independently probed with format/stream details
+- **NLE Timeline** — Multi-track non-linear editor with V1/A1 tracks, source bin, drag-to-timeline, and frame-accurate editing
+- **7 Edit Types** — Insert, Overwrite, Replace, Ripple Overwrite, Place on Top, Append, and Fit to Fill
+- **4 Trim Types** — Roll, Ripple, Slip, and Slide with context-sensitive cursor near edit points
 - **Trim & Cut** — In/out point editing with two modes: fast (stream-copy, keyframe-aligned) or precise (re-encode, frame-accurate)
 - **Split Clip** — Split at playhead position, split at in/out selection boundaries, or clip-to-selection to trim a clip down to the selected region
 - **Merge / Concatenate** — Combine 2+ trimmed segments into a single file via FFmpeg concat demuxer (fast) or filter_complex (precise)
+- **Spatial Compositing** — Per-clip transforms with position (X/Y), scale (uniform lock), rotation, anchor point, and opacity; interactive canvas preview composites all video layers in real time
+- **Transform Gizmos** — Drag-to-move, corner/edge scale handles (Shift = uniform), rotation handle with 15° snap, and anchor adjustment — all with affine matrix hit-testing on rotated bounding boxes
+- **Keyframe Animation** — Add/remove keyframes per transform property with 4 easing functions (linear, ease-in, ease-out, ease-in-out), angle shortest-path interpolation, and binary search keyframe lookup
+- **8 Blend Modes** — Normal, Multiply, Screen, Overlay, Darken, Lighten, Add, and Difference — applied in both canvas preview and FFmpeg export
+- **Transform Inspector** — Numeric inputs for all spatial properties with drag-to-scrub, keyframe toggle buttons (◆), uniform scale lock, and blend mode dropdown
 - **Replace Audio Track (A2)** — Swap a video's audio with another file while preserving the video stream; inline trim handles on the A2 timeline track with per-track volume and mute controls; drag A2 between clips
 - **GIF Export** — Two-pass palette generation for high-quality GIFs with configurable loop, FPS (1-30), and width
 - **Remux** — Losslessly keep/drop individual streams, edit metadata tags, and set per-stream disposition flags (default, dub, original, comment, lyrics, karaoke, forced, hearing/visual impaired)
 - **Stream Inspector** — Detailed FFprobe viewer with container info, per-stream codec/resolution/channels/sample rate, and metadata editor
-- **Interactive Timeline** — NLE-style timeline with V1, A1, and A2 tracks; draggable scrubber with in/out handles, time markers, and selected-region highlight
-- **Undo / Redo** — 50-level history stack for all clip, trim, split, and A2 operations
-- **Per-clip Controls** — Independent volume slider and mute toggle for each clip and each A2 track
-- **Playback Controls** — Volume slider, speed selector (0.25x-2x), and keyboard shortcuts (Space, I, O, R)
+- **Snap System** — Snap-to-edges during drag/trim operations with toggleable snap indicator
+- **Undo / Redo** — 50-level history stack for all clip, trim, split, transform, and keyframe operations
+- **Per-clip Controls** — Independent volume slider, mute toggle, speed adjustment, and spatial transform per clip
+- **Playback Controls** — Volume slider, speed selector (0.25x-2x), and keyboard shortcuts (Space, I, O, R, arrows, J/K/L transport)
 - **Drag-to-reorder** — Visual multi-clip track lane with proportional clip blocks, audio replacement badges, and drag-and-drop sequencing
-- **Video & Waveform Preview** — Native `<video>` for video clips, canvas waveform for audio-only; automatic transcoding for non-browser formats
+- **Video & Waveform Preview** — Canvas 2D composited preview for multi-layer spatial transforms; native `<video>` for single-clip; canvas waveform for audio-only
+- **FFmpeg Spatial Export** — Per-clip filter chains: scale → rotate → opacity → overlay positioning with animated keyframe expressions via `eval=frame`; blend mode support via FFmpeg blend filters
 - **7 Output Formats** — Video: MP4, MKV, WebM, AVI, MOV, TS, GIF — Audio: MP3, WAV, FLAC, OGG, M4A, AAC, Opus
 
 ### Media Player
