@@ -93,7 +93,7 @@ describe('normalizeFile', () => {
     mockProbeMedia.mockResolvedValue({ ...sampleProbe, audioStreams: [] })
     const onProgress = vi.fn()
 
-    // runCommand for analysis would not be needed since we error before
+    // runCommand for analysis would not be needed since it errors before
     const result = await normalizeFile(makeTask(), onProgress)
     expect(result.status).toBe('error')
     expect(result.error).toContain('No audio')

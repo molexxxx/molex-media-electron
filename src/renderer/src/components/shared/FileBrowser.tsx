@@ -296,7 +296,7 @@ export function FileBrowser({
           </button>
         </div>
 
-        {/* Horizontal locations strip — visible only on narrow viewports */}
+        {/* Horizontal locations strip - visible only on narrow viewports */}
         <div className="flex min-[480px]:hidden items-center gap-1 px-2 py-1.5 border-b border-white/5 shrink-0 overflow-x-auto scrollbar-thin bg-surface-950/40">
           {knownFolders.map((folder) => (
             <button
@@ -318,7 +318,7 @@ export function FileBrowser({
         </div>
 
         <div className="flex flex-1 min-h-0">
-          {/* Sidebar: known locations — hidden on narrow viewports */}
+          {/* Sidebar: known locations - hidden on narrow viewports */}
           <div className="hidden min-[480px]:block w-36 min-[500px]:w-40 shrink-0 border-r border-white/5 overflow-y-auto scrollbar-thin bg-surface-950/40 py-1.5">
             {knownFolders.map((folder) => (
               <button

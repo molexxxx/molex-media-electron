@@ -10,7 +10,7 @@
  *
  * Strategy:
  *   1. If the source audio codec is already browser-decodable, **remux**
- *      (stream-copy) into a matching container — effectively instant.
+ *      (stream-copy) into a matching container - effectively instant.
  *   2. Otherwise **transcode** to Opus in a WebM container (small, fast,
  *      universally supported in Chromium).
  */
@@ -30,7 +30,7 @@ import { runCommand } from './runner'
  * Audio codecs Chromium can decode natively.
  *
  * For codecs that need transcoding or remuxing out of a video container,
- * we prefer **WebM** as the output container because:
+ * Prefer **WebM** as the output container because:
  *   - Duration is stored in the Segment header (no end-of-file seek)
  *   - Chromium has native WebM demuxing (no plugin needed)
  *   - Cues (seek index) can be placed near the start
@@ -65,7 +65,7 @@ const NATIVE_CODEC_MAP: Record<string, { ext: string; codec: string }> = {
  * custom `media://` protocol without needing FFmpeg extraction.
  *
  * Video containers (MP4, MOV, WebM-with-video, MKV, AVI …) are
- * intentionally excluded — even though Chromium *can* decode MP4,
+ * intentionally excluded - even though Chromium *can* decode MP4,
  * serving multi-GB video files through a custom protocol causes
  * PIPELINE_ERROR_READ on seek.  Instead, FFmpeg extracts just the
  * audio stream into a lightweight file.
@@ -82,7 +82,7 @@ function getTempDir(): string {
     playbackTempDir = path.join(app.getPath('temp'), 'molex-playback')
     fs.mkdirSync(playbackTempDir, { recursive: true })
     // Clean up stale .ogg cache files from the previous OGG-based extraction
-    // strategy — these are now replaced by .webm files.
+    // strategy - these are now replaced by .webm files.
     try {
       for (const f of fs.readdirSync(playbackTempDir)) {
         if (f.endsWith('.ogg')) {
@@ -106,7 +106,7 @@ const extractionCache = new Map<string, string>()
 
 /**
  * Returns `true` if the file is a pure audio format that Chromium can
- * play directly — no FFmpeg extraction needed.
+ * play directly - no FFmpeg extraction needed.
  */
 export function isBrowserNative(filePath: string): boolean {
   return DIRECT_AUDIO_EXTS.has(path.extname(filePath).toLowerCase())
@@ -125,13 +125,13 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
   // Already playable → skip extraction
   if (isBrowserNative(filePath)) return filePath
 
-  // Check cache — but validate the file still exists and isn't empty
+  // Check cache - but validate the file still exists and isn't empty
   const cached = extractionCache.get(filePath)
   if (cached) {
     if (fs.existsSync(cached)) {
       const cachedStat = fs.statSync(cached)
       if (cachedStat.size > 0) return cached
-      // Cached file is empty/corrupt — remove it
+      // Cached file is empty/corrupt - remove it
       try { fs.unlinkSync(cached) } catch { /* best effort */ }
       logger.warn(`Playback: removed corrupt memory-cached file ${path.basename(cached)}`)
     }
@@ -165,7 +165,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
       logger.info(`Playback: remuxing ${codec} → .${outExt} (stream copy)`)
     }
   } else {
-    // Unknown codec — transcode to Opus in WebM container
+    // Unknown codec - transcode to Opus in WebM container
     outExt = 'webm'
     ffmpegCodecArgs = ['-c:a', 'libopus', '-b:a', '192k']
     logger.info(`Playback: transcoding ${codec} → Opus/WebM`)
@@ -173,7 +173,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
 
   const outPath = path.join(getTempDir(), `${baseName}_${hash}.${outExt}`)
 
-  // If the output already exists on disk (from a previous session), use it —
+  // If the output already exists on disk (from a previous session), use it -
   // but only if it's non-empty (a zero-byte file means a previous extraction
   // was interrupted and should be retried).
   if (fs.existsSync(outPath)) {
@@ -224,7 +224,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
  * Extract audio starting at a specific timestamp.
  *
  * Uses `-ss` (input seeking) before `-i` so FFmpeg skips directly to
- * the target position without decoding the skipped portion — this is
+ * the target position without decoding the skipped portion - this is
  * nearly instant even for multi-GB video files.
  *
  * The resulting file starts at t=0 from the caller's perspective;
@@ -234,7 +234,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
  * automatically to avoid filling the temp directory.
  */
 export async function prepareForPlaybackAt(filePath: string, seekTime: number): Promise<string> {
-  // Browser-native audio files don't go through extraction — seeking is
+  // Browser-native audio files don't go through extraction - seeking is
   // handled directly by the media element and the custom protocol.
   if (isBrowserNative(filePath)) return filePath
 
@@ -274,7 +274,7 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
     }
   } catch { /* best effort */ }
 
-  // Reuse if we already extracted at this exact position
+  // Reuse if already extracted at this exact position
   if (fs.existsSync(outPath)) {
     const s = fs.statSync(outPath)
     if (s.size > 0) return outPath
@@ -287,7 +287,7 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
 
   const args = [
     '-y',
-    '-ss', String(seekTime), // Input seeking — fast, skips before decoding
+    '-ss', String(seekTime), // Input seeking - fast, skips before decoding
     '-i', filePath,
     '-vn',
     '-map', '0:a:0',
@@ -312,7 +312,7 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
 /**
  * Clear the extraction cache for a specific file.
  * Called when the player needs to force re-extraction (e.g. after a
- * playback error — the cached temp file may be corrupt).
+ * playback error - the cached temp file may be corrupt).
  */
 export function clearPlaybackCacheFor(filePath: string): void {
   const cached = extractionCache.get(filePath)

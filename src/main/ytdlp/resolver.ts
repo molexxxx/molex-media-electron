@@ -76,7 +76,7 @@ function isSingleVideoUrl(url: string): boolean {
 /**
  * Resolve a URL into an array of playlist entries.
  *
- * For single videos the expensive `flatPlaylist` call is skipped —
+ * For single videos the expensive `flatPlaylist` call is skipped -
  * only basic metadata is fetched.  For playlists all entries are
  * resolved in a single request.
  */
@@ -189,7 +189,7 @@ export async function getAudioStreamUrl(
       return { audioUrl, title, duration }
     }
 
-    // All formats are HLS — download to a local temp file as fallback
+    // All formats are HLS - download to a local temp file as fallback
     logger.info(`All ${data.formats?.length || 0} formats are HLS for "${title}", downloading audio...`)
     const localPath = await downloadAudioToFile(videoUrl, cookieFlags)
     const fileUrl = `file:///${localPath.replace(/\\/g, '/')}`
@@ -215,7 +215,7 @@ function pickDirectAudioUrl(data: any): string | null {
     return data.url
   }
 
-  // 2. requested_formats — audio track from a/v split
+  // 2. requested_formats - audio track from a/v split
   if (data.requested_formats) {
     const direct = data.requested_formats.find(
       (f: any) => f.acodec !== 'none' && isDirect(f.url, f.protocol)
@@ -226,7 +226,7 @@ function pickDirectAudioUrl(data: any): string | null {
     }
   }
 
-  // 3. Full formats list — audio-only first
+  // 3. Full formats list - audio-only first
   if (data.formats) {
     const directAudio = data.formats
       .filter((f: any) => f.acodec !== 'none' && f.vcodec === 'none' && isDirect(f.url, f.protocol))
@@ -255,7 +255,7 @@ function pickDirectAudioUrl(data: any): string | null {
 }
 
 /* ------------------------------------------------------------------ */
-/*  HLS fallback — download to temp file                               */
+/*  HLS fallback - download to temp file                               */
 /* ------------------------------------------------------------------ */
 
 const AUDIO_CACHE_DIR = path.join(os.tmpdir(), 'molex-audio-cache')

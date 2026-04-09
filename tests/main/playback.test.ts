@@ -210,7 +210,7 @@ describe('prepareForPlayback', () => {
   it('returns cached file on repeat call', async () => {
     vi.mocked(fs.existsSync).mockReturnValueOnce(false) // temp dir ogg cleanup
     const first = await prepareForPlayback('/video/movie.mkv')
-    // Second call — the file is now in memory cache; mock existsSync to return true for it
+    // Second call - the file is now in memory cache; mock existsSync to return true for it
     vi.mocked(fs.existsSync).mockReturnValue(true)
     vi.mocked(fs.statSync).mockReturnValue({ size: 5000 } as any)
     const second = await prepareForPlayback('/video/movie.mkv')
@@ -222,7 +222,7 @@ describe('prepareForPlayback', () => {
   it('re-extracts when cached file is empty (corrupt)', async () => {
     // First call extracts
     await prepareForPlayback('/video/movie.avi')
-    // Second call — cached file exists but is empty
+    // Second call - cached file exists but is empty
     vi.mocked(fs.existsSync).mockReturnValue(true)
     vi.mocked(fs.statSync).mockReturnValue({ size: 0 } as any)
     await prepareForPlayback('/video/movie.avi')
@@ -232,7 +232,7 @@ describe('prepareForPlayback', () => {
   it('re-extracts when memory-cached file no longer exists on disk', async () => {
     // First call extracts and caches
     await prepareForPlayback('/video/vanished.mkv')
-    // Second call — cached path is in memory but file was deleted
+    // Second call - cached path is in memory but file was deleted
     vi.mocked(fs.existsSync).mockReturnValue(false)
     await prepareForPlayback('/video/vanished.mkv')
     expect(mockRunCommand).toHaveBeenCalledTimes(2)
@@ -272,7 +272,7 @@ describe('prepareForPlayback', () => {
     vi.mocked(fs.statSync).mockReturnValue({ size: 2048 } as any)
     const result = await prepareForPlayback('/video/clip.mp4')
     expect(result).toMatch(/\.m4a$/)
-    // Should NOT call runCommand — reused from disk
+    // Should NOT call runCommand - reused from disk
     expect(mockRunCommand).not.toHaveBeenCalled()
   })
 
@@ -393,7 +393,7 @@ describe('clearPlaybackCacheFor', () => {
     })
     await prepareForPlayback('/video/cached.mp4')
 
-    // Now clear — the file is in the cache
+    // Now clear - the file is in the cache
     vi.mocked(fs.existsSync).mockReturnValue(true)
     clearPlaybackCacheFor('/video/cached.mp4')
     expect(fs.unlinkSync).toHaveBeenCalled()

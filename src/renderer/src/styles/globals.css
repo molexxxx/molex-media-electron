@@ -186,7 +186,7 @@
 
   /* ---- Modern editor utilities ---- */
 
-  /* Custom range slider — dark themed */
+  /* Custom range slider - dark themed */
   input[type="range"].range-dark {
     -webkit-appearance: none;
     appearance: none;

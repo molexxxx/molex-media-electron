@@ -1,6 +1,6 @@
 /**
  * @module components/settings/tabs/ApplicationSettings
- * @description Application tab — updates, notifications, window behavior, paths, and reset.
+ * @description Application tab - updates, notifications, window behavior, paths, and reset.
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
@@ -224,7 +224,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
               </svg>
               <div className="text-xs text-surface-300 space-y-1">
                 <p className="font-medium text-surface-200">Close {browsers.find((b) => b.name === pendingBrowser)?.label || pendingBrowser} first</p>
-                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process — cookies are cached for 7 days after export.</p>
+                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process - cookies are cached for 7 days after export.</p>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-1">
@@ -232,7 +232,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
                 onClick={confirmCookieExport}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
               >
-                Browser is closed — continue
+                Browser is closed - continue
               </button>
               <button
                 onClick={cancelCookieExport}
@@ -264,8 +264,8 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
         <SettingRow
           label="Cached Cookies"
           description={cookieInfo?.exists
-            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} — refreshes every 7 days`
-            : 'No cookies cached — will export on next YouTube request'}
+            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} - refreshes every 7 days`
+            : 'No cookies cached - will export on next YouTube request'}
         >
           <button
             onClick={handleClearCookies}

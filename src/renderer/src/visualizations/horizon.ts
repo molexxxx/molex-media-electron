@@ -1,6 +1,6 @@
 /**
  * @module visualizations/horizon
- * @description **Horizon** — retro terrain scanner visualization.
+ * @description **Horizon** - retro terrain scanner visualization.
  *
  * A synthwave-inspired landscape with layered mountain ridges driven by
  * frequency data, a perspective grid that scrolls with bass energy,
@@ -57,7 +57,7 @@ export function drawHorizon(
     ctx.fill()
   }
 
-  // Aurora curtains — undulating colour bands in the sky driven by mid/high
+  // Aurora curtains - undulating colour bands in the sky driven by mid/high
   for (let a = 0; a < 3; a++) {
     const auroraY = vanishY * (0.15 + a * 0.2)
     const auroraH = vanishY * 0.18
@@ -76,7 +76,7 @@ export function drawHorizon(
     ctx.fill()
   }
 
-  // Horizon glow — bass reactive
+  // Horizon glow - bass reactive
   const glowGrad = ctx.createRadialGradient(W / 2, vanishY, 0, W / 2, vanishY, W * 0.5)
   const glowHue = 260 + bass * 30 + Math.sin(t * 0.5) * 10
   glowGrad.addColorStop(0, `hsla(${glowHue}, 90%, 50%, ${0.15 + bass * 0.2 + audio.beat * 0.15})`)
@@ -85,7 +85,7 @@ export function drawHorizon(
   ctx.fillStyle = glowGrad
   ctx.fillRect(0, vanishY * 0.3, W, vanishY * 1.4)
 
-  // Terrain layers — each mountain ridge mapped to a distinct audio band.
+  // Terrain layers - each mountain ridge mapped to a distinct audio band.
   // Back-to-front: treble → highMid → mid → lowMid → bass → sub+bass.
   // Front layers have stronger reactivity and amplitude scaling.
   const bandMap: { band: number; gain: number; hueShift: number; freqLo: number; freqHi: number }[] = [
@@ -114,7 +114,7 @@ export function drawHorizon(
     // Per-layer reactivity
     const react = 0.4 + band * gain + loudness * 0.3
 
-    // Beat pulse ripple — energy wave that travels along the ridge on beats
+    // Beat pulse ripple - energy wave that travels along the ridge on beats
     const beatPhase = (t * 3.0 + layer * 0.4) % (Math.PI * 2)
     const beatBoost = audio.isBeat ? 0.25 : 0
 
@@ -152,7 +152,7 @@ export function drawHorizon(
     ctx.fillStyle = `hsla(${layerHue}, ${40 + depth * 20}%, ${layerLight}%, ${layerAlpha})`
     ctx.fill()
 
-    // Inner vertical streaks — face detail that reacts to the band
+    // Inner vertical streaks - face detail that reacts to the band
     if (depth > 0.3) {
       const streakCount = 12 + Math.floor(depth * 10)
       for (let s = 0; s < streakCount; s++) {
@@ -181,7 +181,7 @@ export function drawHorizon(
       ctx.stroke()
     }
 
-    // Inter-layer fog/mist — semi-transparent gradient between layers
+    // Inter-layer fog/mist - semi-transparent gradient between layers
     if (layer > 0 && layer < layers - 1) {
       const fogY = yBase - (H - vanishY) * depth * 0.05
       const fogH = (H - vanishY) * 0.06
@@ -194,7 +194,7 @@ export function drawHorizon(
     }
   }
 
-  // Grid lines on the ground plane — retro perspective grid
+  // Grid lines on the ground plane - retro perspective grid
   const gridRows = 16
   const gridCols = 20
   const groundY = vanishY

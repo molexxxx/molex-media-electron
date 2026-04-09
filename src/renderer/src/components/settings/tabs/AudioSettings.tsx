@@ -1,6 +1,6 @@
 /**
  * @module components/settings/tabs/AudioSettings
- * @description Audio tab — normalization targets (I / TP / LRA) and encoding defaults.
+ * @description Audio tab - normalization targets (I / TP / LRA) and encoding defaults.
  */
 
 import React from 'react'

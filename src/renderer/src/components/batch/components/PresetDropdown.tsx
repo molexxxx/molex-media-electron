@@ -79,7 +79,7 @@ export function PresetDropdown({ categories, activeId, onSelect }: {
         </svg>
       </button>
 
-      {/* Dropdown panel — rendered via portal to escape overflow-hidden */}
+      {/* Dropdown panel - rendered via portal to escape overflow-hidden */}
       {open && pos && createPortal(
         <div ref={panelRef} className="fixed z-[9999] w-[min(340px,calc(100vw-2rem))] max-h-[400px] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in" style={{ top: pos.top, left: pos.left }}>
           {/* Custom option */}

@@ -57,7 +57,7 @@ export default function Dashboard(): React.JSX.Element {
       <div className="mb-4">
         <h1 className="text-xl font-medium text-surface-200 tracking-tight">Dashboard</h1>
         <div className="flex items-center justify-between gap-4 mt-1.5 flex-wrap">
-          <p className="text-xs text-surface-400">Media processing toolkit — audio, video, and everything in between</p>
+          <p className="text-xs text-surface-400">Media processing toolkit - audio, video, and everything in between</p>
           <StatBar stats={[
             { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
             { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-amber-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-amber-400 animate-pulse' : 'bg-surface-600' },
@@ -86,7 +86,7 @@ export default function Dashboard(): React.JSX.Element {
         </div>
       </div>
 
-      {/* Tools — Editor & Player */}
+      {/* Tools - Editor & Player */}
       <div className="flex-1 flex flex-col min-h-0">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Tools</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

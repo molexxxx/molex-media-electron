@@ -17,12 +17,12 @@
  * Band boundaries follow the standard audio engineering split:
  * | Band    | Range        | Typical Content            |
  * |---------|------------- |----------------------------|
- * | sub     | 10 – 65 Hz   | Sub-bass kick thump        |
- * | bass    | 65 – 260 Hz  | Bass guitar, kick body     |
- * | lowMid  | 260 – 500 Hz | Low vocals, guitar body    |
- * | mid     | 500 – 2 kHz  | Vocals, snare              |
- * | highMid | 2 – 6 kHz    | Vocal clarity, hi-hat      |
- * | treble  | 6 – 20 kHz   | Cymbals, air               |
+ * | sub     | 10 - 65 Hz   | Sub-bass kick thump        |
+ * | bass    | 65 - 260 Hz  | Bass guitar, kick body     |
+ * | lowMid  | 260 - 500 Hz | Low vocals, guitar body    |
+ * | mid     | 500 - 2 kHz  | Vocals, snare              |
+ * | highMid | 2 - 6 kHz    | Vocal clarity, hi-hat      |
+ * | treble  | 6 - 20 kHz   | Cymbals, air               |
  */
 export interface AudioFeatures {
   sub: number
@@ -54,7 +54,7 @@ export interface DMTParticle {
   speed: number
   hueOff: number
   size: number
-  /** Depth layer (0-2) — affects speed, size, and opacity. */
+  /** Depth layer (0-2) - affects speed, size, and opacity. */
   layer: number
   brightness: number
 }

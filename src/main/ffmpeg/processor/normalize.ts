@@ -146,7 +146,7 @@ export async function normalizeFile(
 
     logger.info(`Normalizing: ${task.fileName} (${info.audioStreams.length} audio streams, ${formatDuration(totalDuration)})`)
 
-    // Analysis pass — measure all streams
+    // Analysis pass - measure all streams
     const metrics: LoudnessMetrics[] = []
     for (let i = 0; i < info.audioStreams.length; i++) {
       const streamLabel = `Analyzing stream ${i + 1}/${info.audioStreams.length}`
@@ -168,7 +168,7 @@ export async function normalizeFile(
           const streamSlice = 30 / info.audioStreams.length
           const pct = Math.min(streamBase + Math.round((progress.time / totalDuration) * streamSlice), 29)
           task.progress = pct
-          task.message = `${streamLabel} — ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
+          task.message = `${streamLabel} - ${formatDuration(progress.time)} / ${formatDuration(totalDuration)} ${progress.speed ? `@ ${progress.speed}` : ''}`
           onProgress(task)
         }
       })

@@ -1,6 +1,6 @@
 /**
  * @module visualizations/space
- * @description **Space** — deep-space warp-field visualization.
+ * @description **Space** - deep-space warp-field visualization.
  *
  * Features nebula clouds, perspective-projected stars with warp streaks,
  * comets with gradient trails, a central black-hole vortex, an orbiting
@@ -180,7 +180,7 @@ export function drawSpace(
   ctx.fillStyle = bhGrad
   ctx.fill()
 
-  // -- Orbiting debris field — frequency-reactive particle streams --
+  // -- Orbiting debris field - frequency-reactive particle streams --
   for (const d of state.debris) {
     d.angle += d.speed * (1 + bass * 4 + audio.beat * 3 + mid * 1.5)
 

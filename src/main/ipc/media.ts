@@ -35,7 +35,7 @@ export function registerMediaIPC(): void {
   ipcMain.handle('ytdlp:setBrowser', async (_, browserName: string) => {
     try {
       const ok = await setBrowserAndExport(browserName)
-      return { success: ok, error: ok ? null : 'Cookie export failed — is the browser closed?' }
+      return { success: ok, error: ok ? null : 'Cookie export failed - is the browser closed?' }
     } catch (err: any) {
       logger.error(`setBrowser failed: ${err.message}`)
       return { success: false, error: err.message }

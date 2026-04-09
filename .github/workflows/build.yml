@@ -1,5 +1,5 @@
 # -----------------------------------------------------
-# Build — Cross-platform Electron builds
+# Build - Cross-platform Electron builds
 # Runs on every push to main and on PRs (draft artifacts)
 # -----------------------------------------------------
 name: Build

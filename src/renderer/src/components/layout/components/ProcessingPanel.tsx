@@ -14,11 +14,11 @@ import { STATUS_COLORS, STATUS_LABELS } from '../../shared/constants'
 
 function formatPlatform(platform?: string, arch?: string): string {
   const names: Record<string, string> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }
-  return `${names[platform || ''] || platform || '—'} ${arch || ''}`
+  return `${names[platform || ''] || platform || '-'} ${arch || ''}`
 }
 
 function formatBytes(bytes?: number): string {
-  if (!bytes) return '—'
+  if (!bytes) return '-'
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`
 }
 
@@ -87,17 +87,17 @@ function SystemInfoPopover({ anchorRef, onClose }: { anchorRef: React.RefObject<
       <div className="space-y-1">
         <InfoRow label="FFmpeg" value={ffmpegVersion || 'Not installed'} ok={!!ffmpegVersion} />
         <InfoRow label="Platform" value={formatPlatform(systemInfo?.platform, systemInfo?.arch)} />
-        <InfoRow label="CPU Cores" value={String(systemInfo?.cpus || '—')} />
-        <InfoRow label="Workers" value={String(config?.maxWorkers || '—')} />
-        <InfoRow label="Audio Codec" value={config?.audioCodec || '—'} />
-        <InfoRow label="Bitrate" value={config?.audioBitrate || '—'} />
+        <InfoRow label="CPU Cores" value={String(systemInfo?.cpus || '-')} />
+        <InfoRow label="Workers" value={String(config?.maxWorkers || '-')} />
+        <InfoRow label="Audio Codec" value={config?.audioCodec || '-'} />
+        <InfoRow label="Bitrate" value={config?.audioBitrate || '-'} />
         <InfoRow
           label="Target LUFS"
-          value={config ? `I=${config.normalization.I} TP=${config.normalization.TP} LRA=${config.normalization.LRA}` : '—'}
+          value={config ? `I=${config.normalization.I} TP=${config.normalization.TP} LRA=${config.normalization.LRA}` : '-'}
         />
         <InfoRow
           label="Memory"
-          value={systemInfo ? `${formatBytes(systemInfo.freeMemory)} free / ${formatBytes(systemInfo.totalMemory)}` : '—'}
+          value={systemInfo ? `${formatBytes(systemInfo.freeMemory)} free / ${formatBytes(systemInfo.totalMemory)}` : '-'}
         />
       </div>
     </div>
@@ -105,7 +105,7 @@ function SystemInfoPopover({ anchorRef, onClose }: { anchorRef: React.RefObject<
 }
 
 /* ------------------------------------------------------------------ */
-/*  Collapsed Popover — task list panel for collapsed sidebar          */
+/*  Collapsed Popover - task list panel for collapsed sidebar          */
 /* ------------------------------------------------------------------ */
 
 function CollapsedTaskPopover({ anchorRef, onClose }: {
@@ -360,7 +360,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
   /* ---- Expanded sidebar ---- */
   return (
     <div className="mt-auto border-t border-white/5" ref={panelRef}>
-      {/* Status row — clickable to expand */}
+      {/* Status row - clickable to expand */}
       <button
         onClick={() => setShowProcessing((v) => !v)}
         className={`w-full flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-colors group ${
@@ -409,7 +409,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
         </svg>
       </button>
 
-      {/* System info popover anchor — use existing dotRef pattern */}
+      {/* System info popover anchor - use existing dotRef pattern */}
       <button
         ref={dotRef}
         onClick={toggleInfo}
@@ -502,7 +502,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-700">
                   <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
                 </svg>
-                <p className="text-2xs text-surface-600">No tasks — start a batch to see progress here</p>
+                <p className="text-2xs text-surface-600">No tasks - start a batch to see progress here</p>
               </div>
             ) : (
               <div className="py-0.5">

@@ -1,5 +1,5 @@
 # -----------------------------------------------------
-# Auto-merge — Merge passing Dependabot PRs automatically
+# Auto-merge - Merge passing Dependabot PRs automatically
 # -----------------------------------------------------
 name: Auto-merge Dependabot
 

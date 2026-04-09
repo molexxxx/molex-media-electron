@@ -84,7 +84,7 @@ describe('formatElapsed', () => {
 
 describe('pause/resume processing', () => {
   it('starts unpaused', () => {
-    // Clean state — resume to ensure clean
+    // Clean state - resume to ensure clean
     resumeProcessing()
     expect(getIsPaused()).toBe(false)
   })

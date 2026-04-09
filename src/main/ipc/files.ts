@@ -81,6 +81,18 @@ export function registerFilesIPC(): void {
     return result.filePaths[0] || null
   })
 
+  ipcMain.handle('dialog:selectSavePath', async (_, defaultName: string, filters: { name: string; extensions: string[] }[]) => {
+    const config = await getConfig()
+    const defaultDir = config.outputDirectory || ''
+    const defaultPath = defaultDir ? path.join(defaultDir, defaultName) : defaultName
+    const result = await dialog.showSaveDialog({
+      title: 'Export As',
+      defaultPath,
+      filters
+    })
+    return result.canceled ? null : result.filePath || null
+  })
+
   // --- Directory scanning ---
   ipcMain.handle('files:scanDirectory', async (_, dirPath: string) => {
     const config = await getConfig()

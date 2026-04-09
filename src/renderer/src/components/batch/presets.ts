@@ -44,11 +44,12 @@ export interface PresetCategory {
 }
 
 /* ------------------------------------------------------------------ */
-/*  General presets — most commonly used conversions                    */
+/*  General presets - most commonly used conversions                    */
 /* ------------------------------------------------------------------ */
 
 export const GENERAL_PRESETS: ConvertPreset[] = [
-  { id: 'mp4-h264',   label: 'MP4 (H.264/AAC)',     description: 'Universal compatibility — plays everywhere',          icon: 'film', options: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' }},
+
+  { id: 'mp4-h264',   label: 'MP4 (H.264/AAC)',     description: 'Universal compatibility - plays everywhere',          icon: 'film', options: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' }},
   { id: 'mkv-hevc',   label: 'MKV (HEVC/AAC)',       description: 'Smaller files, modern players',                      icon: 'package', options: { outputFormat: 'mkv', videoCodec: 'libx265', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' }},
   { id: 'webm-vp9',   label: 'WebM (VP9/Opus)',      description: 'Web-optimized, royalty-free',                         icon: 'globe', options: { outputFormat: 'webm', videoCodec: 'libvpx-vp9', audioCodec: 'libopus', videoBitrate: '2500k', audioBitrate: '192k', resolution: '', framerate: '' }},
   { id: 'mp3-320',    label: 'MP3 320k',             description: 'High quality audio extract',                          icon: 'music', options: { outputFormat: 'mp3', videoCodec: 'copy', audioCodec: 'libmp3lame', videoBitrate: '', audioBitrate: '320k', resolution: '', framerate: '' }},
@@ -56,7 +57,7 @@ export const GENERAL_PRESETS: ConvertPreset[] = [
 ]
 
 /* ------------------------------------------------------------------ */
-/*  Web / Social presets — sets bitrate, resolution, framerate         */
+/*  Web / Social presets - sets bitrate, resolution, framerate         */
 /* ------------------------------------------------------------------ */
 
 export const WEB_PRESETS: ConvertPreset[] = [
@@ -68,7 +69,7 @@ export const WEB_PRESETS: ConvertPreset[] = [
 ]
 
 /* ------------------------------------------------------------------ */
-/*  Device presets — hardware compatibility targets                    */
+/*  Device presets - hardware compatibility targets                    */
 /* ------------------------------------------------------------------ */
 
 export const DEVICE_PRESETS: ConvertPreset[] = [
@@ -78,7 +79,7 @@ export const DEVICE_PRESETS: ConvertPreset[] = [
 ]
 
 /* ------------------------------------------------------------------ */
-/*  Production presets — archival, editing, broadcast                  */
+/*  Production presets - archival, editing, broadcast                  */
 /* ------------------------------------------------------------------ */
 
 export const PRODUCTION_PRESETS: ConvertPreset[] = [
@@ -154,7 +155,7 @@ export function detectConvertConflicts(options: ConvertOptions): ConflictWarning
 
   /* ---------- WebM ---------- */
   if (fmt === 'webm' && !WEBM_VIDEO_CODECS.has(vc)) {
-    warnings.push({ type: 'error', message: `WebM does not support ${vc} — use VP9 or AV1` })
+    warnings.push({ type: 'error', message: `WebM does not support ${vc} - use VP9 or AV1` })
   }
   if (fmt === 'webm' && !WEBM_AUDIO_CODECS.has(ac)) {
     warnings.push({ type: 'error', message: `WebM requires Opus or Vorbis audio, not ${ac}` })
@@ -162,7 +163,7 @@ export function detectConvertConflicts(options: ConvertOptions): ConflictWarning
 
   /* ---------- FLV ---------- */
   if (fmt === 'flv' && !FLV_VIDEO_CODECS.has(vc)) {
-    warnings.push({ type: 'error', message: `FLV does not support ${vc} — use H.264 or MPEG-4` })
+    warnings.push({ type: 'error', message: `FLV does not support ${vc} - use H.264 or MPEG-4` })
   }
   if (fmt === 'flv' && !FLV_AUDIO_CODECS.has(ac)) {
     warnings.push({ type: 'error', message: `FLV requires AAC or MP3 audio, not ${ac}` })
@@ -178,7 +179,7 @@ export function detectConvertConflicts(options: ConvertOptions): ConflictWarning
 
   /* ---------- OGV ---------- */
   if (fmt === 'ogv' && !OGV_VIDEO_CODECS.has(vc)) {
-    warnings.push({ type: 'error', message: `OGV does not support ${vc} — use Theora or VP9` })
+    warnings.push({ type: 'error', message: `OGV does not support ${vc} - use Theora or VP9` })
   }
   if (fmt === 'ogv' && !OGV_AUDIO_CODECS.has(ac)) {
     warnings.push({ type: 'error', message: `OGV requires Vorbis, Opus, or FLAC audio, not ${ac}` })
@@ -230,10 +231,10 @@ export function detectConvertConflicts(options: ConvertOptions): ConflictWarning
 
   /* ---------- Copy codec restrictions ---------- */
   if (vc === 'copy' && options.resolution) {
-    warnings.push({ type: 'error', message: 'Cannot change resolution when video codec is "Copy" — select a re-encode codec' })
+    warnings.push({ type: 'error', message: 'Cannot change resolution when video codec is "Copy" - select a re-encode codec' })
   }
   if (vc === 'copy' && options.framerate) {
-    warnings.push({ type: 'error', message: 'Cannot change framerate when video codec is "Copy" — select a re-encode codec' })
+    warnings.push({ type: 'error', message: 'Cannot change framerate when video codec is "Copy" - select a re-encode codec' })
   }
   if (vc === 'copy' && options.videoBitrate) {
     warnings.push({ type: 'warning', message: 'Video bitrate is ignored when codec is "Copy"' })

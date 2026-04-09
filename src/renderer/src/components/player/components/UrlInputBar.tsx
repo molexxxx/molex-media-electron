@@ -100,7 +100,7 @@ export function UrlInputBar({
       )}
       {showHistory && urlHistory.length === 0 && (
         <div className="px-3 py-4 text-center text-xs text-surface-500 rounded-lg bg-surface-900/80 border border-white/[0.06]">
-          No history yet — resolved playlists will appear here
+          No history yet - resolved playlists will appear here
         </div>
       )}
     </div>

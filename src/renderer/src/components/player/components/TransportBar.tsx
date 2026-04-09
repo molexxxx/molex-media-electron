@@ -1,6 +1,6 @@
 /**
  * @module components/player/components/TransportBar
- * @description Playback transport controls — seek bar, play/pause, prev/next,
+ * @description Playback transport controls - seek bar, play/pause, prev/next,
  * shuffle, repeat, volume, and now-playing indicator.
  */
 
@@ -75,7 +75,7 @@ export function TransportBar({
 
       {/* Controls row */}
       <div className="flex items-center">
-        {/* Track name — left */}
+        {/* Track name - left */}
         <div className="flex-1 min-w-0 pr-2 hidden sm:block">
           {track ? (
             <span className="text-xs text-surface-300 font-medium truncate block">{track.name}</span>
@@ -142,7 +142,7 @@ export function TransportBar({
           </button>
         </div>
 
-        {/* Volume — right */}
+        {/* Volume - right */}
         <div className="flex-1 flex items-center justify-end gap-2 pl-2 sm:pl-3 min-w-0 group/vol">
           <button
             className="transport-btn w-7 h-7"

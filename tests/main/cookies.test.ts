@@ -32,7 +32,7 @@ vi.mock('../../src/main/ytdlp/binary', () => ({
   baseFlags: (...a: any[]) => mockBaseFlags(...a)
 }))
 
-// We need a fresh module for each test because cookies.ts has module-level state
+// Need a fresh module for each test because cookies.ts has module-level state
 let ensureCookieFlags: typeof import('../../src/main/ytdlp/cookies').ensureCookieFlags
 let withCookieRetry: typeof import('../../src/main/ytdlp/cookies').withCookieRetry
 let getInstalledBrowsers: typeof import('../../src/main/ytdlp/cookies').getInstalledBrowsers
@@ -165,7 +165,7 @@ describe('ytdlp/cookies', () => {
       })
 
       // Re-mock statSync for the file size check inside the catch
-      // We need statSync to throw for freshness but work for the size check
+      // Need statSync to throw for freshness but work for the size check
       let freshChecked = false
       mockStatSync.mockImplementation(() => {
         if (!freshChecked) {
@@ -396,7 +396,7 @@ describe('ytdlp/cookies', () => {
     })
   })
 
-  describe('ensureCookieFlags – IIFE fileUsable catch path', () => {
+  describe('ensureCookieFlags - IIFE fileUsable catch path', () => {
     it('handles existsSync true but statSync throws in IIFE', async () => {
       let freshChecked = false
       mockStatSync.mockImplementation(() => {
@@ -419,7 +419,7 @@ describe('ytdlp/cookies', () => {
     })
   })
 
-  describe('ensureCookieFlags – detectBrowser config browser failed', () => {
+  describe('ensureCookieFlags - detectBrowser config browser failed', () => {
     it('skips config browser when it has previously failed', async () => {
       // First call: set and fail a browser
       mockStatSync.mockImplementation(() => { throw new Error('ENOENT') })
@@ -433,7 +433,7 @@ describe('ytdlp/cookies', () => {
       // another browser. If Chrome is the only one, it loops through all and fails.
       await ensureCookieFlags()
 
-      // Now call again — chrome should be in failedBrowsers and cfg.ytdlpBrowser='chrome'
+      // Now call again - chrome should be in failedBrowsers and cfg.ytdlpBrowser='chrome'
       // detectBrowser should skip chrome and fall through
       mockExistsSync.mockReturnValue(false)
       const flags = await ensureCookieFlags()

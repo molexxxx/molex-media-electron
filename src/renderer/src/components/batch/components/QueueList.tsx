@@ -4,11 +4,16 @@
  * inline progress for active tasks, and contextual actions.
  */
 
-import React, { useCallback, useState, useRef } from 'react'
+import React, { useCallback, useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { FileItem, ProcessingTask, Operation } from '../../../stores/types'
+import { BUILTIN_PRESETS } from '../../../stores/types'
 import { useAppStore } from '../../../stores/appStore'
-import { formatSize, formatDuration, extColor } from '../utils'
+import { formatSize, formatDuration } from '../utils'
 import { OP_TABS } from './OperationPanel'
+import { STATUS_COLORS, STATUS_LABELS } from '../../shared/constants'
+import { SettingsHoverCard } from './SettingsHoverCard'
+import { InlineSettingsEditor } from './InlineSettingsEditor'
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -42,17 +47,65 @@ function isActive(task?: ProcessingTask): boolean {
   return !!task && (task.status === 'processing' || task.status === 'analyzing' || task.status === 'finalizing')
 }
 
+/** Build a short context-aware label for the task badge area. */
+function getTaskBadge(file: FileItem): { label: string; color: string } {
+  const op = file.operation || 'normalize'
+  const inputExt = file.ext.replace('.', '').toUpperCase()
+
+  switch (op) {
+    case 'convert': {
+      const outFmt = file.convertOptions?.outputFormat?.toUpperCase() || 'MP4'
+      if (outFmt !== inputExt) return { label: `${inputExt} › ${outFmt}`, color: 'text-blue-400' }
+      return { label: outFmt, color: 'text-surface-400' }
+    }
+    case 'extract': {
+      const outFmt = file.extractOptions?.outputFormat?.toUpperCase() || 'MP3'
+      return { label: `› ${outFmt}`, color: 'text-cyan-400' }
+    }
+    case 'normalize': {
+      const lufs = file.normalizeOptions?.I ?? -16
+      const preset = BUILTIN_PRESETS.find((p) => p.id === file.selectedPreset)
+      return { label: preset ? preset.name : `${lufs} LUFS`, color: 'text-purple-400' }
+    }
+    case 'boost': {
+      const pct = file.boostPercent ?? 10
+      return { label: `${pct > 0 ? '+' : ''}${pct}%`, color: 'text-green-400' }
+    }
+    case 'compress': {
+      const q = file.compressOptions?.quality || 'high'
+      const mb = file.compressOptions?.targetSizeMB
+      return { label: mb ? `${mb} MB` : q.charAt(0).toUpperCase() + q.slice(1), color: 'text-amber-400' }
+    }
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Operation picker popover                                           */
 /* ------------------------------------------------------------------ */
 
-function OpPicker({ current, onChange, onClose }: {
-  current: Operation; onChange: (op: Operation) => void; onClose: () => void
-}): React.JSX.Element {
-  return (
+function OpPicker({ current, onChange, onClose, anchorRef }: {
+  current: Operation; onChange: (op: Operation) => void; onClose: () => void; anchorRef: React.RefObject<HTMLElement | null>
+}): React.JSX.Element | null {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  useEffect(() => {
+    if (!anchorRef.current) return
+    const rect = anchorRef.current.getBoundingClientRect()
+    const menuHeight = OP_TABS.length * 32 + 8
+    const spaceBelow = window.innerHeight - rect.bottom
+    const top = spaceBelow > menuHeight + 4 ? rect.bottom + 4 : rect.top - menuHeight - 4
+    setPos({ top, left: rect.left })
+  }, [anchorRef])
+
+  if (!pos) return null
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute top-full left-0 mt-1 z-50 bg-surface-800 border border-surface-600 rounded-lg shadow-xl overflow-hidden animate-fade-in">
+      <div className="fixed inset-0 z-[99]" onClick={onClose} />
+      <div
+        className="fixed z-[100] bg-surface-800 border border-surface-600 rounded-lg shadow-xl overflow-hidden animate-fade-in"
+        style={{ top: pos.top, left: pos.left }}
+      >
         {OP_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -68,7 +121,8 @@ function OpPicker({ current, onChange, onClose }: {
           </button>
         ))}
       </div>
-    </>
+    </>,
+    document.body
   )
 }
 
@@ -76,7 +130,7 @@ function OpPicker({ current, onChange, onClose }: {
 /*  QueueRow                                                           */
 /* ------------------------------------------------------------------ */
 
-function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDrop, onRemove, onChangeOp }: {
+function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDrop, onRemove, onChangeOp, editingPath, onRequestEdit }: {
   file: FileItem
   index: number
   task?: ProcessingTask
@@ -86,8 +140,13 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
   onDrop: (e: React.DragEvent, idx: number) => void
   onRemove: (path: string) => void
   onChangeOp: (path: string, op: Operation) => void
+  editingPath: string | null
+  onRequestEdit: (path: string | null) => void
 }): React.JSX.Element {
   const [showPicker, setShowPicker] = useState(false)
+  const [showSettingsCard, setShowSettingsCard] = useState(false)
+  const settingsAnchorRef = useRef<HTMLButtonElement>(null)
+  const opBadgeRef = useRef<HTMLButtonElement>(null)
   const active = isActive(task)
   const done = task?.status === 'complete'
   const failed = task?.status === 'error'
@@ -99,7 +158,7 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       onDragStart={(e) => onDragStart(e, index)}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
-      className={`group relative flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg transition-all ${
+      className={`group relative flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg transition-all overflow-hidden ${
         isDragging ? 'opacity-40' : ''
       } ${active ? 'bg-accent-500/5 border border-accent-500/20' :
         done ? 'bg-emerald-500/5 border border-emerald-500/10' :
@@ -123,12 +182,13 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       {/* Index */}
       <span className="text-2xs text-surface-600 font-mono w-4 text-right shrink-0">{index + 1}</span>
 
-      {/* Operation badge — click to change */}
-      <div className="relative shrink-0">
+      {/* Operation badge - click to change */}
+      <div className="shrink-0 w-[4.5rem] sm:w-20">
         <button
+          ref={opBadgeRef}
           onClick={() => !locked && setShowPicker(!showPicker)}
           disabled={locked}
-          className={`flex items-center gap-1 px-1.5 py-0.5 text-2xs font-medium rounded-md border transition-all ${OP_COLORS[file.operation || 'normalize']} ${
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-medium rounded-md border transition-all ${OP_COLORS[file.operation || 'normalize']} ${
             locked ? 'cursor-default' : 'cursor-pointer hover:brightness-125'
           }`}
           title={locked ? OP_LABELS[file.operation || 'normalize'] : `Click to change operation (${OP_LABELS[file.operation || 'normalize']})`}
@@ -141,29 +201,43 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
             current={file.operation || 'normalize'}
             onChange={(op) => onChangeOp(file.path, op)}
             onClose={() => setShowPicker(false)}
+            anchorRef={opBadgeRef}
           />
         )}
       </div>
 
-      {/* File info */}
-      <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
-        <span className={`text-2xs font-mono font-bold uppercase shrink-0 ${extColor(file.ext)}`}>
-          {file.ext.replace('.', '')}
-        </span>
-        <span className="text-xs sm:text-sm text-surface-200 truncate">{file.name}</span>
+      {/* Task info badge */}
+      <span className={`w-20 shrink-0 text-2xs font-mono font-semibold truncate ${getTaskBadge(file).color}`}>
+        {getTaskBadge(file).label}
+      </span>
+
+      {/* Filename + settings toggle */}
+      <div className="flex-1 min-w-0 flex items-center gap-1">
+        <button
+          ref={settingsAnchorRef}
+          onClick={() => !locked && setShowSettingsCard((v) => !v)}
+          disabled={locked}
+          className={`flex items-center gap-1 min-w-0 ${locked ? 'cursor-default' : 'cursor-pointer'}`}
+        >
+          <span className="text-xs sm:text-sm text-surface-200 truncate hover:text-white transition-colors">
+            {file.name}
+          </span>
+          {!locked && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              className={`shrink-0 transition-colors ${showSettingsCard ? 'text-accent-400' : 'text-surface-600'}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          )}
+        </button>
       </div>
 
-      {/* Progress / Status for active tasks */}
-      {active && task && (
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-20 h-1 rounded-full bg-surface-700 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-accent-500 transition-all duration-300"
-              style={{ width: `${task.progress}%` }}
-            />
-          </div>
-          <span className="text-2xs font-mono text-accent-400 w-8 text-right">{task.progress}%</span>
-        </div>
+      {/* Status label */}
+      {task && !done && !failed && (
+        <span className={`text-2xs font-medium shrink-0 flex items-center gap-1 ${STATUS_COLORS[task.status]?.text || 'text-surface-400'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[task.status]?.dot || 'bg-surface-500'}`} />
+          {STATUS_LABELS[task.status] || 'Queued'}
+        </span>
       )}
 
       {done && (
@@ -187,8 +261,8 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       )}
 
       {/* Duration + Size */}
-      <span className="text-2xs text-surface-500 font-mono shrink-0 hidden sm:inline">{formatDuration(file.duration)}</span>
-      <span className="text-2xs text-surface-600 font-mono shrink-0 hidden md:inline">{formatSize(file.size)}</span>
+      <span className="text-2xs text-surface-500 font-mono w-12 text-right shrink-0 hidden sm:inline">{formatDuration(file.duration)}</span>
+      <span className="text-2xs text-surface-600 font-mono w-16 text-right shrink-0 hidden md:inline">{formatSize(file.size)}</span>
 
       {/* Remove */}
       {!locked && (
@@ -203,19 +277,39 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
         </button>
       )}
 
-      {/* Active task message overlay */}
-      {active && task && (
-        <div className="absolute bottom-0 left-12 right-12 h-0.5">
-          <div
-            className="h-full bg-accent-500/40 rounded-full transition-all duration-300"
-            style={{ width: `${task.progress}%` }}
-          />
-        </div>
-      )}
-
       {/* Inline error message */}
       {failed && task?.error && (
         <div className="w-full text-2xs text-red-400/80 truncate pl-7 -mt-0.5 pb-0.5">{task.error}</div>
+      )}
+
+      {/* Settings dropdown card */}
+      {showSettingsCard && !locked && (
+        <SettingsHoverCard
+          file={file}
+          anchorRef={settingsAnchorRef}
+          onRequestEdit={() => { setShowSettingsCard(false); onRequestEdit(file.path) }}
+          onClose={() => setShowSettingsCard(false)}
+        />
+      )}
+
+      {/* Inline settings editor */}
+      {editingPath === file.path && !locked && (
+        <InlineSettingsEditor
+          file={file}
+          onClose={() => onRequestEdit(null)}
+        />
+      )}
+
+      {/* Progress bar - full-width bottom border */}
+      {task && (active || done) && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-surface-800/50">
+          <div
+            className={`h-full transition-all duration-300 ease-out ${
+              done ? 'bg-emerald-500/60' : 'bg-accent-500/70'
+            }`}
+            style={{ width: `${task.progress || 0}%` }}
+          />
+        </div>
       )}
     </div>
   )
@@ -233,6 +327,7 @@ export function QueueList({ files, onAddFiles }: {
   const [dragOver, setDragOver] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
+  const [editingPath, setEditingPath] = useState<string | null>(null)
   const dragCounter = useRef(0)
 
   // File drop handler
@@ -369,6 +464,8 @@ export function QueueList({ files, onAddFiles }: {
                   onDrop={handleReorderDrop}
                   onRemove={removeFile}
                   onChangeOp={handleChangeOp}
+                  editingPath={editingPath}
+                  onRequestEdit={setEditingPath}
                 />
               </React.Fragment>
             )

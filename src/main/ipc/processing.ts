@@ -18,6 +18,9 @@ import {
   pauseProcessing,
   resumeProcessing,
   getIsPaused,
+  setMaxWorkers,
+  getActiveWorkerCount,
+  getTargetWorkers,
   type ProcessingTask
 } from '../ffmpeg/processor'
 import { killAllProcesses, getActiveProcessCount } from '../ffmpeg/runner'
@@ -130,7 +133,7 @@ export function registerProcessingIPC(): void {
   ipcMain.handle('process:batch-queue', async (_, taskSpecs: Array<{
     filePath: string; operation: string; outputDir?: string;
     boostPercent?: number; normalizeOptions?: any; convertOptions?: any; extractOptions?: any; compressOptions?: any
-  }>) => {
+  }>, maxWorkersOverride?: number) => {
     if (!Array.isArray(taskSpecs) || taskSpecs.length === 0) {
       throw new Error('No tasks provided')
     }
@@ -172,7 +175,8 @@ export function registerProcessingIPC(): void {
     sendToAll('process:batch-started', { batchId, tasks })
 
     try {
-      const results = await processBatch(tasks, config.maxWorkers, onTaskProgressWithTray, abort)
+      const workerCount = (maxWorkersOverride && maxWorkersOverride > 0) ? maxWorkersOverride : config.maxWorkers
+      const results = await processBatch(tasks, workerCount, onTaskProgressWithTray, abort)
       await notifyBatchComplete(results)
       sendToAll('process:batch-complete', { batchId, results })
       return { batchId, results }
@@ -227,4 +231,18 @@ export function registerProcessingIPC(): void {
   ipcMain.handle('process:isPaused', () => {
     return getIsPaused()
   })
+
+  // --- Dynamic workers ---
+  ipcMain.handle('process:setWorkers', (_, count: number) => {
+    const n = Number(count)
+    if (!Number.isFinite(n) || n < 1) throw new Error('Invalid worker count')
+    setMaxWorkers(n)
+    sendToAll('process:workerStatus', { target: getTargetWorkers(), active: getActiveWorkerCount() })
+    return getActiveWorkerCount()
+  })
+
+  ipcMain.handle('process:getWorkerStatus', () => ({
+    target: getTargetWorkers(),
+    active: getActiveWorkerCount()
+  }))
 }

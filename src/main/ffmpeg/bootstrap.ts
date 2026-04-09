@@ -272,7 +272,7 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
 
     const valid = await verifyBinary(ffmpegDest)
     if (!valid) {
-      throw new Error('FFmpeg verification failed — binary may be corrupt')
+      throw new Error('FFmpeg verification failed - binary may be corrupt')
     }
 
     logger.success('FFmpeg installed and verified successfully')

@@ -1,6 +1,6 @@
 /**
  * @module components/AmbientBackground
- * @description Animated canvas background — purple ambient glows with small drifting orbs.
+ * @description Animated canvas background - purple ambient glows with small drifting orbs.
  * Memoized and mounted once at root level so it never re-renders across page changes.
  */
 

@@ -29,7 +29,7 @@ function App(): React.JSX.Element {
 
   const { currentView, showSetup, ffmpegChecking, goBack } = useAppStore()
 
-  // Global updater status listener — captures events from auto-check on startup
+  // Global updater status listener - captures events from auto-check on startup
   const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
   const setUpdateVersion = useAppStore((s) => s.setUpdateVersion)
   const setUpdateError = useAppStore((s) => s.setUpdateError)
@@ -183,7 +183,7 @@ function App(): React.JSX.Element {
   return (
     <div className="h-full flex relative">
       <AmbientBackground />
-      {/* Sidebar — full height of window */}
+      {/* Sidebar - full height of window */}
       <div className="shrink-0 h-full">
         <Sidebar />
       </div>
@@ -196,9 +196,11 @@ function App(): React.JSX.Element {
               <div
                 key={id}
                 className={`absolute inset-0 p-3 sm:p-4 md:p-6 ${
-                  id === 'logs' ? 'flex flex-col overflow-hidden' : 'overflow-auto'
+                  id === 'logs' || id === 'editor'
+                    ? 'flex flex-col overflow-hidden'
+                    : 'overflow-auto'
                 }`}
-                style={{ display: currentView === id ? (id === 'logs' ? 'flex' : 'block') : 'none' }}
+                style={{ display: currentView === id ? (id === 'logs' || id === 'editor' ? 'flex' : 'block') : 'none' }}
               >
                 {el}
               </div>

@@ -9,12 +9,12 @@ vi.mock('electron', () => ({
   net: { fetch: vi.fn() }
 }))
 
-// Mock logger — serveLocalFile calls logger.error on exceptions
+// Mock logger - serveLocalFile calls logger.error on exceptions
 vi.mock('../../src/main/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }))
 
-// Mock ytdlp — protocol.ts imports resolveStreamToken
+// Mock ytdlp - protocol.ts imports resolveStreamToken
 vi.mock('../../src/main/ytdlp', () => ({
   resolveStreamToken: vi.fn()
 }))
@@ -48,7 +48,7 @@ describe('serveLocalFile', () => {
     expect(res.status).toBe(204)
   })
 
-  // -- 206 (no Range, small file — always 206 with Content-Range) --
+  // -- 206 (no Range, small file - always 206 with Content-Range) --
   it('returns 206 with full content and Content-Range when no Range header', () => {
     const res = serveLocalFile(TEST_FILE, new Request('media://x'))
     expect(res.status).toBe(206)

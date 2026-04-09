@@ -7,7 +7,7 @@
  * Draw a gentle sine-wave pulse across the canvas center.
  *
  * This is the default idle state rendered when no track is loaded or audio is
- * paused.  It uses no frequency data — only `Date.now()` for animation.
+ * paused.  It uses no frequency data - only `Date.now()` for animation.
  *
  * @param ctx - 2D canvas rendering context.
  * @param W   - Canvas width in CSS pixels.

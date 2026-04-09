@@ -145,7 +145,7 @@ export async function getYtDl(): Promise<ReturnType<typeof createYtDl>> {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-/** Cached FFmpeg directory — populated by `initFFmpegDir()`. */
+/** Cached FFmpeg directory - populated by `initFFmpegDir()`. */
 let cachedFFmpegDir: string | undefined
 
 /**

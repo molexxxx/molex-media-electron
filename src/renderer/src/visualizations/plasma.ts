@@ -1,6 +1,6 @@
 /**
  * @module visualizations/plasma
- * @description **Plasma** — Winamp-inspired sine-plasma field visualization.
+ * @description **Plasma** - Winamp-inspired sine-plasma field visualization.
  *
  * Renders a composite sine-plasma at reduced resolution (6× down-scaled),
  * modulated by audio-driven blob positions, frequency data, and a rotating
@@ -38,7 +38,7 @@ export function drawPlasma(
   state.t += 0.015 + overall * 0.04 + bass * 0.02 + audio.beat * 0.1
   state.hueBase = (state.hueBase + 0.3 + bass * 2.0 + mid * 1.0 + audio.beat * 5) % 360
 
-  // Update blob positions — gentle audio-driven flow
+  // Update blob positions - gentle audio-driven flow
   for (const blob of state.blobs) {
     blob.x += blob.sx * (0.5 + bass * 2.0 + overall * 1.0)
     blob.y += blob.sy * (0.5 + mid * 1.5 + overall * 1.0)
@@ -56,7 +56,7 @@ export function drawPlasma(
       const nx = px / imgW
       const ny = py / imgH
 
-      // Composite sine plasma layers — audio modulates frequencies and amplitudes
+      // Composite sine plasma layers - audio modulates frequencies and amplitudes
       let val = 0
       val += Math.sin(nx * (6 + bass * 3) + state.t) * (1 + bass * 0.4)
       val += Math.sin(ny * (5 + mid * 2.5) + state.t * 0.7) * (1 + mid * 0.3)
@@ -64,7 +64,7 @@ export function drawPlasma(
       val += Math.sin(Math.sqrt((nx - 0.5) ** 2 + (ny - 0.5) ** 2) * (8 + bass * 3) + state.t * 0.5) * (1 + bass * 0.35)
       val += Math.sin(nx * 3 - ny * 4 + state.t * 1.8) * mid * 1.5
 
-      // Add audio-reactive blob influences — stronger ripples
+      // Add audio-reactive blob influences - stronger ripples
       for (const blob of state.blobs) {
         const bx = (Math.sin(blob.x) + 1) / 2
         const by = (Math.sin(blob.y) + 1) / 2
@@ -73,7 +73,7 @@ export function drawPlasma(
         if (dist < 0.15) val += (0.15 - dist) * 8 * (1 + overall)
       }
 
-      // Frequency modulation — per-column spectral color
+      // Frequency modulation - per-column spectral color
       const fi = Math.floor(nx * 256)
       const fv = (freq[fi] || 0) / 255
       val += fv * 3 * Math.sin(ny * (15 + bass * 10) + state.t)
@@ -81,7 +81,7 @@ export function drawPlasma(
       const fv2 = (freq[fi2] || 0) / 255
       val += fv2 * 2 * Math.cos(nx * 12 + state.t * 0.6)
 
-      // Map to color — wider dynamic range
+      // Map to color - wider dynamic range
       val = val / 7 + 0.5
       const hue = (state.hueBase + val * 220 + fv * 40) % 360
       const sat = 65 + mid * 35 + fv * 10

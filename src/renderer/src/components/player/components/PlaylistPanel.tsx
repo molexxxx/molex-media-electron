@@ -246,7 +246,7 @@ export function PlaylistPanel({
         </div>
       </div>
 
-      {/* Confirm dialog — clear or append */}
+      {/* Confirm dialog - clear or append */}
       {confirmFolder && (
         <div className="px-3 py-2.5 border-b border-white/5 bg-surface-800/60 space-y-2 animate-fade-in">
           <p className="text-2xs text-surface-300">Playlist has {playlist.length} track{playlist.length !== 1 ? 's' : ''}. What do you want to do?</p>

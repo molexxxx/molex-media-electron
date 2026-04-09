@@ -1,13 +1,13 @@
 /**
  * @module main/ipc
- * @description Barrel module — composes all IPC handler groups into a
+ * @description Barrel module - composes all IPC handler groups into a
  * single {@link registerIPC} entry point called from the app bootstrap.
  */
 
 import { registerConfigIPC } from './config'
 import { registerFilesIPC } from './files'
 import { registerProcessingIPC } from './processing'
-// Editor IPC — removed during NLE rebuild (Phase 0)
+import { registerEditorIPC } from './editor'
 import { registerMediaIPC } from './media'
 import { registerSystemIPC } from './system'
 
@@ -19,7 +19,7 @@ export function registerIPC(): void {
   registerConfigIPC()
   registerFilesIPC()
   registerProcessingIPC()
-  // registerEditorIPC() — removed during NLE rebuild (Phase 0)
+  registerEditorIPC()
   registerMediaIPC()
   registerSystemIPC()
 }

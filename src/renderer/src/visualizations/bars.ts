@@ -49,7 +49,7 @@ export function drawBars(
     else smooth[i] += (raw - smooth[i]) * 0.2
     const h = smooth[i] * scale * 0.85
 
-    // Peak hold with gravity (classic Winamp) — faster gravity so peaks don't linger
+    // Peak hold with gravity (classic Winamp) - faster gravity so peaks don't linger
     if (h > peaks[i]) {
       peaks[i] = h
       peakVel[i] = 0
@@ -61,7 +61,7 @@ export function drawBars(
     const x = i * (barW + gap)
     const y = H - h
 
-    // Main bar gradient — shifts warm on beat, dims when quiet
+    // Main bar gradient - shifts warm on beat, dims when quiet
     const barAlpha = Math.min(1, 0.3 + loudness * 1.2)
     const grad = ctx.createLinearGradient(x, H, x, y)
     if (beatHue > 0) {

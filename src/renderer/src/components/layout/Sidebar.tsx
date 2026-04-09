@@ -138,7 +138,7 @@ export default function Sidebar(): React.JSX.Element {
     const mq = window.matchMedia('(max-width: 840px)')
     const onChange = (e: MediaQueryListEvent): void => {
       if (e.matches) {
-        // Only update visual state — don't persist so the user's preference is preserved
+        // Only update visual state - don't persist so the user's preference is preserved
         useAppStore.setState({ sidebarCollapsed: true })
       } else {
         // Restore the user's persisted preference

@@ -8,6 +8,7 @@ import { BrowserWindow, Notification, app, nativeImage } from 'electron'
 import * as path from 'path'
 import { getConfig } from '../config'
 import { type ProcessingTask } from '../ffmpeg/processor'
+import { getActiveWorkerCount, getTargetWorkers } from '../ffmpeg/processor'
 import { updateTrayProgress } from '../tray'
 import { logger } from '../logger'
 
@@ -35,9 +36,11 @@ export function onTaskProgressWithTray(task: ProcessingTask): void {
     batchDone++
   }
   const label = task.status === 'processing' || task.status === 'analyzing' || task.status === 'finalizing'
-    ? `${task.fileName} — ${task.progress}%`
+    ? `${task.fileName} - ${task.progress}%`
     : ''
   updateTrayProgress(batchTotal, batchDone, label)
+  // Broadcast live worker counts
+  sendToAll('process:workerStatus', { target: getTargetWorkers(), active: getActiveWorkerCount() })
 }
 
 /** Reset counters and initialise the tray progress for a new batch. */
@@ -61,7 +64,7 @@ export function endBatch(): void {
 export async function notifyBatchComplete(results: ProcessingTask[]): Promise<void> {
   const config = await getConfig()
   if (!config.showNotifications) {
-    logger.info('Desktop notifications disabled in settings — skipping')
+    logger.info('Desktop notifications disabled in settings - skipping')
     return
   }
 
@@ -84,7 +87,7 @@ export async function notifyBatchComplete(results: ProcessingTask[]): Promise<vo
   try {
     const iconPath = path.join(app.isPackaged ? process.resourcesPath : path.join(__dirname, '../../resources'), 'icon.png')
     const notification = new Notification({
-      title: 'molexMedia — Batch Complete',
+      title: 'molexMedia - Batch Complete',
       body,
       icon: nativeImage.createFromPath(iconPath)
     })

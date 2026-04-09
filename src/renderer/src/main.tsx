@@ -1,4 +1,4 @@
-/** @module renderer/main — Application entry point mounting the React root. */
+/** @module renderer/main - Application entry point mounting the React root. */
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'

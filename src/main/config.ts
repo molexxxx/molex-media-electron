@@ -46,6 +46,7 @@ export interface AppConfig {
   showTrayNotification: boolean
   autoUpdate: boolean
 
+  gpuAcceleration: 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
   ytdlpBrowser: string
   urlHistory: UrlHistoryEntry[]
   popoutSize: { width: number; height: number }
@@ -82,6 +83,7 @@ const DEFAULT_CONFIG: AppConfig = {
   showTrayNotification: true,
   autoUpdate: true,
 
+  gpuAcceleration: 'off',
   ytdlpBrowser: '',
   urlHistory: [],
   popoutSize: { width: 420, height: 560 },

@@ -450,7 +450,7 @@ describe('ytdlp/resolver', () => {
     })
   })
 
-  describe('getAudioStreamUrl – edge cases', () => {
+  describe('getAudioStreamUrl - edge cases', () => {
     it('falls back to download when no direct URLs exist at all', async () => {
       const mockNow = vi.spyOn(Date, 'now').mockReturnValue(12345)
       const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
