@@ -89,7 +89,7 @@ function updateTrayMenu(): void {
   }
 
   const tooltip = trayProgressTotal > 0
-    ? `molexMedia — Processing ${trayProgressDone}/${trayProgressTotal}`
+    ? `molexMedia - Processing ${trayProgressDone}/${trayProgressTotal}`
     : 'molexMedia'
   tray.setToolTip(tooltip)
 

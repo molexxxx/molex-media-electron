@@ -1,9 +1,6 @@
 /**
  * @module main/ytdlp
  * @description Barrel re-export for yt-dlp integration modules.
- *
- * Provides the same public API as the original monolithic `ytdlp.ts`
- * so all existing imports continue to work unchanged.
  */
 
 // Stream URL token cache

@@ -1,5 +1,5 @@
 # -----------------------------------------------------
-# CI — Test, Lint & Type Check on every push and PR
+# CI - Test, Lint & Type Check on every push and PR
 # -----------------------------------------------------
 name: CI
 

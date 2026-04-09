@@ -95,7 +95,7 @@ export function OperationPanel(): React.JSX.Element {
     compressOptions, setCompressOptions,
   } = useAppStore()
 
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   const handleApplyPreset = (presetId: string) => {
     const preset = BUILTIN_PRESETS.find((p) => p.id === presetId)
@@ -188,7 +188,7 @@ export function OperationPanel(): React.JSX.Element {
 /*  Normalize                                                          */
 /* ------------------------------------------------------------------ */
 
-function NormalizeConfig({ selectedPreset, onApplyPreset }: {
+export function NormalizeConfig({ selectedPreset, onApplyPreset }: {
   selectedPreset: string | null
   onApplyPreset: (id: string) => void
 }): React.JSX.Element {
@@ -298,7 +298,7 @@ function NormalizeSlider({ label, unit, value, min, max, step, onChange }: {
 /*  Boost                                                              */
 /* ------------------------------------------------------------------ */
 
-function BoostConfig({ boostPercent, setBoostPercent }: {
+export function BoostConfig({ boostPercent, setBoostPercent }: {
   boostPercent: number; setBoostPercent: (v: number) => void
 }): React.JSX.Element {
   const isBoost = boostPercent > 0
@@ -354,7 +354,7 @@ function BoostConfig({ boostPercent, setBoostPercent }: {
 /*  Convert                                                            */
 /* ------------------------------------------------------------------ */
 
-function ConvertConfig({ options, setOptions, conflicts }: {
+export function ConvertConfig({ options, setOptions, conflicts }: {
   options: ConvertOptions; setOptions: (o: Partial<ConvertOptions>) => void; conflicts: ConflictWarning[]
 }): React.JSX.Element {
   const [activePresetId, setActivePresetId] = useState<string>('mp4-h264')
@@ -521,7 +521,7 @@ function ConvertConfig({ options, setOptions, conflicts }: {
 /*  Extract                                                            */
 /* ------------------------------------------------------------------ */
 
-function ExtractConfig({ options, setOptions }: {
+export function ExtractConfig({ options, setOptions }: {
   options: ExtractOptions; setOptions: (o: Partial<ExtractOptions>) => void
 }): React.JSX.Element {
   const lbl = "text-2xs text-surface-500 block mb-0.5"
@@ -575,7 +575,7 @@ function ExtractConfig({ options, setOptions }: {
 /*  Compress                                                           */
 /* ------------------------------------------------------------------ */
 
-function CompressConfig({ options, setOptions }: {
+export function CompressConfig({ options, setOptions }: {
   options: CompressOptions; setOptions: (o: Partial<CompressOptions>) => void
 }): React.JSX.Element {
   const lbl = "text-2xs text-surface-500 block mb-0.5"

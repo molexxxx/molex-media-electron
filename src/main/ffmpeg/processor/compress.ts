@@ -24,6 +24,13 @@ import {
   ensureDir,
   validateOutput
 } from './types'
+import {
+  resolveGpuCodec,
+  getHwaccelInputArgs,
+  getGpuPreset,
+  getGpuQualityArgs,
+  type GpuMode
+} from '../gpu'
 
 /**
  * Compress a media file using quality-preset or target-size encoding.
@@ -69,8 +76,19 @@ export async function compressFile(
 
     const tempPath = createTempPath(task.filePath, config.tempSuffix)
 
-    const codec = opts.videoCodec || 'libx264'
+    const softwareCodec = opts.videoCodec || 'libx264'
     const speed = opts.speed || (opts.quality === 'lossless' ? 'veryslow' : 'medium')
+    const gpuMode = (config.gpuAcceleration || 'off') as GpuMode
+
+    // Resolve GPU codec (auto-detect if needed)
+    const gpuResult = info.isVideoFile
+      ? await resolveGpuCodec(ffmpegPath, softwareCodec, gpuMode)
+      : { codec: softwareCodec, activeMode: 'off' as GpuMode, isGpu: false }
+    const codec = gpuResult.codec
+
+    if (gpuResult.isGpu) {
+      logger.info(`[compress] Using GPU encoder: ${codec} (${gpuResult.activeMode})`)
+    }
 
     /** Quality preset → CRF value per codec. */
     const CRF_MAP: Record<string, Record<string, number>> = {
@@ -79,16 +97,20 @@ export async function compressFile(
       'libvpx-vp9':   { lossless: 0, high: 24, medium: 31, low: 38 },
       'libaom-av1':   { lossless: 0, high: 22, medium: 28, low: 35 },
     }
-    const crfTable = CRF_MAP[codec] || CRF_MAP.libx264
+    const crfTable = CRF_MAP[softwareCodec] || CRF_MAP.libx264
     const crf = crfTable[opts.quality] ?? 23
 
-    const args = ['-y', '-i', task.filePath, '-threads', '0']
+    // Build args - hwaccel input flags come before -i
+    const hwaccelArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
+    const args = ['-y', ...hwaccelArgs, '-i', task.filePath, '-threads', '0']
 
     if (info.isVideoFile) {
       args.push('-c:v', codec)
 
-      // Encoding speed / quality trade-off
-      if (codec === 'libx264' || codec === 'libx265') {
+      // Encoding speed / quality trade-off (GPU-aware)
+      if (gpuResult.isGpu) {
+        args.push(...getGpuPreset(gpuResult.activeMode, speed))
+      } else if (codec === 'libx264' || codec === 'libx265') {
         args.push('-preset', speed)
       } else if (codec === 'libvpx-vp9') {
         const cpuMap: Record<string, string> = { veryslow: '0', slow: '1', medium: '2', fast: '4', veryfast: '5' }
@@ -98,7 +120,12 @@ export async function compressFile(
         args.push('-cpu-used', cpuMap[speed] || '4')
       }
 
-      args.push('-crf', String(crf))
+      // Quality parameter (GPU-aware)
+      if (gpuResult.isGpu) {
+        args.push(...getGpuQualityArgs(gpuResult.activeMode, crf))
+      } else {
+        args.push('-crf', String(crf))
+      }
 
       // VP9 needs -b:v 0 for CRF-only mode
       if (codec === 'libvpx-vp9') args.push('-b:v', '0')

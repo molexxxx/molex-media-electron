@@ -3,7 +3,7 @@
  * @description Auto-update lifecycle powered by electron-updater.
  *
  * Uses GitHub Releases as the update source.  Respects the `autoUpdate`
- * config flag — when disabled, updates are only checked on explicit user
+ * config flag - when disabled, updates are only checked on explicit user
  * request via IPC.  All update events are forwarded to every renderer
  * window so the UI can show progress / prompts.
  */
@@ -19,7 +19,7 @@ export async function initUpdater(): Promise<void> {
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowDowngrade = false
   autoUpdater.disableWebInstaller = false
-  autoUpdater.logger = null // we handle logging ourselves
+  autoUpdater.logger = null // handle logging ourselves
 
   // In dev mode, use dev-app-update.yml so checkForUpdates doesn't hang
   if (!app.isPackaged) {
@@ -102,7 +102,7 @@ export async function initUpdater(): Promise<void> {
     try {
       await autoUpdater.checkForUpdates()
     } catch {
-      // Silently fail — user can retry manually
+      // Silently fail - user can retry manually
     }
   }, 5_000)
 }

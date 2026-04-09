@@ -126,7 +126,7 @@ export function formatElapsed(start: number, end: number): string {
 }
 
 /**
- * Delete a temp file if it exists. Swallows errors silently —
+ * Delete a temp file if it exists. Swallows errors silently -
  * this is best-effort cleanup only.
  */
 export function cleanupTemp(tempPath: string): void {

@@ -9,6 +9,8 @@ import { useAppStore } from '../../stores/appStore'
 import type { FileItem } from '../../stores/types'
 import { OperationPanel } from './components/OperationPanel'
 import { QueueList } from './components/QueueList'
+import { WorkersControl } from './components/WorkersControl'
+import { EncoderBadge } from '../shared/EncoderBadge'
 
 export default function FileQueue(): React.JSX.Element {
   const {
@@ -104,10 +106,27 @@ export default function FileQueue(): React.JSX.Element {
 
   const doStart = async () => {
     setShowReplaceWarning(false)
-    const { batchOutputDir } = useAppStore.getState()
+    const { batchOutputDir, tasks: prevTasks } = useAppStore.getState()
+
+    // Remove finished items and their stale tasks from previous batch
+    const donePaths = new Set(
+      prevTasks
+        .filter((t) => t.status === 'complete' || t.status === 'error' || t.status === 'cancelled')
+        .map((t) => t.filePath)
+    )
+    if (donePaths.size > 0) {
+      useAppStore.setState((s) => ({
+        files: s.files.filter((f) => !donePaths.has(f.path)),
+        tasks: s.tasks.filter((t) => !donePaths.has(t.filePath)),
+      }))
+    }
+
+    const { files: currentFiles } = useAppStore.getState()
+    if (currentFiles.length === 0) return
+
     const outputDir = batchOutputDir || undefined
 
-    const taskSpecs = files.map((f) => ({
+    const taskSpecs = currentFiles.map((f) => ({
       filePath: f.path,
       operation: f.operation || useAppStore.getState().operation,
       outputDir,
@@ -118,7 +137,8 @@ export default function FileQueue(): React.JSX.Element {
       compressOptions: f.compressOptions,
     }))
 
-    await window.api.startBatchQueue(taskSpecs)
+    const { batchWorkers } = useAppStore.getState()
+    await window.api.startBatchQueue(taskSpecs, batchWorkers || undefined)
   }
 
   const confirmReplace = async () => {
@@ -221,7 +241,7 @@ export default function FileQueue(): React.JSX.Element {
       <OperationPanel />
       <QueueList files={files} onAddFiles={addFiles} />
 
-      {/* Output directory — compact inline bar */}
+      {/* Output directory - compact inline bar */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 shrink-0 rounded-lg border border-white/[0.06] bg-surface-900/40 px-3 py-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-surface-500 shrink-0">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -261,6 +281,13 @@ export default function FileQueue(): React.JSX.Element {
             </svg>
           </button>
         )}
+      </div>
+
+      {/* Workers control + encoder badge */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 shrink-0 rounded-lg border border-white/[0.06] bg-surface-900/40 px-3 py-2">
+        <WorkersControl />
+        <div className="w-px h-4 bg-white/10" />
+        <EncoderBadge />
       </div>
 
       {/* Replace originals confirmation modal */}

@@ -117,7 +117,7 @@ export function PlayerHeader({
           </button>
         </Tip>
 
-        {/* Visualizer mode — unique icon per mode */}
+        {/* Visualizer mode - unique icon per mode */}
         <Tip label={VIS_LABELS[visMode]}>
           <button onClick={onCycleVisMode} className={`${btnCls} hidden sm:flex`}>
             {VIS_ICONS[visMode]}
@@ -134,7 +134,7 @@ export function PlayerHeader({
           </button>
         </Tip>
 
-        {/* Pop out — separate */}
+        {/* Pop out - separate */}
         {!popout && !isPoppedOut && (
           <Tip label="Pop out">
             <button onClick={onPopout} className={btnCls}>
@@ -147,7 +147,7 @@ export function PlayerHeader({
           </Tip>
         )}
 
-        {/* Add dropdown — combines browse, file select, URL */}
+        {/* Add dropdown - combines browse, file select, URL */}
         <div ref={addRef} className="relative">
           <Tip label="Add tracks">
             <button

@@ -9,7 +9,7 @@
 
 const streamMap = new Map<string, { url: string; expires: number }>()
 
-/** YouTube CDN URLs expire in ~6 h; we use a 4 h TTL to be safe. */
+/** YouTube CDN URLs expire in ~6 h; use a 4 h TTL to be safe. */
 const STREAM_TTL = 4 * 60 * 60 * 1000
 
 /**

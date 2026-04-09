@@ -1,6 +1,6 @@
 /**
  * @module preload/index
- * @description Electron preload script — secure bridge between renderer and main.
+ * @description Electron preload script - secure bridge between renderer and main.
  *
  * Exposes a curated `window.api` object to the renderer via
  * `contextBridge.exposeInMainWorld`. Each method is a thin wrapper
@@ -32,6 +32,7 @@ const api = {
   openFiles: () => ipcRenderer.invoke('dialog:openFiles'),
   openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
   selectOutputDir: () => ipcRenderer.invoke('dialog:selectOutputDir'),
+  selectSavePath: (defaultName: string, filters: { name: string; extensions: string[] }[]) => ipcRenderer.invoke('dialog:selectSavePath', defaultName, filters),
   scanDirectory: (dirPath: string) => ipcRenderer.invoke('files:scanDirectory', dirPath),
   probeFile: (filePath: string) => ipcRenderer.invoke('files:probe', filePath),
 
@@ -41,13 +42,20 @@ const api = {
   convert: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:convert', filePaths, options, outputDir),
   extract: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:extract', filePaths, options, outputDir),
   compress: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:compress', filePaths, options, outputDir),
-  startBatchQueue: (taskSpecs: any[]) => ipcRenderer.invoke('process:batch-queue', taskSpecs),
+  startBatchQueue: (taskSpecs: any[], maxWorkers?: number) => ipcRenderer.invoke('process:batch-queue', taskSpecs, maxWorkers),
   cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
   cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
   getActiveCount: () => ipcRenderer.invoke('process:activeCount'),
   pauseProcessing: () => ipcRenderer.invoke('process:pause'),
   resumeProcessing: () => ipcRenderer.invoke('process:resume'),
   getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
+  setWorkers: (count: number) => ipcRenderer.invoke('process:setWorkers', count),
+  getWorkerStatus: () => ipcRenderer.invoke('process:getWorkerStatus'),
+  onWorkerStatus: (cb: (status: { target: number; active: number }) => void) => {
+    const listener = (_: any, status: any) => cb(status)
+    ipcRenderer.on('process:workerStatus', listener)
+    return () => ipcRenderer.removeListener('process:workerStatus', listener)
+  },
 
   // Editor
   cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
@@ -56,6 +64,12 @@ const api = {
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
   replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => ipcRenderer.invoke('editor:replaceAudio', videoPath, audioPath, options),
   createPreview: (filePath: string) => ipcRenderer.invoke('editor:createPreview', filePath),
+  createAudioPreview: (filePath: string) => ipcRenderer.invoke('editor:createAudioPreview', filePath),
+  exportTimeline: (request: any) => ipcRenderer.invoke('editor:export', request),
+  cancelExport: () => ipcRenderer.invoke('editor:cancelExport'),
+  extractThumbnail: (filePath: string, timeSec: number) => ipcRenderer.invoke('editor:thumbnail', filePath, timeSec),
+  extractThumbnailStrip: (filePath: string, durationSeconds: number) => ipcRenderer.invoke('editor:thumbnailStrip', filePath, durationSeconds),
+  extractWaveform: (filePath: string, numSamples?: number) => ipcRenderer.invoke('editor:waveform', filePath, numSamples),
   onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => {
     const listener = (_: any, progress: any) => cb(progress)
     ipcRenderer.on('editor:progress', listener)

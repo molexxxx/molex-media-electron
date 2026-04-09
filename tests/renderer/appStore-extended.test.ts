@@ -6,7 +6,7 @@ function resetStore(): void {
   useAppStore.setState(useAppStore.getInitialState())
 }
 
-describe('appStore – extended coverage', () => {
+describe('appStore - extended coverage', () => {
   beforeEach(() => {
     resetStore()
   })

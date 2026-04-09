@@ -4,15 +4,15 @@
  *
  * ```
  * components/
- * ├── layout/      TitleBar, Sidebar
- * ├── player/      MediaPlayer
- * ├── editor/      MediaEditor
- * ├── batch/       FileQueue, ProcessingView
- * ├── dashboard/   Dashboard
- * ├── settings/    Settings
- * ├── logs/        LogViewer
- * ├── setup/       SetupWizard
- * └── shared/      Status constants
+ * ├-- layout/      TitleBar, Sidebar
+ * ├-- player/      MediaPlayer
+ * ├-- editor/      MediaEditor
+ * ├-- batch/       FileQueue, ProcessingView
+ * ├-- dashboard/   Dashboard
+ * ├-- settings/    Settings
+ * ├-- logs/        LogViewer
+ * ├-- setup/       SetupWizard
+ * └-- shared/      Status constants
  * ```
  */
 

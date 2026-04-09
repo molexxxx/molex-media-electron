@@ -1,5 +1,5 @@
 # -----------------------------------------------------
-# Release — Auto-generate releases with changelogs
+# Release - Auto-generate releases with changelogs
 # Triggered by pushing a version tag: v*.*.*
 # -----------------------------------------------------
 name: Release

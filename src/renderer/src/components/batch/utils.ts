@@ -6,16 +6,16 @@
 import type { FileItem } from '../../stores/types'
 
 export const formatSize = (bytes: number): string => {
-  if (!bytes) return '—'
+  if (!bytes) return '-'
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 export const formatDuration = (sec: string | undefined): string => {
-  if (!sec) return '—'
+  if (!sec) return '-'
   const s = parseFloat(sec)
-  if (!s || s <= 0) return '—'
+  if (!s || s <= 0) return '-'
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const ss = Math.floor(s % 60)
@@ -35,7 +35,7 @@ export const formatCodecInfo = (file: FileItem): string => {
     if (file.channels) ac += ` ${file.channels}ch`
     parts.push(ac)
   }
-  return parts.join(' · ') || '—'
+  return parts.join(' · ') || '-'
 }
 
 export const extColor = (ext: string): string => {

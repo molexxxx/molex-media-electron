@@ -1,46 +1,143 @@
-/**
- * @module components/editor/types
- * @description Shared types, constants, and utilities for the media editor.
- */
+/** @module editor/types - NLE editor type definitions. */
 
-export interface Clip {
+// ---------------------------------------------------------------------------
+// Project
+// ---------------------------------------------------------------------------
+
+export interface Resolution {
+  width: number
+  height: number
+}
+
+export interface EditorProject {
   id: string
   name: string
-  path: string
-  objectUrl: string
-  previewUrl?: string
-  duration: number
-  isVideo: boolean
-  inPoint: number
-  outPoint: number
+  frameRate: number // 24, 25, 29.97, 30, 60
+  sampleRate: number // 44100, 48000
+  resolution: Resolution
+  createdAt: number
+  modifiedAt: number
 }
 
-export function formatTime(sec: number): string {
-  if (!isFinite(sec) || sec < 0) return '0:00.0'
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  const ms = Math.floor((sec % 1) * 10)
-  return `${m}:${s.toString().padStart(2, '0')}.${ms}`
-}
+// ---------------------------------------------------------------------------
+// Media source
+// ---------------------------------------------------------------------------
 
-export type CutMode = 'fast' | 'precise'
-
-export const OUTPUT_FORMATS = {
-  video: ['mp4', 'mkv', 'webm', 'avi', 'mov', 'ts', 'gif'],
-  audio: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
-}
-
-export interface GifOptions {
-  loop: boolean
-  fps: number
+export interface MediaSource {
+  id: string
+  filePath: string
+  fileName: string
+  duration: number // total frames
+  frameRate: number // source native fps
   width: number
+  height: number
+  audioChannels: number
+  audioSampleRate: number
+  codec: string
+  format: string
+  fileSize: number
+  durationSeconds: number // convenience - seconds (float)
 }
 
-export const AUDIO_EXTS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus', 'ac3', 'eac3', 'dts', 'amr', 'ape', 'wv']
-export const VIDEO_EXTS = ['mp4', 'mkv', 'avi', 'mov', 'flv', 'wmv', 'webm', 'm4v', 'ts', 'mpg', 'mpeg', 'vob', '3gp', 'mts', 'm2ts', 'divx', 'f4v', 'ogv', 'rm', 'rmvb', 'asf']
-export const ALL_EXTS = [...AUDIO_EXTS, ...VIDEO_EXTS]
+// ---------------------------------------------------------------------------
+// Timeline model
+// ---------------------------------------------------------------------------
 
-export const DISPOSITION_FLAGS = [
-  'default', 'dub', 'original', 'comment', 'lyrics',
-  'karaoke', 'forced', 'hearing_impaired', 'visual_impaired', 'descriptions'
-]
+export interface TimelineClip {
+  id: string
+  sourceId: string // → MediaSource.id
+  trackId: string // → TimelineTrack.id
+
+  // Position on timeline (project frames)
+  timelineStart: number
+
+  // Source range (source frames)
+  sourceIn: number
+  sourceOut: number
+
+  // Metadata
+  name: string
+  color: string
+  muted: boolean
+  locked: boolean
+
+  // Audio
+  volume: number // 0-2 (1 = unity)
+  pan: number // -1 … 1
+
+  // Speed
+  speed: number // 1.0 = normal
+}
+
+export interface TimelineTrack {
+  id: string
+  type: 'video' | 'audio'
+  name: string // "V1", "A1", …
+  index: number // stacking order (higher = on top for video)
+  height: number // visual px height
+  muted: boolean
+  locked: boolean
+  visible: boolean // video tracks only
+}
+
+export interface Timeline {
+  tracks: TimelineTrack[]
+  clips: TimelineClip[]
+  duration: number // auto-calculated total frames
+}
+
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
+
+export interface HistoryEntry {
+  timestamp: number
+  label: string
+  snapshot: Timeline
+}
+
+export interface HistoryState {
+  entries: HistoryEntry[]
+  currentIndex: number
+  maxEntries: number
+}
+
+// ---------------------------------------------------------------------------
+// Clip mode (simple in/out for a single source)
+// ---------------------------------------------------------------------------
+
+export interface ClipModeState {
+  sourceId: string | null
+  inPoint: number // frame in source
+  outPoint: number // frame in source
+}
+
+// ---------------------------------------------------------------------------
+// Playback
+// ---------------------------------------------------------------------------
+
+export interface PlaybackState {
+  isPlaying: boolean
+  currentFrame: number
+  playbackRate: number // 1 = normal, negative = reverse
+  loop: boolean
+  inPoint: number | null // timeline in point
+  outPoint: number | null // timeline out point
+}
+
+// ---------------------------------------------------------------------------
+// Mode union
+// ---------------------------------------------------------------------------
+
+export type EditorMode = 'clip' | 'edit' | 'inspect'
+
+// ---------------------------------------------------------------------------
+// Tool (edit mode)
+// ---------------------------------------------------------------------------
+
+export type EditTool = 'select' | 'trim' | 'razor' | 'slip' | 'slide'
+
+export interface EditPoint {
+  leftClipId: string
+  rightClipId: string
+}

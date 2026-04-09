@@ -1,6 +1,6 @@
 /**
  * @module main/windows
- * @description Browser window management — main window, popout player,
+ * @description Browser window management - main window, popout player,
  * and global IPC handlers for window controls and player state transfer.
  */
 
@@ -33,8 +33,8 @@ export function setQuitting(value: boolean): void {
 /** Create the main application window. */
 export function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    width: 1493,
+    height: 956,
     minWidth: 420,
     minHeight: 380,
     show: false,

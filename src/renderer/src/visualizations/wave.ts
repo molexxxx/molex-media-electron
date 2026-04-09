@@ -66,7 +66,7 @@ export function drawWave(
   ctx.stroke()
   ctx.shadowBlur = 0
 
-  // Mirror reflection — only when loud enough
+  // Mirror reflection - only when loud enough
   if (loudness > 0.2) {
     ctx.beginPath()
     for (let i = 0; i < time.length; i++) {

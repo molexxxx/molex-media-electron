@@ -144,7 +144,7 @@ describe('Logger', () => {
     logger.info('before init')
     // appendFile should not be called when logFile is not set
     // (the logger mock starts without init)
-    // Actually logger is shared — init may have been called before.
+    // Actually logger is shared - init may have been called before.
     // Instead verify the buffer still has the entry
     const buf = logger.getBuffer()
     expect(buf.some((e) => e.message === 'before init')).toBe(true)

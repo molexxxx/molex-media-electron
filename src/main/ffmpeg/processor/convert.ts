@@ -13,6 +13,7 @@ import { getConfig } from '../../config'
 import { logger } from '../../logger'
 import { probeMedia, formatDuration, formatFileSize } from '../probe'
 import { runCommand, parseProgress } from '../runner'
+import { resolveGpuCodec, getHwaccelInputArgs, type GpuMode } from '../gpu'
 import {
   type ProcessingTask,
   type TaskProgressCallback,
@@ -61,7 +62,7 @@ export async function convertFile(
     onProgress(task)
 
     // Determine where the final file should land
-    // When replacing, always output next to the original so we can delete it
+    // When replacing, always output next to the original so it can be deleted
     const replaceMode = config.afterProcessing === 'replace'
     const outDir = replaceMode
       ? path.dirname(task.filePath)
@@ -84,17 +85,32 @@ export async function convertFile(
       finalPath = path.join(outDir, `${baseName}.${opts.outputFormat}`)
     }
 
-    // FFmpeg cannot write to the same path it reads from — always use a temp file
+    // FFmpeg cannot write to the same path it reads from - always use a temp file
     const tempPath = path.join(outDir, `${baseName}_converting_${Date.now()}.${opts.outputFormat}`)
 
-    const args: string[] = ['-y', '-i', task.filePath, '-threads', '0']
+    const args: string[] = ['-y']
+
+    // GPU acceleration for decoding (only when re-encoding video, no complex filters)
+    const gpuMode = (config.gpuAcceleration || 'off') as GpuMode
+    const hasFilterComplex = !!opts.resolution // scale filter means software pixel formats
+    let activeGpuMode: GpuMode = 'off'
+
+    if (info.isVideoFile && opts.videoCodec !== 'copy') {
+      const gpuResult = await resolveGpuCodec(ffmpegPath, opts.videoCodec, gpuMode)
+      activeGpuMode = gpuResult.activeMode
+      const hwArgs = getHwaccelInputArgs(activeGpuMode, hasFilterComplex)
+      args.push(...hwArgs)
+    }
+
+    args.push('-i', task.filePath, '-threads', '0')
 
     // Video codec
     if (info.isVideoFile) {
       if (opts.videoCodec === 'copy') {
         args.push('-c:v', 'copy')
       } else {
-        args.push('-c:v', opts.videoCodec)
+        const gpuResult = await resolveGpuCodec(ffmpegPath, opts.videoCodec, gpuMode)
+        args.push('-c:v', gpuResult.codec)
         if (opts.videoBitrate) args.push('-b:v', opts.videoBitrate)
       }
       if (opts.resolution) {

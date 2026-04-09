@@ -27,7 +27,7 @@ export function registerSystemIPC(): void {
     shell.openPath(logDir)
   })
 
-  // Log streaming — forward every log entry to all renderer windows
+  // Log streaming - forward every log entry to all renderer windows
   logger.onLog((entry: LogEntry) => {
     try {
       sendToAll('logs:entry', entry)

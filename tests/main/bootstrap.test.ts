@@ -155,9 +155,9 @@ describe('bootstrap', () => {
       })
 
       // The function searches PATH dirs for each binary
-      // We need to handle the interleaved calls
+      // Need to handle the interleaved calls
       const result = await findSystemFFmpeg()
-      // Result depends on PATH layout; at minimum, if both exist we get a result
+      // Result depends on PATH layout; at minimum, if both exist then there will be a result
       expect(result).toBeDefined()
     })
   })

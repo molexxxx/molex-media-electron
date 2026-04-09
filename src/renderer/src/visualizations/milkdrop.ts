@@ -1,6 +1,6 @@
 /**
  * @module visualizations/milkdrop
- * @description **Milkdrop** — Winamp-inspired feedback-loop visualization.
+ * @description **Milkdrop** - Winamp-inspired feedback-loop visualization.
  *
  * Emulates the classic Milkdrop aesthetic with a zoom-and-rotate feedback
  * loop drawn from an off-screen canvas, a morphing waveform scope that

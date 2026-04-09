@@ -162,7 +162,7 @@ async function detectBrowser(): Promise<string | null> {
     }
   }
 
-  logger.warn('No browser detected for yt-dlp cookies — requests may be blocked')
+  logger.warn('No browser detected for yt-dlp cookies - requests may be blocked')
   return null
 }
 
@@ -213,7 +213,7 @@ async function exportCookiesFromBrowser(): Promise<boolean> {
       }
     } else {
       if (fs.existsSync(cookiesFile) && fs.statSync(cookiesFile).size > 0) {
-        logger.info('Cookies file was written despite yt-dlp error — using it')
+        logger.info('Cookies file was written despite yt-dlp error - using it')
         return true
       }
       logger.warn(`Cookie export failed: ${err.message}`)
@@ -278,12 +278,12 @@ export function getCookieInfo(): { exists: boolean; age: number | null; browser:
 export async function ensureCookieFlags(): Promise<Record<string, string>> {
   const cookiesFile = getCookiesFilePath()
 
-  // Reuse existing fresh cookies file — no browser access needed
+  // Reuse existing fresh cookies file - no browser access needed
   if (isCookiesFileFresh()) {
     return { cookies: cookiesFile }
   }
 
-  // File exists but stale — use it now, refresh in background
+  // File exists but stale - use it now, refresh in background
   const fileUsable = (() => {
     try { return fs.existsSync(cookiesFile) && fs.statSync(cookiesFile).size > 0 }
     catch { return false }
@@ -294,7 +294,7 @@ export async function ensureCookieFlags(): Promise<Record<string, string>> {
     return { cookies: cookiesFile }
   }
 
-  // No file at all — must export now (first launch only)
+  // No file at all - must export now (first launch only)
   const ok = await exportCookiesFromBrowser()
   if (ok && fs.existsSync(cookiesFile)) {
     return { cookies: cookiesFile }
@@ -321,14 +321,14 @@ export async function withCookieRetry<T>(fn: (flags: Record<string, any>) => Pro
     return await fn(cookieFlags)
   } catch (err: any) {
     if (isCookieError(err.message) || /sign in|age-restricted|login required/i.test(err.message)) {
-      logger.warn('Request failed with possible auth issue — re-exporting cookies from browser...')
+      logger.warn('Request failed with possible auth issue - re-exporting cookies from browser...')
       invalidateCookiesFile()
       const freshFlags = await ensureCookieFlags()
       try {
         return await fn(freshFlags)
       } catch (retryErr: any) {
         if (isCookieError(retryErr.message)) {
-          logger.warn('Cookie retry failed — trying without cookies...')
+          logger.warn('Cookie retry failed - trying without cookies...')
           return fn({})
         }
         throw retryErr

@@ -3,10 +3,10 @@
  * @description First-run wizard for FFmpeg download and installation.
  *
  * Guides the user through a multi-step flow:
- * 1. **Welcome** — explains FFmpeg requirement with feature highlights.
- * 2. **Downloading** — progress bar during automatic download.
- * 3. **Complete** — success confirmation with "Get Started" action.
- * 4. **Error** — failure message with retry and manual-install options.
+ * 1. **Welcome** - explains FFmpeg requirement with feature highlights.
+ * 2. **Downloading** - progress bar during automatic download.
+ * 3. **Complete** - success confirmation with "Get Started" action.
+ * 4. **Error** - failure message with retry and manual-install options.
  */
 
 import React, { useState } from 'react'
@@ -75,7 +75,7 @@ export default function SetupWizard(): React.JSX.Element {
                 </div>
                 <h2 className="text-xl font-semibold text-white mb-2">Welcome to molexMedia</h2>
                 <p className="text-surface-400 text-sm leading-relaxed">
-                  FFmpeg is required for audio processing. We&apos;ll download and configure it automatically — no command line needed.
+                  FFmpeg is required for audio processing. We&apos;ll download and configure it automatically - no command line needed.
                 </p>
               </div>
 
@@ -91,7 +91,7 @@ export default function SetupWizard(): React.JSX.Element {
                   <span className="text-emerald-400 mt-0.5">✓</span>
                   <div>
                     <p className="text-surface-200 font-medium">Portable Installation</p>
-                    <p className="text-surface-500 text-xs">Stored in app data — no system modifications required</p>
+                    <p className="text-surface-500 text-xs">Stored in app data - no system modifications required</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-800/50">

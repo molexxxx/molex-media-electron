@@ -59,7 +59,7 @@
 - **Interactive Timeline** — NLE-style timeline with V1, A1, and A2 tracks; draggable scrubber with in/out handles, time markers, and selected-region highlight
 - **Undo / Redo** — 50-level history stack for all clip, trim, split, and A2 operations
 - **Per-clip Controls** — Independent volume slider and mute toggle for each clip and each A2 track
-- **Playback Controls** — Volume slider, speed selector (0.25x–2x), and keyboard shortcuts (Space, I, O, R)
+- **Playback Controls** — Volume slider, speed selector (0.25x-2x), and keyboard shortcuts (Space, I, O, R)
 - **Drag-to-reorder** — Visual multi-clip track lane with proportional clip blocks, audio replacement badges, and drag-and-drop sequencing
 - **Video & Waveform Preview** — Native `<video>` for video clips, canvas waveform for audio-only; automatic transcoding for non-browser formats
 - **7 Output Formats** — Video: MP4, MKV, WebM, AVI, MOV, TS, GIF — Audio: MP3, WAV, FLAC, OGG, M4A, AAC, Opus

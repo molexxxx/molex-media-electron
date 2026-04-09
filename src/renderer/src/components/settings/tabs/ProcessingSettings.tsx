@@ -1,11 +1,20 @@
 /**
  * @module components/settings/tabs/ProcessingSettings
- * @description Processing tab — concurrency, output, and stream handling options.
+ * @description Processing tab - concurrency, output, and stream handling options.
  */
 
 import React from 'react'
 import type { AppConfig } from '../../../stores/appStore'
 import { SettingGroup, SettingRow, Toggle, NumberInput } from '../../shared/ui'
+
+type GpuOption = 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
+const GPU_OPTIONS: { value: GpuOption; label: string; description: string }[] = [
+  { value: 'off', label: 'Off', description: 'CPU only' },
+  { value: 'auto', label: 'Auto', description: 'Detect best GPU' },
+  { value: 'nvenc', label: 'NVENC', description: 'NVIDIA' },
+  { value: 'qsv', label: 'QSV', description: 'Intel' },
+  { value: 'amf', label: 'AMF', description: 'AMD' },
+]
 
 interface ProcessingSettingsProps {
   config: AppConfig
@@ -18,7 +27,35 @@ export function ProcessingSettings({ config, onUpdate, onSelectOutputDir }: Proc
 
   return (
     <div className="space-y-4">
-      {/* After Processing — card selector */}
+      {/* GPU Acceleration - card selector */}
+      <div className="rounded-xl p-4 space-y-3 bg-white/[0.03] border border-white/[0.06]">
+        <span className="text-2xs font-semibold uppercase tracking-wider text-surface-500">GPU Acceleration</span>
+        <div className="grid grid-cols-5 gap-2">
+          {GPU_OPTIONS.map((opt) => {
+            const active = (config.gpuAcceleration || 'off') === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => onUpdate('gpuAcceleration', opt.value)}
+                className={`group relative p-2.5 rounded-lg border text-center transition-all ${
+                  active
+                    ? 'border-accent-500/30 bg-accent-500/[0.08]'
+                    : 'border-white/[0.06] bg-white/[0.02] hover:border-accent-500/15 hover:bg-accent-500/[0.04]'
+                }`}
+              >
+                <span className={`block text-xs font-medium ${active ? 'text-accent-300' : 'text-surface-400'}`}>
+                  {opt.label}
+                </span>
+                <span className="block text-2xs text-surface-500 mt-0.5">{opt.description}</span>
+                {active && <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent-400" />}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-2xs text-surface-500">Use GPU hardware encoding for faster exports. Auto detects the best available encoder.</p>
+      </div>
+
+      {/* After Processing - card selector */}
       <div className="rounded-xl p-4 space-y-3 bg-white/[0.03] border border-white/[0.06]">
         <span className="text-2xs font-semibold uppercase tracking-wider text-surface-500">After Processing</span>
         <div className="grid grid-cols-2 gap-2">
@@ -72,7 +109,7 @@ export function ProcessingSettings({ config, onUpdate, onSelectOutputDir }: Proc
         )}
       </div>
 
-      {/* Output Directory — inline bar */}
+      {/* Output Directory - inline bar */}
       {isKeepBoth && (
         <div className="rounded-xl p-4 space-y-3 bg-white/[0.03] border border-white/[0.06]">
           <span className="text-2xs font-semibold uppercase tracking-wider text-surface-500">Output Directory</span>

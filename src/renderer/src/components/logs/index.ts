@@ -1,2 +1,2 @@
-/** @module components/logs — Real-time log viewer panel. */
+/** @module components/logs - Real-time log viewer panel. */
 export { default as LogViewer } from './LogViewer'

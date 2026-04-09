@@ -16,6 +16,7 @@ export default defineConfig({
         'src/main/index.ts',
         'src/main/ipc.ts',
         'src/main/protocol.ts',
+        'src/main/preview-server.ts',
         'src/main/tray.ts',
         'src/main/windows.ts',
         'src/main/ipc/**',

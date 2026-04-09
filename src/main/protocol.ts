@@ -72,7 +72,7 @@ const MIME_TYPES: Record<string, string> = {
  * Serve a local file with proper HTTP Range support for seeking.
  *
  * Reads the requested byte range into a `Buffer` using synchronous
- * `fs.readSync` — this is reliable with Electron's Chromium layer
+ * `fs.readSync` - this is reliable with Electron's Chromium layer
  * (unlike `Readable.toWeb()` which produces Node.js Web Streams that
  * can cause PIPELINE_ERROR_READ on seek).  For large files without a
  * Range header the response is capped at {@link MAX_CHUNK} bytes and
@@ -99,7 +99,7 @@ export function serveLocalFile(filePath: string, request: Request): Response {
 
     // Cap open-ended range requests to avoid huge buffer allocations.
     // The browser sends `bytes=0-` on first load and seeks with
-    // `bytes=N-` (no end) — without a cap these can try to alloc
+    // `bytes=N-` (no end) - without a cap these can try to alloc
     // hundreds of MB for large extracted audio files.
     const MAX_CHUNK = 2 * 1024 * 1024 // 2 MB
 
@@ -145,7 +145,7 @@ export function serveLocalFile(filePath: string, request: Request): Response {
       'Content-Range': `bytes ${start}-${end}/${total}`
     }
 
-    // Always 206 — tells the media element that Range requests are
+    // Always 206 - tells the media element that Range requests are
     // supported and communicates the full file size via Content-Range.
     return new Response(buffer, { status: 206, headers })
   } catch (err: any) {
@@ -165,7 +165,7 @@ export function registerMediaHandler(): void {
     const rangeInfo = request.headers.get('Range') || 'none'
     logger.info(`media:// url=${raw.slice(0, 50)}... range=${rangeInfo}`)
 
-    // Check preview files first (editor playback previews)
+    // Check preview files (editor playback previews)
     const previewPath = previewFiles.get(token)
     if (previewPath) {
       return serveLocalFile(previewPath, request)
@@ -178,7 +178,7 @@ export function registerMediaHandler(): void {
       return new Response('Stream expired or not found', { status: 404 })
     }
 
-    // Local file (HLS download fallback) — serve with Range support
+    // Local file (HLS download fallback) - serve with Range support
     if (cdnUrl.startsWith('file:///')) {
       const filePath = decodeURIComponent(cdnUrl.replace('file:///', '').replace(/\//g, '\\'))
       return serveLocalFile(filePath, request)
@@ -195,7 +195,7 @@ export function registerMediaHandler(): void {
       const response = await net.fetch(cdnUrl, { headers })
       logger.info(`media:// CDN response: ${response.status} type=${response.headers.get('content-type')}`)
 
-      // Validate response — expired CDN URLs return HTML error pages
+      // Validate response - expired CDN URLs return HTML error pages
       if (!response.ok) {
         logger.warn(`media:// CDN returned ${response.status} for token=${token.slice(0, 8)}`)
         return new Response(`CDN returned ${response.status}`, { status: response.status })

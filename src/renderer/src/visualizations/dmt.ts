@@ -1,20 +1,20 @@
 /**
  * @module visualizations/dmt
- * @description **DMT** — psychedelic divine entity visualization.
+ * @description **DMT** - psychedelic divine entity visualization.
  *
  * The most complex visualization, composed of nine layered elements:
  *
- * 1. **Kaleidoscope Sacred Geometry** (background) — five sub-layers of
+ * 1. **Kaleidoscope Sacred Geometry** (background) - five sub-layers of
  *    counter-rotating hexagonal grids, concentric polygon rings, radial
  *    spoke lattices, nested recursive polygons, and a Flower of Life pattern.
- * 2. **Ophanim Rings** — concentric rotating wheels with frequency-driven spokes.
- * 3. **Eyes** — blinking irises orbiting the rings with reactive pupil dilation.
- * 4. **Seraphim Wings** — flowing feather arcs that spread with mid energy.
- * 5. **Kaleidoscope Geometry** — mirrored spiral tendrils radiating outward.
- * 6. **Floating Orbs** — luminous spheres with glow halos drifting gently.
- * 7. **Inner Mandala** — petal-shaped polygon rosettes near the center.
- * 8. **Particles** — depth-layered motes orbiting at multiple speeds.
- * 9. **Waveform Aura / Center Eye / Shockwaves** — a time-domain ring,
+ * 2. **Ophanim Rings** - concentric rotating wheels with frequency-driven spokes.
+ * 3. **Eyes** - blinking irises orbiting the rings with reactive pupil dilation.
+ * 4. **Seraphim Wings** - flowing feather arcs that spread with mid energy.
+ * 5. **Kaleidoscope Geometry** - mirrored spiral tendrils radiating outward.
+ * 6. **Floating Orbs** - luminous spheres with glow halos drifting gently.
+ * 7. **Inner Mandala** - petal-shaped polygon rosettes near the center.
+ * 8. **Particles** - depth-layered motes orbiting at multiple speeds.
+ * 9. **Waveform Aura / Center Eye / Shockwaves** - a time-domain ring,
  *    an all-seeing iris at the dead center, and expanding beat pulses.
  *
  * All layers persist via a fade-trail for dreamy ghosting.
@@ -52,7 +52,7 @@ export function drawDMT(
   const highMid = audio.highMid
   const overall = audio.overall
 
-  // Evolving hue — slow drift with beat bursts
+  // Evolving hue - slow drift with beat bursts
   state.hueBase = (state.hueBase + 0.08 + bass * 0.4 + audio.beat * 5) % 360
   state.tunnelDepth += 0.15 + mid * 0.8 + audio.beat * 3
   state.kaleidoAngle += 0.003 + bass * 0.008 + audio.beat * 0.04
@@ -63,7 +63,7 @@ export function drawDMT(
     state.shockwaves.push({ radius: 0, alpha: 0.8, hue: state.hueBase })
   }
 
-  // Fade trail — heavy persistence for dreamy ghosting
+  // Fade trail - heavy persistence for dreamy ghosting
   const fadeAlpha = 0.035 + (1 - overall) * 0.035
   ctx.fillStyle = `rgba(3, 1, 12, ${fadeAlpha})`
   ctx.fillRect(0, 0, W, H)
@@ -82,7 +82,7 @@ export function drawDMT(
   ctx.save()
   ctx.translate(cx, cy)
 
-  // ── Background: Kaleidoscope Sacred Geometry ──
+  // -- Background: Kaleidoscope Sacred Geometry --
   {
     const kSegments = symCount * 2
     const treble = audio.treble
@@ -156,7 +156,7 @@ export function drawDMT(
       ctx.restore()
     }
 
-    // Layer B: Kaleidoscope radial web — fine concentric polygon rings
+    // Layer B: Kaleidoscope radial web - fine concentric polygon rings
     const webRings = 10
     const webMaxR = minDim * 0.46
     for (let r = 0; r < webRings; r++) {
@@ -185,7 +185,7 @@ export function drawDMT(
       ctx.stroke()
     }
 
-    // Layer C: Radial spoke lattice — fine lines from center creating star patterns
+    // Layer C: Radial spoke lattice - fine lines from center creating star patterns
     const spokeGroups = 3
     for (let g = 0; g < spokeGroups; g++) {
       const groupSpokes = kSegments * (g + 1)
@@ -220,7 +220,7 @@ export function drawDMT(
       }
     }
 
-    // Layer D: Recursive nested polygons — breathe with bass, rotate with mid
+    // Layer D: Recursive nested polygons - breathe with bass, rotate with mid
     const nestLevels = 5
     const nestSides = [3, 4, 5, 6, 8]
     for (let n = 0; n < nestLevels; n++) {
@@ -259,7 +259,7 @@ export function drawDMT(
       }
     }
 
-    // Layer E: Flower of Life pattern — overlapping circles at intersections
+    // Layer E: Flower of Life pattern - overlapping circles at intersections
     const flowerR = minDim * 0.035 * (0.7 + highMid * 0.6 + bass * 0.2)
     const flowerRings = 2
     const flowerHue = (state.hueBase + 150) % 360
@@ -294,7 +294,7 @@ export function drawDMT(
     }
   }
 
-  // ── Layer 1: Ophanim Rings (concentric rotating wheels with eyes) ──
+  // -- Layer 1: Ophanim Rings (concentric rotating wheels with eyes) --
   const ringCount = 5
   for (let r = 0; r < ringCount; r++) {
     const baseRadius = minDim * (0.12 + r * 0.08) * (1 + bass * 0.1)
@@ -332,7 +332,7 @@ export function drawDMT(
     }
   }
 
-  // ── Layer 2: Eyes on the ophanim rings ──
+  // -- Layer 2: Eyes on the ophanim rings --
   for (const eye of state.eyes) {
     eye.angle += eye.speed * (0.6 + bass * 0.8 + audio.beat * 1.5)
     eye.blinkPhase += 0.02 + mid * 0.03
@@ -390,7 +390,7 @@ export function drawDMT(
     eye.pupilPhase += 0.015
   }
 
-  // ── Layer 3: Seraphim Wings (flowing, feather-like arcs) ──
+  // -- Layer 3: Seraphim Wings (flowing, feather-like arcs) --
   const wingPairs = 3
   const wingSpread = 0.3 + mid * 0.4 + audio.beat * 0.2
   for (let w = 0; w < wingPairs; w++) {
@@ -435,7 +435,7 @@ export function drawDMT(
     }
   }
 
-  // ── Layer 4: Kaleidoscope Geometry ──
+  // -- Layer 4: Kaleidoscope Geometry --
   for (let s = 0; s < symCount; s++) {
     ctx.save()
     ctx.rotate(s * angleStep + state.kaleidoAngle)
@@ -494,7 +494,7 @@ export function drawDMT(
     ctx.restore()
   }
 
-  // ── Layer 5: Floating Orbs ──
+  // -- Layer 5: Floating Orbs --
   for (const orb of state.orbs) {
     orb.pulse += 0.03 + bass * 0.05
     orb.x += orb.vx * (1 + audio.beat * 3)
@@ -531,7 +531,7 @@ export function drawDMT(
     ctx.shadowBlur = 0
   }
 
-  // ── Layer 6: Inner Mandala ──
+  // -- Layer 6: Inner Mandala --
   const mandalaRings = 4
   for (let r = 0; r < mandalaRings; r++) {
     const radius = 15 + r * 16 * (1 + audio.lowMid * 0.5)
@@ -557,7 +557,7 @@ export function drawDMT(
     ctx.shadowBlur = 0
   }
 
-  // ── Layer 7: Particles (depth-layered) ──
+  // -- Layer 7: Particles (depth-layered) --
   for (const p of state.particles) {
     const layerSpeed = 0.4 + p.layer * 0.3
     p.angle += p.speed * layerSpeed * (0.5 + bass * 0.6 + audio.beat * 1.5)
@@ -579,7 +579,7 @@ export function drawDMT(
     ctx.shadowBlur = 0
   }
 
-  // ── Layer 8: Waveform Aura ──
+  // -- Layer 8: Waveform Aura --
   const auraRadius = minDim * 0.42
   ctx.beginPath()
   for (let i = 0; i < time.length; i += 4) {
@@ -596,7 +596,7 @@ export function drawDMT(
   ctx.lineWidth = 1
   ctx.stroke()
 
-  // ── Center Eye (all-seeing, pulses on beat) ──
+  // -- Center Eye (all-seeing, pulses on beat) --
   const eyeR = 8 + bass * 12 + audio.beat * 18
   for (let ring = 3; ring >= 0; ring--) {
     const rr = eyeR * (0.4 + ring * 0.2)
@@ -621,7 +621,7 @@ export function drawDMT(
   ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + audio.beat * 0.3})`
   ctx.fill()
 
-  // ── Beat Shockwaves ──
+  // -- Beat Shockwaves --
   for (let i = state.shockwaves.length - 1; i >= 0; i--) {
     const sw = state.shockwaves[i]
     sw.radius += 4 + overall * 6

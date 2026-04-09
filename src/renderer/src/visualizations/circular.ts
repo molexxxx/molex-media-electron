@@ -1,6 +1,6 @@
 /**
  * @module visualizations/circular
- * @description **Gravity** — gravitational lens visualization.
+ * @description **Gravity** - gravitational lens visualization.
  *
  * Concentric frequency-warped rings surround a glowing singularity core.
  * Orbiting particle streams follow elliptical paths with eccentricity
@@ -40,7 +40,7 @@ export function drawCircular(
 
   if (loudness < 0.01) return
 
-  // Gravitational lens distortion field — concentric rings that warp with frequency
+  // Gravitational lens distortion field - concentric rings that warp with frequency
   const ringCount = 8
   for (let r = 0; r < ringCount; r++) {
     const baseRadius = minDim * (0.06 + r * 0.045) * (1 + bass * 0.15)
@@ -68,7 +68,7 @@ export function drawCircular(
     ctx.stroke()
   }
 
-  // Particle streams — orbiting fragments pulled by gravity
+  // Particle streams - orbiting fragments pulled by gravity
   const particleCount = 60
   for (let i = 0; i < particleCount; i++) {
     const seed = i * 137.508
@@ -100,7 +100,7 @@ export function drawCircular(
     }
   }
 
-  // Energy filaments — connecting nearby high-energy particles
+  // Energy filaments - connecting nearby high-energy particles
   const filamentAngles = 12
   for (let i = 0; i < filamentAngles; i++) {
     const baseAngle = (i / filamentAngles) * Math.PI * 2 + t * 0.1
@@ -127,7 +127,7 @@ export function drawCircular(
     ctx.stroke()
   }
 
-  // Time-domain gravitational wave — ripple ring
+  // Time-domain gravitational wave - ripple ring
   const waveR = minDim * (0.12 + loudness * 0.08)
   ctx.beginPath()
   const wavePoints = 90

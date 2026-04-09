@@ -130,6 +130,7 @@ export interface AppConfig {
   minimizeToTray: boolean
   showTrayNotification: boolean
   autoUpdate: boolean
+  gpuAcceleration: 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
   ytdlpBrowser: string
   sidebarCollapsed: boolean
 }

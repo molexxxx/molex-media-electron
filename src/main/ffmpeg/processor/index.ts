@@ -2,9 +2,7 @@
  * @module main/ffmpeg/processor
  * @description Barrel re-export for the processing pipeline.
  *
- * All imports that previously pointed at `ffmpeg/processor` continue to
- * work unchanged — this module re-exports every public symbol from the
- * decomposed sub-modules.
+ * Consolidates all processor sub-modules into a single import surface.
  */
 
 // Types & helpers
@@ -33,8 +31,8 @@ export { extractAudio } from './extract'
 export { compressFile } from './compress'
 
 // Batch processing
-export { processBatch, pauseProcessing, resumeProcessing, getIsPaused } from './batch'
+export { processBatch, pauseProcessing, resumeProcessing, getIsPaused, setMaxWorkers, getActiveWorkerCount, getTargetWorkers } from './batch'
 
 // Editor operations
-export { cutMedia, mergeMedia, remuxMedia, replaceAudio } from './editor'
-export type { MergeSegment, RemuxOptions, CutOptions, EditorProgress, EditorProgressCallback, ReplaceAudioOptions } from './editor'
+export { buildExportCommand, getExportDurationSeconds } from './editor'
+export type { ExportRequest, ExportSource, ExportClip, ExportTrack, ExportProject, ExportOutputOptions } from './editor'

@@ -57,7 +57,7 @@ export function useVisualizer(
     const peakBars = new Float32Array(128).fill(0)
     const peakDecay = new Float32Array(128).fill(0)
 
-    // Beat detection state (energy variance method — Frédéric Patin)
+    // Beat detection state (energy variance method - Frédéric Patin)
     const BEAT_HISTORY = 43
     const bassHistory: number[] = []
     const midHistory: number[] = []

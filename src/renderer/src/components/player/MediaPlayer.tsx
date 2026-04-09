@@ -131,7 +131,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     const autoSkip = () => {
       skipCountRef.current++
       if (skipCountRef.current >= MAX_CONSECUTIVE_SKIPS) {
-        setError('Too many consecutive failures — stopping playback')
+        setError('Too many consecutive failures - stopping playback')
         setPlaying(false)
         skipCountRef.current = 0
         return
@@ -174,8 +174,8 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     }
 
     // Local file: register for media:// protocol streaming.
-    // Only call registerLocalFile when we don't already have a cached
-    // media:// URL — re-registering every time is wasteful because it
+    // Only call registerLocalFile when it doesn't already have a cached
+    // media:// URL - re-registering every time is wasteful because it
     // invokes prepareForPlayback (which probes + potentially FFmpeg-extracts).
     if (!audioSrc && !isYouTube && t.filePath) {
       try {
@@ -200,7 +200,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
 
     ytRetryRef.current = null
 
-    // Use the persistent <audio> element — no new Audio() needed
+    // Use the persistent <audio> element - no new Audio() needed
     const audio = audioRef.current
     if (!audio) return
 
@@ -230,10 +230,10 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       }
     }).catch((err) => {
       setResolving(false)
-      // Ignore AbortError — happens when play() is interrupted by a new track load
+      // Ignore AbortError - happens when play() is interrupted by a new track load
       if (err.name === 'AbortError') return
       // Only set error if the error-event handler hasn't already set a more
-      // specific message — avoids overwriting "Format not supported: X"
+      // specific message - avoids overwriting "Format not supported: X"
       setError((prev) => prev || `Playback failed: ${err.message}`)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,7 +262,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
 
     const onLoadedMetadata = (): void => {
       // WebM served via chunked 206 may initially report Infinity;
-      // accept only finite values here — durationchange catches updates.
+      // accept only finite values here - durationchange catches updates.
       if (Number.isFinite(audio.duration)) {
         const realDur = audio.duration + timeOffsetRef.current
         // Only update fullDuration if this is a fresh track (no seek offset yet)
@@ -289,7 +289,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       if (!seekingRef.current) setCurrentTime(audio.currentTime + timeOffsetRef.current)
     }
 
-    // 'seeking' / 'seeked' events from the browser — guard against
+    // 'seeking' / 'seeked' events from the browser - guard against
     // timeupdate firing mid-seek which snaps the slider back.
     const onSeeking = (): void => { seekingRef.current = true }
     const onSeeked = (): void => {
@@ -322,7 +322,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       const code = audio.error?.code
       const msg = audio.error?.message || 'Unknown error'
 
-      // MEDIA_ERR_ABORTED (1) — seek or source change interrupted; not a real error
+      // MEDIA_ERR_ABORTED (1) - seek or source change interrupted; not a real error
       if (code === 1) return
 
       if (isYT) {
@@ -383,7 +383,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       audio.removeEventListener('error', onError)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // One-time setup — all values read from refs
+  }, []) // One-time setup - all values read from refs
 
   // -- Pre-extract local files sequentially so playback is instant --
   // Uses a version counter to cancel previous batches when new tracks arrive.
@@ -731,7 +731,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     const needsSeekExtract = t?.filePath && !t.videoUrl && ext && !DIRECT_AUDIO_EXTS.has(ext)
 
     if (needsSeekExtract && absTime > 1) {
-      // Re-extract audio starting at the seek position — the extracted
+      // Re-extract audio starting at the seek position - the extracted
       // file plays from t=0, timeOffsetRef compensates in the UI.
       seekingRef.current = true
       setResolving(true)
@@ -981,7 +981,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
               </div>
             </div>
           )}
-          {/* Playlist overlay — slides up from bottom of canvas */}
+          {/* Playlist overlay - slides up from bottom of canvas */}
           {showPlaylist && (
             <div className="absolute inset-0 z-20 flex flex-col bg-surface-950/85 backdrop-blur-sm" onClick={() => setShowPlaylist(false)}>
               <div className="flex-1 min-h-0" onClick={(e) => e.stopPropagation()}>
@@ -1053,7 +1053,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           </div>
         </div>
       )}
-      {/* Main column — always full width */}
+      {/* Main column - always full width */}
       <div className="flex flex-col flex-1 gap-3 min-w-0">
         <PlayerHeader
           track={track}
@@ -1139,7 +1139,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
               </div>
             </div>
           )}
-          {/* Playlist overlay — floats on top of the canvas */}
+          {/* Playlist overlay - floats on top of the canvas */}
           {showPlaylist && (
             <>
               <div className="absolute inset-0 z-[19]" onClick={() => setShowPlaylist(false)} />
@@ -1147,7 +1147,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
                 className="absolute top-0 right-0 bottom-0 z-20 w-full sm:max-w-[75%]"
                 style={{ width: window.innerWidth >= 640 ? playlistWidth : undefined }}
               >
-              {/* Resize handle — left edge, desktop only */}
+              {/* Resize handle - left edge, desktop only */}
               <div
                 onMouseDown={startPlaylistResize}
                 className="hidden sm:block absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-30 hover:bg-accent-500/20 active:bg-accent-500/30 transition-colors"

@@ -101,7 +101,7 @@ describe('ytdlp/binary', () => {
       mockAccessPromise.mockRejectedValue(new Error('ENOENT'))
 
       // Mock process.platform to something the DOWNLOAD_URLS doesn't have
-      // This is tricky since process.platform is read-only. Instead, we test the normal download path.
+      // This is tricky since process.platform is read-only. Instead, test the normal download path.
       // The test verifies PATH scanning is attempted
       // If all PATH dirs fail, it tries to download
     })

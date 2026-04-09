@@ -1,2 +1,2 @@
-/** @module components/editor — Media editor with timeline, trim, inspect, and remux. */
+/** @module components/editor - NLE media editor. */
 export { default as MediaEditor } from './MediaEditor'

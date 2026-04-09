@@ -1,6 +1,6 @@
 /**
  * @module main/ipc
- * @description Barrel module — composes all IPC handler groups into a
+ * @description Barrel module - composes all IPC handler groups into a
  * single {@link registerIPC} entry point called from the app bootstrap.
  */
 

@@ -50,7 +50,7 @@ chore(deps): bump electron to v32
 1. Fork the repo and create your branch from `main`
 2. Make your changes with clear, focused commits
 3. Ensure `npm run build` succeeds
-4. Open a PR using the template — describe what and why
+4. Open a PR using the template - describe what and why
 5. Link any related issues
 
 ## Project Structure
@@ -87,8 +87,8 @@ npm run package:linux  # Linux (.AppImage)
 
 - TypeScript strict mode is enabled
 - Use functional React components with hooks
-- State management via Zustand — keep stores minimal
-- Tailwind CSS for styling — avoid inline styles
+- State management via Zustand - keep stores minimal
+- Tailwind CSS for styling - avoid inline styles
 
 ## Reporting Bugs
 

@@ -86,7 +86,7 @@ export default function ProcessingView(): React.JSX.Element {
                 ? `Paused · ${completed}/${total} complete`
                 : `${active.length} active · ${completed}/${total} complete`
               : total > 0
-                ? `Finished — ${completed} succeeded, ${errors} failed`
+                ? `Finished - ${completed} succeeded, ${errors} failed`
                 : 'No active tasks'
             }
           </p>

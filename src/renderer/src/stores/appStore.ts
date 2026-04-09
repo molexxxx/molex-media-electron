@@ -73,6 +73,10 @@ interface AppState {
   setIsPaused: (paused: boolean) => void
   clearTasks: () => void
   resetBatch: () => void
+  batchWorkers: number
+  setBatchWorkers: (n: number) => void
+  activeWorkerCount: number
+  setActiveWorkerCount: (n: number) => void
 
   // Stats
   totalProcessed: number
@@ -141,8 +145,32 @@ export const useAppStore = create<AppState>((set) => ({
   files: [],
   addFiles: (newFiles) =>
     set((state) => {
-      const existingPaths = new Set(state.files.map((f) => f.path))
-      const unique = newFiles.filter((f) => !existingPaths.has(f.path))
+      const DONE_STATUSES = new Set(['complete', 'error', 'cancelled'])
+      const existingByPath = new Map(state.files.map((f) => [f.path, f]))
+      const readdPaths = new Set<string>()
+      const unique = newFiles.filter((f) => {
+        const existing = existingByPath.get(f.path)
+        if (!existing) return true
+        // If the existing file's task is finished, allow re-add
+        const task = state.tasks.find((t) => t.filePath === f.path)
+        if (task && DONE_STATUSES.has(task.status)) {
+          readdPaths.add(f.path)
+          return true
+        }
+        // If no task yet (never processed) and file is in queue, treat as finished
+        if (!task) {
+          readdPaths.add(f.path)
+          return true
+        }
+        return false
+      })
+      // Remove old entries and stale tasks for re-added files
+      const files = readdPaths.size > 0
+        ? state.files.filter((f) => !readdPaths.has(f.path))
+        : state.files
+      const tasks = readdPaths.size > 0
+        ? state.tasks.filter((t) => !readdPaths.has(t.filePath))
+        : state.tasks
       // Stamp each new file with the currently selected operation + options
       const stamped = unique.map((f) => ({
         ...f,
@@ -156,7 +184,7 @@ export const useAppStore = create<AppState>((set) => ({
           compressOptions: { ...state.compressOptions },
         })
       }))
-      return { files: [...state.files, ...stamped] }
+      return { files: [...files, ...stamped], tasks }
     }),
   updateFile: (filePath, data) =>
     set((state) => ({
@@ -209,9 +237,14 @@ export const useAppStore = create<AppState>((set) => ({
   isPaused: false,
   setIsPaused: (paused) => set({ isPaused: paused }),
   clearTasks: () => set({ tasks: [], activeBatchId: null, isPaused: false }),
+  batchWorkers: 0,
+  setBatchWorkers: (n) => set({ batchWorkers: n }),
+  activeWorkerCount: 0,
+  setActiveWorkerCount: (n) => set({ activeWorkerCount: n }),
 
   resetBatch: () => set({
     files: [], tasks: [], activeBatchId: null, isProcessing: false, isPaused: false,
+    batchWorkers: 0, activeWorkerCount: 0,
     operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', batchOutputDir: '',
     normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
     convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
