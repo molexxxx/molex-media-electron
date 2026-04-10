@@ -1,5 +1,5 @@
 /** @module editor/MediaEditor - Top-level NLE editor shell with mode tabs. */
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useEditorStore } from '../../stores/editorStore'
 import type { EditorMode } from './types'
 import { ClipEditor } from './clip/ClipEditor'
@@ -47,8 +47,6 @@ export default function MediaEditor(): React.JSX.Element {
   const mode = useEditorStore((s) => s.mode)
   const setMode = useEditorStore((s) => s.setMode)
   const [mounted, setMounted] = useState<Set<EditorMode>>(new Set([mode]))
-  const [animating, setAnimating] = useState(false)
-  const prevMode = useRef(mode)
 
   // Lazy-mount modes on first visit, keep them alive after that
   useEffect(() => {
@@ -56,17 +54,6 @@ export default function MediaEditor(): React.JSX.Element {
       if (prev.has(mode)) return prev
       return new Set([...prev, mode])
     })
-  }, [mode])
-
-  // Smooth mode transition
-  useEffect(() => {
-    if (prevMode.current !== mode) {
-      setAnimating(true)
-      prevMode.current = mode
-      const timer = setTimeout(() => setAnimating(false), 200)
-      return () => clearTimeout(timer)
-    }
-    return undefined
   }, [mode])
 
   return (
@@ -95,11 +82,7 @@ export default function MediaEditor(): React.JSX.Element {
       </div>
 
       {/* Mode content - kept alive once mounted, toggled via display */}
-      <div
-        className={`flex-1 overflow-hidden transition-opacity duration-200 ${
-          animating ? 'opacity-0' : 'opacity-100'
-        }`}
-      >
+      <div className="flex-1 overflow-hidden">
         {mounted.has('clip') && (
           <div className="h-full" style={{ display: mode === 'clip' ? 'block' : 'none' }}>
             <ClipEditor />

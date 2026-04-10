@@ -37,6 +37,7 @@ const SECTIONS: { title: string; items: { keys: string[][]; desc: string }[] }[]
       { keys: [['Del'], ['Backspace']], desc: 'Delete selected clips' },
       { keys: [['Shift', 'Del']], desc: 'Ripple delete' },
       { keys: [['I'], ['O']], desc: 'Mark in / out point' },
+      { keys: [['Esc']], desc: 'Clear in/out (or deselect)' },
       { keys: [[',']], desc: 'Insert edit' },
       { keys: [['.']], desc: 'Overwrite edit' }
     ]

@@ -137,6 +137,103 @@ export function useTransformGizmos(config: GizmoConfig) {
     [selectedClip, getTransform, canvasToOutput, scaleFactorX, scaleFactorY]
   )
 
+  // Perform transform update for a drag event (works with window-level MouseEvent)
+  const applyDrag = useCallback(
+    (e: MouseEvent) => {
+      const drag = dragRef.current
+      if (!drag || !selectedClip) return
+
+      const dx = (e.clientX - drag.startMouseX) / scaleFactorX
+      const dy = (e.clientY - drag.startMouseY) / scaleFactorY
+      const { source } = selectedClip
+      const clipId = selectedClip.clip.id
+      const st = drag.startTransform
+      const shiftKey = e.shiftKey || drag.shiftHeld
+
+      switch (drag.handle) {
+        case 'move':
+          setClipTransform(clipId, {
+            x: st.x + dx,
+            y: st.y + dy
+          })
+          break
+
+        case 'rotate': {
+          const cx = st.x
+          const cy = st.y
+          const canvas = canvasRef.current
+          if (!canvas) break
+          const rect = canvas.getBoundingClientRect()
+          const [mx, my] = canvasToOutput(
+            e.clientX - rect.left,
+            e.clientY - rect.top
+          )
+          let angle = Math.atan2(mx - cx, -(my - cy)) * (180 / Math.PI)
+          if (shiftKey) angle = Math.round(angle / 15) * 15
+          setClipTransform(clipId, { rotation: angle })
+          break
+        }
+
+        case 'anchor': {
+          const mat = buildClipMatrix(st, source.width, source.height)
+          const inv = inverse(mat)
+          const canvas = canvasRef.current
+          if (!canvas) break
+          const rect = canvas.getBoundingClientRect()
+          const [ox, oy] = canvasToOutput(e.clientX - rect.left, e.clientY - rect.top)
+          const [lx, ly] = transformPoint(inv, ox, oy)
+          setClipTransform(clipId, {
+            anchorX: Math.max(0, Math.min(1, lx / source.width)),
+            anchorY: Math.max(0, Math.min(1, ly / source.height))
+          })
+          break
+        }
+
+        default: {
+          const handle = drag.handle
+          let dsx = 0
+          let dsy = 0
+
+          if (handle.includes('r') || handle === 'scale-tr' || handle === 'scale-br') {
+            dsx = dx / (source.width * st.scaleX) * st.scaleX
+          }
+          if (handle.includes('l') || handle === 'scale-tl' || handle === 'scale-bl') {
+            dsx = -dx / (source.width * st.scaleX) * st.scaleX
+          }
+          if (handle.includes('b') || handle === 'scale-br' || handle === 'scale-bl') {
+            dsy = dy / (source.height * st.scaleY) * st.scaleY
+          }
+          if (handle.includes('t') || handle === 'scale-tl' || handle === 'scale-tr') {
+            dsy = -dy / (source.height * st.scaleY) * st.scaleY
+          }
+
+          let newScaleX = Math.max(0.01, st.scaleX + dsx)
+          let newScaleY = Math.max(0.01, st.scaleY + dsy)
+
+          if (shiftKey || handle.includes('-t') && handle.includes('-') && handle.length > 7) {
+            if (handle.includes('l') || handle.includes('r') || handle.includes('t') || handle.includes('b')) {
+              if (handle.length > 7) {
+                const avgScale = (newScaleX / st.scaleX + newScaleY / st.scaleY) / 2
+                newScaleX = st.scaleX * avgScale
+                newScaleY = st.scaleY * avgScale
+              }
+            }
+          }
+
+          if (shiftKey) {
+            const avgScale = (newScaleX / st.scaleX + newScaleY / st.scaleY) / 2
+            newScaleX = st.scaleX * avgScale
+            newScaleY = st.scaleY * avgScale
+          }
+
+          setClipTransform(clipId, { scaleX: newScaleX, scaleY: newScaleY })
+          break
+        }
+      }
+    },
+    [selectedClip, canvasRef, scaleFactorX, scaleFactorY, setClipTransform, canvasToOutput]
+  )
+
   // Mouse handlers
   const onMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -164,131 +261,48 @@ export function useTransformGizmos(config: GizmoConfig) {
         startTransform: { ...t },
         shiftHeld: e.shiftKey
       }
+
+      const onWindowMove = (ev: MouseEvent): void => {
+        applyDrag(ev)
+      }
+
+      const onWindowUp = (): void => {
+        dragRef.current = null
+        canvas.style.cursor = 'default'
+        window.removeEventListener('mousemove', onWindowMove)
+        window.removeEventListener('mouseup', onWindowUp)
+      }
+
+      window.addEventListener('mousemove', onWindowMove)
+      window.addEventListener('mouseup', onWindowUp)
     },
-    [selectedClip, canvasRef, hitTestHandles, getTransform]
+    [selectedClip, canvasRef, hitTestHandles, getTransform, applyDrag]
   )
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const drag = dragRef.current
-      if (!drag || !selectedClip) {
-        // Update cursor
-        const canvas = canvasRef.current
-        if (!canvas) return
-        const rect = canvas.getBoundingClientRect()
-        const handle = hitTestHandles(e.clientX - rect.left, e.clientY - rect.top)
-        canvas.style.cursor = handle
-          ? handle === 'move'
-            ? 'move'
-            : handle === 'rotate'
-              ? 'crosshair'
-              : handle === 'anchor'
-                ? 'cell'
-                : handle.startsWith('scale-t') || handle.startsWith('scale-b')
-                  ? 'ns-resize'
-                  : handle === 'scale-l' || handle === 'scale-r'
-                    ? 'ew-resize'
-                    : 'nwse-resize'
-          : 'default'
-        return
-      }
+      // Only handle cursor updates — drag is handled by window listeners
+      if (dragRef.current) return
 
-      e.preventDefault()
-      const dx = (e.clientX - drag.startMouseX) / scaleFactorX
-      const dy = (e.clientY - drag.startMouseY) / scaleFactorY
-      const { source } = selectedClip
-      const clipId = selectedClip.clip.id
-      const st = drag.startTransform
-      const shiftKey = e.shiftKey || drag.shiftHeld
-
-      switch (drag.handle) {
-        case 'move':
-          setClipTransform(clipId, {
-            x: st.x + dx,
-            y: st.y + dy
-          })
-          break
-
-        case 'rotate': {
-          // Compute angle from clip center to mouse
-          const cx = st.x
-          const cy = st.y
-          const canvas = canvasRef.current
-          if (!canvas) break
-          const rect = canvas.getBoundingClientRect()
-          const [mx, my] = canvasToOutput(
-            e.clientX - rect.left,
-            e.clientY - rect.top
-          )
-          let angle = Math.atan2(mx - cx, -(my - cy)) * (180 / Math.PI)
-          // Snap to 15° increments when shift is held
-          if (shiftKey) angle = Math.round(angle / 15) * 15
-          setClipTransform(clipId, { rotation: angle })
-          break
-        }
-
-        case 'anchor': {
-          // Convert mouse position to clip-local space fractions
-          const mat = buildClipMatrix(st, source.width, source.height)
-          const inv = inverse(mat)
-          const canvas = canvasRef.current
-          if (!canvas) break
-          const rect = canvas.getBoundingClientRect()
-          const [ox, oy] = canvasToOutput(e.clientX - rect.left, e.clientY - rect.top)
-          const [lx, ly] = transformPoint(inv, ox, oy)
-          setClipTransform(clipId, {
-            anchorX: Math.max(0, Math.min(1, lx / source.width)),
-            anchorY: Math.max(0, Math.min(1, ly / source.height))
-          })
-          break
-        }
-
-        default: {
-          // Scale handles
-          const handle = drag.handle
-          let dsx = 0
-          let dsy = 0
-
-          if (handle.includes('r') || handle === 'scale-tr' || handle === 'scale-br') {
-            dsx = dx / (source.width * st.scaleX) * st.scaleX
-          }
-          if (handle.includes('l') || handle === 'scale-tl' || handle === 'scale-bl') {
-            dsx = -dx / (source.width * st.scaleX) * st.scaleX
-          }
-          if (handle.includes('b') || handle === 'scale-br' || handle === 'scale-bl') {
-            dsy = dy / (source.height * st.scaleY) * st.scaleY
-          }
-          if (handle.includes('t') || handle === 'scale-tl' || handle === 'scale-tr') {
-            dsy = -dy / (source.height * st.scaleY) * st.scaleY
-          }
-
-          let newScaleX = Math.max(0.01, st.scaleX + dsx)
-          let newScaleY = Math.max(0.01, st.scaleY + dsy)
-
-          // Uniform scale for corner handles or when shift held
-          if (shiftKey || handle.includes('-t') && handle.includes('-') && handle.length > 7) {
-            if (handle.includes('l') || handle.includes('r') || handle.includes('t') || handle.includes('b')) {
-              if (handle.length > 7) {
-                // Corner handle: use the larger delta
-                const avgScale = (newScaleX / st.scaleX + newScaleY / st.scaleY) / 2
-                newScaleX = st.scaleX * avgScale
-                newScaleY = st.scaleY * avgScale
-              }
-            }
-          }
-
-          if (shiftKey) {
-            const avgScale = (newScaleX / st.scaleX + newScaleY / st.scaleY) / 2
-            newScaleX = st.scaleX * avgScale
-            newScaleY = st.scaleY * avgScale
-          }
-
-          setClipTransform(clipId, { scaleX: newScaleX, scaleY: newScaleY })
-          break
-        }
-      }
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const handle = hitTestHandles(e.clientX - rect.left, e.clientY - rect.top)
+      canvas.style.cursor = handle
+        ? handle === 'move'
+          ? 'move'
+          : handle === 'rotate'
+            ? 'crosshair'
+            : handle === 'anchor'
+              ? 'cell'
+              : handle.startsWith('scale-t') || handle.startsWith('scale-b')
+                ? 'ns-resize'
+                : handle === 'scale-l' || handle === 'scale-r'
+                  ? 'ew-resize'
+                  : 'nwse-resize'
+        : 'default'
     },
-    [selectedClip, canvasRef, scaleFactorX, scaleFactorY, setClipTransform, hitTestHandles, canvasToOutput]
+    [canvasRef, hitTestHandles]
   )
 
   const onMouseUp = useCallback(() => {

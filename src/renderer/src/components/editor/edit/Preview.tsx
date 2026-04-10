@@ -363,7 +363,10 @@ export function Preview(): React.JSX.Element {
   useEffect(() => {
     const tick = (): void => {
       const state = useEditorStore.getState()
-      if (!state.playback.isPlaying) {
+      // Only drive playback when edit mode is active
+      if (state.mode !== 'edit' || !state.playback.isPlaying || state.playback.isScrubbing) {
+        lastTickTime.current = performance.now()
+        frameAccumulator.current = 0
         rafRef.current = requestAnimationFrame(tick)
         return
       }
@@ -834,24 +837,7 @@ export function Preview(): React.JSX.Element {
         {formatTimecode(playback.currentFrame, frameRate)}
       </div>
 
-      {/* Play/pause overlay — hidden in spatial mode so canvas gizmos receive clicks */}
-      {hits.length > 0 && !spatialMode && (
-        <button
-          onClick={togglePlayback}
-          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/10"
-          title="Play/Pause (Space)"
-        >
-          {playback.isPlaying ? (
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="text-white/60 drop-shadow-lg">
-              <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-            </svg>
-          ) : (
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="text-white/60 drop-shadow-lg">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-        </button>
-      )}
+
     </div>
   )
 }

@@ -32,6 +32,8 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { frameRate, zoom, scrollX } = coords
   const seek = useEditorStore((s) => s.seek)
+  const inPoint = useEditorStore((s) => s.playback.inPoint)
+  const outPoint = useEditorStore((s) => s.playback.outPoint)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -50,6 +52,14 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
     const endSec = startSec + width / zoom
     const firstMajor = Math.floor(startSec / major) * major
     const firstMinor = Math.floor(startSec / minor) * minor
+
+    // In/Out shaded region
+    if (inPoint != null && outPoint != null && outPoint > inPoint) {
+      const inPx = (inPoint / frameRate - startSec) * zoom
+      const outPx = (outPoint / frameRate - startSec) * zoom
+      ctx.fillStyle = 'rgba(124, 58, 237, 0.12)'
+      ctx.fillRect(Math.max(0, inPx), 0, Math.min(width, outPx) - Math.max(0, inPx), 28)
+    }
 
     // Minor ticks
     ctx.strokeStyle = 'rgba(255,255,255,0.12)'
@@ -80,7 +90,29 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
       const label = formatTimecode(frame, frameRate)
       ctx.fillText(label, px + 3, 1)
     }
-  }, [width, zoom, scrollX, frameRate])
+
+    // In/Out bracket markers
+    if (inPoint != null) {
+      const inPx = (inPoint / frameRate - startSec) * zoom
+      if (inPx >= -2 && inPx <= width + 2) {
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.9)'
+        ctx.fillRect(inPx, 0, 2, 28)
+        // Small "I" label
+        ctx.font = 'bold 8px ui-monospace, monospace'
+        ctx.fillText('I', inPx + 4, 2)
+      }
+    }
+    if (outPoint != null) {
+      const outPx = (outPoint / frameRate - startSec) * zoom
+      if (outPx >= -2 && outPx <= width + 2) {
+        ctx.fillStyle = 'rgba(124, 58, 237, 0.9)'
+        ctx.fillRect(outPx - 1, 0, 2, 28)
+        // Small "O" label
+        ctx.font = 'bold 8px ui-monospace, monospace'
+        ctx.fillText('O', outPx - 12, 2)
+      }
+    }
+  }, [width, zoom, scrollX, frameRate, inPoint, outPoint])
 
   useEffect(() => {
     draw()
@@ -92,7 +124,12 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
       if (!rect) return
       const px = e.clientX - rect.left
       const frame = coords.pixelToFrame(px)
+      useEditorStore.setState((s) => ({ playback: { ...s.playback, isScrubbing: true } }))
       seek(Math.max(0, frame))
+      // Release after a frame so the RAF tick doesn't overwrite immediately
+      requestAnimationFrame(() => {
+        useEditorStore.setState((s) => ({ playback: { ...s.playback, isScrubbing: false } }))
+      })
     },
     [coords, seek]
   )

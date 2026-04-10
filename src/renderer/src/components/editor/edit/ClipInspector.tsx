@@ -11,22 +11,49 @@ interface ClipInspectorProps {
   clip: TimelineClip
 }
 
+/** Themed inline slider matching the player/transport style. */
+function InlineSlider({ value, min, max, step, width, onChange, accentColor = 'accent' }: {
+  value: number; min: number; max: number; step: number; width: string
+  onChange: (v: number) => void; accentColor?: 'accent' | 'surface'
+}): React.JSX.Element {
+  const pct = ((value - min) / (max - min)) * 100
+  const fillCls = accentColor === 'accent' ? 'bg-accent-500/70 group-hover:bg-accent-400' : 'bg-surface-300'
+  const thumbCls = accentColor === 'accent'
+    ? 'bg-accent-400 border-accent-600 shadow-accent-500/30'
+    : 'bg-surface-200 border-surface-400 shadow-black/20'
+  return (
+    <div className={`group relative flex items-center h-3.5 cursor-pointer ${width}`}>
+      <div className="absolute left-0 right-0 h-[3px] rounded-full bg-white/[0.08]" />
+      <div className={`absolute left-0 h-[3px] rounded-full ${fillCls} transition-colors`} style={{ width: `${pct}%` }} />
+      <div
+        className={`absolute w-2 h-2 rounded-full ${thumbCls} border opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2`}
+        style={{ left: `${pct}%` }}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  )
+}
+
 export function ClipInspector({ clip }: ClipInspectorProps): React.JSX.Element {
   const setClipVolume = useEditorStore((s) => s.setClipVolume)
   const setClipPan = useEditorStore((s) => s.setClipPan)
   const toggleClipMuted = useEditorStore((s) => s.toggleClipMuted)
 
   const handleVolume = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setClipVolume(clip.id, parseFloat(e.target.value))
-    },
+    (v: number) => setClipVolume(clip.id, v),
     [clip.id, setClipVolume]
   )
 
   const handlePan = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setClipPan(clip.id, parseFloat(e.target.value))
-    },
+    (v: number) => setClipPan(clip.id, v),
     [clip.id, setClipPan]
   )
 
@@ -40,11 +67,11 @@ export function ClipInspector({ clip }: ClipInspectorProps): React.JSX.Element {
   return (
     <div className="flex items-center gap-3 text-[10px] text-surface-400">
       {/* Mute + Volume */}
-      <label className="flex items-center gap-1 cursor-default" title="Clip volume (0-200%)">
+      <div className="flex items-center gap-1.5" title="Clip volume (0-200%)">
         <button
           type="button"
           onClick={handleMuteToggle}
-          className={`flex-shrink-0 ${clip.muted ? 'text-yellow-400' : 'text-surface-500 hover:text-surface-300'}`}
+          className={`flex-shrink-0 ${clip.muted ? 'text-yellow-400' : 'text-surface-500 hover:text-surface-300'} transition-colors`}
           title={clip.muted ? 'Unmute clip' : 'Mute clip'}
         >
           {clip.muted ? (
@@ -59,32 +86,22 @@ export function ClipInspector({ clip }: ClipInspectorProps): React.JSX.Element {
             </svg>
           )}
         </button>
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.01"
-          value={clip.volume}
-          onChange={handleVolume}
-          className="w-14 h-1 accent-accent-400 cursor-pointer"
-        />
+        <InlineSlider value={clip.volume} min={0} max={2} step={0.01} width="w-14" onChange={handleVolume} />
         <span className="w-8 text-right tabular-nums">{volPercent}%</span>
-      </label>
+      </div>
 
       {/* Pan */}
-      <label className="flex items-center gap-1 cursor-default" title="Stereo pan (L100 – C – R100)">
-        <span className="text-surface-500">Pan</span>
-        <input
-          type="range"
-          min="-1"
-          max="1"
-          step="0.01"
-          value={clip.pan}
-          onChange={handlePan}
-          className="w-12 h-1 accent-accent-400 cursor-pointer"
-        />
-        <span className="w-6 text-right tabular-nums">{panLabel}</span>
-      </label>
+      <div className="flex items-center gap-1.5" title="Stereo pan (L100 – C – R100)">
+        <button
+          type="button"
+          onClick={() => handlePan(0)}
+          className="text-surface-500 hover:text-surface-200 transition-colors cursor-pointer"
+          title="Reset pan to center"
+        >
+          {panLabel}
+        </button>
+        <InlineSlider value={clip.pan} min={-1} max={1} step={0.01} width="w-12" onChange={handlePan} accentColor="surface" />
+      </div>
 
       {/* Speed indicator (read-only for now) */}
       {clip.speed !== 1 && (

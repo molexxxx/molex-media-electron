@@ -371,4 +371,131 @@
     opacity: 0.3;
     box-shadow: none;
   }
+
+  /* ---- Icon button with CSS tooltip ---- */
+
+  .icon-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: var(--color-surface-400);
+    transition: all 150ms;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+  }
+
+  .icon-btn:hover {
+    color: var(--color-surface-200);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .icon-btn.active {
+    color: var(--color-accent-300);
+    background: rgba(124, 58, 237, 0.15);
+  }
+
+  .icon-btn.active:hover {
+    background: rgba(124, 58, 237, 0.22);
+  }
+
+  .icon-btn[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 8px;
+    font-size: 0.625rem;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--color-surface-200);
+    background: var(--color-surface-800);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms, transform 150ms;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .icon-btn[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Variant: tooltip below */
+  .icon-btn.tooltip-below[data-tooltip]::after {
+    bottom: auto;
+    top: calc(100% + 6px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+  .icon-btn.tooltip-below[data-tooltip]:hover::after {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ---- Horizontal splitter (for vertical resizing) ---- */
+  .h-splitter {
+    height: 5px;
+    cursor: row-resize;
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .h-splitter::after {
+    content: '';
+    position: absolute;
+    left: 33%;
+    right: 33%;
+    top: 50%;
+    height: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    transition: background 150ms;
+  }
+
+  .h-splitter:hover::after {
+    background: rgba(124, 58, 237, 0.5);
+  }
+
+  .h-splitter:active::after {
+    background: rgba(124, 58, 237, 0.7);
+  }
+
+  /* ---- Vertical splitter (for horizontal resizing) ---- */
+  .v-splitter {
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .v-splitter::after {
+    content: '';
+    position: absolute;
+    top: 33%;
+    bottom: 33%;
+    left: 50%;
+    width: 2px;
+    border-radius: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    transition: background 150ms;
+  }
+
+  .v-splitter:hover::after {
+    background: rgba(124, 58, 237, 0.5);
+  }
+
+  .v-splitter:active::after {
+    background: rgba(124, 58, 237, 0.6);
+  }
 }

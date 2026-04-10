@@ -56,8 +56,14 @@ export function useEditorPlayback({ frameRate, totalFrames }: UseEditorPlaybackO
   // RAF loop: push media currentTime → store
   const tick = useCallback(() => {
     const el = mediaRef.current
+    const state = useEditorStore.getState()
+    // Only drive playback when clip mode is active
+    if (state.mode !== 'clip') {
+      if (el && !el.paused) el.pause()
+      rafRef.current = requestAnimationFrame(tick)
+      return
+    }
     if (el && !el.paused && !seekingRef.current) {
-      const state = useEditorStore.getState()
       const { clipMode } = state
       const currentFrame = secondsToFrames(el.currentTime, frameRate)
 

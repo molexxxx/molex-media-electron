@@ -7,6 +7,7 @@
  */
 import React, { useCallback, useMemo, useState } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
+import { Select, Toggle, FixedTip } from '../../shared/ui'
 import type {
   ClipTransform,
   BlendMode,
@@ -29,6 +30,37 @@ const BLEND_MODES: { value: BlendMode; label: string }[] = [
   { value: 'add', label: 'Add' },
   { value: 'difference', label: 'Difference' }
 ]
+
+const BLEND_OPTIONS = BLEND_MODES.map((bm) => ({ value: bm.value, label: bm.label }))
+
+// ---------------------------------------------------------------------------
+// Custom themed slider (matches player/settings style)
+// ---------------------------------------------------------------------------
+
+function ThemedSlider({ value, min = 0, max = 1, step = 0.01, onChange }: {
+  value: number; min?: number; max?: number; step?: number; onChange: (v: number) => void
+}): React.JSX.Element {
+  const pct = ((value - min) / (max - min)) * 100
+  return (
+    <div className="group relative flex-1 flex items-center h-5 cursor-pointer">
+      <div className="absolute left-0 right-0 h-1 rounded-full bg-white/[0.08] group-hover:h-1.5 transition-all" />
+      <div className="absolute left-0 h-1 rounded-full bg-accent-500/70 group-hover:h-1.5 group-hover:bg-accent-400 transition-all" style={{ width: `${pct}%` }} />
+      <div
+        className="absolute w-2.5 h-2.5 rounded-full bg-accent-400 border-2 border-accent-600 shadow-sm shadow-accent-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
+        style={{ left: `${pct}%` }}
+      />
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Numeric field component
@@ -97,12 +129,12 @@ function NumericField({
   )
 
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-xs text-zinc-400 w-6 shrink-0 select-none">{label}</span>
+    <div className="flex items-center gap-1 min-w-0">
+      {label && <span className="text-2xs text-surface-500 w-4 shrink-0 select-none">{label}</span>}
       {editing ? (
         <input
           type="text"
-          className="w-16 bg-zinc-800 text-zinc-200 text-xs px-1 py-0.5 rounded border border-zinc-600 outline-none focus:border-blue-500"
+          className="flex-1 min-w-0 bg-white/[0.04] text-surface-200 text-2xs px-1.5 py-1 rounded-md border border-white/[0.06] outline-none focus:border-accent-500/50 transition-colors font-mono text-center"
           value={editValue}
           autoFocus
           onChange={(e) => setEditValue(e.target.value)}
@@ -114,7 +146,7 @@ function NumericField({
         />
       ) : (
         <span
-          className="w-16 text-xs text-zinc-200 bg-zinc-800/60 px-1 py-0.5 rounded cursor-ew-resize select-none text-center tabular-nums"
+          className="flex-1 min-w-0 text-2xs text-surface-200 bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] px-1.5 py-1 rounded-md cursor-ew-resize select-none text-center tabular-nums font-mono transition-colors"
           onDoubleClick={() => {
             setEditValue(displayValue)
             setEditing(true)
@@ -126,13 +158,14 @@ function NumericField({
         </span>
       )}
       {onToggleKeyframe && (
-        <button
-          className={`text-xs px-0.5 ${hasKeyframe ? 'text-yellow-400' : 'text-zinc-600'} hover:text-yellow-300`}
-          onClick={onToggleKeyframe}
-          title={hasKeyframe ? 'Remove keyframe' : 'Add keyframe'}
-        >
-          ◆
-        </button>
+        <FixedTip label={hasKeyframe ? 'Remove keyframe' : 'Add keyframe'}>
+          <button
+            className={`text-2xs px-0.5 transition-colors ${hasKeyframe ? 'text-amber-400' : 'text-surface-600'} hover:text-amber-300`}
+            onClick={onToggleKeyframe}
+          >
+            ◆
+          </button>
+        </FixedTip>
       )}
     </div>
   )
@@ -202,7 +235,7 @@ export function TransformInspector(): React.JSX.Element | null {
 
   if (!clip) {
     return (
-      <div className="p-3 text-xs text-zinc-500 italic">
+      <div className="px-3 py-6 text-2xs text-surface-500 italic text-center">
         Select a clip to edit its transform properties.
       </div>
     )
@@ -245,23 +278,41 @@ export function TransformInspector(): React.JSX.Element | null {
   }
 
   return (
-    <div className="p-3 space-y-3 text-xs">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <span className="text-zinc-300 font-medium text-sm">Transform</span>
-        <button
-          className={`text-xs px-1 ${hasKeyframeAtFrame ? 'text-yellow-400' : 'text-zinc-600'} hover:text-yellow-300`}
-          onClick={toggleKeyframe}
-          title={hasKeyframeAtFrame ? 'Remove keyframe at playhead' : 'Add keyframe at playhead'}
-        >
-          ◆ {hasKeyframeAtFrame ? 'Remove' : 'Add'} Keyframe
-        </button>
+    <div className="space-y-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-xs text-surface-200 font-medium">Transform</span>
+        <div className="flex items-center gap-0.5">
+          <FixedTip label={hasKeyframeAtFrame ? 'Remove keyframe' : 'Add keyframe'}>
+            <button
+              className={`flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
+                hasKeyframeAtFrame
+                  ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                  : 'text-surface-600 hover:text-amber-300 hover:bg-white/[0.04]'
+              }`}
+              onClick={toggleKeyframe}
+            >
+              <span className="text-2xs">◆</span>
+            </button>
+          </FixedTip>
+          <FixedTip label="Reset transform">
+            <button
+              onClick={handleReset}
+              className="flex items-center justify-center w-6 h-6 rounded-md text-surface-500 hover:text-surface-200 hover:bg-white/[0.04] transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M2 2v5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M3.05 10A6 6 0 1 0 4 4L2 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </FixedTip>
+        </div>
       </div>
 
       {/* Position */}
       <div>
-        <div className="text-zinc-400 mb-1">Position</div>
-        <div className="flex gap-3">
+        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Position</div>
+        <div className="flex gap-2">
           <NumericField
             label="X"
             value={transform.x}
@@ -281,19 +332,15 @@ export function TransformInspector(): React.JSX.Element | null {
 
       {/* Scale */}
       <div>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-zinc-400">Scale</span>
-          <label className="flex items-center gap-1 text-zinc-500 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={uniformScale}
-              onChange={(e) => setUniformScale(e.target.checked)}
-              className="w-3 h-3 accent-blue-500"
-            />
-            Uniform
-          </label>
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-surface-500 text-2xs uppercase tracking-wider">Scale</span>
+          <FixedTip label={uniformScale ? 'Constrained' : 'Independent'}>
+            <div className="flex items-center">
+              <Toggle checked={uniformScale} onChange={setUniformScale} />
+            </div>
+          </FixedTip>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <NumericField
             label="X"
             value={transform.scaleX}
@@ -317,7 +364,7 @@ export function TransformInspector(): React.JSX.Element | null {
 
       {/* Rotation */}
       <div>
-        <div className="text-zinc-400 mb-1">Rotation</div>
+        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Rotation</div>
         <NumericField
           label="°"
           value={transform.rotation}
@@ -330,8 +377,8 @@ export function TransformInspector(): React.JSX.Element | null {
 
       {/* Anchor */}
       <div>
-        <div className="text-zinc-400 mb-1">Anchor Point</div>
-        <div className="flex gap-3">
+        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Anchor Point</div>
+        <div className="flex gap-2">
           <NumericField
             label="X"
             value={transform.anchorX}
@@ -353,7 +400,7 @@ export function TransformInspector(): React.JSX.Element | null {
 
       {/* Opacity */}
       <div>
-        <div className="text-zinc-400 mb-1">Opacity</div>
+        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Opacity</div>
         <div className="flex items-center gap-2">
           <NumericField
             label=""
@@ -364,48 +411,33 @@ export function TransformInspector(): React.JSX.Element | null {
             suffix="%"
             onChange={(v) => updateTransform({ opacity: v })}
           />
-          <input
-            type="range"
+          <ThemedSlider
+            value={transform.opacity}
             min={0}
             max={1}
             step={0.01}
-            value={transform.opacity}
-            onChange={(e) => updateTransform({ opacity: parseFloat(e.target.value) })}
-            className="flex-1 h-1 accent-blue-500"
+            onChange={(v) => updateTransform({ opacity: v })}
           />
         </div>
       </div>
 
       {/* Blend Mode */}
       <div>
-        <div className="text-zinc-400 mb-1">Blend Mode</div>
-        <select
+        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Blend Mode</div>
+        <Select
           value={clip.blendMode ?? 'normal'}
-          onChange={(e) => setClipBlendMode(clipId, e.target.value as BlendMode)}
-          className="w-full bg-zinc-800 text-zinc-200 text-xs px-2 py-1 rounded border border-zinc-600 outline-none focus:border-blue-500"
-        >
-          {BLEND_MODES.map((bm) => (
-            <option key={bm.value} value={bm.value}>
-              {bm.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => setClipBlendMode(clipId, v as BlendMode)}
+          options={BLEND_OPTIONS}
+          compact
+        />
       </div>
 
       {/* Keyframe count info */}
       {clip.keyframes && clip.keyframes.length > 0 && (
-        <div className="text-zinc-500 text-[10px]">
+        <div className="text-surface-500 text-2xs tabular-nums">
           {clip.keyframes.length} keyframe{clip.keyframes.length !== 1 ? 's' : ''}
         </div>
       )}
-
-      {/* Reset */}
-      <button
-        onClick={handleReset}
-        className="w-full text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded transition-colors"
-      >
-        Reset Transform
-      </button>
     </div>
   )
 }

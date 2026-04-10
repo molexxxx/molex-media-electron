@@ -12,6 +12,7 @@ import React from 'react'
 import { useAppStore } from '../../stores/appStore'
 import { StatBar } from './components/StatCard'
 import { ToolCard, drawEditorBg, drawPlayerBg } from './components/ToolCard'
+import { RecentActivity } from './components/RecentActivity'
 import { SystemInfo } from './components/SystemInfo'
 
 
@@ -52,77 +53,87 @@ export default function Dashboard(): React.JSX.Element {
   ]
 
   return (
-    <div className="flex flex-col min-h-full animate-fade-in">
-      {/* Header + Inline Stats */}
-      <div className="mb-4">
-        <h1 className="text-xl font-medium text-surface-200 tracking-tight">Dashboard</h1>
-        <div className="flex items-center justify-between gap-4 mt-1.5 flex-wrap">
-          <p className="text-xs text-surface-400">Media processing toolkit - audio, video, and everything in between</p>
-          <StatBar stats={[
-            { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
-            { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-amber-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-amber-400 animate-pulse' : 'bg-surface-600' },
-            { label: 'Done', value: totalProcessed, color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
-            { label: 'Errors', value: totalErrors, color: totalErrors > 0 ? 'text-red-400' : 'text-surface-400', dotColor: totalErrors > 0 ? 'bg-red-400' : 'bg-surface-600' },
-          ]} />
+    <div className="flex flex-col h-full animate-fade-in gap-4">
+      {/* Header + Stats */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-medium text-surface-200 tracking-tight">Dashboard</h1>
+          <p className="text-xs text-surface-500 mt-0.5">Media processing toolkit</p>
+        </div>
+        <StatBar stats={[
+          { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
+          { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-amber-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-amber-400 animate-pulse' : 'bg-surface-600' },
+          { label: 'Done', value: totalProcessed, color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
+          { label: 'Errors', value: totalErrors, color: totalErrors > 0 ? 'text-red-400' : 'text-surface-400', dotColor: totalErrors > 0 ? 'bg-red-400' : 'bg-surface-600' },
+        ]} />
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col justify-evenly gap-4 min-h-0">
+        {/* Tool cards — editor bigger, stacks on narrow screens */}
+        <div className="grid grid-cols-1 sm:grid-cols-[3fr_2fr] gap-4 sm:h-[250px]">
+          <div className="min-w-0 h-44 sm:h-full">
+            <ToolCard
+              onClick={() => setView('editor')}
+              accentClass="blue"
+              title="Media Editor"
+              desc="Multi-track timeline with spatial transforms, keyframes, and real-time preview"
+              drawBg={drawEditorBg}
+              icon={
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3" />
+                  <line x1="14.5" y1="7.5" x2="18.5" y2="11.5" />
+                  <line x1="2" y1="22" x2="22" y2="22" />
+                </svg>
+              }
+            />
+          </div>
+          <div className="min-w-0 h-36 sm:h-full">
+            <ToolCard
+              onClick={() => setView('player')}
+              accentClass="accent"
+              title="Media Player"
+              desc="Play local files or stream from URLs with audio visualizations"
+              drawBg={drawPlayerBg}
+              icon={
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+              }
+            />
+          </div>
+        </div>
+
+        {/* Workflow */}
+        <div>
+          <h3 className="text-2xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Batch Workflow</h3>
+          <div className="flex flex-col gap-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.op}
+                onClick={() => { setOperation(action.op); setView('batch') }}
+                className={`rounded-xl group bg-white/[0.03] border border-white/[0.06] ${action.hoverBorder} transition-all duration-300 hover:bg-white/[0.05] backdrop-blur-sm flex items-center gap-4 px-4 py-3.5`}
+              >
+                <div className={`w-9 h-9 shrink-0 rounded-lg border flex items-center justify-center transition-colors duration-300 ${action.boxClass} ${action.iconClass}`}>
+                  {action.icon}
+                </div>
+                <div className="text-left min-w-0 flex-1">
+                  <h4 className="text-sm font-semibold text-surface-200 group-hover:text-white transition-colors duration-300">{action.label}</h4>
+                  <p className="text-xs text-surface-500 group-hover:text-surface-400 transition-colors duration-300">{action.desc}</p>
+                </div>
+                <svg className={`w-4 h-4 shrink-0 ${action.iconClass} opacity-40 group-hover:opacity-80 group-hover:translate-x-1 transition-all duration-300`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Workflow Actions */}
-      <div className="mb-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Workflow</h3>
-        <div className="flex flex-col sm:grid sm:grid-cols-5 gap-1.5 sm:gap-2">
-          {quickActions.map((action) => (
-            <button
-              key={action.op}
-              onClick={() => { setOperation(action.op); setView('batch') }}
-              className={`rounded-xl group bg-white/[0.03] border border-white/[0.06] ${action.hoverBorder} transition-all duration-200 backdrop-blur-sm hover:bg-white/[0.05] flex items-center gap-3 px-3 py-2.5 sm:flex-col sm:px-2 sm:py-3 sm:text-center sm:gap-0`}
-            >
-              <div className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 sm:mx-auto rounded-lg border flex items-center justify-center sm:mb-2 ${action.boxClass} ${action.iconClass}`}>
-                {action.icon}
-              </div>
-              <h4 className="text-xs font-semibold text-surface-200 group-hover:text-white transition-colors truncate">{action.label}</h4>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Recent Activity */}
+      {tasks.length > 0 && <RecentActivity tasks={tasks} />}
 
-      {/* Tools - Editor & Player */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-surface-500 mb-3">Tools</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Editor card */}
-          <ToolCard
-            onClick={() => setView('editor')}
-            accentClass="blue"
-            title="Media Editor"
-            desc="Cut, trim, and merge with precision timeline controls"
-            drawBg={drawEditorBg}
-            icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3" />
-                <line x1="14.5" y1="7.5" x2="18.5" y2="11.5" />
-                <line x1="2" y1="22" x2="22" y2="22" />
-              </svg>
-            }
-          />
-
-          {/* Player card */}
-          <ToolCard
-            onClick={() => setView('player')}
-            accentClass="accent"
-            title="Media Player"
-            desc="Play local files or stream from URLs such as YouTube with visualizations"
-            drawBg={drawPlayerBg}
-            icon={
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <polygon points="5,3 19,12 5,21" />
-              </svg>
-            }
-          />
-        </div>
-      </div>
-
-      <div className="mt-auto pt-3">
+      <div className="pt-1">
         <SystemInfo systemInfo={systemInfo} ffmpegVersion={ffmpegVersion} config={config} />
       </div>
     </div>

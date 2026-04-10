@@ -33,8 +33,8 @@ export function setQuitting(value: boolean): void {
 /** Create the main application window. */
 export function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1493,
-    height: 956,
+    width: 1657,
+    height: 1061,
     minWidth: 420,
     minHeight: 380,
     show: false,

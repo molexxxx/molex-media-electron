@@ -123,6 +123,7 @@ export interface ClipModeState {
 
 export interface PlaybackState {
   isPlaying: boolean
+  isScrubbing: boolean
   currentFrame: number
   playbackRate: number // 1 = normal, negative = reverse
   loop: boolean

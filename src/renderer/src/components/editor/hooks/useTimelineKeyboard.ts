@@ -242,6 +242,17 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
           if (ctrl) { e.preventDefault(); coords.fitToView(timeline.duration, 800) }
           break
 
+        // Clear in/out points
+        case 'Escape':
+          e.preventDefault()
+          if (playback.inPoint != null || playback.outPoint != null) {
+            state.setInPoint(null)
+            state.setOutPoint(null)
+          } else {
+            state.clearSelection()
+          }
+          break
+
         default:
           break
       }

@@ -12,7 +12,6 @@ import {
   SubtitleStreamInfo,
   DataStreamInfo
 } from './StreamInfo'
-import { TransformInspector } from './TransformInspector'
 import { KeyframeView } from './KeyframeView'
 
 /** MediaInfo shape returned by `editor:probeDetailed`. */
@@ -397,14 +396,6 @@ export function InspectEditor(): React.JSX.Element {
           ))}
         </div>
       )}
-
-      {/* Spatial Transform inspector */}
-      <div className="rounded-xl border border-white/5 bg-surface-800/50 overflow-hidden">
-        <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
-          <h3 className="text-xs font-semibold text-surface-200 uppercase tracking-wide">Spatial Transform</h3>
-        </div>
-        <TransformInspector />
-      </div>
 
       {/* Keyframe analysis (video only) */}
       {probeData?.isVideoFile && source && (

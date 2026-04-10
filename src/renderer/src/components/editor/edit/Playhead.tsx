@@ -25,6 +25,7 @@ export function Playhead({ coords, height, trackAreaRef }: PlayheadProps): React
       e.preventDefault()
       e.stopPropagation()
       dragging.current = true
+      useEditorStore.setState((s) => ({ playback: { ...s.playback, isScrubbing: true } }))
 
       // Use the track area for stable rect - the playhead wrapper moves during drag
       const areaEl = trackAreaRef.current
@@ -40,6 +41,7 @@ export function Playhead({ coords, height, trackAreaRef }: PlayheadProps): React
 
       const onUp = (): void => {
         dragging.current = false
+        useEditorStore.setState((s) => ({ playback: { ...s.playback, isScrubbing: false } }))
         window.removeEventListener('mousemove', onMove)
         window.removeEventListener('mouseup', onUp)
       }

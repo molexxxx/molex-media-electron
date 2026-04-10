@@ -298,6 +298,7 @@ const DEFAULT_CLIP_MODE: ClipModeState = {
 
 const DEFAULT_PLAYBACK: PlaybackState = {
   isPlaying: false,
+  isScrubbing: false,
   currentFrame: 0,
   playbackRate: 1,
   loop: false,
@@ -318,6 +319,8 @@ const DEFAULT_HISTORY: HistoryState = {
 export interface EditorStore {
   // Mode
   mode: EditorMode
+  /** Per-mode saved playhead positions so switching tabs doesn't move the other mode's playhead */
+  _savedFrames: Record<string, number>
   setMode: (mode: EditorMode) => void
 
   // Project
@@ -426,7 +429,18 @@ export interface EditorStore {
 export const useEditorStore = create<EditorStore>((set) => ({
   // === Mode ===
   mode: 'clip',
-  setMode: (mode) => set({ mode }),
+  _savedFrames: {},
+  setMode: (mode) => set((s) => {
+    if (s.mode === mode) return s
+    // Save current playhead for the mode we're leaving, restore the target mode's
+    const saved = { ...s._savedFrames, [s.mode]: s.playback.currentFrame }
+    const restoredFrame = saved[mode] ?? 0
+    return {
+      mode,
+      _savedFrames: saved,
+      playback: { ...s.playback, isPlaying: false, currentFrame: restoredFrame }
+    }
+  }),
 
   // === Project & Sources ===
   project: DEFAULT_PROJECT,
@@ -480,6 +494,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
 
   removeTrack: (trackId) =>
     set((s) => {
+      const target = s.timeline.tracks.find((t) => t.id === trackId)
+      if (target?.locked) return s
       const newTimeline: Timeline = {
         ...s.timeline,
         tracks: s.timeline.tracks.filter((t) => t.id !== trackId),
@@ -977,6 +993,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   pause: () => set((s) => ({ playback: { ...s.playback, isPlaying: false } })),
   togglePlayback: () => set((s) => ({ playback: { ...s.playback, isPlaying: !s.playback.isPlaying } })),
   seek: (frame) => set((s) => ({ playback: { ...s.playback, currentFrame: Math.max(0, frame) } })),
+  setScrubbing: (v: boolean) => set((s) => ({ playback: { ...s.playback, isScrubbing: v } })),
   setPlaybackRate: (rate) => set((s) => ({ playback: { ...s.playback, playbackRate: rate } })),
 
   // === History ===
