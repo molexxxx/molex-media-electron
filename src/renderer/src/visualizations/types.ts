@@ -31,7 +31,7 @@ export interface AudioFeatures {
   mid: number
   highMid: number
   treble: number
-  /** Perceptually weighted average of all bands. */
+  /** Perceptually weighted (A-weighted RMS) average of all bands. */
   overall: number
   /** 0-1 beat intensity with fast attack and exponential decay. */
   beat: number
@@ -41,6 +41,14 @@ export interface AudioFeatures {
   isBeat: boolean
   /** Cumulative beat count for the current session. */
   beatCount: number
+  /** Spectral centroid frequency in Hz - perceptual "brightness". */
+  centroid: number
+  /** Normalised centroid (0-1) mapped within the audible range. */
+  brightness: number
+  /** Half-wave-rectified spectral flux - onset / transient strength. */
+  flux: number
+  /** RMS level from the time-domain waveform (0-1). */
+  rms: number
 }
 
 // ---------------------------------------------------------------------------
@@ -108,46 +116,17 @@ export interface SpaceStar {
   speed: number
   brightness: number
   hue: number
-}
-
-/** A comet with velocity, trail history, and lifetime. */
-export interface SpaceComet {
-  x: number
-  y: number
-  vx: number
-  vy: number
-  life: number
-  hue: number
-  trail: { x: number; y: number }[]
-}
-
-/** An orbiting debris particle around the central black hole. */
-export interface SpaceDebris {
-  angle: number
-  dist: number
-  speed: number
-  size: number
-  hue: number
-  brightness: number
-}
-
-/** A background nebula cloud with drift phase. */
-export interface SpaceNebula {
-  x: number
-  y: number
-  radius: number
-  hue: number
-  phase: number
+  /** Pre-assigned visual radius for size variation across tiers */
+  baseSize: number
 }
 
 /** Mutable state bag for the Space visualization across frames. */
 export interface SpaceState {
   stars: SpaceStar[]
-  comets: SpaceComet[]
-  debris: SpaceDebris[]
-  nebulae: SpaceNebula[]
   rotation: number
   warpSpeed: number
+  nebulaPhase: number
+  coreGlow: number
 }
 
 // ---------------------------------------------------------------------------
@@ -187,11 +166,39 @@ export interface PlasmaState {
 }
 
 // ---------------------------------------------------------------------------
+// Rain visualization
+// ---------------------------------------------------------------------------
+
+/** Frequency band affinity for a rain column. */
+export type RainBand = 'sub' | 'bass' | 'lowMid' | 'mid' | 'highMid' | 'treble'
+
+/** A single cascading column of digital rain glyphs. */
+export interface RainColumn {
+  y: number
+  speed: number
+  chars: string[]
+  mutateTimer: number
+  brightness: number
+  active: boolean
+  /** Which audio band primarily drives this column. */
+  band: RainBand
+  /** Per-column hue offset (degrees) for color variety. */
+  hueOff: number
+}
+
+/** Mutable state bag for the Rain visualization. */
+export interface RainState {
+  t: number
+  fontSize: number
+  columns: RainColumn[]
+}
+
+// ---------------------------------------------------------------------------
 // Visualization mode + quality
 // ---------------------------------------------------------------------------
 
 /** Union of all available visualization mode identifiers. */
-export type VisMode = 'dmt' | 'space' | 'milkdrop' | 'plasma' | 'bars' | 'wave' | 'circular' | 'horizon'
+export type VisMode = 'dmt' | 'space' | 'milkdrop' | 'plasma' | 'bars' | 'wave' | 'horizon' | 'rain'
 
 /** Audio streaming quality preset. */
 export type AudioQuality = 'best' | 'good' | 'low'
@@ -204,8 +211,8 @@ export const VIS_LABELS: Record<VisMode, string> = {
   plasma: 'Plasma',
   bars: 'Bars',
   wave: 'Waveform',
-  circular: 'Gravity',
-  horizon: 'Horizon'
+  horizon: 'Horizon',
+  rain: 'Rain'
 }
 
 /** Human-readable labels for each {@link AudioQuality}. */

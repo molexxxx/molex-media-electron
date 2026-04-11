@@ -281,7 +281,7 @@ export function useTransformGizmos(config: GizmoConfig) {
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      // Only handle cursor updates — drag is handled by window listeners
+      // Only handle cursor updates - drag is handled by window listeners
       if (dragRef.current) return
 
       const canvas = canvasRef.current

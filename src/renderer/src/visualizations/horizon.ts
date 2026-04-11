@@ -89,12 +89,12 @@ export function drawHorizon(
   // Back-to-front: treble → highMid → mid → lowMid → bass → sub+bass.
   // Front layers have stronger reactivity and amplitude scaling.
   const bandMap: { band: number; gain: number; hueShift: number; freqLo: number; freqHi: number }[] = [
-    { band: audio.treble,  gain: 0.35, hueShift: 0,  freqLo: 0.60, freqHi: 0.80 },
-    { band: audio.highMid, gain: 0.50, hueShift: 4,  freqLo: 0.45, freqHi: 0.65 },
-    { band: audio.mid,     gain: 0.70, hueShift: 8,  freqLo: 0.30, freqHi: 0.50 },
-    { band: audio.lowMid,  gain: 0.90, hueShift: 12, freqLo: 0.18, freqHi: 0.38 },
-    { band: audio.bass,    gain: 1.15, hueShift: 18, freqLo: 0.08, freqHi: 0.22 },
-    { band: audio.sub + audio.bass * 0.5, gain: 1.40, hueShift: 24, freqLo: 0.0, freqHi: 0.12 },
+    { band: audio.treble,  gain: 0.40, hueShift: 0,  freqLo: 0.60, freqHi: 0.80 },
+    { band: audio.highMid, gain: 0.55, hueShift: 4,  freqLo: 0.45, freqHi: 0.65 },
+    { band: audio.mid,     gain: 0.80, hueShift: 8,  freqLo: 0.30, freqHi: 0.50 },
+    { band: audio.lowMid,  gain: 1.10, hueShift: 12, freqLo: 0.18, freqHi: 0.38 },
+    { band: audio.bass,    gain: 1.50, hueShift: 18, freqLo: 0.08, freqHi: 0.22 },
+    { band: audio.sub + audio.bass * 0.5, gain: 1.80, hueShift: 24, freqLo: 0.0, freqHi: 0.12 },
   ]
   const layers = bandMap.length
 
@@ -111,8 +111,8 @@ export function drawHorizon(
     const freqStart = Math.floor(freqLo * freq.length)
     const freqRange = Math.max(1, Math.floor((freqHi - freqLo) * freq.length))
 
-    // Per-layer reactivity
-    const react = 0.4 + band * gain + loudness * 0.3
+    // Per-layer reactivity - boosted for taller peaks
+    const react = 0.5 + band * gain * 1.4 + loudness * 0.4
 
     // Beat pulse ripple - energy wave that travels along the ridge on beats
     const beatPhase = (t * 3.0 + layer * 0.4) % (Math.PI * 2)
@@ -133,7 +133,7 @@ export function drawHorizon(
       const ripple = Math.sin(i * 0.15 - beatPhase) * beatBoost * (H - vanishY) * 0.08
 
       const terrainH = (v * 0.6 + noiseVal * 0.4 + 0.1) *
-                        (H - vanishY) * (0.1 + depth * 0.25) * react + ripple
+                        (H - vanishY) * (0.15 + depth * 0.45) * react + ripple
 
       points.push({ x, y: yBase - terrainH })
     }

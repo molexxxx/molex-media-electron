@@ -76,7 +76,7 @@
 
 - **Local Playback** — Play audio and video files from your filesystem with full playlist management; seamless large file support (2 GiB+)
 - **URL Streaming** — Resolve and stream audio from YouTube videos, playlists, and direct audio URLs via yt-dlp (auto-downloaded) with auto-retry on expired CDN tokens
-- **8 Visualizations** — DMT, Space, Milkdrop, Plasma, Bars, Wave, Circular, and Horizon — all real-time canvas rendering via Web Audio API
+- **8 Visualizations** — DMT, Space, Milkdrop, Plasma, Bars, Wave, Horizon, and Rain — all real-time canvas rendering via Web Audio API
 - **Beat Detection** — Per-frame analysis across sub-bass, bass, low-mid, mid, high-mid, and treble bands with beat-reactive visuals
 - **Audio Quality** — Best / Good / Low quality presets for YouTube stream selection
 - **Playlist Features** — Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, auto-scroll to active track, folder browser with system shortcuts, auto-skip on consecutive failures

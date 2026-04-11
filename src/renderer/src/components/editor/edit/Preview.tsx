@@ -106,7 +106,7 @@ export function Preview(): React.JSX.Element {
     )
   }, [timeline.clips])
 
-  // All video hits (not just topmost) — needed for spatial canvas
+  // All video hits (not just topmost) - needed for spatial canvas
   const allVideoHits = useMemo(() => {
     return hits.filter((h) => h.trackType === 'video' && h.source.width > 0)
   }, [hits])
@@ -311,7 +311,7 @@ export function Preview(): React.JSX.Element {
     }
   }, [spatialMode, playback.isPlaying, playback.currentFrame, allVideoHits, frameRate])
 
-  // Play/pause pool elements in sync — seek to correct position once on play start
+  // Play/pause pool elements in sync - seek to correct position once on play start
   const prevIsPlayingRef = useRef(false)
   useEffect(() => {
     if (!spatialMode) return
@@ -794,7 +794,7 @@ export function Preview(): React.JSX.Element {
         playsInline
       />
 
-      {/* Spatial compositing canvas — overlays all video layers with transforms */}
+      {/* Spatial compositing canvas - overlays all video layers with transforms */}
       {spatialMode && containerSize && containerSize.w > 0 && containerSize.h > 0 && (
         <SpatialCanvas
           videoElements={spatialVideoElements}

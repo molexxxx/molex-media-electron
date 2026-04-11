@@ -69,24 +69,29 @@ const _detectQueue: ((mode: GpuMode) => void)[] = []
  * Detect available GPU encoder by trying a small encode.
  * Returns the first working mode, or 'off' if none available.
  */
-export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode> {
+export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
+{
   if (_detectedMode) return _detectedMode
-  if (_detecting) {
+  if (_detecting)
+  {
     return new Promise((resolve) => _detectQueue.push(resolve))
   }
   _detecting = true
 
-  for (const mode of ['nvenc', 'qsv', 'amf'] as const) {
+  for (const mode of ['nvenc', 'qsv', 'amf'] as const)
+  {
     const codec = GPU_CODECS[mode]?.libx264
     if (!codec) continue
-    try {
+    try
+    {
       const { promise } = runCommand(ffmpegPath, [
         '-f', 'lavfi', '-i', 'color=c=black:s=64x64:d=0.1',
         '-c:v', codec, '-frames:v', '1',
         '-f', 'null', '-'
       ])
       const result = await promise
-      if (result.code === 0) {
+      if (result.code === 0)
+      {
         logger.info(`[gpu] Detected ${mode} support`)
         _detectedMode = mode
         _detecting = false
@@ -94,7 +99,8 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode> {
         _detectQueue.length = 0
         return mode
       }
-    } catch {
+    } catch
+    {
       // encoder not available, try next
     }
   }
@@ -108,11 +114,13 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode> {
 }
 
 /** Reset cached detection (e.g. after config change). */
-export function resetGpuDetection(): void {
+export function resetGpuDetection(): void
+{
   _detectedMode = null
 }
 
-export interface GpuCodecResult {
+export interface GpuCodecResult
+{
   /** The encoder name (e.g. 'h264_nvenc' or 'libx264') */
   codec: string
   /** The active GPU mode ('off' if software) */
@@ -130,8 +138,10 @@ export async function resolveGpuCodec(
   ffmpegPath: string,
   softwareCodec: string,
   gpuMode: GpuMode
-): Promise<GpuCodecResult> {
-  if (gpuMode === 'off') {
+): Promise<GpuCodecResult>
+{
+  if (gpuMode === 'off')
+  {
     return { codec: softwareCodec, activeMode: 'off', isGpu: false }
   }
 
@@ -139,12 +149,14 @@ export async function resolveGpuCodec(
     ? await detectGpuMode(ffmpegPath)
     : gpuMode
 
-  if (effectiveMode === 'off') {
+  if (effectiveMode === 'off')
+  {
     return { codec: softwareCodec, activeMode: 'off', isGpu: false }
   }
 
   const gpuCodec = GPU_CODECS[effectiveMode]?.[softwareCodec]
-  if (!gpuCodec) {
+  if (!gpuCodec)
+  {
     // No GPU equivalent (e.g. VP9, AV1 on non-NVENC Ada)
     logger.info(`[gpu] No ${effectiveMode} equivalent for ${softwareCodec}, using software`)
     return { codec: softwareCodec, activeMode: 'off', isGpu: false }
@@ -161,7 +173,8 @@ export async function resolveGpuCodec(
 export async function resolveEffectiveMode(
   ffmpegPath: string,
   gpuMode: GpuMode
-): Promise<GpuMode> {
+): Promise<GpuMode>
+{
   if (gpuMode === 'off') return 'off'
   return gpuMode === 'auto' ? await detectGpuMode(ffmpegPath) : gpuMode
 }
@@ -171,7 +184,8 @@ export async function resolveEffectiveMode(
  * Only adds flags when GPU encoding is active AND we're not using complex filter graphs
  * (which require software pixel formats).
  */
-export function getHwaccelInputArgs(activeMode: GpuMode, hasFilterComplex: boolean): string[] {
+export function getHwaccelInputArgs(activeMode: GpuMode, hasFilterComplex: boolean): string[]
+{
   if (activeMode === 'off' || hasFilterComplex) return []
   return HWACCEL_INPUT[activeMode] || []
 }
@@ -180,12 +194,14 @@ export function getHwaccelInputArgs(activeMode: GpuMode, hasFilterComplex: boole
  * Get the appropriate preset flag for the active GPU mode.
  * Returns ['-preset', value] for NVENC/QSV or ['-quality', value] for AMF.
  */
-export function getGpuPreset(activeMode: GpuMode, softwarePreset: string): string[] {
+export function getGpuPreset(activeMode: GpuMode, softwarePreset: string): string[]
+{
   if (activeMode === 'off') return ['-preset', softwarePreset]
 
   const mapped = PRESET_MAP[activeMode]?.[softwarePreset] || 'medium'
 
-  if (activeMode === 'amf') {
+  if (activeMode === 'amf')
+  {
     return ['-quality', mapped]
   }
   return ['-preset', mapped]
@@ -195,10 +211,12 @@ export function getGpuPreset(activeMode: GpuMode, softwarePreset: string): strin
  * Get quality args for GPU encoders (replaces -crf with the appropriate equivalent).
  * NVENC: -cq, QSV: -global_quality, AMF: -qp_i/-qp_p
  */
-export function getGpuQualityArgs(activeMode: GpuMode, crf: number): string[] {
+export function getGpuQualityArgs(activeMode: GpuMode, crf: number): string[]
+{
   if (activeMode === 'off') return ['-crf', String(crf)]
 
-  switch (activeMode) {
+  switch (activeMode)
+  {
     case 'nvenc':
       return ['-rc', 'constqp', '-qp', String(crf)]
     case 'qsv':

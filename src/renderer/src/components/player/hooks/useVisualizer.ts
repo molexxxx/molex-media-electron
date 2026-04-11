@@ -2,24 +2,36 @@
  * @module components/player/hooks/useVisualizer
  * @description Canvas-based audio visualization engine.
  *
- * Sets up the canvas render loop, performs FFT analysis with an
- * attack/release envelope follower, detects beats using the energy
- * variance method, and dispatches to one of 8 draw modes per frame.
+ * Analysis pipeline per frame:
+ * 1. Raw FFT + time-domain capture from AnalyserNode (fftSize 4096).
+ * 2. Attack/release envelope follower smooths both domains.
+ * 3. A-weighted RMS band extraction (sub → treble) via Bark-aligned boundaries.
+ * 4. Spectral centroid (brightness) and RMS level.
+ * 5. Half-wave-rectified spectral flux for onset / beat detection.
+ * 6. Beat detection via adaptive threshold on spectral flux (replaces
+ *    simple energy-variance: flux correlates far better with perceptual
+ *    onsets - Bello et al. 2005, Dixon 2006).
+ * 7. Dispatch to active draw mode.
  */
 
 import { useEffect, type RefObject } from 'react'
-import type { VisMode, AudioFeatures, SpaceState, MilkdropState, PlasmaState } from '../../../visualizations'
+import type { VisMode, AudioFeatures, SpaceState, MilkdropState, PlasmaState, RainState } from '../../../visualizations'
 import {
   getBandEnergy,
+  getAWeights,
+  spectralFlux,
+  spectralCentroid,
+  rmsLevel,
+  freqToBin,
   drawIdle,
   drawBars,
   drawWave,
-  drawCircular,
   drawHorizon,
   drawDMT,
   drawSpace,
   drawMilkdrop,
-  drawPlasma
+  drawPlasma,
+  drawRain
 } from '../../../visualizations'
 
 export function useVisualizer(
@@ -57,18 +69,49 @@ export function useVisualizer(
     const peakBars = new Float32Array(128).fill(0)
     const peakDecay = new Float32Array(128).fill(0)
 
-    // Beat detection state (energy variance method - Frédéric Patin)
-    const BEAT_HISTORY = 43
-    const bassHistory: number[] = []
-    const midHistory: number[] = []
+    // Previous-frame spectrum for spectral flux calculation
+    const prevSpectrum = new Float32Array(2048).fill(0)
+
+    // Beat detection state - spectral flux adaptive threshold
+    // Uses a running median of recent flux values; a beat is detected when
+    // the current flux exceeds the median by a multiplier, with a minimum
+    // refractory period between beats.
+    const FLUX_HISTORY = 48 // ~0.8 s at 60 fps
+    const fluxHistory: number[] = []
+    const midFluxHistory: number[] = []
     let beatIntensity = 0
     let midBeatIntensity = 0
     let lastBeatTime = 0
     let frameBeatCount = 0
 
+    // A-weight cache ref (populated on first analyser read)
+    let aWeights: Float32Array | null = null
+    let cachedSampleRate = 0
+
+    // Bark-aligned band bin boundaries (populated once we know sample rate)
+    let binSub: [number, number] = [1, 6]
+    let binBass: [number, number] = [6, 24]
+    let binLowMid: [number, number] = [24, 46]
+    let binMid: [number, number] = [46, 186]
+    let binHighMid: [number, number] = [186, 400]
+    let binTreble: [number, number] = [400, 1000]
+
+    function recalcBins(sampleRate: number): void {
+      if (sampleRate === cachedSampleRate) return
+      cachedSampleRate = sampleRate
+      aWeights = getAWeights(2048, sampleRate)
+      binSub = [freqToBin(20, 2048, sampleRate), freqToBin(60, 2048, sampleRate)]
+      binBass = [freqToBin(60, 2048, sampleRate), freqToBin(250, 2048, sampleRate)]
+      binLowMid = [freqToBin(250, 2048, sampleRate), freqToBin(500, 2048, sampleRate)]
+      binMid = [freqToBin(500, 2048, sampleRate), freqToBin(2000, 2048, sampleRate)]
+      binHighMid = [freqToBin(2000, 2048, sampleRate), freqToBin(6000, 2048, sampleRate)]
+      binTreble = [freqToBin(6000, 2048, sampleRate), freqToBin(20000, 2048, sampleRate)]
+    }
+
     const audio: AudioFeatures = {
       sub: 0, bass: 0, lowMid: 0, mid: 0, highMid: 0, treble: 0,
-      overall: 0, beat: 0, midBeat: 0, isBeat: false, beatCount: 0
+      overall: 0, beat: 0, midBeat: 0, isBeat: false, beatCount: 0,
+      centroid: 0, brightness: 0, flux: 0, rms: 0
     }
 
     // Persistent visualizer state
@@ -111,29 +154,28 @@ export function useVisualizer(
     }
 
     const spaceState: SpaceState = {
-      stars: Array.from({ length: 500 }, () => ({
-        x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2,
-        z: Math.random(), speed: Math.random() * 0.004 + 0.001,
-        brightness: Math.random(), hue: Math.random() * 60 + 200
-      })),
-      comets: Array.from({ length: 4 }, () => ({
-        x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2,
-        vx: (Math.random() - 0.5) * 0.02, vy: (Math.random() - 0.5) * 0.02,
-        life: Math.random(), hue: Math.random() * 360,
-        trail: []
-      })),
-      debris: Array.from({ length: 80 }, () => ({
-        angle: Math.random() * Math.PI * 2, dist: 0.08 + Math.random() * 0.45,
-        speed: (Math.random() * 0.006 + 0.002) * (Math.random() > 0.5 ? 1 : -1),
-        size: 0.5 + Math.random() * 2, hue: 200 + Math.random() * 80,
-        brightness: 0.3 + Math.random() * 0.7
-      })),
-      nebulae: Array.from({ length: 50 }, () => ({
-        x: (Math.random() - 0.5) * 1.5, y: (Math.random() - 0.5) * 1.5,
-        radius: Math.random() * 0.15 + 0.05, hue: Math.random() * 360,
-        phase: Math.random() * Math.PI * 2
-      })),
-      rotation: 0, warpSpeed: 0
+      stars: Array.from({ length: 2400 }, (_, i) => {
+        const tier = i % 3
+        const speed = tier === 0 ? Math.random() * 0.0004 + 0.0001
+                    : tier === 1 ? Math.random() * 0.001  + 0.0004
+                    :              Math.random() * 0.003  + 0.001
+        const baseSize = tier === 0 ? 0.3 + Math.random() * 0.6
+                       : tier === 1 ? 0.5 + Math.random() * 1.2
+                       :              0.8 + Math.random() * 2.0
+        // Distribute along 4 spiral arms with scatter
+        const armIdx  = Math.floor(Math.random() * 4)
+        const armBase = armIdx * Math.PI * 0.5
+        const r       = 0.05 + Math.random() * 1.3
+        const spiralA = armBase + r * Math.PI * 2.5 + (Math.random() - 0.5) * 0.8
+        return {
+          x: Math.cos(spiralA) * r, y: Math.sin(spiralA) * r,
+          z: Math.random(), speed,
+          brightness: 0.4 + Math.random() * 0.6,
+          hue: Math.random() * 70 + 195,
+          baseSize
+        }
+      }),
+      rotation: 0, warpSpeed: 0, nebulaPhase: 0, coreGlow: 0.5
     }
 
     const milkdropState: MilkdropState = {
@@ -151,6 +193,12 @@ export function useVisualizer(
       }))
     }
 
+    const rainState: RainState = {
+      t: 0,
+      fontSize: 14,
+      columns: []
+    }
+
     const draw = (now: number): void => {
       if (!running) return
       requestAnimationFrame(draw)
@@ -166,10 +214,15 @@ export function useVisualizer(
         return
       }
 
+      // Recalc bin boundaries on sample-rate change
+      recalcBins(analyser.context.sampleRate)
+
       analyser.getByteFrequencyData(freqData)
       analyser.getByteTimeDomainData(timeData)
 
-      // Attack/release envelope follower
+      // ---- Attack/release envelope follower ----
+      // Attack = 0.3 (fast response to transients)
+      // Release = 0.12 (smooth decay avoids flicker)
       for (let i = 0; i < freqData.length; i++) {
         const raw = freqData[i]
         if (raw > smoothFreq[i]) {
@@ -190,28 +243,58 @@ export function useVisualizer(
         timeData[i] = smoothTime[i]
       }
 
-      // Perceptual frequency bands
-      audio.sub = getBandEnergy(freqData, 1, 6)
-      audio.bass = getBandEnergy(freqData, 6, 24)
-      audio.lowMid = getBandEnergy(freqData, 24, 46)
-      audio.mid = getBandEnergy(freqData, 46, 186)
-      audio.highMid = getBandEnergy(freqData, 186, 400)
-      audio.treble = getBandEnergy(freqData, 400, 1000)
-      audio.overall = (audio.sub * 0.8 + audio.bass + audio.lowMid +
-        audio.mid + audio.highMid * 0.8 + audio.treble * 0.6) / 4.7
+      // ---- A-weighted perceptual band energies ----
+      audio.sub = getBandEnergy(freqData, binSub[0], binSub[1], aWeights)
+      audio.bass = getBandEnergy(freqData, binBass[0], binBass[1], aWeights)
+      audio.lowMid = getBandEnergy(freqData, binLowMid[0], binLowMid[1], aWeights)
+      audio.mid = getBandEnergy(freqData, binMid[0], binMid[1], aWeights)
+      audio.highMid = getBandEnergy(freqData, binHighMid[0], binHighMid[1], aWeights)
+      audio.treble = getBandEnergy(freqData, binTreble[0], binTreble[1], aWeights)
 
-      // Beat detection
-      const instantBass = audio.bass + audio.sub * 0.5
-      bassHistory.push(instantBass)
-      if (bassHistory.length > BEAT_HISTORY) bassHistory.shift()
-      const avgBass = bassHistory.reduce((a, b) => a + b, 0) / bassHistory.length
+      // Perceptual overall - weighted sum reflecting equal-loudness sensitivity
+      // Mid-range bands get full weight; sub/treble are attenuated
+      audio.overall = Math.min(1,
+        (audio.sub * 0.6 + audio.bass * 1.0 + audio.lowMid * 1.0 +
+         audio.mid * 1.0 + audio.highMid * 0.9 + audio.treble * 0.5) / 4.0
+      )
 
-      const instantMid = audio.mid + audio.highMid * 0.3
-      midHistory.push(instantMid)
-      if (midHistory.length > BEAT_HISTORY) midHistory.shift()
-      const avgMid = midHistory.reduce((a, b) => a + b, 0) / midHistory.length
+      // ---- Spectral centroid & brightness ----
+      audio.centroid = spectralCentroid(freqData, 2048, cachedSampleRate || 44100)
+      // Normalise to 0-1: centroid typically in 200-8000 Hz for music
+      audio.brightness = Math.min(1, Math.max(0, (audio.centroid - 200) / 6000))
 
-      audio.isBeat = instantBass > avgBass * 1.4 && instantBass > 0.12 &&
+      // ---- RMS level ----
+      audio.rms = rmsLevel(timeData)
+
+      // ---- Spectral flux (onset strength) ----
+      // Bass-focused flux (bins for 20-300 Hz)
+      const bassFlux = spectralFlux(freqData, prevSpectrum, binSub[0], binBass[1])
+      // Mid-focused flux (bins for 500-6000 Hz)
+      const midFlux = spectralFlux(freqData, prevSpectrum, binMid[0], binHighMid[1])
+      // Full-spectrum flux
+      audio.flux = spectralFlux(freqData, prevSpectrum, 1, Math.min(1000, freqData.length))
+
+      // Store current spectrum for next frame
+      for (let i = 0; i < freqData.length; i++) {
+        prevSpectrum[i] = freqData[i] / 255
+      }
+
+      // ---- Beat detection (adaptive spectral-flux threshold) ----
+      // Push current flux into history
+      fluxHistory.push(bassFlux)
+      if (fluxHistory.length > FLUX_HISTORY) fluxHistory.shift()
+
+      midFluxHistory.push(midFlux)
+      if (midFluxHistory.length > FLUX_HISTORY) midFluxHistory.shift()
+
+      // Adaptive threshold: mean + 1.4× std-deviation of recent flux
+      const avgFlux = fluxHistory.reduce((a, b) => a + b, 0) / fluxHistory.length
+      let fluxVar = 0
+      for (const f of fluxHistory) fluxVar += (f - avgFlux) * (f - avgFlux)
+      const fluxStd = Math.sqrt(fluxVar / fluxHistory.length)
+      const beatThreshold = avgFlux + fluxStd * 1.4
+
+      audio.isBeat = bassFlux > beatThreshold && bassFlux > 0.04 &&
         (now - lastBeatTime) > 150
       if (audio.isBeat) {
         beatIntensity = 1.0
@@ -222,7 +305,12 @@ export function useVisualizer(
       audio.beat = beatIntensity
       audio.beatCount = frameBeatCount
 
-      if (instantMid > avgMid * 1.5 && instantMid > 0.1) {
+      // Mid beat (snares / claps / hi-hats)
+      const avgMidFlux = midFluxHistory.reduce((a, b) => a + b, 0) / midFluxHistory.length
+      let midFluxVar = 0
+      for (const f of midFluxHistory) midFluxVar += (f - avgMidFlux) * (f - avgMidFlux)
+      const midFluxStd = Math.sqrt(midFluxVar / midFluxHistory.length)
+      if (midFlux > avgMidFlux + midFluxStd * 1.5 && midFlux > 0.03) {
         midBeatIntensity = 1.0
       }
       midBeatIntensity *= 0.94
@@ -247,29 +335,16 @@ export function useVisualizer(
           drawBars(ctx, freqData, smoothBars, peakBars, peakDecay, W, H, audio)
           break
         case 'wave':
-          ctx.fillStyle = '#0a0a0f'
-          ctx.fillRect(0, 0, W, H)
-          drawWave(ctx, timeData, W, H, audio)
-          break
-        case 'circular':
-          ctx.fillStyle = '#0a0a0f'
-          ctx.fillRect(0, 0, W, H)
-          drawCircular(ctx, freqData, timeData, W, H, audio)
+          drawWave(ctx, freqData, timeData, W, H, audio)
           break
         case 'horizon':
           ctx.fillStyle = '#0a0a0f'
           ctx.fillRect(0, 0, W, H)
           drawHorizon(ctx, freqData, timeData, W, H, audio)
           break
-      }
-
-      // Universal beat flash
-      if (audio.beat > 0.2) {
-        ctx.save()
-        ctx.globalCompositeOperation = 'screen'
-        ctx.fillStyle = `rgba(180, 140, 255, ${audio.beat * 0.05})`
-        ctx.fillRect(0, 0, W, H)
-        ctx.restore()
+        case 'rain':
+          drawRain(ctx, freqData, timeData, W, H, rainState, audio)
+          break
       }
     }
 

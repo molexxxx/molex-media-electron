@@ -170,7 +170,7 @@ export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasPro
         try {
           ctx.drawImage(videoEl, 0, 0, source.width, source.height)
         } catch {
-          // Video frame not ready — draw placeholder
+          // Video frame not ready - draw placeholder
           ctx.fillStyle = '#333'
           ctx.fillRect(0, 0, source.width, source.height)
         }

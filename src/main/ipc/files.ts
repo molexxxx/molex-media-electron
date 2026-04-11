@@ -13,7 +13,7 @@ import { findSystemFFmpeg, downloadFFmpeg, getFFmpegVersion, type BootstrapProgr
 import { probeMedia } from '../ffmpeg/probe'
 import { findMediaFiles } from '../ffmpeg/processor'
 import { initFFmpegDir } from '../ytdlp/binary'
-import { registerPreviewFile } from '../protocol'
+import { startPreviewServer, registerPreviewPath } from '../preview-server'
 import { prepareForPlayback, prepareForPlaybackAt, clearPlaybackCacheFor } from '../ffmpeg/playback'
 import { sendToAll } from './helpers'
 
@@ -115,12 +115,13 @@ export function registerFilesIPC(): void {
     return fs.readFileSync(filePath)
   })
 
-  // --- Register local file for media:// protocol access ---
+  // --- Register local file for HTTP server playback ---
   // Non-native formats are extracted to a browser-compatible temp file first.
   ipcMain.handle('files:registerLocalFile', async (_, filePath: string) => {
     const playbackPath = await prepareForPlayback(filePath)
-    const token = registerPreviewFile(playbackPath)
-    return `media://${token}`
+    const baseUrl = await startPreviewServer()
+    const token = registerPreviewPath(playbackPath)
+    return `${baseUrl}/${token}`
   })
 
   // --- Clear extraction cache for a file (retry after playback error) ---
@@ -133,8 +134,9 @@ export function registerFilesIPC(): void {
   // seeking doesn't work reliably.
   ipcMain.handle('files:seekLocalFile', async (_, filePath: string, seekTime: number) => {
     const playbackPath = await prepareForPlaybackAt(filePath, seekTime)
-    const token = registerPreviewFile(playbackPath)
-    return `media://${token}`
+    const baseUrl = await startPreviewServer()
+    const token = registerPreviewPath(playbackPath)
+    return `${baseUrl}/${token}`
   })
 
   // --- Known folder locations (My Music, My Videos, etc.) ---

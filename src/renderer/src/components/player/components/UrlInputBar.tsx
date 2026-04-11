@@ -40,12 +40,12 @@ export function UrlInputBar({
           onChange={(e) => onUrlChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') onAddUrl(); if (e.key === 'Escape' && onDismiss) onDismiss() }}
           placeholder="Paste YouTube playlist, video URL, or direct audio link..."
-          className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface-900/80 border border-white/[0.06] text-surface-200 placeholder-surface-600 focus:border-accent-500/50 hover:border-white/[0.12] focus:outline-none transition-colors"
+          className="flex-1 h-9 px-3 text-sm rounded-lg bg-surface-900/80 border border-white/[0.06] text-surface-200 placeholder-surface-600 focus:border-accent-500/50 hover:border-white/[0.12] focus:outline-none transition-colors"
           autoFocus
         />
         <button
           onClick={() => { onToggleHistory(); if (!showHistory) onLoadHistory() }}
-          className={`px-2.5 py-2 rounded-lg border transition-colors ${
+          className={`h-9 px-2.5 rounded-lg border transition-colors ${
             showHistory ? 'bg-accent-500/15 border-accent-500/25 text-accent-300' : 'bg-surface-900/80 border-white/[0.06] text-surface-400 hover:text-surface-200 hover:border-white/[0.12]'
           }`}
           title="URL History"
@@ -57,14 +57,14 @@ export function UrlInputBar({
         <button
           onClick={onAddUrl}
           disabled={resolving}
-          className="px-4 py-2 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 disabled:opacity-50 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
+          className="h-9 px-4 text-xs font-semibold rounded-lg bg-accent-500/15 hover:bg-accent-500/25 disabled:opacity-50 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
         >
           {resolving ? 'Resolving...' : 'Add'}
         </button>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="p-2 rounded-lg text-surface-500 hover:text-surface-200 transition-colors"
+            className="h-9 px-2 rounded-lg text-surface-500 hover:text-surface-200 transition-colors"
             title="Close URL input"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

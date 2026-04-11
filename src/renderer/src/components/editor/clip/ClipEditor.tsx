@@ -87,7 +87,7 @@ export function ClipEditor(): React.JSX.Element {
         addSource(newSource)
         setClipSource(newSource.id, totalFrames)
 
-        // Register raw file for media:// streaming (preserves video track)
+        // Register raw file for HTTP server streaming (preserves video track)
         const previewResult = await window.api.createPreview(filePath)
         if (previewResult?.success && previewResult.data) {
           setMediaUrl(previewResult.data)

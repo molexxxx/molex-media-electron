@@ -16,6 +16,7 @@ interface PlayerHeaderProps {
   audioQuality: AudioQuality
   showPlaylist: boolean
   playlistLength: number
+  hasYouTubeTracks: boolean
   onCycleQuality: () => void
   onCycleVisMode: () => void
   onTogglePlaylist: () => void
@@ -64,21 +65,21 @@ const VIS_ICONS: Record<VisMode, React.JSX.Element> = {
       <path d="M2 12c2-3 4-6 6-3s4 6 6 3 4-6 6-3" />
     </svg>
   ),
-  circular: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="9" /><path d="M12 3a14.5 14.5 0 0 0 0 18M12 3a14.5 14.5 0 0 1 0 18M3 12h18" />
-    </svg>
-  ),
   horizon: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M2 17l3-4 4 2 5-6 4 3 4-4" /><line x1="2" y1="20" x2="22" y2="20" />
+    </svg>
+  ),
+  rain: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 4v8M8 2v12M12 6v10M16 3v14M20 5v9" strokeLinecap="round" />
     </svg>
   ),
 }
 
 export function PlayerHeader({
   track, popout, isPoppedOut, visMode, audioQuality, showPlaylist,
-  playlistLength, onCycleQuality, onCycleVisMode, onTogglePlaylist,
+  playlistLength, hasYouTubeTracks, onCycleQuality, onCycleVisMode, onTogglePlaylist,
   onToggleUrlInput, onPopout, onFileSelect, onClearPlaylist
 }: PlayerHeaderProps): React.JSX.Element {
   const [addOpen, setAddOpen] = useState(false)
@@ -106,8 +107,8 @@ export function PlayerHeader({
         </p>
       </div>
       <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-        {/* Audio quality */}
-        <Tip label={`Quality: ${QUALITY_LABELS[audioQuality]}`}>
+        {/* Audio quality - only relevant for YouTube streams */}
+        {hasYouTubeTracks && <Tip label={`Quality: ${QUALITY_LABELS[audioQuality]}`}>
           <button onClick={onCycleQuality} className={`${btnCls} hidden sm:flex`}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
@@ -115,7 +116,7 @@ export function PlayerHeader({
               {audioQuality !== 'low' && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />}
             </svg>
           </button>
-        </Tip>
+        </Tip>}
 
         {/* Visualizer mode - unique icon per mode */}
         <Tip label={VIS_LABELS[visMode]}>

@@ -7,7 +7,8 @@
 import { ipcMain } from 'electron'
 import { logger } from '../logger'
 import { addUrlHistory } from '../config'
-import { resolvePlaylist, getAudioStreamUrl, registerStreamUrl, getInstalledBrowsers, setBrowserAndExport, clearCookies, getCookieInfo } from '../ytdlp'
+import { resolvePlaylist, getAudioStreamUrl, getInstalledBrowsers, setBrowserAndExport, clearCookies, getCookieInfo } from '../ytdlp'
+import { startPreviewServer, registerStreamProxy } from '../preview-server'
 
 /** Register YouTube / yt-dlp IPC handlers. */
 export function registerMediaIPC(): void {
@@ -54,9 +55,10 @@ export function registerMediaIPC(): void {
   ipcMain.handle('ytdlp:getStreamUrl', async (_, videoUrl: string, quality?: string) => {
     try {
       const result = await getAudioStreamUrl(videoUrl, (quality as any) || 'best')
-      // Register CDN URL and return a media:// proxy URL for instant streaming
-      const token = registerStreamUrl(result.audioUrl)
-      return { success: true, mediaUrl: `media://${token}`, title: result.title, duration: result.duration }
+      // Register CDN URL with the HTTP server for proxied streaming
+      const baseUrl = await startPreviewServer()
+      const token = registerStreamProxy(result.audioUrl)
+      return { success: true, mediaUrl: `${baseUrl}/${token}`, title: result.title, duration: result.duration }
     } catch (err: any) {
       logger.error(`yt-dlp stream URL failed: ${err.message}`)
       return { success: false, error: err.message }

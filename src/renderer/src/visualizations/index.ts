@@ -16,26 +16,25 @@ export type {
   DMTEye,
   DMTState,
   SpaceStar,
-  SpaceComet,
-  SpaceDebris,
-  SpaceNebula,
   SpaceState,
   MilkdropState,
   PlasmaBlob,
   PlasmaState,
+  RainColumn,
+  RainState,
   VisMode,
   AudioQuality
 } from './types'
 
 export { VIS_LABELS, QUALITY_LABELS } from './types'
 
-export { getBandEnergy } from './audio'
+export { getBandEnergy, getAWeights, spectralFlux, spectralCentroid, rmsLevel, freqToBin } from './audio'
 export { drawIdle } from './idle'
 export { drawBars } from './bars'
 export { drawWave } from './wave'
-export { drawCircular } from './circular'
 export { drawHorizon } from './horizon'
 export { drawDMT } from './dmt'
 export { drawSpace } from './space'
 export { drawMilkdrop } from './milkdrop'
 export { drawPlasma } from './plasma'
+export { drawRain } from './rain'

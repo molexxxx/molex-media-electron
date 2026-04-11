@@ -145,10 +145,11 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     }
 
     // Resolve YouTube stream URL on demand
-    // Re-resolve if src is a media:// token (may be expired)
+    // Always re-resolve YouTube tracks whose cached src is a localhost proxy
+    // (the underlying CDN URL may have expired)
     let audioSrc = t.src
     const isYouTube = !!t.videoUrl
-    const needsResolve = t.videoUrl && (!t.src || t.src.startsWith('media://'))
+    const needsResolve = t.videoUrl && (!t.src || t.src.startsWith('http://127.0.0.1'))
     if (isYouTube) setResolving(true)
     if (needsResolve) {
       try {
@@ -173,9 +174,9 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       }
     }
 
-    // Local file: register for media:// protocol streaming.
+    // Local file: register for HTTP server streaming.
     // Only call registerLocalFile when it doesn't already have a cached
-    // media:// URL - re-registering every time is wasteful because it
+    // URL - re-registering every time is wasteful because it
     // invokes prepareForPlayback (which probes + potentially FFmpeg-extracts).
     if (!audioSrc && !isYouTube && t.filePath) {
       try {
@@ -207,9 +208,10 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
     audio.pause()
 
     // Only set crossOrigin for remote HTTP(S) URLs
-    // Blob, media://, and YouTube CDN don't serve CORS headers
-    const isLocal = t.isBlob || isYouTube || audioSrc.startsWith('media://')
-    if (isLocal) audio.removeAttribute('crossOrigin')
+    // The local preview server includes CORS headers so crossOrigin
+    // 'anonymous' works for all HTTP URLs (needed for AudioContext).
+    // Blob URLs don't need / support crossOrigin.
+    if (t.isBlob) audio.removeAttribute('crossOrigin')
     else audio.crossOrigin = 'anonymous'
     audio.volume = volume
 
@@ -413,7 +415,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       const ext = f.name.split('.').pop()?.toLowerCase() || ''
       if (!MEDIA_EXTS.includes(ext)) continue
       const fp = window.api.getFilePath(f)
-      // Prefer native path → resolved lazily via media:// on play (no memory limit)
+      // Prefer native path → resolved lazily via HTTP server on play (no memory limit)
       // Fall back to blob URL only when no native path available
       newTracks.push({
         id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -785,7 +787,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
   }, [])
 
   const cycleVisMode = useCallback(() => {
-    const modes: VisMode[] = ['dmt', 'space', 'milkdrop', 'plasma', 'bars', 'wave', 'circular', 'horizon']
+    const modes: VisMode[] = ['dmt', 'space', 'milkdrop', 'plasma', 'bars', 'wave', 'horizon', 'rain']
     setVisMode((m) => modes[(modes.indexOf(m) + 1) % modes.length])
   }, [])
 
@@ -805,7 +807,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
       playlist: playlist.map((t) => ({
         ...t,
         // Blob URLs are per-process and can't be transferred.
-        // YouTube cached media:// tokens point to CDN URLs that may expire;
+        // YouTube cached proxy URLs point to CDN URLs that may expire;
         // clear them so the target window gets fresh resolution.
         src: t.isBlob || t.videoUrl ? '' : t.src
       })),
@@ -1063,6 +1065,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
           audioQuality={audioQuality}
           showPlaylist={showPlaylist}
           playlistLength={playlist.length}
+          hasYouTubeTracks={playlist.some((t) => !!t.videoUrl)}
           onCycleQuality={cycleQuality}
           onCycleVisMode={cycleVisMode}
           onTogglePlaylist={() => setShowPlaylist((v) => !v)}
@@ -1150,7 +1153,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
               {/* Resize handle - left edge, desktop only */}
               <div
                 onMouseDown={startPlaylistResize}
-                className="hidden sm:block absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-30 hover:bg-accent-500/20 active:bg-accent-500/30 transition-colors"
+                className="v-splitter hidden sm:!block absolute left-0 top-0 bottom-0 z-30"
               />
               <PlaylistPanel
                 playlist={playlist}

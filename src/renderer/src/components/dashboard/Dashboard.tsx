@@ -70,7 +70,7 @@ export default function Dashboard(): React.JSX.Element {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col justify-evenly gap-4 min-h-0">
-        {/* Tool cards — editor bigger, stacks on narrow screens */}
+        {/* Tool cards - editor bigger, stacks on narrow screens */}
         <div className="grid grid-cols-1 sm:grid-cols-[3fr_2fr] gap-4 sm:h-[250px]">
           <div className="min-w-0 h-44 sm:h-full">
             <ToolCard

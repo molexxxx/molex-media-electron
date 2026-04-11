@@ -8,3 +8,4 @@ Thumbs.db
 ffmpeg-bin/
 tsconfig.tsbuildinfo
 docs
+.env

@@ -309,7 +309,7 @@ function buildClipTransformFilters(
     current = out
   }
 
-  // 3. Opacity (if < 1.0) — skipped when the caller applies it via blend all_opacity
+  // 3. Opacity (if < 1.0) - skipped when the caller applies it via blend all_opacity
   if (!options?.skipOpacity && transform.opacity < 0.999) {
     const out = labelFn()
     filters.push(
@@ -683,7 +683,7 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
           currentLabel = scaleOut
         }
 
-        // Opacity animation (skipped for non-normal blend modes — handled by all_opacity on blend filter)
+        // Opacity animation (skipped for non-normal blend modes - handled by all_opacity on blend filter)
         const kfBlendMode = clip.blendMode ?? 'normal'
         const kfIsBlend = kfBlendMode !== 'normal'
         if (!kfIsBlend) {
@@ -706,7 +706,7 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
         const blendMode = clip.blendMode ?? 'normal'
         if (blendMode !== 'normal') {
           // Pad to output size with blend-neutral colour, then blend.
-          // Convert to RGB (gbrp) first — blend formulas are defined for
+          // Convert to RGB (gbrp) first - blend formulas are defined for
           // RGB and produce colour-shifted output when applied to YUV.
           const padOut = label()
           const neutralColor = BLEND_NEUTRAL_COLOR[blendMode]
