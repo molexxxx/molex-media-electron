@@ -1,6 +1,6 @@
 {
   "name": "molex-media",
-  "version": "4.3.3",
+  "version": "4.4.0",
   "description": "Media processing toolkit powered by FFmpeg - audio normalization, video conversion, format tools, and more",
   "main": "./out/main/index.js",
   "author": "molex",
