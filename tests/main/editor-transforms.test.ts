@@ -116,7 +116,7 @@ function getFilterComplex(args: string[]): string {
 // TESTS
 // ===========================================================================
 
-describe('buildExportCommand — spatial transforms', () => {
+describe('buildExportCommand - spatial transforms', () => {
   // =========================================================================
   // Legacy path fallback
   // =========================================================================
@@ -277,6 +277,21 @@ describe('buildExportCommand — spatial transforms', () => {
       expect(fc).toMatch(/blend=all_mode=screen/)
     })
 
+    it('converts both inputs to RGB (gbrp) before blend filter', async () => {
+      const args = await buildExportCommand(mkRequest({
+        clips: [mkClip({
+          blendMode: 'multiply',
+          width: 1920,
+          height: 1080
+        })]
+      }))
+      const fc = getFilterComplex(args)
+      // Foreground should be converted to gbrp before pad
+      expect(fc).toMatch(/format=gbrp,pad=/)
+      // Base should be converted to gbrp before blend
+      expect(fc).toMatch(/format=gbrp\[.*\].*\[.*\]blend=/)
+    })
+
     it('uses overlay (not blend) for normal blend mode in spatial path', async () => {
       // Trigger spatial path via a non-identity transform, normal blend
       const args = await buildExportCommand(mkRequest({
@@ -301,7 +316,41 @@ describe('buildExportCommand — spatial transforms', () => {
         })]
       }))
       const fc = getFilterComplex(args)
-      expect(fc).toMatch(/pad=1920:1080/)
+      expect(fc).toMatch(/format=gbrp,pad=1920:1080/)
+    })
+
+    it('uses blend-neutral pad colour (white for multiply, black for screen)', async () => {
+      // multiply neutral = white (0xFFFFFF)
+      const argsM = await buildExportCommand(mkRequest({
+        clips: [mkClip({ blendMode: 'multiply', width: 1920, height: 1080 })]
+      }))
+      expect(getFilterComplex(argsM)).toMatch(/pad=.*color=0xFFFFFF/)
+
+      // screen neutral = black (0x000000)
+      const argsS = await buildExportCommand(mkRequest({
+        clips: [mkClip({ blendMode: 'screen', width: 1920, height: 1080 })]
+      }))
+      expect(getFilterComplex(argsS)).toMatch(/pad=.*color=0x000000/)
+
+      // overlay neutral = mid-gray (0x808080)
+      const argsO = await buildExportCommand(mkRequest({
+        clips: [mkClip({ blendMode: 'overlay', width: 1920, height: 1080 })]
+      }))
+      expect(getFilterComplex(argsO)).toMatch(/pad=.*color=0x808080/)
+    })
+
+    it('passes clip opacity via blend all_opacity instead of colorchannelmixer', async () => {
+      const args = await buildExportCommand(mkRequest({
+        clips: [mkClip({
+          blendMode: 'screen',
+          transform: mkTransform({ opacity: 0.5 }),
+          width: 1920,
+          height: 1080
+        })]
+      }))
+      const fc = getFilterComplex(args)
+      expect(fc).toMatch(/all_opacity=0\.5/)
+      expect(fc).not.toMatch(/colorchannelmixer/)
     })
 
     it('maps all supported blend modes', async () => {
@@ -470,7 +519,7 @@ describe('buildExportCommand — spatial transforms', () => {
       const args = await buildExportCommand(mkRequest({
         clips: [mkClip({
           transform: mkTransform({ scaleX: 0.5, scaleY: 0.5 })
-          // no width/height — should fall back to source.width/height (1920x1080)
+          // no width/height - should fall back to source.width/height (1920x1080)
         })]
       }))
       const fc = getFilterComplex(args)

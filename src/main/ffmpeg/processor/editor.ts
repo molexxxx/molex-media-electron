@@ -192,6 +192,24 @@ const FFMPEG_BLEND_MAP: Record<ExportBlendMode, string> = {
   difference: 'difference'
 }
 
+/**
+ * Neutral pad/fill colour per blend mode.  When a pixel in the padded area
+ * is blended with the base, the neutral value produces the base unchanged:
+ *   multiply / darken → white  (base × 1 = base, min(base,1) = base)
+ *   screen / lighten / add / difference → black
+ *   overlay → mid-gray 0x808080  (formula returns base when fg = 0.5)
+ */
+const BLEND_NEUTRAL_COLOR: Record<ExportBlendMode, string> = {
+  normal: '0x000000',
+  multiply: '0xFFFFFF',
+  screen: '0x000000',
+  overlay: '0x808080',
+  darken: '0xFFFFFF',
+  lighten: '0x000000',
+  add: '0x000000',
+  difference: '0x000000'
+}
+
 /** Easing function for keyframe interpolation (mirrored from renderer). */
 function applyEasing(t: number, easing: ExportEasingFunction): number {
   switch (easing) {
@@ -245,13 +263,19 @@ function computeRotatedSize(w: number, h: number, rotDeg: number): { rw: number;
 /**
  * Build per-clip transform filters: scale → rotate → opacity → (produces a label ready for overlay).
  * Returns the filter strings and the output label, plus the dimensions of the result.
+ *
+ * When `skipOpacity` is true the opacity step is omitted (caller handles it
+ * via the blend filter's `all_opacity` parameter).
+ * When `rotateFill` is provided it replaces the default transparent-black
+ * fill colour used by the rotation filter.
  */
 function buildClipTransformFilters(
   transform: ExportClipTransform,
   sourceW: number,
   sourceH: number,
   inputLabel: string,
-  labelFn: () => string
+  labelFn: () => string,
+  options?: { skipOpacity?: boolean; rotateFill?: string }
 ): { filters: string[]; outputLabel: string; resultW: number; resultH: number } {
   const filters: string[] = []
   let current = inputLabel
@@ -278,14 +302,15 @@ function buildClipTransformFilters(
     const { rw, rh } = computeRotatedSize(scaledW, scaledH, transform.rotation)
     finalW = rw
     finalH = rh
+    const fillColor = options?.rotateFill ?? '0x00000000'
     filters.push(
-      `[${current}]format=rgba,rotate=${rad.toFixed(6)}:ow=rotw(${rad.toFixed(6)}):oh=roth(${rad.toFixed(6)}):c=0x00000000:bilinear=1[${out}]`
+      `[${current}]format=rgba,rotate=${rad.toFixed(6)}:ow=rotw(${rad.toFixed(6)}):oh=roth(${rad.toFixed(6)}):c=${fillColor}:bilinear=1[${out}]`
     )
     current = out
   }
 
-  // 3. Opacity (if < 1.0)
-  if (transform.opacity < 0.999) {
+  // 3. Opacity (if < 1.0) — skipped when the caller applies it via blend all_opacity
+  if (!options?.skipOpacity && transform.opacity < 0.999) {
     const out = labelFn()
     filters.push(
       `[${current}]format=rgba,colorchannelmixer=aa=${transform.opacity.toFixed(4)}[${out}]`
@@ -658,13 +683,17 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
           currentLabel = scaleOut
         }
 
-        // Opacity animation
-        const hasOpacityAnim = allKF.some((k) => Math.abs(k.transform.opacity - transform.opacity) > 0.001)
-        if (hasOpacityAnim || transform.opacity < 0.999) {
-          const opOut = label()
-          const opExpr = buildAnimatedExpr(allKF, 'opacity', fps, clip.timelineStart)
-          filters.push(`[${currentLabel}]format=rgba,colorchannelmixer=aa='${opExpr}'[${opOut}]`)
-          currentLabel = opOut
+        // Opacity animation (skipped for non-normal blend modes — handled by all_opacity on blend filter)
+        const kfBlendMode = clip.blendMode ?? 'normal'
+        const kfIsBlend = kfBlendMode !== 'normal'
+        if (!kfIsBlend) {
+          const hasOpacityAnim = allKF.some((k) => Math.abs(k.transform.opacity - transform.opacity) > 0.001)
+          if (hasOpacityAnim || transform.opacity < 0.999) {
+            const opOut = label()
+            const opExpr = buildAnimatedExpr(allKF, 'opacity', fps, clip.timelineStart)
+            filters.push(`[${currentLabel}]format=rgba,colorchannelmixer=aa='${opExpr}'[${opOut}]`)
+            currentLabel = opOut
+          }
         }
 
         // Animated overlay position
@@ -676,12 +705,18 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
         const oOut = label()
         const blendMode = clip.blendMode ?? 'normal'
         if (blendMode !== 'normal') {
-          // Pad to output size first, then blend
+          // Pad to output size with blend-neutral colour, then blend.
+          // Convert to RGB (gbrp) first — blend formulas are defined for
+          // RGB and produce colour-shifted output when applied to YUV.
           const padOut = label()
-          filters.push(`[${currentLabel}]pad=${w}:${h}:${overlayX}:${overlayY}:color=0x00000000[${padOut}]`)
+          const neutralColor = BLEND_NEUTRAL_COLOR[blendMode]
+          filters.push(`[${currentLabel}]format=gbrp,pad=${w}:${h}:${overlayX}:${overlayY}:color=${neutralColor}[${padOut}]`)
           currentLabel = padOut
           const bm = FFMPEG_BLEND_MAP[blendMode]
-          filters.push(`[${base}][${currentLabel}]blend=all_mode=${bm}:all_opacity=1:shortest=1:eof_action=pass[${oOut}]`)
+          const blendOp = transform.opacity < 0.999 ? transform.opacity.toFixed(4) : '1'
+          const baseRgb = label()
+          filters.push(`[${base}]format=gbrp[${baseRgb}]`)
+          filters.push(`[${baseRgb}][${currentLabel}]blend=all_mode=${bm}:all_opacity=${blendOp}:shortest=1:eof_action=pass[${oOut}]`)
         } else {
           filters.push(
             `[${base}][${currentLabel}]overlay=x='${overlayX}':y='${overlayY}':eval=frame:format=auto:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
@@ -690,25 +725,34 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
         base = oOut
       } else {
         // Static transform: apply scale → rotate → opacity filters, then positioned overlay
+        const blendMode = clip.blendMode ?? 'normal'
+        const isBlend = blendMode !== 'normal'
         const { filters: tFilters, outputLabel, resultW, resultH } = buildClipTransformFilters(
-          transform, sourceW, sourceH, currentLabel, label
+          transform, sourceW, sourceH, currentLabel, label,
+          isBlend ? { skipOpacity: true, rotateFill: BLEND_NEUTRAL_COLOR[blendMode] } : undefined
         )
         filters.push(...tFilters)
         currentLabel = outputLabel
 
         const pos = computeOverlayPos(transform, resultW, resultH)
         const oOut = label()
-        const blendMode = clip.blendMode ?? 'normal'
 
-        if (blendMode !== 'normal') {
-          // For non-normal blend modes: pad to output size, then use blend filter
+        if (isBlend) {
+          // For non-normal blend modes: convert to RGB (gbrp), pad to output
+          // size with blend-neutral colour, then blend.  Blend formulas are
+          // defined for RGB; applying them to YUV chroma channels (centred
+          // at 128) produces colour-shifted results.
           const padOut = label()
           const padX = Math.max(0, pos.x)
           const padY = Math.max(0, pos.y)
-          filters.push(`[${currentLabel}]pad=${w}:${h}:${padX}:${padY}:color=0x00000000[${padOut}]`)
+          const neutralColor = BLEND_NEUTRAL_COLOR[blendMode]
+          filters.push(`[${currentLabel}]format=gbrp,pad=${w}:${h}:${padX}:${padY}:color=${neutralColor}[${padOut}]`)
           const bm = FFMPEG_BLEND_MAP[blendMode]
+          const blendOp = transform.opacity < 0.999 ? transform.opacity.toFixed(4) : '1'
+          const baseRgb = label()
+          filters.push(`[${base}]format=gbrp[${baseRgb}]`)
           filters.push(
-            `[${base}][${padOut}]blend=all_mode=${bm}:all_opacity=1:shortest=1:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
+            `[${baseRgb}][${padOut}]blend=all_mode=${bm}:all_opacity=${blendOp}:shortest=1:eof_action=pass:enable='between(t,${sec(clipStartSec)},${sec(clipStartSec + clipDurSec)})'[${oOut}]`
           )
         } else {
           filters.push(
@@ -721,7 +765,7 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
 
     vOut = base
   } else {
-    // === Legacy path (no spatial transforms) — simple scale+pad+concat per track ===
+    // === Legacy path (no spatial transforms) - simple scale+pad+concat per track ===
     const vLabels: string[] = []
     for (const t of vTracks) {
       const l = buildVideoTrack(t, active, sourceById, inputMap, filters, fps, outFps, w, h, label)
