@@ -54,7 +54,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2",
-    "zero-http": "^0.8.5",
+    "zero-http": "^0.8.7",
     "zustand": "^5.0.12"
   }
 }
