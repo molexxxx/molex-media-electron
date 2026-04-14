@@ -28,7 +28,7 @@
     "extract-zip": "^2.0.1",
     "tar": "^7.4.0",
     "youtube-dl-exec": "^3.1.4",
-    "zero-query": "^1.0.9"
+    "zero-query": "^1.1.1"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
