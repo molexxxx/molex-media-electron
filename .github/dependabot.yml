@@ -10,6 +10,9 @@ updates:
       - dependencies
     commit-message:
       prefix: "chore(deps):"
+    ignore:
+      - dependency-name: "@vitejs/plugin-react"
+        versions: [">=6.0.0"]
     groups:
       electron:
         patterns:
