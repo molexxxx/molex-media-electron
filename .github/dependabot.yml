@@ -17,12 +17,12 @@ updates:
           - "electron-builder"
           - "electron-vite"
           - "@electron-toolkit/*"
+          - "@vitejs/plugin-react"
       react:
         patterns:
           - "react"
           - "react-dom"
           - "@types/react*"
-          - "@vitejs/plugin-react"
       dev-tooling:
         patterns:
           - "typescript"
