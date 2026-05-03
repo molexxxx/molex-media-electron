@@ -70,6 +70,20 @@ describe('appStore', () => {
       useAppStore.getState().addFiles([file1, file2])
       expect(useAppStore.getState().files).toHaveLength(2)
     })
+
+    it('stamps missing convert options even when operation is already set', () => {
+      useAppStore.getState().setOperation('convert')
+      useAppStore.getState().setConvertOptions({ outputFormat: 'mp4', videoCodec: 'libx264' })
+
+      useAppStore.getState().addFiles([
+        { path: '/dropped.mkv', name: 'dropped.mkv', size: 3000, ext: 'mkv', operation: 'convert' }
+      ])
+
+      const added = useAppStore.getState().files.find((f) => f.path === '/dropped.mkv')
+      expect(added?.operation).toBe('convert')
+      expect(added?.convertOptions).toBeTruthy()
+      expect(added?.convertOptions?.outputFormat).toBe('mp4')
+    })
   })
 
   describe('updateFile', () => {

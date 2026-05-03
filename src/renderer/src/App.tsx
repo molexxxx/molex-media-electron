@@ -180,6 +180,8 @@ function App(): React.JSX.Element {
     { id: 'logs', el: <LogViewer /> }
   ]
 
+  const fixedLayoutViews = new Set<View>(['batch', 'logs', 'editor'])
+
   return (
     <div className="h-full flex relative">
       <AmbientBackground />
@@ -196,11 +198,11 @@ function App(): React.JSX.Element {
               <div
                 key={id}
                 className={`absolute inset-0 p-3 sm:p-4 md:p-6 ${
-                  id === 'logs' || id === 'editor'
+                  fixedLayoutViews.has(id)
                     ? 'flex flex-col overflow-hidden'
                     : 'overflow-auto'
                 }`}
-                style={{ display: currentView === id ? (id === 'logs' || id === 'editor' ? 'flex' : 'block') : 'none' }}
+                style={{ display: currentView === id ? (fixedLayoutViews.has(id) ? 'flex' : 'block') : 'none' }}
               >
                 {el}
               </div>

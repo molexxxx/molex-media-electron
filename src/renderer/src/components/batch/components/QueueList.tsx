@@ -402,7 +402,7 @@ export function QueueList({ files, onAddFiles }: {
 
   return (
     <div
-      className={`flex-1 min-h-[180px] rounded-2xl transition-all duration-200 flex flex-col relative overflow-hidden ${
+      className={`flex-1 min-h-0 rounded-2xl transition-all duration-200 flex flex-col relative overflow-hidden ${
         dragOver
           ? 'border border-accent-400 bg-accent-500/[0.04]'
           : files.length === 0

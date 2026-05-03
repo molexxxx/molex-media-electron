@@ -26,6 +26,15 @@ const CRF_MAP: Record<string, number> = {
   high: 18
 }
 
+function getClipMp4CompatArgs(videoCodec: string): string[] {
+  return [
+    '-c:v', videoCodec,
+    ...['-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1'],
+    ...['-movflags', '+faststart'],
+    ...['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2']
+  ]
+}
+
 /** Ref to the active export process for cancellation. */
 let activeExportProcess: ChildProcess | null = null
 
@@ -74,9 +83,11 @@ export function registerEditorIPC(): void {
       try {
         const args: string[] = ['-y']
         const gpuMode = (config.gpuAcceleration || 'off') as GpuMode
+        const isMp4Export = fmt.toLowerCase() === 'mp4'
+        const crf = CRF_MAP[options?.mode === 'precise' ? 'high' : 'medium'] ?? 18
 
         // Input seeking (fast) or output seeking (precise)
-        if (mode === 'fast') {
+        if (mode === 'fast' && !isMp4Export) {
           args.push('-ss', String(inPoint), '-to', String(outPoint), '-i', filePath, '-c', 'copy')
         } else if (fmt === 'gif') {
           const fps = options?.gifOptions?.fps ?? 15
@@ -88,16 +99,15 @@ export function registerEditorIPC(): void {
             '-loop', options?.gifOptions?.loop === false ? '-1' : '0'
           )
         } else {
-          // Precise re-encode - use GPU if available
-          const crf = CRF_MAP[options?.mode === 'precise' ? 'high' : 'medium'] ?? 18
+          // Re-encode output. MP4 always uses a high-compat profile for broad playback support.
           const gpuResult = await resolveGpuCodec(ffmpegPath, 'libx264', gpuMode)
           const hwArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
           args.push(...hwArgs)
           args.push(
             '-ss', String(inPoint), '-to', String(outPoint),
             '-i', filePath,
-            '-c:v', gpuResult.codec, ...getGpuQualityArgs(gpuResult.activeMode, crf),
-            '-c:a', 'aac', '-b:a', '192k'
+            ...getClipMp4CompatArgs(gpuResult.codec),
+            ...getGpuQualityArgs(gpuResult.activeMode, crf)
           )
         }
 

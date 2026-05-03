@@ -140,6 +140,10 @@ async function runWorker(state: BatchState): Promise<void> {
         state.onProgress(task)
         result = task
       }
+
+      if (result.status === 'error') {
+        logger.error(`Task failed (${result.operation}) ${result.fileName}: ${result.error || 'Unknown error'}`)
+      }
       state.results.push(result)
     }
   } finally {

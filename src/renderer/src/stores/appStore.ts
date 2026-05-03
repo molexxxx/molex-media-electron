@@ -171,19 +171,33 @@ export const useAppStore = create<AppState>((set) => ({
       const tasks = readdPaths.size > 0
         ? state.tasks.filter((t) => !readdPaths.has(t.filePath))
         : state.tasks
-      // Stamp each new file with the currently selected operation + options
-      const stamped = unique.map((f) => ({
-        ...f,
-        operation: f.operation || state.operation,
-        ...(f.operation ? {} : {
-          boostPercent: state.boostPercent,
-          selectedPreset: state.selectedPreset,
-          normalizeOptions: { ...state.normalizeOptions },
-          convertOptions: { ...state.convertOptions },
-          extractOptions: { ...state.extractOptions },
-          compressOptions: { ...state.compressOptions },
-        })
-      }))
+      // Stamp each new file with operation + missing per-operation defaults.
+      // Some entry points (e.g. drag/drop) may provide an operation but omit options.
+      const stamped = unique.map((f) => {
+        const operation = f.operation || state.operation
+        const next = { ...f, operation }
+
+        if (typeof next.boostPercent !== 'number') {
+          next.boostPercent = state.boostPercent
+        }
+        if (!next.selectedPreset) {
+          next.selectedPreset = state.selectedPreset
+        }
+        if (!next.normalizeOptions) {
+          next.normalizeOptions = { ...state.normalizeOptions }
+        }
+        if (!next.convertOptions) {
+          next.convertOptions = { ...state.convertOptions }
+        }
+        if (!next.extractOptions) {
+          next.extractOptions = { ...state.extractOptions }
+        }
+        if (!next.compressOptions) {
+          next.compressOptions = { ...state.compressOptions }
+        }
+
+        return next
+      })
       return { files: [...files, ...stamped], tasks }
     }),
   updateFile: (filePath, data) =>

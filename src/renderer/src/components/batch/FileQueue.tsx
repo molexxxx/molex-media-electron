@@ -161,7 +161,7 @@ export default function FileQueue(): React.JSX.Element {
   const completedTasks = tasks.filter((t) => t.status === 'complete').length
 
   return (
-    <div className="space-y-3 animate-fade-in min-h-full flex flex-col">
+    <div className="animate-fade-in h-full min-h-0 flex flex-col gap-3 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">

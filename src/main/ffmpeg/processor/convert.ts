@@ -41,7 +41,14 @@ export async function convertFile(
   if (!ffmpegPath) { task.status = 'error'; task.error = 'FFmpeg not configured'; onProgress(task); return task }
 
   const opts = task.convertOptions
-  if (!opts) { task.status = 'error'; task.error = 'No convert options'; onProgress(task); return task }
+  if (!opts) {
+    task.status = 'error'
+    task.error = 'No convert options (missing convertOptions in queued task)'
+    task.message = 'Error: missing convert settings for this file'
+    logger.error(`Convert failed before start: missing convertOptions for ${task.filePath}`)
+    onProgress(task)
+    return task
+  }
 
   task.status = 'analyzing'
   task.startedAt = Date.now()
