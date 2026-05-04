@@ -47,7 +47,7 @@
     "framer-motion": "^12.38.0",
     "jsdom": "^29.1.0",
     "lucide-react": "^1.11.0",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.14",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-dropzone": "^15.0.0",
