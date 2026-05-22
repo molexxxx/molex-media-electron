@@ -24,6 +24,23 @@
 
 <img alt="Dashboard" src=".github/assets/dashboard.png" width="700" />
 
+<br/>
+
+<table>
+  <tr>
+    <td align="center"><a href=".github/assets/sections/batch-processor.png"><img src=".github/assets/sections/batch-processor.png" width="160" alt="Batch Processor"/><br/><sub>Batch Processor</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/timeline-editor.png"><img src=".github/assets/sections/timeline-editor.png" width="160" alt="Timeline Editor"/><br/><sub>Timeline Editor</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/media-player.png"><img src=".github/assets/sections/media-player.png" width="160" alt="Media Player"/><br/><sub>Media Player</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/media-player-popout.png"><img src=".github/assets/sections/media-player-popout.png" width="160" alt="Player Popout"/><br/><sub>Player Popout</sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href=".github/assets/sections/media-inspector.png"><img src=".github/assets/sections/media-inspector.png" width="160" alt="Media Inspector"/><br/><sub>Media Inspector</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/clip-video.png"><img src=".github/assets/sections/clip-video.png" width="160" alt="Clip Video"/><br/><sub>Clip Video</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/log-viewer.png"><img src=".github/assets/sections/log-viewer.png" width="160" alt="Log Viewer"/><br/><sub>Log Viewer</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/app-settings.png"><img src=".github/assets/sections/app-settings.png" width="160" alt="App Settings"/><br/><sub>App Settings</sub></a></td>
+  </tr>
+</table>
+
 </div>
 
 ---
