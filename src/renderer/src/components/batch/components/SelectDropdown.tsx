@@ -26,7 +26,7 @@ export function SelectDropdown({ value, onChange, items, className }: {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxHeight: number; placement: 'below' | 'above' } | null>(null)
 
   // Flatten all options for display lookup
   const allOptions: SelectOption[] = []
@@ -36,11 +36,38 @@ export function SelectDropdown({ value, onChange, items, className }: {
   }
   const activeLabel = allOptions.find((o) => o.value === value)?.label ?? value
 
-  // Position the portal panel relative to the trigger button
+  // Position the portal panel: prefer below, flip above if not enough room.
+  // Always clamp max-height to fit inside the viewport with 8px padding.
   const updatePos = useCallback(() => {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 200) })
+    const vh = window.innerHeight
+    const margin = 8
+    const gap = 4
+    const spaceBelow = vh - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    const PREFERRED = 320
+    // Flip up if below has less than 160px AND above has more room.
+    const flipUp = spaceBelow < 160 && spaceAbove > spaceBelow
+    if (flipUp) {
+      const maxHeight = Math.max(120, Math.min(PREFERRED, spaceAbove - gap))
+      setPos({
+        top: rect.top - gap - maxHeight,
+        left: rect.left,
+        width: Math.max(rect.width, 200),
+        maxHeight,
+        placement: 'above'
+      })
+    } else {
+      const maxHeight = Math.max(120, Math.min(PREFERRED, spaceBelow - gap))
+      setPos({
+        top: rect.bottom + gap,
+        left: rect.left,
+        width: Math.max(rect.width, 200),
+        maxHeight,
+        placement: 'below'
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -120,8 +147,8 @@ export function SelectDropdown({ value, onChange, items, className }: {
       {open && pos && createPortal(
         <div
           ref={panelRef}
-          className="fixed z-[9999] max-h-[320px] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in"
-          style={{ top: pos.top, left: pos.left, minWidth: pos.width }}
+          className="fixed z-[9999] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in"
+          style={{ top: pos.top, left: pos.left, minWidth: pos.width, maxHeight: pos.maxHeight }}
         >
           {items.map((item, i) => {
             if (isGroup(item)) {

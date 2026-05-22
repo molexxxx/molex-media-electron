@@ -161,6 +161,15 @@ export default function FileQueue(): React.JSX.Element {
   ).length
   const completedTasks = tasks.filter((t) => t.status === 'complete').length
 
+  // Files whose task is in a terminal state (or has no task yet but the
+  // last batch is done) — count only pending files for the Process button.
+  const donePathSet = new Set(
+    tasks
+      .filter((t) => t.status === 'complete' || t.status === 'error' || t.status === 'cancelled')
+      .map((t) => t.filePath)
+  )
+  const pendingCount = files.filter((f) => !donePathSet.has(f.path)).length
+
   return (
     <div className="animate-fade-in h-full min-h-0 flex flex-col gap-3 overflow-hidden">
       {/* Header */}
@@ -172,7 +181,11 @@ export default function FileQueue(): React.JSX.Element {
               ? `${activeTasks} active · ${completedTasks}/${tasks.length} done`
               : files.length === 0
                 ? 'Add files to get started'
-                : `${files.length} file${files.length !== 1 ? 's' : ''} queued`}
+                : pendingCount === 0
+                  ? `${completedTasks} done · add files to continue`
+                  : `${pendingCount} file${pendingCount !== 1 ? 's' : ''} queued${
+                      donePathSet.size > 0 ? ` · ${donePathSet.size} done` : ''
+                    }`}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
@@ -181,7 +194,7 @@ export default function FileQueue(): React.JSX.Element {
               Clear
             </button>
           )}
-          {files.length > 0 && !isProcessing && (
+          {pendingCount > 0 && !isProcessing && (
             <button
               onClick={handleStart}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all"
@@ -189,7 +202,7 @@ export default function FileQueue(): React.JSX.Element {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              Process {files.length}
+              Process {pendingCount}
             </button>
           )}
           {/* Add dropdown */}

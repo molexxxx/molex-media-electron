@@ -156,30 +156,39 @@ export const useAppStore = create<AppState>((set) => ({
   addFiles: (newFiles) =>
     set((state) => {
       const DONE_STATUSES = new Set(['complete', 'error', 'cancelled'])
-      const existingByPath = new Map(state.files.map((f) => [f.path, f]))
+      // Any task in a terminal state belongs to a "finished" file. When the
+      // user adds anything new, sweep those out so the queue only shows
+      // pending work — no more orphaned green checkmarks lingering next to
+      // freshly queued items.
+      const finishedPaths = new Set(
+        state.tasks
+          .filter((t) => DONE_STATUSES.has(t.status))
+          .map((t) => t.filePath)
+      )
+      const existingByPath = new Map(
+        state.files
+          .filter((f) => !finishedPaths.has(f.path))
+          .map((f) => [f.path, f])
+      )
       const readdPaths = new Set<string>()
       const unique = newFiles.filter((f) => {
+        // Re-added files whose previous run was finished are always allowed.
+        if (finishedPaths.has(f.path)) {
+          readdPaths.add(f.path)
+          return true
+        }
         const existing = existingByPath.get(f.path)
         if (!existing) return true
-        // If the existing file's task is finished, allow re-add
-        const task = state.tasks.find((t) => t.filePath === f.path)
-        if (task && DONE_STATUSES.has(task.status)) {
-          readdPaths.add(f.path)
-          return true
-        }
-        // If no task yet (never processed) and file is in queue, treat as finished
-        if (!task) {
-          readdPaths.add(f.path)
-          return true
-        }
+        // Pending duplicate in the live queue — skip.
         return false
       })
-      // Remove old entries and stale tasks for re-added files
-      const files = readdPaths.size > 0
-        ? state.files.filter((f) => !readdPaths.has(f.path))
+      // Drop finished entries + any re-added duplicates and their stale tasks.
+      const pathsToDrop = new Set<string>([...finishedPaths, ...readdPaths])
+      const files = pathsToDrop.size > 0
+        ? state.files.filter((f) => !pathsToDrop.has(f.path))
         : state.files
-      const tasks = readdPaths.size > 0
-        ? state.tasks.filter((t) => !readdPaths.has(t.filePath))
+      const tasks = pathsToDrop.size > 0
+        ? state.tasks.filter((t) => !pathsToDrop.has(t.filePath))
         : state.tasks
       // Stamp each new file with operation + missing per-operation defaults.
       // Some entry points (e.g. drag/drop) may provide an operation but omit options.
