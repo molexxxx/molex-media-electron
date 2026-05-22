@@ -26,14 +26,11 @@ const CRF_MAP: Record<string, number> = {
   high: 18
 }
 
-function getClipMp4CompatArgs(videoCodec: string): string[] {
-  return [
-    '-c:v', videoCodec,
-    ...['-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1'],
-    ...['-movflags', '+faststart'],
-    ...['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2']
-  ]
+function getClipMp4CompatArgs(_videoCodec: string): string[] {
+  // (kept for backwards compatibility; inline equivalents are used in editor:cut)
+  return []
 }
+void getClipMp4CompatArgs
 
 /** Ref to the active export process for cancellation. */
 let activeExportProcess: ChildProcess | null = null
@@ -57,7 +54,36 @@ export function registerEditorIPC(): void {
       options?: {
         mode?: 'fast' | 'precise'
         outputFormat?: string
-        gifOptions?: { loop?: boolean; fps?: number; width?: number }
+        gifOptions?: {
+          loop?: boolean
+          /** Loop count: 0 = infinite, -1 = play once, N = repeat N times. Overrides `loop`. */
+          loopCount?: number
+          fps?: number
+          width?: number
+          /** Dither algorithm for palette mapping. */
+          dither?: 'sierra2_4a' | 'bayer' | 'floyd_steinberg' | 'none'
+          /** 0-5; lower = more dithering, higher = less. Only used when dither=bayer. */
+          bayerScale?: number
+          /** Use high-quality 2-stage palettegen+paletteuse pipeline. */
+          highQuality?: boolean
+          /** Reverse the GIF. */
+          reverse?: boolean
+          /** Append a reversed copy (boomerang/ping-pong). */
+          boomerang?: boolean
+        }
+        /** Video re-encode overrides (only used when re-encoding, not fast cut / not gif / not audio-only). */
+        videoOptions?: {
+          /** ffmpeg encoder name (libx264, libx265, libvpx-vp9, libaom-av1). */
+          codec?: string
+          /** CRF override (lower = better quality). Default derived from quality preset. */
+          crf?: number
+          /** Encoder preset speed. */
+          preset?: string
+          /** Maximum height; 0 means no scaling. */
+          maxHeight?: number
+          /** Audio bitrate (e.g. "192k"). */
+          audioBitrate?: string
+        }
       }
     ) => {
       const config = getConfigSync()
@@ -84,31 +110,93 @@ export function registerEditorIPC(): void {
         const args: string[] = ['-y']
         const gpuMode = (config.gpuAcceleration || 'off') as GpuMode
         const isMp4Export = fmt.toLowerCase() === 'mp4'
-        const crf = CRF_MAP[options?.mode === 'precise' ? 'high' : 'medium'] ?? 18
+        const crfDefault = CRF_MAP[options?.mode === 'precise' ? 'high' : 'medium'] ?? 18
 
         // Input seeking (fast) or output seeking (precise)
-        if (mode === 'fast' && !isMp4Export) {
+        if (mode === 'fast' && !isMp4Export && fmt !== 'gif') {
           args.push('-ss', String(inPoint), '-to', String(outPoint), '-i', filePath, '-c', 'copy')
         } else if (fmt === 'gif') {
-          const fps = options?.gifOptions?.fps ?? 15
-          const width = options?.gifOptions?.width ?? 480
-          args.push(
-            '-ss', String(inPoint), '-to', String(outPoint),
-            '-i', filePath,
-            '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos`,
-            '-loop', options?.gifOptions?.loop === false ? '-1' : '0'
-          )
+          const g = options?.gifOptions || {}
+          const fps = g.fps ?? 15
+          const width = g.width ?? 480
+          const dither = g.dither ?? 'sierra2_4a'
+          const bayerScale = g.bayerScale ?? 3
+          const highQuality = g.highQuality !== false  // default ON
+          const loopCount =
+            typeof g.loopCount === 'number' ? g.loopCount : g.loop === false ? -1 : 0
+
+          // Build the per-frame video filter chain (fps + scale + optional reverse).
+          // For boomerang, we append a reversed copy AFTER palette mapping so the
+          // palette is built from the full frame range.
+          const ditherExpr =
+            dither === 'none'
+              ? 'dither=none'
+              : dither === 'bayer'
+                ? `dither=bayer:bayer_scale=${bayerScale}`
+                : `dither=${dither}`
+
+          const baseChain = `fps=${fps},scale=${width}:-1:flags=lanczos`
+          const reverseChain = g.reverse ? ',reverse' : ''
+
+          if (highQuality) {
+            // High-quality two-pass-in-one-graph palettegen → paletteuse.
+            // [0:v] is split, one branch builds a palette, the other is mapped through it.
+            const boomerangPart = g.boomerang ? ';[mapped]split[fwd][rev];[rev]reverse[bwd];[fwd][bwd]concat=n=2:v=1:a=0[out]' : ''
+            const finalLabel = g.boomerang ? '[out]' : '[mapped]'
+            const filter =
+              `[0:v]${baseChain}${reverseChain},split [a][b];` +
+              `[a]palettegen=stats_mode=diff:max_colors=256 [p];` +
+              `[b][p]paletteuse=${ditherExpr}:diff_mode=rectangle${g.boomerang ? '[mapped]' : '[mapped]'}` +
+              boomerangPart
+
+            args.push(
+              '-ss', String(inPoint), '-to', String(outPoint),
+              '-i', filePath,
+              '-filter_complex', filter,
+              '-map', finalLabel,
+              '-loop', String(loopCount)
+            )
+          } else {
+            // Fast path: default 256-color palette, no separate palettegen.
+            const boomerangPart = g.boomerang ? ',split[fwd][rev];[rev]reverse[bwd];[fwd][bwd]concat=n=2:v=1:a=0' : ''
+            args.push(
+              '-ss', String(inPoint), '-to', String(outPoint),
+              '-i', filePath,
+              '-vf', `${baseChain}${reverseChain}${boomerangPart}`,
+              '-loop', String(loopCount)
+            )
+          }
         } else {
           // Re-encode output. MP4 always uses a high-compat profile for broad playback support.
-          const gpuResult = await resolveGpuCodec(ffmpegPath, 'libx264', gpuMode)
+          const vo = options?.videoOptions || {}
+          const requestedCodec = vo.codec || 'libx264'
+          const gpuResult = await resolveGpuCodec(ffmpegPath, requestedCodec, gpuMode)
           const hwArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
+          const crf = typeof vo.crf === 'number' ? vo.crf : crfDefault
           args.push(...hwArgs)
-          args.push(
-            '-ss', String(inPoint), '-to', String(outPoint),
-            '-i', filePath,
-            ...getClipMp4CompatArgs(gpuResult.codec),
-            ...getGpuQualityArgs(gpuResult.activeMode, crf)
-          )
+          args.push('-ss', String(inPoint), '-to', String(outPoint), '-i', filePath)
+
+          // Optional scale filter (height cap, preserve aspect, even dimensions).
+          if (vo.maxHeight && vo.maxHeight > 0) {
+            args.push('-vf', `scale=-2:'min(${vo.maxHeight},ih)':flags=lanczos`)
+          }
+
+          // Codec args. MP4 uses the broad-compatibility profile. Other containers
+          // still apply codec + CRF / quality.
+          if (isMp4Export) {
+            const audioBr = vo.audioBitrate || '192k'
+            args.push(
+              '-c:v', gpuResult.codec,
+              '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
+              '-movflags', '+faststart',
+              '-c:a', 'aac', '-b:a', audioBr, '-ar', '48000', '-ac', '2'
+            )
+          } else {
+            args.push('-c:v', gpuResult.codec)
+            if (vo.preset) args.push('-preset', vo.preset)
+            args.push('-c:a', 'aac', '-b:a', vo.audioBitrate || '192k')
+          }
+          args.push(...getGpuQualityArgs(gpuResult.activeMode, crf))
         }
 
         args.push(outputPath)

@@ -73,7 +73,7 @@ declare global {
       convert: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
       extract: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
       compress: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
-      cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
+      cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; loopCount?: number; fps?: number; width?: number; dither?: 'sierra2_4a' | 'bayer' | 'floyd_steinberg' | 'none'; bayerScale?: number; highQuality?: boolean; reverse?: boolean; boomerang?: boolean }; videoOptions?: { codec?: string; crf?: number; preset?: string; maxHeight?: number; audioBitrate?: string } }) => Promise<any>
       mergeMedia: (segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
       probeDetailed: (filePath: string) => Promise<any>
       remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => Promise<{ success: boolean; outputPath?: string; error?: string }>

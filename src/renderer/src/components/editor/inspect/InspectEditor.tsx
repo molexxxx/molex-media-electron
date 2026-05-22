@@ -79,6 +79,8 @@ export function InspectEditor(): React.JSX.Element {
   const sources = useEditorStore((s) => s.sources)
   const clipMode = useEditorStore((s) => s.clipMode)
   const source = sources.find((s) => s.id === clipMode.sourceId)
+  const loadMediaFile = useEditorStore((s) => s.loadMediaFile)
+  const mediaLoading = useEditorStore((s) => s.mediaLoading)
 
   const [probeData, setProbeData] = useState<ProbeMediaInfo | null>(null)
   const [loading, setLoading] = useState(false)
@@ -224,14 +226,55 @@ export function InspectEditor(): React.JSX.Element {
     }
   }, [source, probeData, includedStreams, editingMetadata, hasMetadataChanges, metadataEdits])
 
-  // -- No source loaded --
+  // -- No source loaded -- show drop zone + Open File button (independent of Trim/Clip mode)
   if (!source) {
+    const onDrop = (e: React.DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      const files = Array.from(e.dataTransfer.files)
+      if (files.length > 0) {
+        const filePath = window.api.getFilePath(files[0])
+        if (filePath) loadMediaFile(filePath)
+      }
+    }
+    const onDragOver = (e: React.DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const openFile = async (): Promise<void> => {
+      const files = await window.api.openFiles()
+      if (files?.length > 0) loadMediaFile(files[0])
+    }
+
     return (
-      <div className="flex items-center justify-center h-full text-surface-400">
-        <div className="text-center">
-          <SearchIcon />
-          <p className="text-sm mt-2">Load a file in Clip mode to inspect its metadata</p>
-        </div>
+      <div
+        className="flex flex-col items-center justify-center h-full text-surface-400"
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+      >
+        {mediaLoading ? (
+          <div className="text-center animate-fade-in">
+            <div className="w-12 h-12 border-2 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-surface-300">Probing media…</p>
+          </div>
+        ) : (
+          <div className="text-center animate-fade-in">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-surface-800/60 border border-white/5 flex items-center justify-center">
+              <SearchIcon />
+            </div>
+            <p className="text-lg font-medium mb-1 text-surface-300">Drop a file to inspect</p>
+            <p className="text-sm text-surface-500 mb-5">View streams, codecs, and metadata</p>
+            <button
+              onClick={openFile}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 hover:text-accent-200 border border-accent-500/20 hover:border-accent-500/30 text-sm font-medium transition-all hover:shadow-glow"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              Open File
+            </button>
+          </div>
+        )}
       </div>
     )
   }

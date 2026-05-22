@@ -58,7 +58,7 @@ const api = {
   },
 
   // Editor
-  cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
+  cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; loopCount?: number; fps?: number; width?: number; dither?: 'sierra2_4a' | 'bayer' | 'floyd_steinberg' | 'none'; bayerScale?: number; highQuality?: boolean; reverse?: boolean; boomerang?: boolean }; videoOptions?: { codec?: string; crf?: number; preset?: string; maxHeight?: number; audioBitrate?: string } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
   mergeMedia: (segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
   probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),

@@ -7,6 +7,7 @@
  */
 
 import { create } from 'zustand'
+import { addRecentFile, classifyFile } from '../utils/recentFiles'
 import type {
   EditorMode,
   EditorProject,
@@ -372,6 +373,13 @@ export interface EditorStore {
   setClipInPoint: (frame: number) => void
   setClipOutPoint: (frame: number) => void
 
+  // Shared media loader - any tab can open a file; result is shared across tabs.
+  mediaPreviewUrl: string
+  mediaLoading: boolean
+  mediaLoadError: string | null
+  loadMediaFile: (filePath: string) => Promise<{ success: boolean; error?: string; sourceId?: string }>
+  closeMediaFile: () => void
+
   // Playback
   playback: PlaybackState
   play: () => void
@@ -426,7 +434,7 @@ export interface EditorStore {
 // Store implementation
 // ---------------------------------------------------------------------------
 
-export const useEditorStore = create<EditorStore>((set) => ({
+export const useEditorStore = create<EditorStore>((set, get) => ({
   // === Mode ===
   mode: 'clip',
   _savedFrames: {},
@@ -986,6 +994,104 @@ export const useEditorStore = create<EditorStore>((set) => ({
       clipMode: { ...s.clipMode, outPoint: Math.max(s.clipMode.inPoint + 1, frame) }
     })),
 
+  // === Shared media loader (used by Trim, Inspect, etc.) ===
+  mediaPreviewUrl: '',
+  mediaLoading: false,
+  mediaLoadError: null,
+
+  loadMediaFile: async (filePath: string) => {
+    set({ mediaLoading: true, mediaLoadError: null })
+    try {
+      const probeResult = await window.api.probeDetailed(filePath)
+      if (!probeResult?.success || !probeResult.data) {
+        const error = probeResult?.error || 'Failed to probe file'
+        set({ mediaLoading: false, mediaLoadError: error })
+        return { success: false, error }
+      }
+
+      const info = probeResult.data
+      const video = info.videoStreams?.[0]
+      const audio = info.audioStreams?.[0]
+      const durationSec = parseFloat(info.format?.duration || '0')
+      const projectFps = get().project.frameRate
+      let fps = projectFps
+      const rf = video?.r_frame_rate
+      if (rf) {
+        const parts = String(rf).split('/')
+        if (parts.length === 2) {
+          const n = parseFloat(parts[0])
+          const d = parseFloat(parts[1])
+          if (d > 0 && n > 0) fps = n / d
+        } else {
+          const p = parseFloat(rf)
+          if (p > 0) fps = p
+        }
+      }
+      const totalFrames = Math.round(durationSec * fps)
+
+      const newSource: MediaSource = {
+        id: `src-${Date.now().toString(36)}`,
+        filePath,
+        fileName: filePath.split(/[\\/]/).pop() || filePath,
+        duration: totalFrames,
+        frameRate: fps,
+        width: video?.width ?? 0,
+        height: video?.height ?? 0,
+        audioChannels: audio?.channels ?? 0,
+        audioSampleRate: parseInt(audio?.sample_rate || '0', 10),
+        codec: video?.codec_name || audio?.codec_name || 'unknown',
+        format: info.format?.format_name || 'unknown',
+        fileSize: parseInt(info.format?.size || '0', 10),
+        durationSeconds: durationSec
+      }
+
+      // Add source + activate it in clip mode (shared "active source" for all tabs).
+      set((s) => {
+        const isFirst = s.sources.length === 0 && s.project.name === 'Untitled'
+        const name = isFirst ? newSource.fileName.replace(/\.[^.]+$/, '') : s.project.name
+        return {
+          sources: [...s.sources, newSource],
+          project: isFirst ? { ...s.project, name, modifiedAt: Date.now() } : s.project,
+          clipMode: { sourceId: newSource.id, inPoint: 0, outPoint: totalFrames }
+        }
+      })
+
+      // Preview URL (HTTP-served, supports seeking).
+      try {
+        const previewResult = await window.api.createPreview(filePath)
+        if (previewResult?.success && previewResult.data) {
+          set({ mediaPreviewUrl: previewResult.data })
+        }
+      } catch {
+        /* preview is best-effort; Inspect doesn't need it */
+      }
+
+      set({ mediaLoading: false })
+      addRecentFile({
+        filePath,
+        fileName: newSource.fileName,
+        openedAt: Date.now(),
+        durationSec: durationSec,
+        width: newSource.width,
+        height: newSource.height,
+        kind: classifyFile(newSource.fileName, !!video, !!audio)
+      })
+      return { success: true, sourceId: newSource.id }
+    } catch (err: any) {
+      const error = err?.message || 'Failed to load file'
+      set({ mediaLoading: false, mediaLoadError: error })
+      return { success: false, error }
+    }
+  },
+
+  closeMediaFile: () => {
+    set({
+      mediaPreviewUrl: '',
+      mediaLoadError: null,
+      clipMode: DEFAULT_CLIP_MODE
+    })
+  },
+
   // === Playback ===
   playback: DEFAULT_PLAYBACK,
 
@@ -1124,6 +1230,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
       timeline,
       clipMode: DEFAULT_CLIP_MODE,
       playback: DEFAULT_PLAYBACK,
+      mediaPreviewUrl: '',
+      mediaLoading: false,
+      mediaLoadError: null,
       history: { entries: [{ timestamp: Date.now(), label: 'Initial', snapshot: structuredClone(timeline) }], currentIndex: 0, maxEntries: 100 },
       selectedClipIds: [],
       selectedTrackId: null,

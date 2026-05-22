@@ -5,8 +5,15 @@ import { framesToSeconds, formatTimecode } from '../shared/TimeDisplay'
 import { Select } from '../../shared/ui'
 import { EncoderBadge } from '../../shared/EncoderBadge'
 import type { MediaSource } from '../types'
+import {
+  ClipExportAdvanced,
+  DEFAULT_GIF,
+  DEFAULT_VIDEO,
+  type ExportFormat,
+  type GifOptions,
+  type VideoOptions
+} from './ClipExportAdvanced'
 
-type ExportFormat = 'mp4' | 'mkv' | 'webm' | 'wav' | 'mp3' | 'gif'
 type ExportQuality = 'low' | 'medium' | 'high' | 'lossless'
 
 const FORMAT_OPTIONS = [
@@ -40,6 +47,9 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [lastOutput, setLastOutput] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [gifOpts, setGifOpts] = useState<GifOptions>(DEFAULT_GIF)
+  const [videoOpts, setVideoOpts] = useState<VideoOptions>(DEFAULT_VIDEO)
 
   const duration = outPoint - inPoint
   const durationText = formatTimecode(duration, frameRate)
@@ -62,7 +72,30 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
       const result = await window.api.cutMedia(source.filePath, inSec, outSec, {
         mode,
         outputFormat: format,
-        ...(format === 'gif' ? { gifOptions: { loop: true, fps: 15, width: 480 } } : {})
+        ...(format === 'gif'
+          ? {
+              gifOptions: {
+                fps: gifOpts.fps,
+                width: gifOpts.width,
+                loopCount: gifOpts.loopCount,
+                dither: gifOpts.dither,
+                bayerScale: gifOpts.bayerScale,
+                highQuality: gifOpts.highQuality,
+                reverse: gifOpts.reverse,
+                boomerang: gifOpts.boomerang
+              }
+            }
+          : format === 'mp4' || format === 'mkv' || format === 'webm'
+            ? {
+                videoOptions: {
+                  codec: videoOpts.codec,
+                  crf: videoOpts.crf,
+                  preset: videoOpts.preset,
+                  maxHeight: videoOpts.maxHeight,
+                  audioBitrate: videoOpts.audioBitrate
+                }
+              }
+            : {})
       })
 
       if (result?.success && result.outputPath) {
@@ -107,7 +140,7 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
   }
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 border-t border-white/5 text-xs">
+    <div className="relative flex items-center gap-3 px-3 py-2 border-t border-white/5 text-xs">
       {/* Duration */}
       <span className="text-surface-400 font-mono tabular-nums">
         Duration: {durationText}
@@ -126,16 +159,35 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
         />
       </div>
 
-      {/* Quality selector */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-surface-500 text-2xs font-medium">Quality</span>
-        <Select
-          value={quality}
-          onChange={(v) => setQuality(v as ExportQuality)}
-          options={QUALITY_OPTIONS}
-          compact
-        />
-      </div>
+      {/* Quality selector - hidden when GIF (uses its own controls) */}
+      {format !== 'gif' && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-surface-500 text-2xs font-medium">Quality</span>
+          <Select
+            value={quality}
+            onChange={(v) => setQuality(v as ExportQuality)}
+            options={QUALITY_OPTIONS}
+            compact
+          />
+        </div>
+      )}
+
+      {/* Advanced toggle */}
+      <button
+        onClick={() => setShowAdvanced((v) => !v)}
+        title="Advanced export options"
+        className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-2xs font-medium transition-colors ${
+          showAdvanced
+            ? 'bg-accent-500/15 border-accent-500/30 text-accent-200'
+            : 'bg-white/4 border-white/8 text-surface-300 hover:text-surface-100 hover:border-white/15'
+        }`}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        Advanced
+      </button>
 
       <EncoderBadge />
 
@@ -199,6 +251,18 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
           </>
         )}
       </button>
+
+      {/* Advanced popover */}
+      {showAdvanced && (
+        <ClipExportAdvanced
+          format={format}
+          gif={gifOpts}
+          video={videoOpts}
+          onGifChange={setGifOpts}
+          onVideoChange={setVideoOpts}
+          onClose={() => setShowAdvanced(false)}
+        />
+      )}
     </div>
   )
 }

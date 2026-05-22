@@ -5,7 +5,7 @@
  * Layout: file drop zone / preview + transport bar + timeline + export.
  * Loads source media, wires up the playback hook and keyboard shortcuts.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { useEditorPlayback } from '../hooks/useEditorPlayback'
 import { ClipPreview } from './ClipPreview'
@@ -14,30 +14,17 @@ import { ClipExport } from './ClipExport'
 import { TimeDisplay } from '../shared/TimeDisplay'
 import type { MediaSource } from '../types'
 
-/** Parse FFprobe frame rate strings like "30000/1001" or "30". */
-function parseFrameRate(str: string): number {
-  const parts = str.split('/')
-  if (parts.length === 2) {
-    const num = parseFloat(parts[0])
-    const den = parseFloat(parts[1])
-    return den > 0 ? num / den : 0
-  }
-  return parseFloat(str) || 0
-}
-
 export function ClipEditor(): React.JSX.Element {
   const sources = useEditorStore((s) => s.sources)
   const clipMode = useEditorStore((s) => s.clipMode)
   const playback = useEditorStore((s) => s.playback)
   const frameRate = useEditorStore((s) => s.project.frameRate)
-  const addSource = useEditorStore((s) => s.addSource)
-  const setClipSource = useEditorStore((s) => s.setClipSource)
   const setClipInPoint = useEditorStore((s) => s.setClipInPoint)
   const setClipOutPoint = useEditorStore((s) => s.setClipOutPoint)
-  const resetEditor = useEditorStore((s) => s.resetEditor)
+  const loadMediaFile = useEditorStore((s) => s.loadMediaFile)
+  const mediaUrl = useEditorStore((s) => s.mediaPreviewUrl)
+  const loading = useEditorStore((s) => s.mediaLoading)
 
-  const [mediaUrl, setMediaUrl] = useState('')
-  const [loading, setLoading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Active source
@@ -47,77 +34,11 @@ export function ClipEditor(): React.JSX.Element {
   const { mediaRef, togglePlayback, seekToFrame, stepFrames, handleJKL } =
     useEditorPlayback({ frameRate, totalFrames })
 
-  // Load a file into Clip mode
-  const loadFile = useCallback(
-    async (filePath: string) => {
-      setLoading(true)
-      try {
-        // Probe the file for metadata
-        const probeResult = await window.api.probeDetailed(filePath)
-        if (!probeResult?.success || !probeResult.data) {
-          setLoading(false)
-          return
-        }
-
-        const info = probeResult.data
-        const video = info.videoStreams?.[0]
-        const audio = info.audioStreams?.[0]
-        const durationSec = parseFloat(info.format?.duration || '0')
-        const fps = video?.r_frame_rate
-          ? parseFrameRate(video.r_frame_rate) || frameRate
-          : frameRate
-        const totalFrames = Math.round(durationSec * fps)
-
-        const newSource: MediaSource = {
-          id: `src-${Date.now().toString(36)}`,
-          filePath,
-          fileName: filePath.split(/[\\/]/).pop() || filePath,
-          duration: totalFrames,
-          frameRate: fps,
-          width: video?.width ?? 0,
-          height: video?.height ?? 0,
-          audioChannels: audio?.channels ?? 0,
-          audioSampleRate: parseInt(audio?.sample_rate || '0', 10),
-          codec: video?.codec_name || audio?.codec_name || 'unknown',
-          format: info.format?.format_name || 'unknown',
-          fileSize: parseInt(info.format?.size || '0', 10),
-          durationSeconds: durationSec
-        }
-
-        addSource(newSource)
-        setClipSource(newSource.id, totalFrames)
-
-        // Register raw file for HTTP server streaming (preserves video track)
-        const previewResult = await window.api.createPreview(filePath)
-        if (previewResult?.success && previewResult.data) {
-          setMediaUrl(previewResult.data)
-        }
-      } catch (err) {
-        console.error('Failed to load file:', err)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [frameRate, addSource, setClipSource]
-  )
-
   // Handle file open via dialog
   const openFile = useCallback(async () => {
     const files = await window.api.openFiles()
-    if (files?.length > 0) loadFile(files[0])
-  }, [loadFile])
-
-  // Close file and reset editor
-  const closeFile = useCallback(() => {
-    const el = mediaRef.current
-    if (el) {
-      el.pause()
-      el.removeAttribute('src')
-      el.load()
-    }
-    setMediaUrl('')
-    resetEditor()
-  }, [mediaRef, resetEditor])
+    if (files?.length > 0) loadMediaFile(files[0])
+  }, [loadMediaFile])
 
   // Drop handler
   const onDrop = useCallback(
@@ -127,10 +48,10 @@ export function ClipEditor(): React.JSX.Element {
       const files = Array.from(e.dataTransfer.files)
       if (files.length > 0) {
         const filePath = window.api.getFilePath(files[0])
-        if (filePath) loadFile(filePath)
+        if (filePath) loadMediaFile(filePath)
       }
     },
-    [loadFile]
+    [loadMediaFile]
   )
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -275,18 +196,9 @@ export function ClipEditor(): React.JSX.Element {
       onDrop={onDrop}
       onDragOver={onDragOver}
     >
-      {/* Preview with close button */}
+      {/* Preview */}
       <div className="relative flex-1 min-h-0">
         <ClipPreview source={source} mediaRef={mediaRef} mediaUrl={mediaUrl} />
-        <button
-          onClick={closeFile}
-          title="Close file"
-          className="absolute top-2 left-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg bg-surface-800/80 hover:bg-surface-700 text-surface-400 hover:text-surface-200 border border-white/5 transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
       </div>
 
       {/* Transport bar */}

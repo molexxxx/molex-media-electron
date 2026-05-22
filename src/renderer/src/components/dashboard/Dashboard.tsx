@@ -16,7 +16,7 @@ import { useAppStore } from '../../stores/appStore'
 import { StatBar } from './components/StatCard'
 import { ToolCard, drawEditorBg, drawPlayerBg } from './components/ToolCard'
 import { RecentActivity } from './components/RecentActivity'
-import { SystemInfo } from './components/SystemInfo'
+import type { AppConfig } from '../../stores/types'
 
 
 /** Vendor → badge palette for the GPU acceleration chip. */
@@ -136,15 +136,23 @@ function Sparkline({
  * samples, and shows the detected GPU acceleration backend (with NVIDIA
  * GPU utilization when available) alongside FFmpeg status.
  */
+function ConfigRow({ label, value }: { label: string; value: string }): React.JSX.Element {
+  return (
+    <div className="flex items-baseline justify-between gap-2 min-w-0">
+      <span className="text-2xs text-surface-500 uppercase tracking-wider shrink-0">{label}</span>
+      <span className="text-2xs font-mono text-surface-200 truncate" title={value}>{value}</span>
+    </div>
+  )
+}
+
 function SystemPulse({
   ffmpegVersion,
-  workers,
+  config,
 }: {
   ffmpegVersion: string | null
-  workers: number | undefined
-}): React.JSX.Element {
-  const setSystemInfo = useAppStore((s) => s.setSystemInfo)
-  const [info, setInfo] = React.useState<{ cpus: number; cpuModel?: string; cpuUsage?: number; totalMemory: number; freeMemory: number } | null>(null)
+  config: AppConfig | null
+}): React.JSX.Element {  const setSystemInfo = useAppStore((s) => s.setSystemInfo)
+  const [info, setInfo] = React.useState<{ cpus: number; cpuModel?: string; cpuUsage?: number; totalMemory: number; freeMemory: number; platform?: string; arch?: string } | null>(null)
   const [gpu, setGpu] = React.useState<{ mode: string; label: string; vendor: string; pending: boolean; gpuModel?: string | null } | null>(null)
   const [memHistory, setMemHistory] = React.useState<number[]>([])
   const [cpuHistory, setCpuHistory] = React.useState<number[]>([])
@@ -234,6 +242,12 @@ function SystemPulse({
 
   const gpuStyle = GPU_VENDOR_STYLES[gpu?.vendor || 'cpu']
   const ffmpegShort = ffmpegVersion ? ffmpegVersion.replace(/^ffmpeg version /i, '').split(/\s+/)[0] : null
+  const platformLabel = (() => {
+    const names: Record<string, string> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }
+    const p = info?.platform || ''
+    const a = info?.arch || ''
+    return `${names[p] || p || '—'}${a ? ' ' + a : ''}`
+  })()
 
   return (
     <div className="min-w-0 min-h-[180px] rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm p-4 flex flex-col gap-3 overflow-hidden">
@@ -279,7 +293,7 @@ function SystemPulse({
       </div>
 
       {/* GPU acceleration: detected backend + adapter model + utilization */}
-      <div className={`rounded-lg ${gpuStyle.bg} border ${gpuStyle.border} px-2.5 py-2 flex flex-col gap-1.5`}>
+      <div className="rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-2xs text-surface-500 uppercase tracking-wider">
@@ -287,7 +301,13 @@ function SystemPulse({
             </div>
             <div className={`text-sm font-semibold ${gpuStyle.text} truncate`}>{gpu ? gpu.label : 'detecting…'}</div>
           </div>
-          <span className={`shrink-0 w-2 h-2 rounded-full ${gpuStyle.dot} ${gpu && !gpu.pending ? '' : 'animate-pulse'}`} />
+          {gpu && !gpu.pending && gpu.vendor !== 'cpu' ? (
+            <span className="shrink-0 px-1 py-px rounded text-[9px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-wider leading-tight">
+              Enabled
+            </span>
+          ) : (
+            <span className={`shrink-0 w-2 h-2 rounded-full ${gpuStyle.dot} ${gpu ? '' : 'animate-pulse'}`} />
+          )}
         </div>
         {gpu?.gpuModel && (
           <div className="text-2xs font-mono text-surface-400 truncate" title={gpu.gpuModel}>{gpu.gpuModel}</div>
@@ -297,26 +317,39 @@ function SystemPulse({
         )}
       </div>
 
-      {/* Workers */}
-      <div className="rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 flex items-center justify-between gap-2">
-        <div className="text-2xs text-surface-500 uppercase tracking-wider">Workers</div>
-        <div className="text-sm font-semibold text-surface-200 tabular-nums">{workers ?? '—'}</div>
+      {/* Config: platform, workers, codec, bitrate */}
+      <div className="rounded-lg bg-surface-900/40 border border-white/4 px-2.5 py-2 flex flex-col gap-1.5 mt-auto">
+        <div className="text-2xs text-surface-500 uppercase tracking-wider">Config</div>
+        <div className="flex flex-col gap-0.5">
+          <ConfigRow label="Platform" value={platformLabel} />
+          <ConfigRow label="Workers" value={config?.maxWorkers != null ? String(config.maxWorkers) : '—'} />
+          <ConfigRow label="Codec" value={config?.audioCodec || '—'} />
+          <ConfigRow label="Bitrate" value={config?.audioBitrate || '—'} />
+        </div>
       </div>
 
       {/* FFmpeg footer */}
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 mt-auto">
+      <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-900/40 border border-white/4 px-2.5 py-2">
         <div className="min-w-0">
           <div className="text-2xs text-surface-500 uppercase tracking-wider">FFmpeg</div>
           <div className="text-2xs font-mono text-surface-300 truncate">{ffmpegShort ?? 'detecting…'}</div>
         </div>
-        <span className={`shrink-0 w-2 h-2 rounded-full ${ffmpegShort ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+        {ffmpegShort ? (
+          <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300" title="FFmpeg ready">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </span>
+        ) : (
+          <span className="shrink-0 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+        )}
       </div>
     </div>
   )
 }
 
 export default function Dashboard(): React.JSX.Element {
-  const { systemInfo, ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, setOperation, tasks } = useAppStore()
+  const { ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, setOperation, tasks } = useAppStore()
 
   const activeTasks = tasks.filter((t) => t.status === 'processing' || t.status === 'analyzing')
 
@@ -443,7 +476,7 @@ export default function Dashboard(): React.JSX.Element {
             />
           </div>
         </div>
-        <SystemPulse ffmpegVersion={ffmpegVersion} workers={config?.maxWorkers} />
+        <SystemPulse ffmpegVersion={ffmpegVersion} config={config} />
       </div>
 
       {/* Recent Activity (only when there are tasks) */}
@@ -452,11 +485,6 @@ export default function Dashboard(): React.JSX.Element {
           <RecentActivity tasks={tasks} />
         </div>
       )}
-
-      {/* System pills footer */}
-      <div className="shrink-0">
-        <SystemInfo systemInfo={systemInfo} ffmpegVersion={ffmpegVersion} config={config} />
-      </div>
     </div>
   )
 }

@@ -29,6 +29,7 @@
 <table>
   <tr>
     <td align="center"><a href=".github/assets/sections/batch-processor.png"><img src=".github/assets/sections/batch-processor.png" width="160" alt="Batch Processor"/><br/><sub>Batch Processor</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/media-editor-tools.png"><img src=".github/assets/sections/media-editor-tools.png" width="160" alt="Media Editor Tools"/><br/><sub>Media Editor Tools</sub></a></td>
     <td align="center"><a href=".github/assets/sections/clip-video.png"><img src=".github/assets/sections/clip-video.png" width="160" alt="Clip Video"/><br/><sub>Clip Video</sub></a></td>
     <td align="center"><a href=".github/assets/sections/timeline-editor.png"><img src=".github/assets/sections/timeline-editor.png" width="160" alt="Timeline Editor"/><br/><sub>Timeline Editor</sub></a></td>
     <td align="center"><a href=".github/assets/sections/media-inspector.png"><img src=".github/assets/sections/media-inspector.png" width="160" alt="Media Inspector"/><br/><sub>Media Inspector</sub></a></td>
