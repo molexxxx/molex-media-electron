@@ -20,12 +20,28 @@ export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, c
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number; placement: 'below' | 'above' } | null>(null)
 
+  // Position the portal panel: prefer below the trigger, but flip above when
+  // there isn't enough room. Always clamp the dropdown's max-height to the
+  // available viewport space so long preset lists stay scrollable.
   const updatePos = useCallback(() => {
     if (!ref.current) return
     const rect = ref.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 4, left: rect.left })
+    const vh = window.innerHeight
+    const margin = 8
+    const gap = 4
+    const spaceBelow = vh - rect.bottom - margin
+    const spaceAbove = rect.top - margin
+    const PREFERRED = 400
+    const flipUp = spaceBelow < 200 && spaceAbove > spaceBelow
+    if (flipUp) {
+      const maxHeight = Math.max(160, Math.min(PREFERRED, spaceAbove - gap))
+      setPos({ top: rect.top - gap - maxHeight, left: rect.left, maxHeight, placement: 'above' })
+    } else {
+      const maxHeight = Math.max(160, Math.min(PREFERRED, spaceBelow - gap))
+      setPos({ top: rect.bottom + gap, left: rect.left, maxHeight, placement: 'below' })
+    }
   }, [])
 
   // Close on outside click
@@ -94,7 +110,7 @@ export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, c
 
       {/* Dropdown panel - rendered via portal to escape overflow-hidden */}
       {open && pos && createPortal(
-        <div ref={panelRef} className="fixed z-[9999] w-[min(340px,calc(100vw-2rem))] max-h-[400px] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in" style={{ top: pos.top, left: pos.left }}>
+        <div ref={panelRef} className="fixed z-[9999] w-[min(340px,calc(100vw-2rem))] overflow-y-auto rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl animate-fade-in" style={{ top: pos.top, left: pos.left, maxHeight: pos.maxHeight }}>
           {/* Custom option */}
           <button
             onClick={() => { onSelect({ id: '', label: 'Custom', description: '', icon: '', options: {} }); setOpen(false) }}
