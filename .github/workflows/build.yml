@@ -7,8 +7,16 @@ name: Build
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/assets/**'
+      - 'docs/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/assets/**'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
