@@ -35,7 +35,7 @@
   </tr>
   <tr>
     <td align="center"><a href=".github/assets/sections/media-player.png"><img src=".github/assets/sections/media-player.png" width="160" alt="Media Player"/><br/><sub>Media Player</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/media-player-popout.png"><img src=".github/assets/sections/media-player-popout.png" width="160" alt="Player Popout"/><br/><sub>Player Popout</sub></a></td>
+    <td align="center"><a href=".github/assets/sections/media-player-popout-v2.png"><img src=".github/assets/sections/media-player-popout-v2.png" width="160" alt="Player Popout"/><br/><sub>Player Popout</sub></a></td>
     <td align="center"><a href=".github/assets/sections/log-viewer.png"><img src=".github/assets/sections/log-viewer.png" width="160" alt="Log Viewer"/><br/><sub>Log Viewer</sub></a></td>
     <td align="center"><a href=".github/assets/sections/app-settings.png"><img src=".github/assets/sections/app-settings.png" width="160" alt="App Settings"/><br/><sub>App Settings</sub></a></td>
   </tr>
