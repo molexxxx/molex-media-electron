@@ -57,6 +57,12 @@ export async function boostFile(
   const boostPercent = task.boostPercent || 0
   const multiplier = 1.0 + boostPercent / 100.0
 
+  // Advanced knobs (all optional; legacy behaviour when omitted).
+  const boostOpts = task.boostOptions || {}
+  const limiterOn = boostOpts.limiter === true
+  const limiterCeiling = typeof boostOpts.limiterCeiling === 'number' ? boostOpts.limiterCeiling : -1
+  const hpfHz = typeof boostOpts.hpfHz === 'number' && boostOpts.hpfHz > 0 ? boostOpts.hpfHz : 0
+
   task.status = 'analyzing'
   task.startedAt = Date.now()
   task.message = `Preparing to boost by ${boostPercent > 0 ? '+' : ''}${boostPercent}%...`
@@ -90,9 +96,21 @@ export async function boostFile(
       const sampleRate = stream.sample_rate || '48000'
       maxChannels = Math.max(maxChannels, stream.channels)
 
-      filterParts.push(
-        `[0:a:${i}]aformat=channel_layouts=${layout}:sample_fmts=s16:sample_rates=${sampleRate},volume=${multiplier}[a${i}]`
-      )
+      // Chain: aformat → optional HPF → volume → optional alimiter.
+      // HPF before volume so we remove rumble BEFORE it eats headroom.
+      // Limiter AFTER volume catches any peaks produced by the gain stage.
+      const chain: string[] = [
+        `aformat=channel_layouts=${layout}:sample_fmts=s16:sample_rates=${sampleRate}`
+      ]
+      if (hpfHz > 0) {
+        chain.push(`highpass=f=${hpfHz}`)
+      }
+      chain.push(`volume=${multiplier}`)
+      if (limiterOn) {
+        const linearLimit = Math.pow(10, limiterCeiling / 20).toFixed(4)
+        chain.push(`alimiter=limit=${linearLimit}`)
+      }
+      filterParts.push(`[0:a:${i}]${chain.join(',')}[a${i}]`)
       mapArgs.push('-map', `[a${i}]`)
     }
 

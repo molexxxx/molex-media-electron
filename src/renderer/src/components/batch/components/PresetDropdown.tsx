@@ -3,10 +3,19 @@ import { createPortal } from 'react-dom'
 import { PresetIcon } from './PresetIcons'
 import type { ConvertPreset, PresetCategory } from '../presets'
 
-export function PresetDropdown({ categories, activeId, onSelect }: {
+export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, compact }: {
   categories: PresetCategory[]
   activeId: string
   onSelect: (preset: ConvertPreset) => void
+  /**
+   * When set, the trigger always displays this label instead of the active
+   * preset's name. Use when the dropdown sits next to quick-pick chips that
+   * already show the active selection — prevents the redundant "chip
+   * highlighted + dropdown shows same name" UX.
+   */
+  triggerLabel?: string
+  /** Compact trigger styling — smaller padding, no min-width. */
+  compact?: boolean
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -60,9 +69,13 @@ export function PresetDropdown({ categories, activeId, onSelect }: {
       {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-surface-200 hover:border-white/[0.12] focus:outline-none focus:border-accent-500/50 transition-colors w-full sm:min-w-[220px]"
+        className={`flex items-center gap-2 bg-surface-900/80 border border-white/[0.06] rounded-lg text-xs text-surface-200 hover:border-white/[0.12] focus:outline-none focus:border-accent-500/50 transition-colors ${
+          compact ? 'px-2.5 py-1' : 'px-2.5 py-1.5 w-full sm:min-w-[220px]'
+        }`}
       >
-        {active ? (
+        {triggerLabel ? (
+          <span className="text-surface-300">{triggerLabel}</span>
+        ) : active ? (
           <>
             <PresetIcon name={active.icon} size={14} className="text-accent-400" />
             <span className="truncate">{active.label}</span>
@@ -73,7 +86,7 @@ export function PresetDropdown({ categories, activeId, onSelect }: {
         <svg
           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          className={`ml-auto text-surface-500 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`${triggerLabel ? '' : 'ml-auto'} text-surface-500 transition-transform ${open ? 'rotate-180' : ''}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>

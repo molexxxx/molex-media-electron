@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import type { FileItem, Operation } from '../../../stores/types'
-import { BUILTIN_PRESETS } from '../../../stores/types'
+import { BUILTIN_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from '../../../stores/types'
 import { OP_TABS } from './OperationPanel'
 
 const OP_LABELS: Record<Operation, string> = {
@@ -21,6 +21,8 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
       case 'normalize': {
         const opts = file.normalizeOptions || { I: -16, TP: -1.5, LRA: 11 }
         const preset = BUILTIN_PRESETS.find((p) => p.id === file.selectedPreset)
+        const compression = (opts as { compression?: string }).compression ?? 'off'
+        const downmix = (opts as { downmix?: string }).downmix ?? 'keep'
         return (
           <div className="space-y-1">
             <div className="text-2xs text-surface-400">
@@ -35,6 +37,16 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
             <div className="text-2xs text-surface-400 font-mono">
               LRA: {opts.LRA} LU
             </div>
+            {compression !== 'off' && (
+              <div className="text-2xs text-surface-400">
+                <span className="text-surface-500">Compression:</span> {compression}
+              </div>
+            )}
+            {downmix !== 'keep' && (
+              <div className="text-2xs text-surface-400">
+                <span className="text-surface-500">Layout:</span> {downmix === 'dialog-stereo' ? 'Dialog stereo' : 'Stereo'}
+              </div>
+            )}
           </div>
         )
       }
@@ -60,23 +72,60 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
       }
       case 'extract': {
         const opts = file.extractOptions || { outputFormat: 'mp3', streamIndex: 0 }
+        const preset = BUILTIN_EXTRACT_PRESETS.find((p) => p.id === file.selectedExtractPreset)
+        const mode = opts.mode || 'audio'
+        const modeLabel = mode === 'audio' ? 'Audio'
+          : mode === 'video' ? 'Silent Video'
+          : mode === 'gif' ? 'GIF'
+          : mode === 'frames' ? 'Frames'
+          : 'Subtitles'
         return (
           <div className="space-y-1">
+            {preset && <div className="text-2xs text-surface-400"><span className="text-surface-500">Preset:</span> {preset.name}</div>}
+            <div className="text-2xs text-surface-400"><span className="text-surface-500">Mode:</span> {modeLabel}</div>
             <div className="text-2xs text-surface-400"><span className="text-surface-500">Format:</span> {opts.outputFormat.toUpperCase()}</div>
-            <div className="text-2xs text-surface-400"><span className="text-surface-500">Stream:</span> {opts.streamIndex}</div>
-            {opts.audioBitrate && <div className="text-2xs text-surface-400"><span className="text-surface-500">Bitrate:</span> {opts.audioBitrate}</div>}
-            {opts.sampleRate && <div className="text-2xs text-surface-400"><span className="text-surface-500">Sample Rate:</span> {opts.sampleRate}</div>}
+            {mode === 'audio' && <>
+              <div className="text-2xs text-surface-400"><span className="text-surface-500">Stream:</span> {opts.streamIndex}</div>
+              {opts.audioBitrate && <div className="text-2xs text-surface-400"><span className="text-surface-500">Bitrate:</span> {opts.audioBitrate}</div>}
+              {opts.sampleRate && <div className="text-2xs text-surface-400"><span className="text-surface-500">Sample Rate:</span> {opts.sampleRate}</div>}
+              {opts.channels && <div className="text-2xs text-surface-400"><span className="text-surface-500">Channels:</span> {opts.channels}</div>}
+            </>}
+            {mode === 'video' && <div className="text-2xs text-surface-400"><span className="text-surface-500">Encoding:</span> {opts.videoReencode ? `H.264 CRF ${opts.videoCrf ?? 20}` : 'Stream copy'}</div>}
+            {mode === 'gif' && <>
+              <div className="text-2xs text-surface-400"><span className="text-surface-500">Size:</span> {opts.gifWidth || 480}w @ {opts.gifFps || 12}fps</div>
+              <div className="text-2xs text-surface-400"><span className="text-surface-500">Dither:</span> {opts.gifDither || 'sierra2_4a'}</div>
+            </>}
+            {mode === 'frames' && <>
+              <div className="text-2xs text-surface-400"><span className="text-surface-500">Sampling:</span> {opts.framesMode || 'interval'}</div>
+              {opts.framesMode === 'interval' && <div className="text-2xs text-surface-400"><span className="text-surface-500">Every:</span> {opts.frameInterval ?? 1}s</div>}
+              {opts.framesMode === 'fps' && <div className="text-2xs text-surface-400"><span className="text-surface-500">FPS:</span> {opts.framesFps ?? 1}</div>}
+              {opts.framesMode === 'count' && <div className="text-2xs text-surface-400"><span className="text-surface-500">Count:</span> {opts.frameCount ?? 25}</div>}
+            </>}
+            {mode === 'subtitles' && <div className="text-2xs text-surface-400"><span className="text-surface-500">Stream:</span> {opts.streamIndex}</div>}
+            {(opts.startTime || opts.duration) && (
+              <div className="text-2xs text-surface-400">
+                <span className="text-surface-500">Trim:</span> {opts.startTime || '0'}{opts.duration ? ` + ${opts.duration}` : ''}
+              </div>
+            )}
           </div>
         )
       }
       case 'compress': {
         const opts = file.compressOptions || { targetSizeMB: 0, quality: 'high' as const }
+        const preset = BUILTIN_COMPRESS_PRESETS.find((p) => p.id === file.selectedCompressPreset)
+        const mode = opts.mode === 'target-size' || (opts.mode == null && opts.targetSizeMB > 0) ? 'target-size' : 'crf'
         return (
           <div className="space-y-1">
-            <div className="text-2xs text-surface-400"><span className="text-surface-500">Quality:</span> {opts.quality.charAt(0).toUpperCase() + opts.quality.slice(1)}</div>
+            {preset && <div className="text-2xs text-surface-400"><span className="text-surface-500">Preset:</span> {preset.name}</div>}
+            <div className="text-2xs text-surface-400"><span className="text-surface-500">Mode:</span> {mode === 'target-size' ? 'Target Size' : 'CRF Quality'}</div>
+            <div className="text-2xs text-surface-400"><span className="text-surface-500">Quality:</span> {opts.quality.charAt(0).toUpperCase() + opts.quality.slice(1)}{opts.quality === 'custom' && opts.customCrf != null ? ` (CRF ${opts.customCrf})` : ''}</div>
             {opts.videoCodec && <div className="text-2xs text-surface-400"><span className="text-surface-500">Codec:</span> {opts.videoCodec}</div>}
             {opts.speed && <div className="text-2xs text-surface-400"><span className="text-surface-500">Speed:</span> {opts.speed}</div>}
-            {opts.targetSizeMB ? <div className="text-2xs text-surface-400"><span className="text-surface-500">Target:</span> {opts.targetSizeMB} MB</div> : null}
+            {opts.pixelFormat && <div className="text-2xs text-surface-400"><span className="text-surface-500">Pix fmt:</span> {opts.pixelFormat === 'yuv420p10le' ? '10-bit' : '8-bit'}</div>}
+            {opts.tune && <div className="text-2xs text-surface-400"><span className="text-surface-500">Tune:</span> {opts.tune}</div>}
+            {opts.maxHeight ? <div className="text-2xs text-surface-400"><span className="text-surface-500">Max H:</span> {opts.maxHeight}p</div> : null}
+            {opts.audioCodec && <div className="text-2xs text-surface-400"><span className="text-surface-500">Audio:</span> {opts.audioCodec}{opts.audioCodec !== 'flac' && opts.audioCodec !== 'copy' && opts.audioBitrate ? ` @ ${opts.audioBitrate}` : ''}</div>}
+            {mode === 'target-size' ? <div className="text-2xs text-surface-400"><span className="text-surface-500">Target:</span> {opts.targetSizeMB} MB{opts.twoPass ? ' (2-pass)' : ''}</div> : null}
           </div>
         )
       }

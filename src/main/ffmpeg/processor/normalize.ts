@@ -94,6 +94,64 @@ async function analyzeLoudness(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Filter helpers (dynamic range compression + downmix)              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Build the `acompressor` filter string for a given compression level.
+ * Returns null when compression is disabled.
+ *
+ * Ratios / thresholds tuned for movie content where dialog sits ~10-15 dB
+ * below action peaks. Threshold is in dB (FFmpeg's acompressor takes a
+ * linear ratio for threshold, but accepts dB via the parser too).
+ */
+function buildCompressorFilter(level?: string): string | null {
+  switch (level) {
+    case 'light':
+      // Gentle: 2:1 above -22 dB, slow attack/release. Mostly invisible.
+      return 'acompressor=threshold=-22dB:ratio=2:attack=20:release=250:makeup=2'
+    case 'medium':
+      // Movie balance: 3:1 above -24 dB, makeup +3 dB. Tames bass-heavy action.
+      return 'acompressor=threshold=-24dB:ratio=3:attack=15:release=200:makeup=3'
+    case 'heavy':
+      // Late-night: 6:1 above -26 dB, fast attack, makeup +5 dB. Whispers audible.
+      return 'acompressor=threshold=-26dB:ratio=6:attack=5:release=150:makeup=5'
+    case 'off':
+    case undefined:
+    case null as unknown as undefined:
+    default:
+      return null
+  }
+}
+
+/**
+ * Build a `pan` filter that produces the desired channel layout from a
+ * source with `srcChannels` input channels. Returns null when no downmix
+ * is needed (e.g. mode='keep' or source is already stereo/mono).
+ *
+ * `dialog-stereo` raises the center channel +3 dB and attenuates surrounds
+ * by ~6 dB so dialog cuts through TV-speaker playback. Falls back to the
+ * plain stereo downmix when the source has no discrete center (i.e. stereo
+ * or mono input).
+ */
+function buildDownmixFilter(mode: string | undefined, srcChannels: number): string | null {
+  if (!mode || mode === 'keep') return null
+  if (srcChannels <= 2) return null
+
+  if (mode === 'dialog-stereo') {
+    if (srcChannels >= 6) {
+      // 5.1 layout: FL FR FC LFE BL BR. Center +3 dB (×1.414), surrounds -6 dB (×0.5).
+      return 'pan=stereo|FL=0.707*FC+0.85*FL+0.5*BL+0.2*LFE|FR=0.707*FC+0.85*FR+0.5*BR+0.2*LFE'
+    }
+    // Other multichannel — fall back to standard stereo downmix.
+    return 'pan=stereo|FL<FL+0.707*FC+0.5*BL|FR<FR+0.707*FC+0.5*BR'
+  }
+
+  // Plain stereo downmix
+  return 'aresample=matrix_encoding=none,pan=stereo|FL<FL+0.707*FC+0.5*BL|FR<FR+0.707*FC+0.5*BR'
+}
+
+/* ------------------------------------------------------------------ */
 /*  Normalization (pass 2)                                             */
 /* ------------------------------------------------------------------ */
 
@@ -182,17 +240,35 @@ export async function normalizeFile(
     onProgress(task)
 
     const { I, TP, LRA } = norm
+    const compressionFilter = buildCompressorFilter((norm as { compression?: string }).compression)
+    const downmixMode = (norm as { downmix?: string }).downmix
     const filterParts: string[] = []
     const mapArgs: string[] = []
 
     for (let i = 0; i < info.audioStreams.length; i++) {
       const m = metrics[i]
-      filterParts.push(
-        `[0:a:${i}]loudnorm=I=${I}:TP=${TP}:LRA=${LRA}:` +
+      const srcChannels = info.audioStreams[i].channels || 2
+      const downmixFilter = buildDownmixFilter(downmixMode, srcChannels)
+
+      // Chain order: optional downmix → loudnorm → optional compressor.
+      // Downmix BEFORE loudnorm so loudness is measured on the final layout.
+      // Actually pass-1 already measured the source; for chain consistency
+      // we apply downmix first, then linear loudnorm with measured offsets,
+      // then DRC last so makeup gain doesn't shift the LUFS target.
+      const chain: string[] = []
+      if (downmixFilter) chain.push(downmixFilter)
+      chain.push(
+        `loudnorm=I=${I}:TP=${TP}:LRA=${LRA}:` +
         `measured_I=${m.input_i}:measured_TP=${m.input_tp}:` +
         `measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:` +
-        `offset=${m.target_offset}[a${i}]`
+        `offset=${m.target_offset}`
       )
+      if (compressionFilter) {
+        chain.push(compressionFilter)
+        // Re-limit true peak after makeup gain to honor TP ceiling.
+        chain.push(`alimiter=limit=${Math.pow(10, TP / 20).toFixed(4)}`)
+      }
+      filterParts.push(`[0:a:${i}]${chain.join(',')}[a${i}]`)
       mapArgs.push('-map', `[a${i}]`)
     }
 

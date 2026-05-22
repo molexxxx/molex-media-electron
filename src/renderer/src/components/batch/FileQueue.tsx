@@ -131,6 +131,7 @@ export default function FileQueue(): React.JSX.Element {
       operation: f.operation || useAppStore.getState().operation,
       outputDir,
       boostPercent: f.boostPercent,
+      boostOptions: f.boostOptions,
       normalizeOptions: f.normalizeOptions,
       convertOptions: f.convertOptions,
       extractOptions: f.extractOptions,

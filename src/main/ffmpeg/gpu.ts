@@ -78,18 +78,46 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
   }
   _detecting = true
 
+  // Track whether *any* attempt actually completed (spawned + exited).
+  // If every attempt threw before producing an exit code (e.g. ffmpeg
+  // binary not ready yet on early app startup), do NOT cache 'off' —
+  // leave _detectedMode null so a later call can retry detection.
+  let anyCompleted = false
+
+  // Probe available encoders first. Skipping a mode whose encoder is not
+  // compiled in avoids a confusing spawn failure and lets us log a clean
+  // reason. The list is cheap (one ffmpeg invocation).
+  let encoders = ''
+  try {
+    const { promise } = runCommand(ffmpegPath, ['-hide_banner', '-encoders'])
+    const r = await promise
+    encoders = r.stdout + r.stderr
+    if (r.code === 0 || encoders.length > 0) anyCompleted = true
+  } catch {
+    // ignore — fall back to attempting each test encode blind
+  }
+
   for (const mode of ['nvenc', 'qsv', 'amf'] as const)
   {
     const codec = GPU_CODECS[mode]?.libx264
     if (!codec) continue
+    if (encoders && !encoders.includes(codec)) {
+      logger.info(`[gpu] ${mode}: encoder ${codec} not compiled into ffmpeg, skipping`)
+      continue
+    }
     try
     {
+      // Use 256x144 (16:9, evenly aligned) — large enough to satisfy
+      // NVENC/QSV/AMF minimum-dimension constraints. The color filter is
+      // a synthetic source so no input file is required.
       const { promise } = runCommand(ffmpegPath, [
-        '-f', 'lavfi', '-i', 'color=c=black:s=64x64:d=0.1',
+        '-hide_banner', '-loglevel', 'error',
+        '-f', 'lavfi', '-i', 'color=c=black:s=256x144:d=0.1',
         '-c:v', codec, '-frames:v', '1',
         '-f', 'null', '-'
       ])
       const result = await promise
+      anyCompleted = true
       if (result.code === 0)
       {
         logger.info(`[gpu] Detected ${mode} support`)
@@ -99,15 +127,32 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
         _detectQueue.length = 0
         return mode
       }
-    } catch
+      else
+      {
+        // Surface the first line of stderr so the user can see *why*
+        // detection failed (driver missing, no capable device, etc.).
+        const reason = (result.stderr || '').split(/\r?\n/).filter(Boolean)[0] || `exit ${result.code}`
+        logger.info(`[gpu] ${mode}: test encode failed — ${reason}`)
+      }
+    } catch (err)
     {
-      // encoder not available, try next
+      logger.info(`[gpu] ${mode}: spawn error — ${(err as Error)?.message ?? 'unknown'}`)
     }
+  }
+
+  _detecting = false
+  if (!anyCompleted)
+  {
+    // FFmpeg likely unavailable during this attempt. Don't cache so the
+    // next call retries once the binary is ready.
+    logger.warn('[gpu] Detection inconclusive (no ffmpeg attempt completed)')
+    _detectQueue.forEach((fn) => fn('off'))
+    _detectQueue.length = 0
+    return 'off'
   }
 
   logger.info('[gpu] No GPU encoder detected, using software')
   _detectedMode = 'off'
-  _detecting = false
   _detectQueue.forEach((fn) => fn('off'))
   _detectQueue.length = 0
   return 'off'

@@ -151,6 +151,8 @@ const api = {
 
   // System
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
+  getGpuInfo: () => ipcRenderer.invoke('system:gpu'),
+  getGpuUsage: () => ipcRenderer.invoke('system:gpuUsage'),
   showInFolder: (filePath: string) => ipcRenderer.invoke('shell:openPath', filePath),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 

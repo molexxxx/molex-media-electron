@@ -22,8 +22,31 @@ export interface ProcessingTask {
   fileName: string
   operation: 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
   boostPercent?: number
+  /**
+   * Advanced volume-boost knobs. When omitted the pipeline falls back to
+   * the simple `volume=<multiplier>` filter (legacy behaviour).
+   *
+   * - `limiter`: when true, append `alimiter` after the volume stage so
+   *   peaks don't clip. Required for any aggressive positive gain.
+   * - `limiterCeiling`: dBTP ceiling for the limiter. Typically -1.
+   * - `hpfHz`: high-pass cutoff applied BEFORE the volume stage. 0 = off.
+   *   Removes sub-audible energy that would otherwise consume headroom.
+   */
+  boostOptions?: {
+    limiter?: boolean
+    limiterCeiling?: number
+    hpfHz?: number
+  }
   preset?: string
-  normalizeOptions?: { I: number; TP: number; LRA: number }
+  normalizeOptions?: {
+    I: number
+    TP: number
+    LRA: number
+    /** 'off' | 'light' | 'medium' | 'heavy' — post-loudnorm dynamic range compression. */
+    compression?: 'off' | 'light' | 'medium' | 'heavy'
+    /** 'keep' | 'stereo' | 'dialog-stereo' — channel layout strategy. */
+    downmix?: 'keep' | 'stereo' | 'dialog-stereo'
+  }
   convertOptions?: ConvertOptions
   extractOptions?: ExtractOptions
   compressOptions?: CompressOptions
@@ -51,18 +74,107 @@ export interface ConvertOptions {
 }
 
 export interface ExtractOptions {
+  /**
+   * Extraction mode.
+   * - `audio` (default): demux/transcode an audio stream into a standalone file.
+   * - `video`: strip audio, keep the video track. Stream copy or re-encode.
+   * - `gif`: render a section of video to an optimized GIF via the two-step
+   *   palettegen + paletteuse method.
+   * - `frames`: extract still frames (PNG/JPG/WebP) at an interval, fps, or
+   *   single thumbnail.
+   * - `subtitles`: extract an embedded subtitle stream to .srt/.vtt/.ass.
+   *
+   * When `mode` is omitted, callers receive the legacy audio-only path so
+   * existing tasks remain compatible.
+   */
+  mode?: 'audio' | 'video' | 'gif' | 'frames' | 'subtitles'
   outputFormat: string
+  /** Index into the chosen stream kind (audio: 0..N audio, subs: 0..N subs). */
   streamIndex: number
+  /* ---- Audio ---- */
   audioBitrate?: string
   sampleRate?: string
   channels?: string
+  /* ---- Video (silent extraction) ---- */
+  /** Re-encode using H.264 instead of stream-copying the source video. */
+  videoReencode?: boolean
+  /** CRF used when videoReencode is true. */
+  videoCrf?: number
+  /* ---- GIF ---- */
+  /** GIF frame rate (1–30). */
+  gifFps?: number
+  /** Output width in pixels. 0 keeps source width. */
+  gifWidth?: number
+  /** Dithering algorithm passed to paletteuse. */
+  gifDither?: 'sierra2_4a' | 'bayer' | 'floyd_steinberg' | 'none'
+  /** Loop count for the GIF. 0 = infinite, -1 = play once, N = N loops. */
+  gifLoop?: number
+  /* ---- Frames ---- */
+  /** How the frames mode samples the source. */
+  framesMode?: 'interval' | 'fps' | 'thumbnail' | 'count'
+  /** Seconds between frames when framesMode === 'interval'. */
+  frameInterval?: number
+  /** Output frames per second when framesMode === 'fps'. */
+  framesFps?: number
+  /** Total number of evenly-spaced frames when framesMode === 'count'. */
+  frameCount?: number
+  /** Output image format. Default 'png'. */
+  frameFormat?: 'png' | 'jpg' | 'webp'
+  /** MJPEG quality scale (2 best – 31 worst) when frameFormat === 'jpg'. */
+  jpgQuality?: number
+  /* ---- Time range (shared by gif / frames / video) ---- */
+  /** Start offset, hh:mm:ss(.ms) or plain seconds. */
+  startTime?: string
+  /** Clip duration, hh:mm:ss(.ms) or plain seconds. */
+  duration?: string
 }
 
 export interface CompressOptions {
+  /**
+   * Encoding mode.
+   *
+   * - `crf`: quality-targeted constant rate factor. Bitrate fluctuates;
+   *   visual quality stays constant. Default unless legacy targetSizeMB is
+   *   set (in which case legacy behavior treats it as `target-size`).
+   * - `target-size`: bitrate-constrained ABR/CBR aimed at a specific file
+   *   size in MB. Optionally two-pass for better bit distribution.
+   */
+  mode?: 'crf' | 'target-size'
+
+  /** Target output size in MB. Only used when mode === 'target-size'. */
   targetSizeMB: number
+
+  /**
+   * Quality tier. `lossless` maps to CRF 0 (true lossless for CPU codecs).
+   * `custom` reads `customCrf` instead of the per-codec CRF table.
+   */
   quality: string
+
+  /** Custom CRF / CQ value when `quality === 'custom'`. 0–51 range. */
+  customCrf?: number
+
+  /** Video encoder: libx264 | libx265 | libvpx-vp9 | libaom-av1 | libsvtav1. */
   videoCodec?: string
+
+  /** Encoder speed preset (or `-cpu-used` analog for VP9/AV1). */
   speed?: string
+
+  /** Pixel format. '' = encoder default, 'yuv420p' = max compat, 'yuv420p10le' = 10-bit. */
+  pixelFormat?: string
+
+  /** Encoder tune: '' | film | animation | grain | fastdecode | zerolatency. x264/x265 only. */
+  tune?: string
+
+  /** Cap output height (downscale). 0 = no scaling. e.g. 1080 = max 1080p. */
+  maxHeight?: number
+
+  /** Use two-pass encoding (target-size mode only). Improves quality at the cost of ~2× time. */
+  twoPass?: boolean
+
+  /** Audio codec: 'aac' | 'libopus' | 'flac' | 'copy'. Defaults to aac (or flac for lossless audio-only). */
+  audioCodec?: string
+
+  /** Audio bitrate (e.g. '128k'). Ignored for flac/copy. */
   audioBitrate?: string
 }
 

@@ -11,11 +11,11 @@
 import { create } from 'zustand'
 import type {
   View, Operation, AppConfig, FileItem, ProcessingTask, LogEntry,
-  ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions
+  ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions
 } from './types'
 
-export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions } from './types'
-export { BUILTIN_PRESETS } from './types'
+export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions, BoostPreset, CompressPreset, ExtractPreset } from './types'
+export { BUILTIN_PRESETS, BUILTIN_BOOST_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from './types'
 
 interface AppState {
   // Navigation
@@ -47,6 +47,11 @@ interface AppState {
   // Processing
   operation: Operation
   boostPercent: number
+  boostOptions: BoostOptions
+  selectedBoostPreset: string | null
+  selectedConvertPreset: string | null
+  selectedCompressPreset: string | null
+  selectedExtractPreset: string | null
   selectedPreset: string | null
   normalizeOptions: NormalizeOptions
   convertOptions: ConvertOptions
@@ -54,6 +59,11 @@ interface AppState {
   compressOptions: CompressOptions
   setOperation: (op: Operation) => void
   setBoostPercent: (pct: number) => void
+  setBoostOptions: (opts: Partial<BoostOptions>) => void
+  setSelectedBoostPreset: (id: string | null) => void
+  setSelectedConvertPreset: (id: string | null) => void
+  setSelectedCompressPreset: (id: string | null) => void
+  setSelectedExtractPreset: (id: string | null) => void
   setSelectedPreset: (id: string | null) => void
   setNormalizeOptions: (opts: Partial<NormalizeOptions>) => void
   setConvertOptions: (opts: Partial<ConvertOptions>) => void
@@ -180,6 +190,21 @@ export const useAppStore = create<AppState>((set) => ({
         if (typeof next.boostPercent !== 'number') {
           next.boostPercent = state.boostPercent
         }
+        if (!next.boostOptions) {
+          next.boostOptions = { ...state.boostOptions }
+        }
+        if (next.selectedBoostPreset === undefined) {
+          next.selectedBoostPreset = state.selectedBoostPreset
+        }
+        if (next.selectedConvertPreset === undefined) {
+          next.selectedConvertPreset = state.selectedConvertPreset
+        }
+        if (next.selectedCompressPreset === undefined) {
+          next.selectedCompressPreset = state.selectedCompressPreset
+        }
+        if (next.selectedExtractPreset === undefined) {
+          next.selectedExtractPreset = state.selectedExtractPreset
+        }
         if (!next.selectedPreset) {
           next.selectedPreset = state.selectedPreset
         }
@@ -223,13 +248,23 @@ export const useAppStore = create<AppState>((set) => ({
 
   operation: 'convert',
   boostPercent: 10,
+  boostOptions: { percent: 10, limiter: true, limiterCeiling: -1, hpfHz: 0 },
+  selectedBoostPreset: 'gentle-lift',
+  selectedConvertPreset: 'mp4-h264',
+  selectedCompressPreset: 'web-1080p',
+  selectedExtractPreset: 'audio-mp3-320',
   selectedPreset: 'defaults',
   normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
   convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
-  extractOptions: { outputFormat: 'mp3', streamIndex: 0, audioBitrate: '', sampleRate: '', channels: '' },
-  compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'slow', audioBitrate: '256k' },
+  extractOptions: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' },
+  compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'medium', customCrf: 23, videoCodec: 'libx264', speed: 'medium', pixelFormat: 'yuv420p', tune: '', maxHeight: 1080, twoPass: false, audioCodec: 'aac', audioBitrate: '192k' },
   setOperation: (op) => set({ operation: op }),
-  setBoostPercent: (pct) => set({ boostPercent: pct }),
+  setBoostPercent: (pct) => set((s) => ({ boostPercent: pct, boostOptions: { ...s.boostOptions, percent: pct } })),
+  setBoostOptions: (opts) => set((s) => ({ boostOptions: { ...s.boostOptions, ...opts }, ...(typeof opts.percent === 'number' ? { boostPercent: opts.percent } : {}) })),
+  setSelectedBoostPreset: (id) => set({ selectedBoostPreset: id }),
+  setSelectedConvertPreset: (id) => set({ selectedConvertPreset: id }),
+  setSelectedCompressPreset: (id) => set({ selectedCompressPreset: id }),
+  setSelectedExtractPreset: (id) => set({ selectedExtractPreset: id }),
   setSelectedPreset: (id) => set({ selectedPreset: id }),
   setNormalizeOptions: (opts) => set((s) => ({ normalizeOptions: { ...s.normalizeOptions, ...opts } })),
   setConvertOptions: (opts) => set((s) => ({ convertOptions: { ...s.convertOptions, ...opts } })),
@@ -259,11 +294,13 @@ export const useAppStore = create<AppState>((set) => ({
   resetBatch: () => set({
     files: [], tasks: [], activeBatchId: null, isProcessing: false, isPaused: false,
     batchWorkers: 0, activeWorkerCount: 0,
-    operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', batchOutputDir: '',
+    operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', selectedBoostPreset: 'gentle-lift', selectedConvertPreset: 'mp4-h264', selectedCompressPreset: 'web-1080p', selectedExtractPreset: 'audio-mp3-320',
+    boostOptions: { percent: 10, limiter: true, limiterCeiling: -1, hpfHz: 0 },
+    batchOutputDir: '',
     normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
     convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
-    extractOptions: { outputFormat: 'mp3', streamIndex: 0 },
-    compressOptions: { targetSizeMB: 0, quality: 'high', videoCodec: 'libx264', speed: 'slow', audioBitrate: '256k' }
+    extractOptions: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' },
+    compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'medium', customCrf: 23, videoCodec: 'libx264', speed: 'medium', pixelFormat: 'yuv420p', tune: '', maxHeight: 1080, twoPass: false, audioCodec: 'aac', audioBitrate: '192k' }
   }),
 
   totalProcessed: 0,

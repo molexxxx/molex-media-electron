@@ -132,7 +132,7 @@ export function registerProcessingIPC(): void {
   // --- Mixed-operation batch (per-file operation assignments) ---
   ipcMain.handle('process:batch-queue', async (_, taskSpecs: Array<{
     filePath: string; operation: string; outputDir?: string;
-    boostPercent?: number; normalizeOptions?: any; convertOptions?: any; extractOptions?: any; compressOptions?: any
+    boostPercent?: number; boostOptions?: any; normalizeOptions?: any; convertOptions?: any; extractOptions?: any; compressOptions?: any
   }>, maxWorkersOverride?: number) => {
     if (!Array.isArray(taskSpecs) || taskSpecs.length === 0) {
       throw new Error('No tasks provided')
@@ -160,6 +160,7 @@ export function registerProcessingIPC(): void {
       progress: 0,
       message: 'Waiting...',
       boostPercent: spec.boostPercent,
+      boostOptions: spec.boostOptions,
       normalizeOptions: spec.normalizeOptions,
       convertOptions: spec.convertOptions,
       extractOptions: spec.extractOptions,

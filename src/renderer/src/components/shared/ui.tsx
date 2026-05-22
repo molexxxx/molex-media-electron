@@ -183,7 +183,15 @@ export function Select({ value, onChange, options, compact, disabled, className,
  * Tooltip that uses fixed positioning via a portal so it escapes
  * overflow-hidden / overflow-auto scroll containers.
  */
-export function FixedTip({ label, children, position = 'below' }: { label: string; children: ReactNode; position?: 'below' | 'right' }): React.JSX.Element {
+export function FixedTip({ label, children, position = 'below', wide = false, inline = false }: {
+  label: string
+  children: ReactNode
+  position?: 'below' | 'right'
+  /** Allow multi-line wrapped tooltip text (max ~16rem wide). */
+  wide?: boolean
+  /** Render wrapper as inline-block instead of block. Useful inside flowing text. */
+  inline?: boolean
+}): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -199,14 +207,21 @@ export function FixedTip({ label, children, position = 'below' }: { label: strin
   }
 
   return (
-    <div ref={ref} onMouseEnter={show} onMouseLeave={() => setPos(null)} className="relative">
+    <div
+      ref={ref}
+      onMouseEnter={show}
+      onMouseLeave={() => setPos(null)}
+      className={inline ? 'relative inline-flex' : 'relative'}
+    >
       {children}
       {pos && createPortal(
         <div
-          className="fixed px-2 py-1 rounded-md bg-surface-900/95 border border-surface-700/60 text-[10px] text-surface-200 whitespace-nowrap pointer-events-none z-[9999] shadow-lg shadow-black/30 backdrop-blur-sm animate-fade-in"
+          className={`fixed px-2.5 py-1.5 rounded-md bg-surface-900/95 border border-surface-700/60 text-[10px] leading-snug text-surface-200 pointer-events-none z-[9999] shadow-lg shadow-black/30 backdrop-blur-sm animate-fade-in ${
+            wide ? 'whitespace-normal' : 'whitespace-nowrap'
+          }`}
           style={position === 'right'
-            ? { top: pos.top, left: pos.left, transform: 'translateY(-50%)' }
-            : { top: pos.top, left: pos.left, transform: 'translateX(-50%)' }
+            ? { top: pos.top, left: pos.left, transform: 'translateY(-50%)', maxWidth: wide ? '18rem' : undefined }
+            : { top: pos.top, left: pos.left, transform: 'translateX(-50%)', maxWidth: wide ? '18rem' : undefined, width: wide ? 'max-content' : undefined }
           }
         >
           {label}

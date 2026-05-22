@@ -225,7 +225,7 @@ describe('appStore - extended coverage', () => {
     it('setCompressOptions merges partial options', () => {
       useAppStore.getState().setCompressOptions({ targetSizeMB: 50 })
       expect(useAppStore.getState().compressOptions.targetSizeMB).toBe(50)
-      expect(useAppStore.getState().compressOptions.quality).toBe('high')
+      expect(useAppStore.getState().compressOptions.quality).toBe('medium')
     })
 
     it('setOperation changes the operation', () => {

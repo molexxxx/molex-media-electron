@@ -52,6 +52,8 @@ declare global {
       openLogDir: () => Promise<void>
       onLogEntry: (cb: (entry: any) => void) => () => void
       getSystemInfo: () => Promise<any>
+      getGpuInfo: () => Promise<{ mode: string; label: string; vendor: string; pending: boolean; gpuModel: string | null }>
+      getGpuUsage: () => Promise<{ usage: number | null }>
       showInFolder: (filePath: string) => Promise<void>
       openExternal: (url: string) => Promise<void>
       windowMinimize: () => void

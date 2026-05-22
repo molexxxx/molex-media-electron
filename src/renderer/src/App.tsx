@@ -197,7 +197,15 @@ function App(): React.JSX.Element {
             mounted.has(id) ? (
               <div
                 key={id}
-                className={`absolute inset-0 p-3 sm:p-4 md:p-6 ${
+                className={`absolute inset-0 ${
+                  id === 'dashboard'
+                    // Dashboard scrolls vertically; pad only the content
+                    // side so the scrollbar sits flush against the right
+                    // window border, with a small visual gap on the
+                    // left provided by the inner content's own pr-*.
+                    ? 'pl-3 sm:pl-4 md:pl-6 py-3 sm:py-4 md:py-6 pr-0'
+                    : 'p-3 sm:p-4 md:p-6'
+                } ${
                   fixedLayoutViews.has(id)
                     ? 'flex flex-col overflow-hidden'
                     : 'overflow-auto'

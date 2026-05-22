@@ -467,4 +467,234 @@ describe('extractAudio', () => {
     expect(result.status).toBe('complete')
     expect(fs.mkdirSync).toHaveBeenCalledWith('/new/dir', { recursive: true })
   })
+
+  /* ---------------- Multi-mode revamp ---------------- */
+
+  describe('video mode', () => {
+    it('stream-copies video and strips audio by default', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({ extractOptions: { mode: 'video', outputFormat: 'mp4', streamIndex: 0 } })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('complete')
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-an')
+      expect(args).toContain('-map')
+      expect(args).toContain('0:v:0')
+      expect(args).toContain('-c:v')
+      expect(args).toContain('copy')
+      expect(args[args.length - 1]).toMatch(/_video\.mp4$/)
+    })
+
+    it('re-encodes with H.264 when videoReencode is true', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({ extractOptions: { mode: 'video', outputFormat: 'mp4', streamIndex: 0, videoReencode: true, videoCrf: 18 } })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('libx264')
+      expect(args).toContain('-crf')
+      expect(args).toContain('18')
+    })
+
+    it('errors when no video streams present', async () => {
+      mockProbeMedia.mockResolvedValue({ ...sampleProbe, videoStreams: [] })
+      const task = makeTask({ extractOptions: { mode: 'video', outputFormat: 'mp4', streamIndex: 0 } })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('error')
+      expect(result.error).toContain('No video streams')
+    })
+  })
+
+  describe('gif mode', () => {
+    it('builds a two-pass palettegen + paletteuse filter graph', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'gif', outputFormat: 'gif', streamIndex: 0, gifFps: 12, gifWidth: 480, gifDither: 'sierra2_4a', gifLoop: 0 }
+      })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('complete')
+      const args = mockRunCommand.mock.calls[0][1]
+      const filterIdx = args.indexOf('-filter_complex')
+      expect(filterIdx).toBeGreaterThan(-1)
+      const filter = args[filterIdx + 1]
+      expect(filter).toContain('palettegen')
+      expect(filter).toContain('paletteuse')
+      expect(filter).toContain('fps=12')
+      expect(filter).toContain('scale=480')
+      expect(filter).toContain('dither=sierra2_4a')
+      expect(args).toContain('-loop')
+      expect(args).toContain('0')
+      expect(args[args.length - 1]).toMatch(/\.gif$/)
+    })
+
+    it('respects custom dither and loop count', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'gif', outputFormat: 'gif', streamIndex: 0, gifFps: 10, gifWidth: 320, gifDither: 'bayer', gifLoop: 1 }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      const filter = args[args.indexOf('-filter_complex') + 1]
+      expect(filter).toContain('dither=bayer')
+      const loopIdx = args.indexOf('-loop')
+      expect(args[loopIdx + 1]).toBe('1')
+    })
+  })
+
+  describe('frames mode', () => {
+    it('builds interval-based fps filter for frame sequence', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'frames', outputFormat: 'png', streamIndex: 0, framesMode: 'interval', frameInterval: 2, frameFormat: 'png' }
+      })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('complete')
+      const args = mockRunCommand.mock.calls[0][1]
+      const vfIdx = args.indexOf('-vf')
+      expect(args[vfIdx + 1]).toBe('fps=1/2')
+      expect(args[args.length - 1]).toMatch(/frame_%04d\.png$/)
+    })
+
+    it('uses single-frame thumbnail at midpoint', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'frames', outputFormat: 'png', streamIndex: 0, framesMode: 'thumbnail', frameFormat: 'png' }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-ss')
+      expect(args).toContain('-frames:v')
+      expect(args).toContain('1')
+      expect(args[args.length - 1]).toMatch(/_thumb\.png$/)
+    })
+
+    it('adds jpg quality flag when frameFormat is jpg', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'frames', outputFormat: 'jpg', streamIndex: 0, framesMode: 'interval', frameInterval: 1, frameFormat: 'jpg', jpgQuality: 4 }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-q:v')
+      expect(args).toContain('4')
+    })
+
+    it('count mode computes fps from duration', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'frames', outputFormat: 'png', streamIndex: 0, framesMode: 'count', frameCount: 24, frameFormat: 'png' }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      const vfIdx = args.indexOf('-vf')
+      // 24 frames over 120s = fps=0.2
+      expect(args[vfIdx + 1]).toBe('fps=0.2')
+    })
+  })
+
+  describe('subtitles mode', () => {
+    it('errors when no subtitle streams present', async () => {
+      mockProbeMedia.mockResolvedValue({ ...sampleProbe, subtitleStreams: [] })
+      const task = makeTask({ extractOptions: { mode: 'subtitles', outputFormat: 'srt', streamIndex: 0 } })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('error')
+      expect(result.error).toContain('No subtitle streams')
+    })
+
+    it('extracts to srt with appropriate codec', async () => {
+      mockProbeMedia.mockResolvedValue({
+        ...sampleProbe,
+        subtitleStreams: [{ index: 2, codec_name: 'subrip' }]
+      })
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({ extractOptions: { mode: 'subtitles', outputFormat: 'srt', streamIndex: 0 } })
+      const result = await extractAudio(task, vi.fn())
+      expect(result.status).toBe('complete')
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-c:s')
+      expect(args).toContain('srt')
+      expect(args).toContain('-map')
+      expect(args).toContain('0:s:0')
+      expect(args[args.length - 1]).toMatch(/\.srt$/)
+    })
+
+    it('maps vtt format to webvtt encoder', async () => {
+      mockProbeMedia.mockResolvedValue({
+        ...sampleProbe,
+        subtitleStreams: [{ index: 2, codec_name: 'subrip' }]
+      })
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({ extractOptions: { mode: 'subtitles', outputFormat: 'vtt', streamIndex: 0 } })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('webvtt')
+    })
+  })
+
+  describe('time range', () => {
+    it('applies startTime and duration before input for video mode', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'video', outputFormat: 'mp4', streamIndex: 0, startTime: '00:00:05', duration: '10' }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      const inputIdx = args.indexOf('-i')
+      const ssIdx = args.indexOf('-ss')
+      const tIdx = args.indexOf('-t')
+      expect(ssIdx).toBeGreaterThan(-1)
+      expect(ssIdx).toBeLessThan(inputIdx)
+      expect(tIdx).toBeLessThan(inputIdx)
+      expect(args[ssIdx + 1]).toBe('00:00:05')
+      expect(args[tIdx + 1]).toBe('10')
+    })
+
+    it('applies time range to gif mode', async () => {
+      mockRunCommand.mockReturnValue({
+        promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+        process: {}
+      })
+      const task = makeTask({
+        extractOptions: { mode: 'gif', outputFormat: 'gif', streamIndex: 0, gifFps: 12, gifWidth: 480, startTime: '3', duration: '2' }
+      })
+      await extractAudio(task, vi.fn())
+      const args = mockRunCommand.mock.calls[0][1]
+      expect(args).toContain('-ss')
+      expect(args).toContain('3')
+      expect(args).toContain('-t')
+      expect(args).toContain('2')
+    })
+  })
 })

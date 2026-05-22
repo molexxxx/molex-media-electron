@@ -154,8 +154,6 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
 
   return (
     <div
-      draggable={!locked}
-      onDragStart={(e) => onDragStart(e, index)}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
       className={`group relative flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-lg transition-all overflow-hidden ${
@@ -166,9 +164,14 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
         'hover:bg-surface-800/40 border border-transparent'
       }`}
     >
-      {/* Drag handle */}
+      {/* Drag handle - only this element initiates a row reorder drag */}
       {!locked ? (
-        <div className="cursor-grab active:cursor-grabbing text-surface-700 hover:text-surface-400 transition-colors shrink-0" title="Drag to reorder">
+        <div
+          draggable
+          onDragStart={(e) => onDragStart(e, index)}
+          className="cursor-grab active:cursor-grabbing text-surface-700 hover:text-surface-400 transition-colors shrink-0"
+          title="Drag to reorder"
+        >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
             <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />

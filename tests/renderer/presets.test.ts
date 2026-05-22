@@ -56,10 +56,10 @@ describe('preset data integrity', () => {
 
   it('has expected preset counts per category', () => {
     expect(GENERAL_PRESETS).toHaveLength(5)
-    expect(WEB_PRESETS).toHaveLength(5)
+    expect(WEB_PRESETS).toHaveLength(8)
     expect(DEVICE_PRESETS).toHaveLength(3)
     expect(PRODUCTION_PRESETS).toHaveLength(5)
-    expect(AUDIO_PRESETS).toHaveLength(6)
+    expect(AUDIO_PRESETS).toHaveLength(8)
   })
 
   it('ALL_PRESETS equals the flat sum of all categories', () => {
