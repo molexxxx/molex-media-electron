@@ -108,19 +108,11 @@
 - **Zero Setup** — FFmpeg and yt-dlp are downloaded automatically on first launch
 - **Setup Wizard** — First-run flow: Welcome → Downloading → Complete → Error, with retry, progress bar, and manual-install fallback
 - **Dashboard** — Quick stats (ready / processing / completed / errors), 5 workflow launchers, tool cards with animated canvas backgrounds, system info, and recent activity feed
-- **File Browser** — VLC-style modal with known-folder shortcuts (Desktop, Documents, Downloads, Music, Videos, Pictures, Home, drive roots) and multi-file/folder selection
 - **System Tray** — Icon with context menu (Show, Pop Out Player, Player, Editor, Batch, Logs, Quit), live batch progress in tooltip, and minimize-to-tray behavior
 - **Auto-updater** — Check / download / install from GitHub Releases with progress forwarding and persistent update status from startup
-- **Custom Title Bar** — Frameless drag region with logo, version badge, processing indicator, and window controls
-- **Collapsible Sidebar** — Dashboard, Batch, Editor, Player, Settings, Logs — grouped sections with auto-collapse at ≤840px, icon-only tooltips, badge indicators for file count, unseen errors, and available updates
 - **Live Processing Panel** — Sidebar-embedded task list with progress bars, pause/cancel controls
 - **Log Viewer** — Filterable by level (info / warn / error / debug / success / ffmpeg), free-text search, auto-scroll, copy single entry or all filtered logs, open log directory
 - **Drag-and-drop Everywhere** — Drop files onto batch queue, editor, player, or processing view
-- **Responsive Design** — Adaptive layouts for sidebar, editor clip list, and timeline
-- **Settings** — Three tabs: Application (tray, notifications, updates, cookies), Audio (normalization targets, codec, bitrate, fallback), and Processing (workers, output directory, overwrite mode, subtitle/metadata preservation)
-- **Context Menus** — Native text-field context menu (undo, redo, cut, copy, paste, select all) across all inputs
-- **Close Confirmation** — Optional prompt with minimize-to-tray or quit options and "don't ask again" toggle
-- **Reset to Defaults** — Each tool (Batch, Editor, Player) has a dedicated reset action that restores all options, state, and UI to factory defaults
 
 ---
 
