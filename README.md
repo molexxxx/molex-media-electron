@@ -108,7 +108,7 @@
 - **Zero Setup** — FFmpeg and yt-dlp are downloaded automatically on first launch
 - **Setup Wizard** — First-run flow: Welcome → Downloading → Complete → Error, with retry, progress bar, and manual-install fallback
 - **Dashboard** — Quick stats (ready / processing / completed / errors), 5 workflow launchers, tool cards with animated canvas backgrounds, system info, and recent activity feed
-- **System Tray** — Icon with context menu (Show, Pop Out Player, Player, Editor, Batch, Logs, Quit), live batch progress in tooltip, and minimize-to-tray behavior
+- **System Tray** — Icon with context menu (Show, Pop Out Player, Player, Editor, Processor, Logs, Quit), live batch progress in tooltip, and minimize-to-tray behavior
 - **Auto-updater** — Check / download / install from GitHub Releases with progress forwarding and persistent update status from startup
 - **Live Processing Panel** — Sidebar-embedded task list with progress bars, pause/cancel controls
 - **Log Viewer** — Filterable by level (info / warn / error / debug / success / ffmpeg), free-text search, auto-scroll, copy single entry or all filtered logs, open log directory

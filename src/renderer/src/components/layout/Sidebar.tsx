@@ -2,8 +2,9 @@
  * @module components/layout/Sidebar
  * @description Main navigation sidebar with section-grouped nav items.
  *
- * Provides the primary navigation (Dashboard, Batch, Editor, Player,
- * Settings, Logs) grouped by category, a collapsible processing panel
+ * Provides the primary navigation (Dashboard, Tools, System) with
+ * Batch / Editor / Player grouped together as tools, plus Settings
+ * and Logs under System. Includes a collapsible processing panel
  * with real-time task progress, and pause / cancel / clear controls.
  */
 
@@ -159,14 +160,9 @@ export default function Sidebar(): React.JSX.Element {
       ]
     },
     {
-      label: 'Workflow',
-      items: [
-        { id: 'batch', label: 'Batch', icon: icons.batch, badge: files.length || undefined }
-      ]
-    },
-    {
       label: 'Tools',
       items: [
+        { id: 'batch', label: 'Processor', icon: icons.batch, badge: files.length || undefined },
         { id: 'editor', label: 'Editor', icon: icons.editor },
         { id: 'player', label: 'Player', icon: icons.player }
       ]
