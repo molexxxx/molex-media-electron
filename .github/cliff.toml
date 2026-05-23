@@ -26,6 +26,10 @@ body = """
 footer = ""
 trim = true
 
+[remote.github]
+owner = "tonywied17"
+repo = "molex-media-electron"
+
 [git]
 conventional_commits = true
 filter_unconventional = true
