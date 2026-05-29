@@ -12,9 +12,9 @@
 
 [![CI](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml)
 [![Build](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/tonywied17/molex-media-electron?include_prereleases&style=flat-square&color=7c3aed)](https://github.com/tonywied17/molex-media-electron/releases)
-[![License](https://img.shields.io/github/license/tonywied17/molex-media-electron?style=flat-square&color=a78bfa)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/tonywied17/molex-media-electron/total?style=flat-square&color=4f46e5)](https://github.com/tonywied17/molex-media-electron/releases)
+<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg" alt="release" /></a>
+<a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg" alt="license" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-downloads-molex.svg" alt="downloads" /></a>
 
 <br/>
 
