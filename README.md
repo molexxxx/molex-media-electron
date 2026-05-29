@@ -10,7 +10,7 @@
 
 **Cross-platform media processing toolkit powered by FFmpeg**
 
-<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg?v=928f63fd" alt="CI" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg?v=a33161b9" alt="CI" /></a>
 <a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-build-molex.svg?v=be841dea" alt="build" /></a>
 <a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg?v=950ad93f" alt="release" /></a>
 <a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg?v=bd711f81" alt="license" /></a>
