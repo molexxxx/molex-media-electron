@@ -10,8 +10,8 @@
 
 **Cross-platform media processing toolkit powered by FFmpeg**
 
-[![CI](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml)
-[![Build](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml/badge.svg)](https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml)
+<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg" alt="CI" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-build-molex.svg" alt="build" /></a>
 <a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg" alt="release" /></a>
 <a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg" alt="license" /></a>
 <a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-downloads-molex.svg" alt="downloads" /></a>
