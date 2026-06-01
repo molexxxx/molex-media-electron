@@ -214,6 +214,21 @@ export function stripMolexTag(title: string): string {
 }
 
 /**
+ * FFmpeg codec names whose native encoders are flagged "experimental"
+ * and therefore require `-strict experimental` (`-strict -2`) to encode.
+ * Most commonly hit when re-encoding DTS tracks in "inherit" codec mode.
+ */
+const EXPERIMENTAL_ENCODER_CODECS = new Set(['dts', 'dca', 'truehd', 'mlp', 'sonic', 'sonicls', 'opus_native'])
+
+/**
+ * Returns true if any of the given codec names maps to an FFmpeg encoder
+ * that requires strict-experimental mode to be enabled.
+ */
+export function needsStrictExperimental(codecs: (string | undefined)[]): boolean {
+  return codecs.some((c) => c && EXPERIMENTAL_ENCODER_CODECS.has(c.toLowerCase()))
+}
+
+/**
  * Generate a sibling temp-file path by appending {@link suffix} before
  * the file extension. Used for in-place "process → rename" workflows.
  */
@@ -292,13 +307,22 @@ export function validateOutput(filePath: string, label: string): void {
 export function extractFFmpegError(stderr: string): string {
   if (!stderr) return 'Unknown error (no output)'
   const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean)
+  // Demuxer warnings about subtitle dimensions are noise that often masks
+  // the real failure - drop them unless they're the only thing present.
+  const meaningful = lines.filter((l) => !/Could not find codec parameters/i.test(l))
+  const pool = meaningful.length > 0 ? meaningful : lines
+  // Highest-priority causes first (e.g. experimental encoder, hard failures).
+  const priority = pool.filter((l) =>
+    /experimental|Conversion failed|Invalid data found|not enabled|Encoder.*not found|Decoder.*not found/i.test(l)
+  )
+  if (priority.length > 0) return priority.slice(-3).join(' | ')
   // Look for common FFmpeg error patterns (most specific first)
-  const errorLines = lines.filter((l) =>
+  const errorLines = pool.filter((l) =>
     /^(Error|.*error.*:|.*Invalid.*|.*No such.*|.*not found.*|.*Unsupported.*|.*Could not.*|.*does not.*|.*Unknown.*codec|.*Encoder.*not found|.*Decoder.*not found|.*Permission denied|.*already exists)/i.test(l)
   )
   if (errorLines.length > 0) return errorLines.slice(-3).join(' | ')
   // Fall back to last 2 meaningful lines
-  return lines.slice(-2).join(' | ')
+  return pool.slice(-2).join(' | ')
 }
 
 /**
