@@ -14,6 +14,8 @@ export {
   type TaskProgressCallback,
   channelLayout,
   stripMolexTag,
+  needsStrictExperimental,
+  resolveInheritedAudioEncoder,
   createTempPath,
   cleanupTemp,
   formatElapsed,

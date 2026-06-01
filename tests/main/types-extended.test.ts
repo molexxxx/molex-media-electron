@@ -20,7 +20,9 @@ import {
   findMediaFiles,
   safeRename,
   ensureDir,
-  validateOutput
+  validateOutput,
+  needsStrictExperimental,
+  resolveInheritedAudioEncoder
 } from '../../src/main/ffmpeg/processor'
 
 describe('cleanupTemp', () => {
@@ -174,5 +176,54 @@ describe('validateOutput', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true)
     try { validateOutput('/tmp/out.mp3', 'Test') } catch { /* expected */ }
     expect(fs.unlinkSync).toHaveBeenCalledWith('/tmp/out.mp3')
+  })
+})
+
+describe('needsStrictExperimental', () => {
+  it('detects experimental encoders', () => {
+    expect(needsStrictExperimental(['dts'])).toBe(true)
+    expect(needsStrictExperimental(['aac', 'truehd'])).toBe(true)
+  })
+
+  it('returns false for reliable encoders', () => {
+    expect(needsStrictExperimental(['ac3', 'aac', 'eac3'])).toBe(false)
+    expect(needsStrictExperimental([undefined])).toBe(false)
+  })
+})
+
+describe('resolveInheritedAudioEncoder', () => {
+  it('substitutes eac3 for unreliable DTS encoder', () => {
+    const r = resolveInheritedAudioEncoder('dts', 6, 'ac3', '256k')
+    expect(r.codec).toBe('eac3')
+  })
+
+  it('substitutes eac3 for TrueHD/MLP', () => {
+    expect(resolveInheritedAudioEncoder('truehd', 8, 'ac3', '256k').codec).toBe('eac3')
+    expect(resolveInheritedAudioEncoder('mlp', 6, 'ac3', '256k').codec).toBe('eac3')
+  })
+
+  it('preserves reliable source codecs', () => {
+    expect(resolveInheritedAudioEncoder('ac3', 6, 'ac3', '256k').codec).toBe('ac3')
+    expect(resolveInheritedAudioEncoder('aac', 2, 'ac3', '256k').codec).toBe('aac')
+  })
+
+  it('raises bitrate floor for 5.1 multichannel', () => {
+    expect(resolveInheritedAudioEncoder('dts', 6, 'ac3', '256k').bitrate).toBe('448k')
+  })
+
+  it('raises bitrate floor for 7.1 multichannel', () => {
+    expect(resolveInheritedAudioEncoder('dts', 8, 'ac3', '256k').bitrate).toBe('640k')
+  })
+
+  it('keeps configured bitrate for stereo', () => {
+    expect(resolveInheritedAudioEncoder('aac', 2, 'ac3', '256k').bitrate).toBe('256k')
+  })
+
+  it('caps ac3 at 640k', () => {
+    expect(resolveInheritedAudioEncoder('ac3', 8, 'ac3', '256k').bitrate).toBe('640k')
+  })
+
+  it('falls back to fallbackCodec when source codec is undefined', () => {
+    expect(resolveInheritedAudioEncoder(undefined, 2, 'ac3', '256k').codec).toBe('ac3')
   })
 })

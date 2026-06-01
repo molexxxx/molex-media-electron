@@ -221,11 +221,58 @@ export function stripMolexTag(title: string): string {
 const EXPERIMENTAL_ENCODER_CODECS = new Set(['dts', 'dca', 'truehd', 'mlp', 'sonic', 'sonicls', 'opus_native'])
 
 /**
+ * Source codec names whose native FFmpeg *encoder* is unreliable or
+ * unusable for re-encoding (e.g. the `dca`/DTS encoder rejects common
+ * bitrate/channel combinations, TrueHD/MLP have no usable encoder).
+ * In "inherit" mode these are substituted with a robust encoder instead.
+ */
+const UNRELIABLE_ENCODE_CODECS = new Set(['dts', 'dca', 'truehd', 'mlp'])
+
+/**
  * Returns true if any of the given codec names maps to an FFmpeg encoder
  * that requires strict-experimental mode to be enabled.
  */
 export function needsStrictExperimental(codecs: (string | undefined)[]): boolean {
   return codecs.some((c) => c && EXPERIMENTAL_ENCODER_CODECS.has(c.toLowerCase()))
+}
+
+/**
+ * Parse an FFmpeg bitrate string like `"256k"` into kbps. Returns 0 when
+ * the value can't be parsed.
+ */
+function parseBitrateKbps(bitrate: string): number {
+  const m = /([\d.]+)\s*k?/i.exec(bitrate || '')
+  return m ? Math.round(parseFloat(m[1])) : 0
+}
+
+/**
+ * Decide the encoder + bitrate to use for an audio stream in "inherit"
+ * codec mode. The source codec is preserved when its encoder is reliable;
+ * codecs whose native encoder is unreliable (DTS/TrueHD/MLP) are
+ * substituted with E-AC-3, which handles mono…7.1 robustly. The bitrate
+ * is raised to a channel-appropriate floor for multichannel streams so
+ * the encoder doesn't reject the parameters.
+ */
+export function resolveInheritedAudioEncoder(
+  sourceCodec: string | undefined,
+  channels: number,
+  fallbackCodec: string,
+  configuredBitrate: string
+): { codec: string; bitrate: string } {
+  const src = (sourceCodec || fallbackCodec).toLowerCase()
+  const codec = UNRELIABLE_ENCODE_CODECS.has(src) ? 'eac3' : src
+  const configured = parseBitrateKbps(configuredBitrate)
+
+  // Channel-appropriate minimum bitrate (kbps) to keep encoders happy.
+  let floor = configured
+  if (channels >= 8) floor = Math.max(configured, 640)
+  else if (channels >= 6) floor = Math.max(configured, 448)
+
+  // AC-3 caps at 640 kbps; E-AC-3 and others can exceed it.
+  if (codec === 'ac3') floor = Math.min(floor, 640)
+
+  const bitrate = floor > 0 ? `${floor}k` : configuredBitrate
+  return { codec, bitrate }
 }
 
 /**

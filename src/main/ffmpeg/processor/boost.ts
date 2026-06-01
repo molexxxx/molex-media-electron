@@ -19,6 +19,7 @@ import {
   channelLayout,
   stripMolexTag,
   needsStrictExperimental,
+  resolveInheritedAudioEncoder,
   createTempPath,
   cleanupTemp,
   formatElapsed,
@@ -144,13 +145,20 @@ export async function boostFile(
 
     // Codec
     if (config.audioCodec === 'inherit') {
+      const chosen: string[] = []
       for (let i = 0; i < info.audioStreams.length; i++) {
-        const codec = info.audioStreams[i].codec_name || config.fallbackCodec
-        args.push(`-c:a:${i}`, codec, `-b:a:${i}`, config.audioBitrate)
+        const stream = info.audioStreams[i]
+        const { codec, bitrate } = resolveInheritedAudioEncoder(
+          stream.codec_name,
+          stream.channels || 2,
+          config.fallbackCodec,
+          config.audioBitrate
+        )
+        chosen.push(codec)
+        args.push(`-c:a:${i}`, codec, `-b:a:${i}`, bitrate)
       }
-      // Some inherited encoders (e.g. DTS/dca, TrueHD) are flagged
-      // experimental and refuse to run without strict-experimental mode.
-      if (needsStrictExperimental(info.audioStreams.map((s) => s.codec_name))) {
+      // In case any chosen encoder is still flagged experimental.
+      if (needsStrictExperimental(chosen)) {
         args.push('-strict', 'experimental')
       }
     } else {
