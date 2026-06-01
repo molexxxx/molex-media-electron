@@ -109,7 +109,10 @@ export async function convertFile(
       args.push(...hwArgs)
     }
 
-    args.push('-i', task.filePath, '-threads', '0')
+    // Raise probe limits so streams with late dimension info (e.g. PGS
+    // subtitles) are fully parsed before they're stream-copied, avoiding
+    // "Could not find codec parameters ... unspecified size" copy failures.
+    args.push('-analyzeduration', '200M', '-probesize', '200M', '-i', task.filePath, '-threads', '0')
 
     // Video codec
     if (info.isVideoFile) {

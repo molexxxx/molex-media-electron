@@ -182,7 +182,10 @@ export async function compressFile(
 
     // Hardware-accel input flags must come before -i
     const hwaccelArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
-    const inputArgs = ['-y', ...hwaccelArgs, '-i', task.filePath, '-threads', '0']
+    // Raise probe limits so streams with late dimension info (e.g. PGS
+    // subtitles) are fully parsed before they're stream-copied, avoiding
+    // "Could not find codec parameters ... unspecified size" copy failures.
+    const inputArgs = ['-y', ...hwaccelArgs, '-analyzeduration', '200M', '-probesize', '200M', '-i', task.filePath, '-threads', '0']
 
     // Video filter chain (currently just optional scaling).
     const videoFilters: string[] = []

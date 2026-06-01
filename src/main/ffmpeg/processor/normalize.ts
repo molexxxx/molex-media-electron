@@ -273,7 +273,10 @@ export async function normalizeFile(
     }
 
     const tempPath = createTempPath(task.filePath, config.tempSuffix)
-    const args: string[] = ['-y', '-i', task.filePath, '-threads', '0']
+    // Raise probe limits so streams with late dimension info (e.g. PGS
+    // subtitles) are fully parsed before they're stream-copied, avoiding
+    // "Could not find codec parameters ... unspecified size" copy failures.
+    const args: string[] = ['-y', '-analyzeduration', '200M', '-probesize', '200M', '-i', task.filePath, '-threads', '0']
 
     args.push('-filter_complex', filterParts.join(';'))
 
