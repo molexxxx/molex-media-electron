@@ -10,11 +10,11 @@
 
 **Cross-platform media processing toolkit powered by FFmpeg**
 
-<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg?v=24024b7c" alt="CI" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-build-molex.svg?v=45fa7918" alt="build" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg?v=bd3d86c0" alt="release" /></a>
-<a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg?v=513bf470" alt="license" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-downloads-molex.svg?v=a2860343" alt="downloads" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg?v=b20968b9" alt="CI" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-build-molex.svg?v=cb132195" alt="build" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg?v=edffba14" alt="release" /></a>
+<a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg?v=460245ba" alt="license" /></a>
+<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-downloads-molex.svg?v=a628da87" alt="downloads" /></a>
 
 <br/>
 
