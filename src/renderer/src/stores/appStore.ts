@@ -118,11 +118,11 @@ interface AppState {
   toggleSidebar: () => void
 
   // Updater
-  updateStatus: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
+  updateStatus: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error' | 'manual'
   updateVersion: string | null
   updateError: string | null
   updateDownloadPercent: number
-  setUpdateStatus: (status: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error') => void
+  setUpdateStatus: (status: 'idle' | 'checking' | 'available' | 'up-to-date' | 'downloading' | 'downloaded' | 'error' | 'manual') => void
   setUpdateVersion: (version: string | null) => void
   setUpdateError: (error: string | null) => void
   setUpdateDownloadPercent: (percent: number) => void
