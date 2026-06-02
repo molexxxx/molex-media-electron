@@ -34,6 +34,11 @@ nsis:
   installerHeaderIcon: build/icon.ico
   # No differential/blockmap files - keeps the release assets clean.
   differentialPackage: false
+# Notarization is handled by this afterSign hook, which submits to Apple
+# without waiting. The CI notarize-macos job polls for approval and staples
+# the .pkg before uploading to the release. This split handles the long
+# initial wait on new Apple Developer accounts (up to 24 h).
+afterSign: build/notarize.js
 mac:
   icon: build/icon.png
   category: public.app-category.music
@@ -41,11 +46,6 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # Notarization is handled by the afterSign hook (build/notarize.js), which
-  # submits to Apple without waiting. The CI notarize-macos job polls for
-  # approval and staples the .pkg before uploading to the release. This split
-  # handles the long initial wait on new Apple Developer accounts (up to 24 h).
-  afterSign: build/notarize.js
   target:
     - target: pkg
       arch:
