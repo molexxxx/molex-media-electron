@@ -32,9 +32,19 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
+  # No differential/blockmap files - keeps the release assets clean.
+  differentialPackage: false
 mac:
   icon: build/icon.png
+  category: public.app-category.music
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # Notarization runs only when Apple credentials (APPLE_ID,
+  # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) are present in the environment
+  # and the build is signed. Unsigned local/CI builds skip it automatically.
+  notarize: true
   target:
     - target: dmg
       arch:
