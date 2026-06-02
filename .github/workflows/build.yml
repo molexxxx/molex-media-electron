@@ -42,6 +42,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      # Surfaced to job env so step `if:` can test it - the `secrets` context
+      # is not allowed inside `if` expressions, but `env` is.
+      MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+
     steps:
       - uses: actions/checkout@v6
 
@@ -55,7 +60,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
-      - name: Build & Package
+      # macOS, signed + notarized: runs only when the Apple Developer ID cert
+      # and notarization secrets are configured.
+      - name: Build & Package (macOS, signed)
+        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        run: npm run ${{ matrix.script }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # macOS fallback before signing secrets exist: unsigned build so the
+      # build pipeline keeps working.
+      - name: Build & Package (macOS, unsigned)
+        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK == ''
+        run: npm run ${{ matrix.script }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Empty CSC_LINK makes electron-builder treat it as a cert path and
+          # fail; disable identity discovery instead for an unsigned build.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Build & Package (Windows/Linux)
+        if: matrix.os != 'macos-latest'
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
