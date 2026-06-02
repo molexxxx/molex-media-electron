@@ -11,6 +11,7 @@
 import { protocol, net } from 'electron'
 import { openSync, readSync, closeSync, statSync, existsSync } from 'fs'
 import { extname } from 'path'
+import { fileURLToPath } from 'url'
 import { logger } from './logger'
 import { resolveStreamToken } from './ytdlp'
 
@@ -178,9 +179,11 @@ export function registerMediaHandler(): void {
       return new Response('Stream expired or not found', { status: 404 })
     }
 
-    // Local file (HLS download fallback) - serve with Range support
-    if (cdnUrl.startsWith('file:///')) {
-      const filePath = decodeURIComponent(cdnUrl.replace('file:///', '').replace(/\//g, '\\'))
+    // Local file (HLS download fallback) - serve with Range support.
+    // fileURLToPath converts the file:// URL to a native path correctly on
+    // every platform (drive-letter paths on Windows, POSIX paths elsewhere).
+    if (cdnUrl.startsWith('file://')) {
+      const filePath = fileURLToPath(cdnUrl)
       return serveLocalFile(filePath, request)
     }
 

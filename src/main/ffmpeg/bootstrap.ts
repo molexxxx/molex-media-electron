@@ -31,22 +31,44 @@ export interface FFmpegPaths {
 
 type ProgressCallback = (progress: BootstrapProgress) => void
 
+// Download sources are keyed by `${platform}-${arch}` so each host gets a
+// native build. BtbN publishes x64 and arm64 archives for Windows and Linux.
+// macOS uses evermeet.cx (Intel-only); on Apple Silicon that binary runs
+// transparently under Rosetta 2, which is the most reliable option since no
+// maintained native arm64 macOS build has a stable download URL.
 const DOWNLOAD_URLS: Record<string, { url: string; type: 'zip' | 'tar' }> = {
-  win32: {
+  'win32-x64': {
     url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip',
     type: 'zip'
   },
-  darwin: {
+  'win32-arm64': {
+    url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-winarm64-gpl.zip',
+    type: 'zip'
+  },
+  'darwin-x64': {
     url: 'https://evermeet.cx/ffmpeg/getrelease/zip',
     type: 'zip'
   },
-  linux: {
+  'darwin-arm64': {
+    url: 'https://evermeet.cx/ffmpeg/getrelease/zip',
+    type: 'zip'
+  },
+  'linux-x64': {
     url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz',
+    type: 'tar'
+  },
+  'linux-arm64': {
+    url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz',
     type: 'tar'
   }
 }
 
 const FFPROBE_MAC_URL = 'https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip'
+
+/** Resolve the download key for the current host platform + architecture. */
+function getPlatformKey(): string {
+  return `${process.platform}-${process.arch}`
+}
 
 /**
  * Returns the platform-specific executable name (appends `.exe` on Windows).
@@ -183,10 +205,11 @@ function followRedirects(url: string, onProgress?: (downloaded: number, total: n
  */
 export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmpegPaths> {
   const platform = process.platform
-  const config = DOWNLOAD_URLS[platform]
+  const platformKey = getPlatformKey()
+  const config = DOWNLOAD_URLS[platformKey]
 
   if (!config) {
-    throw new Error(`Unsupported platform: ${platform}`)
+    throw new Error(`Unsupported platform/architecture: ${platformKey}`)
   }
 
   const binDir = getFFmpegBinDir()
@@ -194,7 +217,7 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
 
   onProgress({ stage: 'downloading', message: 'Downloading FFmpeg...', percent: 0 })
 
-  logger.info(`Downloading FFmpeg for ${platform} from ${config.url}`)
+  logger.info(`Downloading FFmpeg for ${platformKey} from ${config.url}`)
 
   const data = await followRedirects(config.url, (downloaded, total) => {
     const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0

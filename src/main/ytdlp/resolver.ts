@@ -11,6 +11,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { pathToFileURL } from 'url'
 import { logger } from '../logger'
 import { getYtDl, baseFlags } from './binary'
 import { withCookieRetry } from './cookies'
@@ -192,7 +193,7 @@ export async function getAudioStreamUrl(
     // All formats are HLS - download to a local temp file as fallback
     logger.info(`All ${data.formats?.length || 0} formats are HLS for "${title}", downloading audio...`)
     const localPath = await downloadAudioToFile(videoUrl, cookieFlags)
-    const fileUrl = `file:///${localPath.replace(/\\/g, '/')}`
+    const fileUrl = pathToFileURL(localPath).href
     logger.info(`Audio downloaded to temp file: ${localPath}`)
     return { audioUrl: fileUrl, title, duration }
   })
