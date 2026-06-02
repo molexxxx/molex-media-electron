@@ -34,9 +34,22 @@ function getExecutable(): string {
 /* ------------------------------------------------------------------ */
 
 const DOWNLOAD_URLS: Record<string, string> = {
+  // Windows: single x64 executable (also runs on arm64 via emulation).
   win32: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe',
+  // macOS: universal2 binary covering both Intel and Apple Silicon.
   darwin: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
-  linux: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp'
+  // Linux: standalone binaries that bundle their own Python runtime, keyed by
+  // architecture so no system Python is required.
+  'linux-x64': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux',
+  'linux-arm64': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64'
+}
+
+/** Resolve the yt-dlp download URL for the current platform + architecture. */
+function getDownloadUrl(): string | undefined {
+  if (process.platform === 'linux') {
+    return DOWNLOAD_URLS[`linux-${process.arch}`]
+  }
+  return DOWNLOAD_URLS[process.platform]
 }
 
 /**
@@ -88,8 +101,8 @@ export async function ensureYtDlp(): Promise<string> {
   }
 
   // Download
-  const url = DOWNLOAD_URLS[process.platform]
-  if (!url) throw new Error(`Unsupported platform: ${process.platform}`)
+  const url = getDownloadUrl()
+  if (!url) throw new Error(`Unsupported platform/architecture: ${process.platform}-${process.arch}`)
 
   logger.info(`Downloading yt-dlp from ${url}`)
   const binDir = getBinDir()
