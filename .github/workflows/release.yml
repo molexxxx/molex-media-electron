@@ -70,9 +70,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
+      - name: Install rpm tooling
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+
       # macOS, signed + notarized: runs only when the Apple Developer ID cert
       # and notarization secrets are configured. Produces a Gatekeeper-approved
-      # .dmg that opens without warnings.
+      # .pkg that opens without warnings.
       - name: Build & Package (macOS, signed)
         if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
         run: npm run ${{ matrix.script }}
@@ -100,17 +104,24 @@ jobs:
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
+      # Upload only the platform installers (and the updater metadata) to a
+      # shared draft release. Each matrix job appends its own assets to the
+      # same draft, matched by tag. The publish job flips the draft to public.
+      - name: Upload installers to draft release
+        uses: softprops/action-gh-release@v3
         with:
-          name: release-${{ matrix.os }}
-          path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
-            dist/*.yml
-          if-no-files-found: warn
+          draft: true
+          files: |
+            dist/molexMedia-*-Windows-Setup.exe
+            dist/molexMedia-*-macOS-Installer.pkg
+            dist/molexMedia-*-macOS-Updater.zip
+            dist/molexMedia-*-Linux-Installer.deb
+            dist/molexMedia-*-Linux-Installer.rpm
+            dist/latest*.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     name: Publish Release
@@ -121,12 +132,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
-
       - name: Generate changelog
         id: changelog
         uses: orhun/git-cliff-action@v4
@@ -134,15 +139,13 @@ jobs:
           config: .github/cliff.toml
           args: --latest --strip header
         env:
-          OUTPUT: CHANGELOG.md
+          OUTPUT: RELEASE_NOTES.md
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          body: ${{ steps.changelog.outputs.content }}
-          files: artifacts/**/*
-          draft: false
-          prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
-          generate_release_notes: false
+      - name: Publish release with changelog
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --notes-file RELEASE_NOTES.md \
+            --draft=false --latest
