@@ -11,6 +11,11 @@ on:
 
 permissions:
   contents: write
+  actions: read  # allows notarize-complete to download artifacts across runs
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -51,8 +56,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      # Surfaced to job env so step `if:` can test it - the `secrets` context
-      # is not allowed inside `if` expressions, but `env` is.
       MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
 
     steps:
@@ -74,9 +77,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y rpm
 
-      # macOS, signed + notarized: runs only when the Apple Developer ID cert
-      # and notarization secrets are configured. Produces a Gatekeeper-approved
-      # .pkg that opens without warnings.
+      # macOS, signed: the afterSign hook (build/notarize.js) submits to Apple
+      # notarization without waiting and writes notarization-submission.json.
+      # The notarize-macos job below polls for approval and staples the .pkg.
       - name: Build & Package (macOS, signed)
         if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
         run: npm run ${{ matrix.script }}
@@ -88,15 +91,12 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-      # macOS fallback before signing secrets exist: unsigned build so the
-      # release pipeline keeps working. Drop this once signing is in place.
+      # macOS fallback: unsigned build when signing secrets are absent.
       - name: Build & Package (macOS, unsigned)
         if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK == ''
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Empty CSC_LINK makes electron-builder treat it as a cert path and
-          # fail; disable identity discovery instead for an unsigned build.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Build & Package (Windows/Linux)
@@ -106,26 +106,156 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
-      # Upload only the platform installers (and the updater metadata) to a
-      # shared draft release. Each matrix job appends its own assets to the
-      # same draft, matched by tag. The publish job flips the draft to public.
-      - name: Upload installers to draft release
+      # Windows / Linux: upload directly to the draft release.
+      - name: Upload installers to draft release (Windows/Linux)
+        if: matrix.os != 'macos-latest'
         uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: |
             dist/molexMedia-*-Windows-Setup.exe
-            dist/molexMedia-*-macOS-Installer.pkg
-            dist/molexMedia-*-macOS-Updater.zip
             dist/molexMedia-*-Linux-Installer.deb
             dist/molexMedia-*-Linux-Installer.rpm
             dist/latest*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # macOS signed: stash artifacts for the notarize-macos job instead of
+      # uploading to the draft release. The signed-but-unstapled .pkg is also
+      # uploaded to the draft so that notarize-complete.yml can find it by tag
+      # if the notarize-macos job times out (>6 h initial notarization).
+      - name: Save macOS artifacts for notarization job
+        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-notarize
+          path: |
+            dist/molexMedia-*-macOS-Installer.pkg
+            dist/molexMedia-*-macOS-Updater.zip
+            dist/latest-mac.yml
+            notarization-submission.json
+          retention-days: 90
+
+      - name: Upload unstapled macOS installer to draft release
+        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: |
+            dist/molexMedia-*-macOS-Installer.pkg
+            dist/molexMedia-*-macOS-Updater.zip
+            dist/latest-mac.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # macOS unsigned fallback: upload directly (no notarization step needed).
+      - name: Upload macOS unsigned build to draft release
+        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK == ''
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: |
+            dist/molexMedia-*-macOS-Installer.pkg
+            dist/molexMedia-*-macOS-Updater.zip
+            dist/latest-mac.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Waits for Apple to approve the notarization submission, then staples the
+  # ticket to the .pkg and replaces the unstapled asset in the draft release.
+  # Timeout: 6 hours. If Apple hasn't responded by then (common for the very
+  # first submission on a new Developer account), let this job fail and use
+  # the notarize-complete workflow (workflow_dispatch) to finish manually.
+  notarize-macos:
+    name: Notarize & Staple macOS
+    needs: release
+    runs-on: macos-latest
+    timeout-minutes: 360
+    steps:
+      - name: Download macOS artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-notarize
+        continue-on-error: true
+
+      - name: Skip if no notarization artifact (unsigned build)
+        if: steps.download.outcome == 'failure'
+        run: echo "No macos-notarize artifact — unsigned build or credentials not set, skipping."
+
+      - name: Wait for Apple notarization
+        if: steps.download.outcome == 'success'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          submission_id=$(jq -r '.id' notarization-submission.json)
+          echo "Waiting on Apple notarization submission: $submission_id"
+
+          # Retry up to 5 times to recover from transient network drops.
+          for attempt in $(seq 1 5); do
+            if xcrun notarytool wait "$submission_id" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID"; then
+              echo "Notarization accepted (attempt $attempt)"
+              exit 0
+            fi
+
+            # notarytool wait exited non-zero — could be network drop or rejection.
+            status=$(xcrun notarytool info "$submission_id" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json 2>/dev/null \
+              | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+
+            echo "Status after wait exit (attempt $attempt/5): $status"
+
+            case "$status" in
+              Accepted)
+                echo "Already accepted (status check)"
+                exit 0
+                ;;
+              Invalid|Rejected)
+                xcrun notarytool log "$submission_id" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" || true
+                exit 1
+                ;;
+              *)
+                if [ "$attempt" -lt 5 ]; then
+                  echo "Retrying in 60 s (likely a network blip)..."
+                  sleep 60
+                else
+                  echo "All retry attempts exhausted — job timed out or network is broken."
+                  echo "Use the 'Complete macOS Notarization' workflow to finish manually."
+                  exit 1
+                fi
+                ;;
+            esac
+          done
+
+      - name: Staple notarization ticket to installer
+        if: steps.download.outcome == 'success'
+        run: xcrun stapler staple dist/molexMedia-*-macOS-Installer.pkg
+
+      # Replace the unstapled .pkg in the draft release with the stapled one.
+      - name: Upload stapled macOS installer to draft release
+        if: steps.download.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            dist/molexMedia-*-macOS-Installer.pkg \
+            --repo "${{ github.repository }}" \
+            --clobber
+
   publish:
     name: Publish Release
-    needs: release
+    needs: [release, notarize-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
