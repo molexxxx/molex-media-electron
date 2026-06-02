@@ -35,10 +35,10 @@ jobs:
             artifact: dist/*.exe
           - os: macos-latest
             script: package:mac
-            artifact: dist/*.dmg
+            artifact: dist/*.pkg
           - os: ubuntu-latest
             script: package:linux
-            artifact: dist/*.AppImage
+            artifact: dist/*.deb
 
     runs-on: ${{ matrix.os }}
 
@@ -59,6 +59,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
+
+      - name: Install rpm tooling
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
 
       # macOS, signed + notarized: runs only when the Apple Developer ID cert
       # and notarization secrets are configured.
@@ -96,8 +100,10 @@ jobs:
           name: build-${{ matrix.os }}
           path: |
             dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
+            dist/*.pkg
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
             dist/*.yml
           if-no-files-found: warn
           retention-days: 14

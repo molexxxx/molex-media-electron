@@ -21,8 +21,8 @@ win:
     - target: nsis
       arch:
         - x64
+  artifactName: molexMedia-${version}-Windows-Setup.${ext}
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -46,15 +46,28 @@ mac:
   # and the build is signed. Unsigned local/CI builds skip it automatically.
   notarize: true
   target:
-    - target: dmg
+    - target: pkg
       arch:
-        - x64
-        - arm64
+        - universal
+    # Squirrel.Mac applies updates from a zipped .app, so electron-updater
+    # requires a zip in latest-mac.yml. The .pkg is the user-facing installer
+    # (-Installer); this zip is only consumed by the in-app auto-updater
+    # (-Updater).
+    - target: zip
+      arch:
+        - universal
+  artifactName: molexMedia-${version}-macOS-Updater.${ext}
+pkg:
+  artifactName: molexMedia-${version}-macOS-Installer.${ext}
 linux:
   icon: build/icon.png
   target:
-    - target: AppImage
+    - target: deb
+      arch:
+        - x64
+    - target: rpm
       arch:
         - x64
   maintainer: molex
   category: AudioVideo
+  artifactName: molexMedia-${version}-Linux-Installer.${ext}
