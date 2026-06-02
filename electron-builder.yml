@@ -41,10 +41,11 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # Notarization runs only when Apple credentials (APPLE_ID,
-  # APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID) are present in the environment
-  # and the build is signed. Unsigned local/CI builds skip it automatically.
-  notarize: true
+  # Notarization is handled by the afterSign hook (build/notarize.js), which
+  # submits to Apple without waiting. The CI notarize-macos job polls for
+  # approval and staples the .pkg before uploading to the release. This split
+  # handles the long initial wait on new Apple Developer accounts (up to 24 h).
+  afterSign: build/notarize.js
   target:
     - target: pkg
       arch:
