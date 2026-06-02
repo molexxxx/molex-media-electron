@@ -150,6 +150,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
               {updateStatus === 'available' && `v${updateVersion} is available`}
               {updateStatus === 'downloading' && `Downloading… ${downloadPercent}%`}
               {updateStatus === 'downloaded' && `v${updateVersion} ready to install`}
+              {updateStatus === 'manual' && 'Update via your package manager or download the latest .deb / .rpm from Releases'}
               {updateStatus === 'error' && (
                 <span className="text-red-400">{updateError}</span>
               )}

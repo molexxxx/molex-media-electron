@@ -15,6 +15,12 @@ import { sendToAll } from './ipc/helpers'
 
 /** Initialise the updater: wire events, register IPC, optionally auto-check. */
 export async function initUpdater(): Promise<void> {
+  // electron-updater can only self-update NSIS (Windows) and the zipped .app
+  // (macOS, via Squirrel.Mac). The Linux build ships as .deb/.rpm, which are
+  // managed by the system package manager and have no in-app update path, so
+  // we surface a "manual" status instead of letting checks throw.
+  const isLinux = process.platform === 'linux'
+
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.allowDowngrade = false
@@ -72,6 +78,10 @@ export async function initUpdater(): Promise<void> {
   // --- IPC handlers ---
   ipcMain.handle('updater:get-status', () => lastStatus)
   ipcMain.handle('updater:check', async () => {
+    if (isLinux) {
+      broadcast({ status: 'manual' })
+      return { success: false, manual: true }
+    }
     try {
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Update check timed out')), 15_000)
@@ -99,6 +109,10 @@ export async function initUpdater(): Promise<void> {
   // --- Auto-check on startup (always, regardless of autoUpdate setting) ---
   // Small delay so the window is ready to receive events
   setTimeout(async () => {
+    if (isLinux) {
+      broadcast({ status: 'manual' })
+      return
+    }
     try {
       await autoUpdater.checkForUpdates()
     } catch {
