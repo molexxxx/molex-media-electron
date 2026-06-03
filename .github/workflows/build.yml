@@ -35,7 +35,7 @@ jobs:
             artifact: dist/*.exe
           - os: macos-latest
             script: package:mac
-            artifact: dist/*.pkg
+            artifact: dist/*.dmg
           - os: ubuntu-latest
             script: package:linux
             artifact: dist/*.deb
@@ -100,7 +100,7 @@ jobs:
           name: build-${{ matrix.os }}
           path: |
             dist/*.exe
-            dist/*.pkg
+            dist/*.dmg
             dist/*.zip
             dist/*.deb
             dist/*.rpm
