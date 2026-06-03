@@ -1,22 +1,12 @@
 # -----------------------------------------------------
 # Build - Cross-platform Electron builds
-# Runs on every push to main and on PRs (draft artifacts)
+# Manual trigger only — run this when you want draft
+# installers for testing. CI (lint/test/typecheck) and
+# Release (tagged builds) cover all automatic scenarios.
 # -----------------------------------------------------
 name: Build
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/assets/**'
-      - 'docs/**'
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/assets/**'
-      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
