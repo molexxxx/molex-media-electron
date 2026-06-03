@@ -9,6 +9,6 @@ ffmpeg-bin/
 tsconfig.tsbuildinfo
 docs
 .env
-
+.claude
 # macOS signing material - never commit
 certs/
