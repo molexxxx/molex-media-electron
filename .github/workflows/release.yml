@@ -146,7 +146,7 @@ jobs:
       # if the notarize-macos job times out (>6 h initial notarization).
       - name: Save macOS artifacts for notarization job
         if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-notarize
           path: |
