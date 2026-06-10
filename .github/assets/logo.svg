@@ -2,7 +2,7 @@
   <defs>
     <!-- Glow filter for the waveform -->
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -28,48 +28,67 @@
       <stop offset="0%" stop-color="#7c3aed"/>
       <stop offset="100%" stop-color="#4f46e5"/>
     </linearGradient>
+
+    <!-- One film sprocket perforation, stamped around the reel band -->
+    <rect id="perf" x="-4" y="-55" width="8" height="6" rx="1.8" fill="url(#barGrad)" opacity="0.85"/>
   </defs>
 
-  <!-- === ICON GROUP (circular waveform visualizer) === -->
+  <!-- === ICON GROUP (film reel spinning around a live equalizer) === -->
   <g transform="translate(90, 100)">
-    <!-- Outer ring with pulse animation -->
-    <circle cx="0" cy="0" r="58" fill="none" stroke="url(#ringGrad)" stroke-width="2" opacity="0.3">
-      <animate attributeName="r" values="58;62;58" dur="3s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.3;0.15;0.3" dur="3s" repeatCount="indefinite"/>
+    <!-- Outer halo with pulse animation -->
+    <circle cx="0" cy="0" r="62" fill="none" stroke="url(#ringGrad)" stroke-width="1.5" opacity="0.25">
+      <animate attributeName="r" values="62;65;62" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.25;0.1;0.25" dur="3s" repeatCount="indefinite"/>
     </circle>
 
-    <!-- Inner ring -->
-    <circle cx="0" cy="0" r="52" fill="none" stroke="url(#ringGrad)" stroke-width="1.5" opacity="0.5"/>
+    <!-- Reel band edges -->
+    <circle cx="0" cy="0" r="58" fill="none" stroke="url(#ringGrad)" stroke-width="2" opacity="0.55"/>
+    <circle cx="0" cy="0" r="46" fill="none" stroke="url(#ringGrad)" stroke-width="2" opacity="0.55"/>
 
-    <!-- Animated equalizer bars (center-aligned, symmetric) -->
+    <!-- Rotating sprocket perforations: the reel in motion -->
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="14s" repeatCount="indefinite"/>
+      <use href="#perf"/>
+      <use href="#perf" transform="rotate(22.5)"/>
+      <use href="#perf" transform="rotate(45)"/>
+      <use href="#perf" transform="rotate(67.5)"/>
+      <use href="#perf" transform="rotate(90)"/>
+      <use href="#perf" transform="rotate(112.5)"/>
+      <use href="#perf" transform="rotate(135)"/>
+      <use href="#perf" transform="rotate(157.5)"/>
+      <use href="#perf" transform="rotate(180)"/>
+      <use href="#perf" transform="rotate(202.5)"/>
+      <use href="#perf" transform="rotate(225)"/>
+      <use href="#perf" transform="rotate(247.5)"/>
+      <use href="#perf" transform="rotate(270)"/>
+      <use href="#perf" transform="rotate(292.5)"/>
+      <use href="#perf" transform="rotate(315)"/>
+      <use href="#perf" transform="rotate(337.5)"/>
+    </g>
+
+    <!-- Animated equalizer bars: the soundtrack at the heart of the reel -->
     <g filter="url(#glow)">
-      <!-- Bar 1 -->
-      <rect x="-30" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
+      <rect x="-30" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
         <animate attributeName="height" values="8;28;14;32;8" dur="1.2s" repeatCount="indefinite"/>
         <animate attributeName="y" values="-4;-14;-7;-16;-4" dur="1.2s" repeatCount="indefinite"/>
       </rect>
-      <!-- Bar 2 -->
-      <rect x="-20" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
+      <rect x="-20" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
         <animate attributeName="height" values="8;36;20;12;8" dur="1.4s" repeatCount="indefinite"/>
         <animate attributeName="y" values="-4;-18;-10;-6;-4" dur="1.4s" repeatCount="indefinite"/>
       </rect>
-      <!-- Bar 3 -->
-      <rect x="-10" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
+      <rect x="-10" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
         <animate attributeName="height" values="8;42;16;38;8" dur="1.0s" repeatCount="indefinite"/>
         <animate attributeName="y" values="-4;-21;-8;-19;-4" dur="1.0s" repeatCount="indefinite"/>
       </rect>
-      <!-- Bar 4 (center, tallest) -->
-      <rect x="0" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
-        <animate attributeName="height" values="8;48;24;44;8" dur="0.9s" repeatCount="indefinite"/>
-        <animate attributeName="y" values="-4;-24;-12;-22;-4" dur="0.9s" repeatCount="indefinite"/>
+      <rect x="0" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
+        <animate attributeName="height" values="8;46;24;42;8" dur="0.9s" repeatCount="indefinite"/>
+        <animate attributeName="y" values="-4;-23;-12;-21;-4" dur="0.9s" repeatCount="indefinite"/>
       </rect>
-      <!-- Bar 5 -->
-      <rect x="10" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
+      <rect x="10" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
         <animate attributeName="height" values="8;34;18;40;8" dur="1.1s" repeatCount="indefinite"/>
         <animate attributeName="y" values="-4;-17;-9;-20;-4" dur="1.1s" repeatCount="indefinite"/>
       </rect>
-      <!-- Bar 6 -->
-      <rect x="20" y="-4" width="5" rx="2.5" fill="url(#barGrad)">
+      <rect x="20" y="-4" width="5" height="8" rx="2.5" fill="url(#barGrad)">
         <animate attributeName="height" values="8;24;30;10;8" dur="1.3s" repeatCount="indefinite"/>
         <animate attributeName="y" values="-4;-12;-15;-5;-4" dur="1.3s" repeatCount="indefinite"/>
       </rect>
