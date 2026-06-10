@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo.svg">
-  <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
   <img alt="molexMedia" src="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg" width="500">
 </picture>
 
