@@ -22,7 +22,7 @@ jobs:
     name: Test & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -59,7 +59,7 @@ jobs:
       MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Full history for changelog generation
 
@@ -291,7 +291,7 @@ jobs:
     needs: [release, notarize-macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
