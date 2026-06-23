@@ -27,7 +27,7 @@ footer = ""
 trim = true
 
 [remote.github]
-owner = "tonywied17"
+owner = "molexxxx"
 repo = "molex-media-electron"
 
 [git]

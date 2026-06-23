@@ -1,24 +1,24 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
-  <img alt="molexMedia" src="https://raw.githubusercontent.com/tonywied17/molex-media-electron/refs/heads/main/.github/assets/logo.svg" width="500">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
+  <img alt="molexMedia" src="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg" width="500">
 </picture>
 
 <br/>
 
 **Cross-platform media processing toolkit powered by FFmpeg**
 
-<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-ci-molex.svg?v=b20968b9" alt="CI" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-build-molex.svg?v=cb132195" alt="build" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-release-molex.svg?v=992c1a88" alt="release" /></a>
-<a href="LICENSE"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-license-molex.svg?v=460245ba" alt="license" /></a>
-<a href="https://github.com/tonywied17/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/molex-media-downloads-molex.svg?v=93184e4c" alt="downloads" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=b20968b9" alt="CI" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=cb132195" alt="build" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=992c1a88" alt="release" /></a>
+<a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=460245ba" alt="license" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=93184e4c" alt="downloads" /></a>
 
 <br/>
 
-[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Report a Bug](https://github.com/tonywied17/molex-media-electron/issues/new?template=bug_report.yml) · [Request a Feature](https://github.com/tonywied17/molex-media-electron/issues/new?template=feature_request.yml)
+[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Report a Bug](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) · [Request a Feature](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml)
 
 <br/>
 
@@ -122,9 +122,9 @@ Grab the latest release for your platform:
 
 | Platform | Download | Format |
 |----------|----------|--------|
-| **Windows** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.exe` (NSIS installer) |
-| **macOS** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.dmg` (Intel & Apple Silicon) |
-| **Linux** | [Latest Release](https://github.com/tonywied17/molex-media-electron/releases/latest) | `.AppImage` |
+| **Windows** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.exe` (NSIS installer) |
+| **macOS** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.dmg` (Intel & Apple Silicon) |
+| **Linux** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.AppImage` |
 
 > FFmpeg and yt-dlp are downloaded automatically on first launch — no manual setup required.
 
@@ -134,7 +134,7 @@ Grab the latest release for your platform:
 
 ```bash
 # Clone & install
-git clone https://github.com/tonywied17/molex-media-electron.git
+git clone https://github.com/molexxxx/molex-media-electron.git
 cd molex-media-electron
 npm install
 
@@ -179,9 +179,9 @@ npm run package:linux    # Linux
 
 Found a bug or have an idea? We use GitHub Issue templates to keep things organized:
 
-- [**Report a Bug**](https://github.com/tonywied17/molex-media-electron/issues/new?template=bug_report.yml) — Something isn't working as expected
-- [**Request a Feature**](https://github.com/tonywied17/molex-media-electron/issues/new?template=feature_request.yml) — Suggest a new feature or enhancement
-- [**Browse Open Issues**](https://github.com/tonywied17/molex-media-electron/issues) — See what's already been reported or upvote existing requests
+- [**Report a Bug**](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) — Something isn't working as expected
+- [**Request a Feature**](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml) — Suggest a new feature or enhancement
+- [**Browse Open Issues**](https://github.com/molexxxx/molex-media-electron/issues) — See what's already been reported or upvote existing requests
 
 Please search existing issues before opening a new one to avoid duplicates.
 

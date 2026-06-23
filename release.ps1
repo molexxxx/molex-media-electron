@@ -116,6 +116,6 @@ Write-Host "        Build OK"
 # --- Done ---
 Write-Host ""
 Write-Host "  v$next tag pushed - CI will build, generate changelog, and publish the release." -ForegroundColor Green
-Write-Host "  Monitor progress: https://github.com/tonywied17/molex-media-electron/actions" -ForegroundColor DarkGray
-Write-Host "  Release page:     https://github.com/tonywied17/molex-media-electron/releases/tag/v$next" -ForegroundColor DarkGray
+Write-Host "  Monitor progress: https://github.com/molexxxx/molex-media-electron/actions" -ForegroundColor DarkGray
+Write-Host "  Release page:     https://github.com/molexxxx/molex-media-electron/releases/tag/v$next" -ForegroundColor DarkGray
 Write-Host ""

@@ -32,7 +32,7 @@ $.component('home-page', {
     const platLabel = plat === 'mac' ? 'macOS' : plat === 'linux' ? 'Linux' : 'Windows';
     const hrefDl = platAsset
       ? $.escapeHtml(platAsset.browser_download_url)
-      : 'https://github.com/tonywied17/molex-media-electron/releases/latest';
+      : 'https://github.com/molexxxx/molex-media-electron/releases/latest';
 
     const wfStatus = (w) => {
       const c = w.conclusion || w.status || 'unknown';
@@ -240,7 +240,7 @@ $.component('home-page', {
       <p class="cta-sub">Download Molex Media and start processing your media files in seconds.</p>
       <div class="hero-actions">
         <a z-link="/download" class="btn btn-primary btn-lg" z-to-top>${icon('download', 18)} Download Now</a>
-        <a href="https://github.com/tonywied17/molex-media-electron" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">${icon('github', 18)} View on GitHub</a>
+        <a href="https://github.com/molexxxx/molex-media-electron" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">${icon('github', 18)} View on GitHub</a>
       </div>
     </div>
   </div>

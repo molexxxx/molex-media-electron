@@ -285,7 +285,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => window.api.openExternal('https://github.com/tonywied17/molex-media-electron')}
+              onClick={() => window.api.openExternal('https://github.com/molexxxx/molex-media-electron')}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-surface-200 border border-white/[0.08] hover:border-white/[0.15] transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">

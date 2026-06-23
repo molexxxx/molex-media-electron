@@ -30,7 +30,7 @@ $.component('download-page', {
     const platformCard = (name, ico, asset, color) => {
       const href = asset
         ? $.escapeHtml(asset.browser_download_url)
-        : 'https://github.com/tonywied17/molex-media-electron/releases/latest';
+        : 'https://github.com/molexxxx/molex-media-electron/releases/latest';
       const size = asset ? fmt.bytes(asset.size) : '--';
       const fname = asset ? asset.name : '';
       return `

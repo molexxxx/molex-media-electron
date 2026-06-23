@@ -41,7 +41,7 @@ if (existsSync(envPath)) {
 
 // -- Config ------------------------------------------------------
 const PORT  = parseInt(process.env.PORT || '3610', 10);
-const OWNER = 'tonywied17';
+const OWNER = 'molexxxx';
 const REPO  = 'molex-media-electron';
 const GH    = 'https://api.github.com';
 const POLL  = 5 * 60 * 1000; // 5 min
