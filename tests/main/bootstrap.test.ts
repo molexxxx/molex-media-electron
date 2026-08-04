@@ -13,6 +13,7 @@ vi.mock('../../src/main/config', () => ({
 const mockExistsSync = vi.fn()
 const mockAccessPromise = vi.fn()
 const mockMkdirSync = vi.fn()
+const mockMkdtempSync = vi.fn((prefix: string) => `${prefix}test`)
 const mockWriteFileSync = vi.fn()
 const mockCopyFileSync = vi.fn()
 const mockChmodSync = vi.fn()
@@ -22,6 +23,7 @@ const mockRm = vi.fn((_p: any, _o: any, cb: any) => cb?.())
 vi.mock('fs', () => ({
   existsSync: (...a: any[]) => mockExistsSync(...a),
   mkdirSync: (...a: any[]) => mockMkdirSync(...a),
+  mkdtempSync: (...a: any[]) => mockMkdtempSync(a[0]),
   writeFileSync: (...a: any[]) => mockWriteFileSync(...a),
   copyFileSync: (...a: any[]) => mockCopyFileSync(...a),
   chmodSync: (...a: any[]) => mockChmodSync(...a),

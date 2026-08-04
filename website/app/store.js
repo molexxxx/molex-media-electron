@@ -222,8 +222,11 @@ export const fmt = {
     h = h.replace(/(<br\s*\/?>[\s]*){3,}/gi, '<br>');
     h = h.replace(/(<\/(h[23]|ul)>)\s*(<br\s*\/?>[\s]*)+/gi, '$1');
     h = h.replace(/(<br\s*\/?>[\s]*)+(<h[23]>)/gi, '$2');
-    h = h.replace(/^(\s*<br\s*\/?>[\s]*)+/i, '');
-    h = h.replace(/(\s*<br\s*\/?>[\s]*)+$/i, '');
+    // Whitespace is consumed by exactly one quantifier per iteration. The
+    // earlier `(\s*<br>[\s]*)+` let two of them share a run, which backtracks
+    // exponentially when the anchor ultimately fails.
+    h = h.replace(/^(?:\s*<br\s*\/?>)+\s*/i, '');
+    h = h.replace(/(?:\s*<br\s*\/?>)+\s*$/i, '');
     return h;
   },
 };

@@ -234,8 +234,10 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
   onProgress({ stage: 'extracting', message: 'Extracting FFmpeg binaries...', percent: 0 })
   logger.info(`Download complete (${(data.length / 1024 / 1024).toFixed(1)}MB), extracting...`)
 
-  const tempDir = path.join(os.tmpdir(), `molex-ffmpeg-${Date.now()}`)
-  fs.mkdirSync(tempDir, { recursive: true })
+  // mkdtemp, not a timestamped name: the archive expands to binaries we later
+  // execute, so the staging dir must not be a path another user can predict
+  // and pre-create in the shared temp dir.
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'molex-ffmpeg-'))
 
   try {
     if (config.type === 'zip') {

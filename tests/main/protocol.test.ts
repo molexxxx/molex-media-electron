@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { writeFileSync, unlinkSync, mkdirSync, existsSync } from 'fs'
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
+import { writeFileSync, unlinkSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 
@@ -21,7 +21,7 @@ vi.mock('../../src/main/ytdlp', () => ({
 
 import { serveLocalFile } from '../../src/main/protocol'
 
-const DIR = join(tmpdir(), 'molex-test-protocol')
+const DIR = mkdtempSync(join(tmpdir(), 'molex-test-protocol-'))
 const TEST_FILE = join(DIR, 'test.mp3')
 const TEST_DATA = Buffer.alloc(1024, 0x41) // 1 KB of 'A'
 
@@ -33,6 +33,10 @@ describe('serveLocalFile', () => {
 
   afterEach(() => {
     try { unlinkSync(TEST_FILE) } catch { /* ok */ }
+  })
+
+  afterAll(() => {
+    rmSync(DIR, { recursive: true, force: true })
   })
 
   // -- 404 --

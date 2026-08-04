@@ -109,11 +109,15 @@ export async function ensureYtDlp(): Promise<string> {
   fs.mkdirSync(binDir, { recursive: true })
 
   const data = await followRedirects(url)
-  fs.writeFileSync(binPath, data)
 
+  // Staged through a temp name so a second caller racing this download never
+  // observes (or executes) a half-written binary at binPath.
+  const stagePath = `${binPath}.${process.pid}.part`
+  fs.writeFileSync(stagePath, data, { mode: 0o755 })
   if (process.platform !== 'win32') {
-    fs.chmodSync(binPath, 0o755)
+    fs.chmodSync(stagePath, 0o755)
   }
+  fs.renameSync(stagePath, binPath)
 
   logger.success(`yt-dlp downloaded (${(data.length / 1024 / 1024).toFixed(1)}MB)`)
   return binPath

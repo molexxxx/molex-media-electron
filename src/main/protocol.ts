@@ -9,7 +9,7 @@
  */
 
 import { protocol, net } from 'electron'
-import { openSync, readSync, closeSync, statSync, existsSync } from 'fs'
+import { openSync, readSync, closeSync, fstatSync } from 'fs'
 import { extname } from 'path'
 import { fileURLToPath } from 'url'
 import { logger } from './logger'
@@ -83,13 +83,17 @@ const MIME_TYPES: Record<string, string> = {
  */
 
 export function serveLocalFile(filePath: string, request: Request): Response {
+  // The descriptor is opened before the size is read so both operate on the
+  // same inode - a path re-checked between calls can be swapped underneath us.
+  let fd: number
   try {
-    if (!existsSync(filePath)) {
-      return new Response('File not found', { status: 404 })
-    }
+    fd = openSync(filePath, 'r')
+  } catch {
+    return new Response('File not found', { status: 404 })
+  }
 
-    const stat = statSync(filePath)
-    const total = stat.size
+  try {
+    const total = fstatSync(fd).size
     if (total === 0) {
       return new Response(null, { status: 204 })
     }
@@ -133,10 +137,8 @@ export function serveLocalFile(filePath: string, request: Request): Response {
     }
 
     const chunkSize = end - start + 1
-    const fd = openSync(filePath, 'r')
     const buffer = Buffer.alloc(chunkSize)
     readSync(fd, buffer, 0, chunkSize, start)
-    closeSync(fd)
 
     const headers: Record<string, string> = {
       'Content-Type': contentType,
@@ -152,6 +154,8 @@ export function serveLocalFile(filePath: string, request: Request): Response {
   } catch (err: any) {
     logger.error(`media:// local file error: ${err.message}`)
     return new Response('File read error', { status: 500 })
+  } finally {
+    closeSync(fd)
   }
 }
 
