@@ -50,7 +50,7 @@
     "postcss": "^8.5.26",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-dropzone": "^19.1.1",
+    "react-dropzone": "^20.0.0",
     "tailwindcss": "^4.3.2",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
