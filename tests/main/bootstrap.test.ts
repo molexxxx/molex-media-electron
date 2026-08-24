@@ -50,8 +50,8 @@ vi.mock('os', async (importOriginal) => {
 })
 
 const mockExtractZip = vi.fn()
-vi.mock('extract-zip', () => ({
-  default: (...a: any[]) => mockExtractZip(...a)
+vi.mock('../../src/main/ffmpeg/unzip', () => ({
+  extractZip: (...a: any[]) => mockExtractZip(...a)
 }))
 
 function makeSpawnProc(opts: { stdout?: string; code?: number; error?: Error }) {
@@ -205,7 +205,7 @@ describe('bootstrap', () => {
 
   describe('downloadFFmpeg', () => {
     it('throws when ffmpeg binary not found in extracted files', async () => {
-      // Force win32 platform so the zip path (mocked via extract-zip) is used
+      // Force win32 platform so the zip path (mocked via ./unzip) is used
       // instead of the tar path (which spawns a child process)
       const originalPlatform = process.platform
       Object.defineProperty(process, 'platform', { value: 'win32' })

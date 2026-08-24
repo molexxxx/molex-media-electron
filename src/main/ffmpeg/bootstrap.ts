@@ -16,6 +16,7 @@ import * as os from 'os'
 import { spawn } from 'child_process'
 import { getFFmpegBinDir } from '../config'
 import { logger } from '../logger'
+import { extractZip } from './unzip'
 
 export interface BootstrapProgress {
   stage: 'checking' | 'downloading' | 'extracting' | 'verifying' | 'complete' | 'error'
@@ -243,8 +244,7 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
     if (config.type === 'zip') {
       const zipPath = path.join(tempDir, 'ffmpeg.zip')
       fs.writeFileSync(zipPath, data)
-      const extractZip = (await import('extract-zip')).default
-      await extractZip(zipPath, { dir: tempDir })
+      await extractZip(zipPath, tempDir)
     } else {
       const tarPath = path.join(tempDir, 'ffmpeg.tar.xz')
       fs.writeFileSync(tarPath, data)
@@ -278,8 +278,7 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
       const probeData = await followRedirects(FFPROBE_MAC_URL)
       const probeZip = path.join(tempDir, 'ffprobe.zip')
       fs.writeFileSync(probeZip, probeData)
-      const extractZip = (await import('extract-zip')).default
-      await extractZip(probeZip, { dir: tempDir })
+      await extractZip(probeZip, tempDir)
       ffprobeSrc = findFile(tempDir, ffprobeName)
     }
 
