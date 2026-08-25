@@ -2,6 +2,68 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [4.7.0] - 2026-08-25 - Container and extraction audit
+
+The 4.6.0 audit covered boost and normalization. This one covers the
+tools it did not reach: convert, compress, and extract. The most serious
+finding is silent data loss, not a wrong setting.
+
+As before, every finding was reproduced and measured against a real
+FFmpeg binary before and after the change.
+
+### Fixed
+
+#### Audio tracks were silently discarded
+- Neither convert nor compress emitted any `-map`. FFmpeg's documented
+  automatic stream selection then "will pick one stream ... for audio, it
+  is the stream with the most channels", so a file with a 5.1 main track
+  plus commentary and descriptive tracks came out with one track.
+  Measured: 1 of 3 survived. With "replace" enabled the original was
+  already deleted. Both now map streams explicitly.
+
+#### Conversions that failed outright
+- Converting an MKV with subtitles to MP4 failed with "Could not find tag
+  for codec subrip in stream #2". Convert used a blanket `-map 0`, which
+  also pulled in attachments the container cannot hold. Subtitles are now
+  transcoded to the container's own format (`mov_text` for MP4 and MOV,
+  copy for MKV and TS) and dropped for containers that cannot carry them.
+- Converting a video to MP3 failed with "Exactly one MP3 audio stream is
+  required", for the same reason. Audio-only targets now receive exactly
+  one audio stream and no video.
+- Bitmap subtitles (PGS, VobSub) are left out when the target container
+  only accepts text subtitles, rather than failing the encode.
+
+#### Extraction
+- Frame `count` mode spaced frames across the whole file instead of the
+  selected range, so asking for 6 frames from a 1-second window of a
+  3-second source produced 2. It now divides by the range duration.
+- Extracting an image-based subtitle to SRT/VTT/ASS is refused up front
+  with an explanation instead of failing inside FFmpeg with "Subtitle
+  encoding currently only possible from text to text or bitmap to bitmap".
+
+#### True-peak limiting
+- The limiter is now oversampled 2x, so the dBTP ceiling the UI advertises
+  is the ceiling actually delivered. `alimiter` measures sample peaks, and
+  the FFmpeg docs recommend upsampling before it. Measured asking for
+  -1 dBTP: the previous chain landed at -0.3 dBFS true peak, the new one
+  at exactly -1.0. Cost is roughly 7 seconds on a two-hour film. Set
+  `boostOptions.truePeak` to false to opt out.
+
+### Added
+- `src/main/ffmpeg/processor/stream-map.ts`, holding the container
+  capability matrix (which containers take video, multiple audio streams,
+  and which subtitle codec) and the explicit mapping plan. Every entry was
+  measured by muxing real files rather than inferred from the format name.
+- 59 tests across three new suites covering container capabilities, the
+  mapping emitted by convert and compress, and extraction timing.
+
+### Changed
+- Release notes are generated from an explicit tag range. git-cliff's
+  `--latest` failed to resolve the boundary inside the action container
+  and published v4.6.0 with 308 entries covering the whole project
+  history instead of the 83 commits in the release.
+- Backfilled changelog entries for 4.5.2 through 4.5.7.
+
 ## [4.6.0] - 2026-08-24 - Audio pipeline correctness audit
 
 A full audit of the audio processing chains against the FFmpeg filter
@@ -76,6 +138,60 @@ binary before and after the change.
   a queued file will actually run with.
 - 97 tests across three new suites covering the filter builders, the
   emitted command lines, and the settings resolution.
+
+## [4.5.7] - 2026-06-03 - macOS notarization
+
+### Fixed
+- Switched the macOS installer from `.pkg` to `.dmg` and moved notarization
+  into an explicit CI step, dropping the `afterSign` hook.
+- Retry `stapler` so Apple's ticket propagation delay no longer fails the
+  release job.
+
+## [4.5.6] - 2026-06-01 - Reliable multichannel re-encoding
+
+### Fixed
+- In `inherit` codec mode, substitute E-AC-3 for DTS and TrueHD, whose
+  native FFmpeg encoders reject common bitrate and channel combinations.
+  The bitrate floor is now channel-aware (448k for 5.1, 640k for 7.1).
+
+## [4.5.5] - 2026-06-01 - Clearer processing failures
+
+### Fixed
+- Enable strict-experimental for inherited DTS and TrueHD encoders.
+- Surface the real FFmpeg error instead of the subtitle-dimension warning
+  that was masking it.
+
+## [4.5.4] - 2026-06-01 - PGS subtitle copying
+
+### Fixed
+- Raised `-analyzeduration` and `-probesize` to 200M so subtitle streams
+  that report their dimensions late (PGS in particular) are fully parsed
+  before being stream-copied, fixing "Could not find codec parameters ...
+  unspecified size" failures.
+
+## [4.5.3] - 2026-05-22 - Changelog links
+
+### Fixed
+- Hardcoded the GitHub remote in `cliff.toml` so generated changelog
+  commit links resolve.
+
+### Changed
+- Sidebar naming and ordering; README updates.
+
+## [4.5.2] - 2026-05-22 - Editor launcher and queue fixes
+
+### Added
+- Editor launcher revamp with recents and a file menu, advanced clip
+  export, and dashboard polish.
+
+### Fixed
+- Batch queue dropdown overflow, completed-item sweep, and an inaccurate
+  active-process count.
+- Preset "More" dropdown now flips upward when the viewport is tight.
+- Repaired stale lockfile resolution and synced `@emnapi` transitives.
+
+### Changed
+- CI skips builds for documentation and asset-only changes.
 
 ## [4.5.0] — 2026-05-22 — Compress & Extract UI compaction
 
