@@ -43,6 +43,11 @@ commit_parsers = [
   { message = "^doc", group = "<!-- 5 -->📝 Documentation" },
   { message = "^test", group = "<!-- 6 -->🧪 Testing" },
   { message = "^chore\\(release\\)", skip = true },
+  # Automation noise: badge cache-busters and readme refreshes are
+  # pushed by workflows, not by anyone, and only pad the notes.
+  { message = '^chore\(badges\)', skip = true },
+  { message = '^docs\(badges\)', skip = true },
+  { message = '^readme', skip = true },
   { message = "^chore\\(deps\\)", group = "<!-- 7 -->📦 Dependencies" },
   { message = "^chore|^ci", group = "<!-- 8 -->⚙️ Miscellaneous" },
   { body = ".*security", group = "<!-- 9 -->🔒 Security" },
