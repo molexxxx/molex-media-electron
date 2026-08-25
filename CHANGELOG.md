@@ -2,6 +2,81 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [4.6.0] - 2026-08-24 - Audio pipeline correctness audit
+
+A full audit of the audio processing chains against the FFmpeg filter
+documentation and the filter sources, prompted by reports that volume
+boost had no audible effect. Two independent faults were compounding:
+the value the user set never reached FFmpeg, and the limiter that ran
+afterwards discarded the ceiling it was given.
+
+Every finding below was reproduced and measured against a real FFmpeg
+binary before and after the change.
+
+### Fixed
+
+#### Volume boost had no audible effect
+- Queued files were stamped with the operation panel's settings at the
+  moment they were added and dispatched with that snapshot, so any change
+  made afterwards never reached the main process. Adding files and then
+  setting +100 % ran the +10 % default instead, a 0.83 dB change. Files
+  now follow the live panel until they are edited individually, at which
+  point their own settings win.
+- `alimiter` ran with its `level` option at FFmpeg's default of enabled.
+  The documentation describes this as "Auto level output signal ... This
+  normalizes audio back to 0dB", and it applies a fixed `1/limit` makeup
+  unconditionally. A boosted file therefore came back pinned at digital
+  full scale regardless of the requested gain, and the advertised
+  -1 dBTP ceiling never applied. Measured on a mastered source, the old
+  chain overshot to +0.7 dBFS true peak; the new chain lands at -0.3.
+- `alimiter` now runs with `latency=1`. Without it the filter delays
+  every processed stream by its attack time and does not flush the
+  lookahead buffer at end of stream, drifting audio out of sync with
+  video and clipping the tail.
+
+#### Loudness normalization missed its target
+- The analysis pass measured the untouched source while the encode pass
+  normalized a downmixed one. Since a fold-down changes a programme's
+  measured loudness, the output missed the target by whatever the
+  fold-down shifted it. Both passes now share one pre-filter chain.
+- `acompressor`'s `makeup` is a linear factor with a range of 1 to 64,
+  not a value in dB. The compression presets passed `2`, `3`, and `5`
+  intending +2, +3, and +5 dB, and were applying +6.0, +9.5, and
+  +14.0 dB, overshooting the loudness target by up to 9 dB. They now
+  carry an explicit `dB` suffix, which FFmpeg's evaluator converts.
+- The output sample rate is now pinned with `aresample`. `loudnorm`
+  upsamples to 192 kHz in dynamic mode and the documentation directs
+  callers to set the rate explicitly; without it a stream that fell back
+  to dynamic mode left the entire encode running at 192 kHz.
+- Fallback to dynamic mode is now logged. The analysis pass always
+  reports `dynamic`, so the mode is derived from the measurement using
+  the same condition as `libavfilter/af_loudnorm.c`.
+
+#### Channel layouts and stream handling
+- Volume boost forced every audio output to the widest stream's channel
+  count, upmixing a stereo commentary track to 5.1 when a 5.1 main track
+  was present. The per-stream layout is now preserved.
+- Channel counts with no unambiguous FFmpeg layout name (3, 5, 7) were
+  labelled `stereo`, silently folding those sources down during a
+  volume-only operation. They are now left at their source layout.
+- The boost chain no longer quantizes to 16-bit before the gain stage,
+  which cost precision on 24-bit and float sources.
+
+#### Two-pass compression
+- Concurrent batch workers shared one `ffmpeg2pass` statistics file in
+  the working directory, so parallel two-pass encodes overwrote each
+  other's data. Each task now gets its own `-passlogfile`.
+
+### Added
+
+- `src/main/ffmpeg/processor/audio-filters.ts`, a pure module holding
+  every filter-chain decision, each pinned to the documented FFmpeg
+  behaviour it depends on.
+- `src/renderer/src/stores/taskSettings.ts`, which resolves the settings
+  a queued file will actually run with.
+- 97 tests across three new suites covering the filter builders, the
+  emitted command lines, and the settings resolution.
+
 ## [4.5.0] — 2026-05-22 — Compress & Extract UI compaction
 
 Aligned the **Compress** and **Extract** operation panels with the
