@@ -357,6 +357,48 @@ describe('buildExportCommand', () => {
       expect(fc).toMatch(/atempo=0\.5/)
     })
 
+    /** Multiply out an atempo chain so the product can be checked. */
+    function atempoProduct(fc: string): number {
+      const m = fc.match(/atempo=[0-9.]+/g) || []
+      return m.reduce((acc, f) => acc * parseFloat(f.split('=')[1]), 1)
+    }
+
+    it('chains atempo above 2x instead of using one big stage', async () => {
+      // The filter docs: "tempo greater than 2 will skip some samples
+      // rather than blend them in ... it is always possible to
+      // daisy-chain several instances of atempo".
+      const args = await buildExportCommand(mkRequest({ clips: [mkClip({ speed: 4 })] }))
+      const fc = getFilterComplex(args)
+      const stages = fc.match(/atempo=[0-9.]+/g) || []
+      expect(stages.length).toBeGreaterThan(1)
+      for (const st of stages) {
+        const v = parseFloat(st.split('=')[1])
+        expect(v).toBeLessThanOrEqual(2)
+        expect(v).toBeGreaterThanOrEqual(0.5)
+      }
+    })
+
+    it('keeps every atempo chain mathematically equal to the requested speed', async () => {
+      for (const speed of [0.25, 0.5, 1.5, 2, 4, 5, 8, 16]) {
+        const args = await buildExportCommand(mkRequest({ clips: [mkClip({ speed })] }))
+        const fc = getFilterComplex(args)
+        expect(atempoProduct(fc), `speed ${speed}`).toBeCloseTo(speed, 4)
+      }
+    })
+
+    it('keeps every atempo stage inside the documented range', async () => {
+      for (const speed of [0.1, 0.25, 3, 10, 60]) {
+        const args = await buildExportCommand(mkRequest({ clips: [mkClip({ speed })] }))
+        const stages = (getFilterComplex(args).match(/atempo=[0-9.]+/g) || [])
+        expect(stages.length, `speed ${speed}`).toBeGreaterThan(0)
+        for (const st of stages) {
+          const v = parseFloat(st.split('=')[1])
+          expect(v, `speed ${speed} stage ${st}`).toBeGreaterThanOrEqual(0.5)
+          expect(v, `speed ${speed} stage ${st}`).toBeLessThanOrEqual(2)
+        }
+      }
+    })
+
     it('applies pan (stereotools) when pan != 0', async () => {
       const args = await buildExportCommand(mkRequest({
         clips: [mkClip({ pan: -0.5 })]

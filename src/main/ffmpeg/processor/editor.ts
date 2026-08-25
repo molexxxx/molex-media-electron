@@ -131,18 +131,25 @@ function sec(n: number): string {
  * in [0.5, 100].  For rates below 0.5 then chain multiple filters.
  */
 function buildAtempo(speed: number): string {
-  if (speed >= 0.5 && speed <= 100) return `atempo=${speed}`
   const parts: string[] = []
   let remaining = speed
+
+  // atempo accepts [0.5, 100], but the docs add: "tempo greater than 2
+  // will skip some samples rather than blend them in ... it is always
+  // possible to daisy-chain several instances of atempo to achieve the
+  // desired product tempo." So stay within [0.5, 2] per stage and chain,
+  // which keeps speed-ups blended instead of decimated.
+  while (remaining > 2) {
+    parts.push('atempo=2')
+    remaining /= 2
+  }
   while (remaining < 0.5) {
     parts.push('atempo=0.5')
     remaining /= 0.5
   }
-  while (remaining > 100) {
-    parts.push('atempo=100')
-    remaining /= 100
+  if (Math.abs(remaining - 1) > 0.001) {
+    parts.push(`atempo=${parseFloat(remaining.toFixed(6))}`)
   }
-  if (Math.abs(remaining - 1) > 0.001) parts.push(`atempo=${remaining}`)
   return parts.length > 0 ? parts.join(',') : 'atempo=1'
 }
 
