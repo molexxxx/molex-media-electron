@@ -286,9 +286,13 @@ export async function compressFile(
       // Quality vs bitrate
       if (wantsTargetSize && totalDuration > 0 && opts.targetSizeMB > 0) {
         const targetBits = opts.targetSizeMB * 8 * 1024 * 1024
-        // Estimate audio bitrate from settings (kbps → bps)
+        // Estimate audio bitrate from settings (kbps -> bps), across every
+        // audio stream that will actually be written. Budgeting for one
+        // stream while muxing several overshoots the target by the rest.
         const abrStr = opts.audioBitrate || defaultAudioBitrate(opts.quality) || '128k'
-        const abrBps = (parseInt(abrStr, 10) || 128) * 1000
+        const perStreamBps = (parseInt(abrStr, 10) || 128) * 1000
+        const audioStreamCount = Math.max(1, info.audioStreams.length)
+        const abrBps = perStreamBps * audioStreamCount
         const videoBitrate = Math.max(100000, Math.floor((targetBits / totalDuration) - abrBps))
         out.push('-b:v', String(videoBitrate),
                  '-maxrate', String(videoBitrate * 2),

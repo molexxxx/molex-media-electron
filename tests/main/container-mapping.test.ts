@@ -341,3 +341,73 @@ describe('compress: lossless quality', () => {
     expect(argv()).not.toContain('-x265-params')
   })
 })
+
+/* ------------------------------------------------------------------ */
+/*  Target-size bitrate budget                                         */
+/* ------------------------------------------------------------------ */
+
+describe('compress: target-size budget', () => {
+  /** Video bitrate ffmpeg was asked for, in bits per second. */
+  function videoBitrate(): number {
+    return parseInt(argAfter(argv(), '-b:v') || '0', 10)
+  }
+
+  const targetOpts = (over: Record<string, unknown> = {}) => ({
+    mode: 'target-size' as const,
+    targetSizeMB: 100,
+    quality: 'medium',
+    audioBitrate: '192k',
+    ...over
+  })
+
+  it('budgets for every audio stream that will be written', async () => {
+    // The source has 3 audio tracks and all 3 are now mapped, so the audio
+    // budget is 3 x 192k. Reserving only one stream's worth overshoots the
+    // target by the other two.
+    await compressFile(task({ operation: 'compress', compressOptions: targetOpts() }), vi.fn())
+    const target = 100 * 8 * 1024 * 1024
+    const expected = Math.floor(target / 120 - 3 * 192_000)
+    expect(videoBitrate()).toBe(expected)
+  })
+
+  it('reserves less for a single-track source', async () => {
+    mockProbeMedia.mockResolvedValue(probe({
+      audioStreams: [{ index: 1, codec_name: 'aac', channels: 2, sample_rate: '48000' }]
+    }))
+    await compressFile(task({ operation: 'compress', compressOptions: targetOpts() }), vi.fn())
+    const target = 100 * 8 * 1024 * 1024
+    expect(videoBitrate()).toBe(Math.floor(target / 120 - 192_000))
+  })
+
+  it('leaves more room for video as tracks are removed', async () => {
+    await compressFile(task({ operation: 'compress', compressOptions: targetOpts() }), vi.fn())
+    const withThree = videoBitrate()
+
+    vi.clearAllMocks()
+    mockGetConfig.mockResolvedValue(baseConfig)
+    mockRunCommand.mockReturnValue({
+      promise: Promise.resolve({ code: 0, killed: false, stdout: '', stderr: '' }),
+      process: { kill: vi.fn() }
+    })
+    mockProbeMedia.mockResolvedValue(probe({
+      audioStreams: [{ index: 1, codec_name: 'aac', channels: 2, sample_rate: '48000' }]
+    }))
+    await compressFile(task({ operation: 'compress', compressOptions: targetOpts() }), vi.fn())
+    expect(videoBitrate()).toBeGreaterThan(withThree)
+  })
+
+  it('never drops below the video bitrate floor', async () => {
+    await compressFile(
+      task({ operation: 'compress', compressOptions: targetOpts({ targetSizeMB: 1 }) }),
+      vi.fn()
+    )
+    expect(videoBitrate()).toBe(100000)
+  })
+
+  it('sets maxrate and bufsize relative to the computed bitrate', async () => {
+    await compressFile(task({ operation: 'compress', compressOptions: targetOpts() }), vi.fn())
+    const b = videoBitrate()
+    expect(parseInt(argAfter(argv(), '-maxrate') || '0', 10)).toBe(b * 2)
+    expect(parseInt(argAfter(argv(), '-bufsize') || '0', 10)).toBe(b * 4)
+  })
+})
