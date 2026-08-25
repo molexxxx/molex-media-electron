@@ -14,6 +14,7 @@ import { logger } from '../../logger'
 import { probeMedia, formatDuration, formatFileSize } from '../probe'
 import { runCommand, parseProgress } from '../runner'
 import { resolveGpuCodec, getHwaccelInputArgs, type GpuMode } from '../gpu'
+import { planStreamMap, containerCapabilities } from './stream-map'
 import {
   type ProcessingTask,
   type TaskProgressCallback,
@@ -114,8 +115,32 @@ export async function convertFile(
     // "Could not find codec parameters ... unspecified size" copy failures.
     args.push('-analyzeduration', '200M', '-probesize', '200M', '-i', task.filePath, '-threads', '0')
 
+    // Map streams explicitly. FFmpeg's automatic selection keeps only the
+    // audio stream with the most channels, silently discarding commentary
+    // and descriptive tracks; a blanket `-map 0` instead drags in
+    // attachments and subtitles the target container cannot store and
+    // fails the encode outright.
+    const caps = containerCapabilities(opts.outputFormat)
+    const plan = planStreamMap(
+      opts.outputFormat,
+      {
+        videoCount: info.videoStreams.length,
+        audioCount: info.audioStreams.length,
+        subtitles: info.subtitleStreams
+      },
+      config.preserveSubtitles === true
+    )
+    args.push(...plan.args)
+
+    if (plan.droppedAudio > 0) {
+      logger.warn(`.${opts.outputFormat} holds one audio stream; keeping track 1 of ${info.audioStreams.length} for ${task.fileName}`)
+    }
+    if (plan.droppedSubtitles > 0) {
+      logger.warn(`Dropping ${plan.droppedSubtitles} subtitle stream(s) that .${opts.outputFormat} cannot carry for ${task.fileName}`)
+    }
+
     // Video codec
-    if (info.isVideoFile) {
+    if (caps.video && info.isVideoFile) {
       if (opts.videoCodec === 'copy') {
         args.push('-c:v', 'copy')
       } else {
@@ -139,8 +164,8 @@ export async function convertFile(
       if (opts.audioBitrate && opts.audioBitrate !== '0') args.push('-b:a', opts.audioBitrate)
     }
 
-    if (config.preserveSubtitles && info.isVideoFile) {
-      args.push('-map', '0', '-c:s', 'copy')
+    if (plan.subtitleCodec) {
+      args.push('-c:s', plan.subtitleCodec)
     }
 
     args.push(tempPath)
