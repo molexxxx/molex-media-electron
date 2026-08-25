@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import type { FileItem, Operation, NormalizeOptions, ConvertOptions, ExtractOptions, CompressOptions, CompressionLevel, DownmixMode, BoostOptions } from '../../../stores/types'
+import { resolveFileSettings } from '../../../stores/taskSettings'
 import { BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from '../../../stores/types'
 import { BUILTIN_PRESETS } from '../../../stores/types'
 import { useAppStore } from '../../../stores/appStore'
@@ -283,16 +284,18 @@ interface InlineSettingsEditorProps {
 }
 
 export function InlineSettingsEditor({ file, onClose }: InlineSettingsEditorProps): React.JSX.Element {
-  const { updateFileOperation, files } = useAppStore()
-  const op = file.operation || 'convert'
+  const store = useAppStore()
+  const { updateFileOperation, files } = store
+  // Seed from the settings that would actually run: an untouched file
+  // still follows the operation panel, so the editor must open on those
+  // values rather than on the snapshot taken when the file was added.
+  const initial = resolveFileSettings(file, store)
+  const op = initial.operation
 
-  // Local editable state - initialised from the file's stamped options
-  const [boostPercent, setBoostPercent] = useState(file.boostPercent ?? 10)
-  const [boostOptions, setBoostOptionsState] = useState<BoostOptions>(
-    file.boostOptions || { percent: file.boostPercent ?? 10, limiter: true, limiterCeiling: -1, hpfHz: 0 }
-  )
+  const [boostPercent, setBoostPercent] = useState(initial.boostOptions?.percent ?? initial.boostPercent)
+  const [boostOptions, setBoostOptionsState] = useState<BoostOptions>(initial.boostOptions)
   const [selectedBoostPreset, setSelectedBoostPreset] = useState<string | null>(
-    file.selectedBoostPreset ?? 'gentle-lift'
+    initial.selectedBoostPreset ?? 'gentle-lift'
   )
   const setBoostOptions = (o: Partial<BoostOptions>) => {
     setBoostOptionsState((prev) => {
@@ -305,27 +308,19 @@ export function InlineSettingsEditor({ file, onClose }: InlineSettingsEditorProp
     setBoostPercent(v)
     setBoostOptionsState((prev) => ({ ...prev, percent: v }))
   }
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(file.selectedPreset ?? 'defaults')
-  const [normalizeOptions, setNormalizeOptions] = useState<NormalizeOptions>(
-    file.normalizeOptions || { I: -16, TP: -1.5, LRA: 11 }
-  )
-  const [convertOptions, setConvertOptions] = useState<ConvertOptions>(
-    file.convertOptions || { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' }
-  )
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(initial.selectedPreset ?? 'defaults')
+  const [normalizeOptions, setNormalizeOptions] = useState<NormalizeOptions>(initial.normalizeOptions)
+  const [convertOptions, setConvertOptions] = useState<ConvertOptions>(initial.convertOptions)
   const [selectedConvertPreset, setSelectedConvertPreset] = useState<string | null>(
-    file.selectedConvertPreset ?? 'mp4-h264'
+    initial.selectedConvertPreset ?? 'mp4-h264'
   )
-  const [extractOptions, setExtractOptions] = useState<ExtractOptions>(
-    file.extractOptions || { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' }
-  )
+  const [extractOptions, setExtractOptions] = useState<ExtractOptions>(initial.extractOptions)
   const [selectedExtractPreset, setSelectedExtractPreset] = useState<string | null>(
-    file.selectedExtractPreset ?? 'audio-mp3-320'
+    initial.selectedExtractPreset ?? 'audio-mp3-320'
   )
-  const [compressOptions, setCompressOptions] = useState<CompressOptions>(
-    file.compressOptions || { mode: 'crf', targetSizeMB: 0, quality: 'medium', customCrf: 23, videoCodec: 'libx264', speed: 'medium', pixelFormat: 'yuv420p', tune: '', maxHeight: 1080, twoPass: false, audioCodec: 'aac', audioBitrate: '192k' }
-  )
+  const [compressOptions, setCompressOptions] = useState<CompressOptions>(initial.compressOptions)
   const [selectedCompressPreset, setSelectedCompressPreset] = useState<string | null>(
-    file.selectedCompressPreset ?? 'web-1080p'
+    initial.selectedCompressPreset ?? 'web-1080p'
   )
 
   const conflicts = useMemo(() =>

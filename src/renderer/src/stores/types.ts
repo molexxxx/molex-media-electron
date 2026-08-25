@@ -433,6 +433,12 @@ export interface FileItem {
   height?: number
   // Per-file operation assignment (stamped by addFiles from global state if omitted)
   operation?: Operation
+  /**
+   * Set once the file has been edited through the inline settings editor.
+   * Until then the file follows the live operation panel rather than the
+   * snapshot taken when it was added. See stores/taskSettings.
+   */
+  customized?: boolean
   boostPercent?: number
   boostOptions?: BoostOptions
   selectedPreset?: string | null

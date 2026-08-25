@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../stores/appStore'
 import type { FileItem } from '../../stores/types'
+import { buildTaskSpec } from '../../stores/taskSettings'
 import { OperationPanel } from './components/OperationPanel'
 import { QueueList } from './components/QueueList'
 import { WorkersControl } from './components/WorkersControl'
@@ -126,17 +127,11 @@ export default function FileQueue(): React.JSX.Element {
 
     const outputDir = batchOutputDir || undefined
 
-    const taskSpecs = currentFiles.map((f) => ({
-      filePath: f.path,
-      operation: f.operation || useAppStore.getState().operation,
-      outputDir,
-      boostPercent: f.boostPercent,
-      boostOptions: f.boostOptions,
-      normalizeOptions: f.normalizeOptions,
-      convertOptions: f.convertOptions,
-      extractOptions: f.extractOptions,
-      compressOptions: f.compressOptions,
-    }))
+    // Files that were never edited individually follow the live operation
+    // panel, so slider/preset changes made after the files were added are
+    // the ones that actually run.
+    const globals = useAppStore.getState()
+    const taskSpecs = currentFiles.map((f) => buildTaskSpec(f, globals, outputDir))
 
     const { batchWorkers } = useAppStore.getState()
     await window.api.startBatchQueue(taskSpecs, batchWorkers || undefined)

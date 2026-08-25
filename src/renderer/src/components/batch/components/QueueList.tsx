@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import type { FileItem, ProcessingTask, Operation } from '../../../stores/types'
 import { BUILTIN_PRESETS } from '../../../stores/types'
 import { useAppStore } from '../../../stores/appStore'
+import { resolveFileSettings, type ResolvedFileSettings } from '../../../stores/taskSettings'
 import { formatSize, formatDuration } from '../utils'
 import { OP_TABS } from './OperationPanel'
 import { STATUS_COLORS, STATUS_LABELS } from '../../shared/constants'
@@ -47,33 +48,37 @@ function isActive(task?: ProcessingTask): boolean {
   return !!task && (task.status === 'processing' || task.status === 'analyzing' || task.status === 'finalizing')
 }
 
-/** Build a short context-aware label for the task badge area. */
-function getTaskBadge(file: FileItem): { label: string; color: string } {
-  const op = file.operation || 'normalize'
-  const inputExt = file.ext.replace('.', '').toUpperCase()
+/**
+ * Build a short context-aware label for the task badge area.
+ *
+ * Reads the resolved settings rather than the file's stamped snapshot, so
+ * the badge always shows the values the run will actually use.
+ */
+function getTaskBadge(ext: string, settings: ResolvedFileSettings): { label: string; color: string } {
+  const inputExt = ext.replace('.', '').toUpperCase()
 
-  switch (op) {
+  switch (settings.operation) {
     case 'convert': {
-      const outFmt = file.convertOptions?.outputFormat?.toUpperCase() || 'MP4'
+      const outFmt = settings.convertOptions?.outputFormat?.toUpperCase() || 'MP4'
       if (outFmt !== inputExt) return { label: `${inputExt} › ${outFmt}`, color: 'text-blue-400' }
       return { label: outFmt, color: 'text-surface-400' }
     }
     case 'extract': {
-      const outFmt = file.extractOptions?.outputFormat?.toUpperCase() || 'MP3'
+      const outFmt = settings.extractOptions?.outputFormat?.toUpperCase() || 'MP3'
       return { label: `› ${outFmt}`, color: 'text-cyan-400' }
     }
     case 'normalize': {
-      const lufs = file.normalizeOptions?.I ?? -16
-      const preset = BUILTIN_PRESETS.find((p) => p.id === file.selectedPreset)
+      const lufs = settings.normalizeOptions?.I ?? -16
+      const preset = BUILTIN_PRESETS.find((p) => p.id === settings.selectedPreset)
       return { label: preset ? preset.name : `${lufs} LUFS`, color: 'text-purple-400' }
     }
     case 'boost': {
-      const pct = file.boostPercent ?? 10
+      const pct = settings.boostOptions?.percent ?? settings.boostPercent
       return { label: `${pct > 0 ? '+' : ''}${pct}%`, color: 'text-green-400' }
     }
     case 'compress': {
-      const q = file.compressOptions?.quality || 'high'
-      const mb = file.compressOptions?.targetSizeMB
+      const q = settings.compressOptions?.quality || 'high'
+      const mb = settings.compressOptions?.targetSizeMB
       return { label: mb ? `${mb} MB` : q.charAt(0).toUpperCase() + q.slice(1), color: 'text-amber-400' }
     }
   }
@@ -147,6 +152,9 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
   const [showSettingsCard, setShowSettingsCard] = useState(false)
   const settingsAnchorRef = useRef<HTMLButtonElement>(null)
   const opBadgeRef = useRef<HTMLButtonElement>(null)
+  const globals = useAppStore()
+  const settings = resolveFileSettings(file, globals)
+  const badge = getTaskBadge(file.ext, settings)
   const active = isActive(task)
   const done = task?.status === 'complete'
   const failed = task?.status === 'error'
@@ -191,17 +199,17 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
           ref={opBadgeRef}
           onClick={() => !locked && setShowPicker(!showPicker)}
           disabled={locked}
-          className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-medium rounded-md border transition-all ${OP_COLORS[file.operation || 'normalize']} ${
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-2xs font-medium rounded-md border transition-all ${OP_COLORS[settings.operation]} ${
             locked ? 'cursor-default' : 'cursor-pointer hover:brightness-125'
           }`}
-          title={locked ? OP_LABELS[file.operation || 'normalize'] : `Click to change operation (${OP_LABELS[file.operation || 'normalize']})`}
+          title={locked ? OP_LABELS[settings.operation] : `Click to change operation (${OP_LABELS[settings.operation]})`}
         >
-          <span className="[&>svg]:w-3 [&>svg]:h-3">{getOpIcon(file.operation || 'normalize')}</span>
-          <span className="hidden sm:inline">{OP_LABELS[file.operation || 'normalize']}</span>
+          <span className="[&>svg]:w-3 [&>svg]:h-3">{getOpIcon(settings.operation)}</span>
+          <span className="hidden sm:inline">{OP_LABELS[settings.operation]}</span>
         </button>
         {showPicker && (
           <OpPicker
-            current={file.operation || 'normalize'}
+            current={settings.operation}
             onChange={(op) => onChangeOp(file.path, op)}
             onClose={() => setShowPicker(false)}
             anchorRef={opBadgeRef}
@@ -210,8 +218,8 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       </div>
 
       {/* Task info badge */}
-      <span className={`w-20 shrink-0 text-2xs font-mono font-semibold truncate ${getTaskBadge(file).color}`}>
-        {getTaskBadge(file).label}
+      <span className={`w-20 shrink-0 text-2xs font-mono font-semibold truncate ${badge.color}`}>
+        {badge.label}
       </span>
 
       {/* Filename + settings toggle */}
@@ -288,7 +296,7 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       {/* Settings dropdown card */}
       {showSettingsCard && !locked && (
         <SettingsHoverCard
-          file={file}
+          settings={settings}
           anchorRef={settingsAnchorRef}
           onRequestEdit={() => { setShowSettingsCard(false); onRequestEdit(file.path) }}
           onClose={() => setShowSettingsCard(false)}

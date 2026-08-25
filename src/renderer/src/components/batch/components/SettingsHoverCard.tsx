@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import type { FileItem, Operation } from '../../../stores/types'
+import type { Operation } from '../../../stores/types'
+import type { ResolvedFileSettings } from '../../../stores/taskSettings'
 import { BUILTIN_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from '../../../stores/types'
 import { OP_TABS } from './OperationPanel'
 
@@ -13,14 +14,14 @@ function getOpIcon(op: Operation): React.JSX.Element | null {
   return OP_TABS.find((t) => t.id === op)?.icon || null
 }
 
-function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
-  const op = file.operation || 'normalize'
+function SettingsContent({ settings }: { settings: ResolvedFileSettings }): React.JSX.Element {
+  const op = settings.operation
 
   const renderDetails = (): React.JSX.Element => {
     switch (op) {
       case 'normalize': {
-        const opts = file.normalizeOptions || { I: -16, TP: -1.5, LRA: 11 }
-        const preset = BUILTIN_PRESETS.find((p) => p.id === file.selectedPreset)
+        const opts = settings.normalizeOptions
+        const preset = BUILTIN_PRESETS.find((p) => p.id === settings.selectedPreset)
         const compression = (opts as { compression?: string }).compression ?? 'off'
         const downmix = (opts as { downmix?: string }).downmix ?? 'keep'
         return (
@@ -51,7 +52,7 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
         )
       }
       case 'boost': {
-        const pct = file.boostPercent ?? 10
+        const pct = settings.boostOptions?.percent ?? settings.boostPercent
         return (
           <div className="text-2xs text-surface-400 font-mono">
             Boost: {pct > 0 ? '+' : ''}{pct}%
@@ -59,7 +60,7 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
         )
       }
       case 'convert': {
-        const opts = file.convertOptions || { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' }
+        const opts = settings.convertOptions
         return (
           <div className="space-y-1">
             <div className="text-2xs text-surface-400"><span className="text-surface-500">Format:</span> {opts.outputFormat.toUpperCase()}</div>
@@ -71,8 +72,8 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
         )
       }
       case 'extract': {
-        const opts = file.extractOptions || { outputFormat: 'mp3', streamIndex: 0 }
-        const preset = BUILTIN_EXTRACT_PRESETS.find((p) => p.id === file.selectedExtractPreset)
+        const opts = settings.extractOptions
+        const preset = BUILTIN_EXTRACT_PRESETS.find((p) => p.id === settings.selectedExtractPreset)
         const mode = opts.mode || 'audio'
         const modeLabel = mode === 'audio' ? 'Audio'
           : mode === 'video' ? 'Silent Video'
@@ -111,8 +112,8 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
         )
       }
       case 'compress': {
-        const opts = file.compressOptions || { targetSizeMB: 0, quality: 'high' as const }
-        const preset = BUILTIN_COMPRESS_PRESETS.find((p) => p.id === file.selectedCompressPreset)
+        const opts = settings.compressOptions
+        const preset = BUILTIN_COMPRESS_PRESETS.find((p) => p.id === settings.selectedCompressPreset)
         const mode = opts.mode === 'target-size' || (opts.mode == null && opts.targetSizeMB > 0) ? 'target-size' : 'crf'
         return (
           <div className="space-y-1">
@@ -144,13 +145,14 @@ function SettingsContent({ file }: { file: FileItem }): React.JSX.Element {
 }
 
 interface SettingsHoverCardProps {
-  file: FileItem
+  /** Settings the run will actually use (file overrides merged with panel). */
+  settings: ResolvedFileSettings
   anchorRef: React.RefObject<HTMLElement | null>
   onRequestEdit: () => void
   onClose: () => void
 }
 
-export function SettingsHoverCard({ file, anchorRef, onRequestEdit, onClose }: SettingsHoverCardProps): React.JSX.Element | null {
+export function SettingsHoverCard({ settings, anchorRef, onRequestEdit, onClose }: SettingsHoverCardProps): React.JSX.Element | null {
   const cardRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -185,7 +187,7 @@ export function SettingsHoverCard({ file, anchorRef, onRequestEdit, onClose }: S
         className="fixed z-[100] w-52 rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl p-3 animate-fade-in"
         style={{ top: pos.top, left: pos.left }}
       >
-        <SettingsContent file={file} />
+        <SettingsContent settings={settings} />
         <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
           <button
             onClick={(e) => { e.stopPropagation(); onRequestEdit() }}

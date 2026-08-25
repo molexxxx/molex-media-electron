@@ -16,6 +16,8 @@ import type {
 
 export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions, BoostPreset, CompressPreset, ExtractPreset } from './types'
 export { BUILTIN_PRESETS, BUILTIN_BOOST_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from './types'
+export { resolveFileSettings, buildTaskSpec, isCustomized } from './taskSettings'
+export type { GlobalOperationSettings, ResolvedFileSettings, TaskSpec } from './taskSettings'
 
 interface AppState {
   // Navigation
@@ -251,7 +253,9 @@ export const useAppStore = create<AppState>((set) => ({
   updateFileOperation: (filePath, operation, options) =>
     set((state) => ({
       files: state.files.map((f) =>
-        f.path === filePath ? { ...f, operation, ...options } : f
+        // Editing a file pins its settings: from here on the operation
+        // panel no longer overrides them.
+        f.path === filePath ? { ...f, operation, ...options, customized: true } : f
       )
     })),
 
