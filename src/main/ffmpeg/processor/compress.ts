@@ -88,6 +88,40 @@ function defaultAudioBitrate(quality: string): string {
   return '256k'
 }
 
+/**
+ * Encoder arguments that actually produce lossless output.
+ *
+ * `-crf 0` only means lossless for some encoders. Measured PSNR against
+ * the source, where `inf` is bit-exact:
+ *
+ *   libx264    -crf 0            -> inf        (lossless)
+ *   libaom-av1 -crf 0 -b:v 0     -> inf        (lossless)
+ *   libx265    -crf 0            -> 61.99 dB   (lossy)
+ *   libvpx-vp9 -crf 0 -b:v 0     -> 85.56 dB   (lossy)
+ *   libsvtav1  -crf 0            -> 35.83 dB   (lossy)
+ *
+ * x265 and VP9 have explicit lossless switches. SVT-AV1 exposes none in
+ * this build, so `exact` is false and the caller warns rather than
+ * quietly handing back a lossy file the user asked to be lossless.
+ *
+ * @returns The encoder args, and whether they are genuinely lossless.
+ */
+export function buildLosslessArgs(codec: string): { args: string[]; exact: boolean } {
+  switch (codec) {
+    case 'libx264':
+      return { args: ['-crf', '0'], exact: true }
+    case 'libx265':
+      return { args: ['-x265-params', 'lossless=1'], exact: true }
+    case 'libvpx-vp9':
+      return { args: ['-lossless', '1'], exact: true }
+    case 'libaom-av1':
+      return { args: ['-crf', '0', '-b:v', '0'], exact: true }
+    default:
+      // Includes libsvtav1 and every GPU encoder: no lossless mode.
+      return { args: ['-crf', '0'], exact: false }
+  }
+}
+
 /** Resolve effective CRF for the chosen codec + quality (or custom override). */
 function resolveCrf(opts: CompressOptions, codec: string): number {
   if (opts.quality === 'custom' && typeof opts.customCrf === 'number') {
@@ -259,6 +293,14 @@ export async function compressFile(
         out.push('-b:v', String(videoBitrate),
                  '-maxrate', String(videoBitrate * 2),
                  '-bufsize', String(videoBitrate * 4))
+      } else if (opts.quality === 'lossless' && !gpuResult.isGpu) {
+        // `-crf 0` is not lossless for every encoder; use each one's own
+        // switch, and say so when the encoder cannot do it at all.
+        const lossless = buildLosslessArgs(codec)
+        out.push(...lossless.args)
+        if (!lossless.exact) {
+          logger.warn(`${codec} has no lossless mode; encoding ${task.fileName} at CRF 0 instead (near-lossless, not bit-exact)`)
+        }
       } else {
         const crf = resolveCrf(opts, softwareCodec)
         if (gpuResult.isGpu) {

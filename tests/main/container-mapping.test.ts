@@ -56,7 +56,7 @@ vi.mock('fs', () => ({
 
 import type { ProcessingTask } from '../../src/main/ffmpeg/processor/types'
 import { convertFile } from '../../src/main/ffmpeg/processor/convert'
-import { compressFile } from '../../src/main/ffmpeg/processor/compress'
+import { compressFile, buildLosslessArgs } from '../../src/main/ffmpeg/processor/compress'
 
 const baseConfig = {
   ffmpegPath: '/usr/bin/ffmpeg',
@@ -280,5 +280,64 @@ describe('compress: stream mapping', () => {
       vi.fn()
     )
     expect(maps(argv())).toContain('0:a?')
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/*  Lossless quality tier                                              */
+/* ------------------------------------------------------------------ */
+
+describe('compress: lossless quality', () => {
+  it('uses each encoder\'s own lossless switch', () => {
+    // Measured PSNR against the source (inf = bit-exact):
+    //   libx264   -crf 0                  -> inf
+    //   libx265   -crf 0                  -> 61.99 dB  (lossy!)
+    //   libx265   -x265-params lossless=1 -> inf
+    //   libvpx-vp9 -crf 0 -b:v 0          -> 85.56 dB  (lossy!)
+    //   libvpx-vp9 -lossless 1            -> inf
+    expect(buildLosslessArgs('libx264')).toEqual({ args: ['-crf', '0'], exact: true })
+    expect(buildLosslessArgs('libx265')).toEqual({ args: ['-x265-params', 'lossless=1'], exact: true })
+    expect(buildLosslessArgs('libvpx-vp9')).toEqual({ args: ['-lossless', '1'], exact: true })
+    expect(buildLosslessArgs('libaom-av1')).toEqual({ args: ['-crf', '0', '-b:v', '0'], exact: true })
+  })
+
+  it('reports encoders that cannot do lossless at all', () => {
+    // libsvtav1 -crf 0 measured 35.83 dB, nowhere near lossless.
+    expect(buildLosslessArgs('libsvtav1').exact).toBe(false)
+    expect(buildLosslessArgs('h264_nvenc').exact).toBe(false)
+  })
+
+  it('emits the lossless switch rather than a bare crf for x265', async () => {
+    await compressFile(
+      task({ operation: 'compress', compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'lossless', videoCodec: 'libx265' } }),
+      vi.fn()
+    )
+    expect(argAfter(argv(), '-x265-params')).toBe('lossless=1')
+    expect(argv()).not.toContain('-crf')
+  })
+
+  it('emits -lossless 1 for VP9', async () => {
+    await compressFile(
+      task({ operation: 'compress', compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'lossless', videoCodec: 'libvpx-vp9' } }),
+      vi.fn()
+    )
+    expect(argAfter(argv(), '-lossless')).toBe('1')
+  })
+
+  it('still uses crf 0 for x264, which is genuinely lossless there', async () => {
+    await compressFile(
+      task({ operation: 'compress', compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'lossless', videoCodec: 'libx264' } }),
+      vi.fn()
+    )
+    expect(argAfter(argv(), '-crf')).toBe('0')
+  })
+
+  it('leaves non-lossless tiers on the CRF table', async () => {
+    await compressFile(
+      task({ operation: 'compress', compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'high', videoCodec: 'libx265' } }),
+      vi.fn()
+    )
+    expect(argAfter(argv(), '-crf')).toBe('22')
+    expect(argv()).not.toContain('-x265-params')
   })
 })
