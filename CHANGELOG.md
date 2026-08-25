@@ -2,6 +2,53 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [4.7.1] - 2026-08-25 - GPU, editor, and encoder-quality audit
+
+Completes the sweep started in 4.6.0 by covering what the previous two
+rounds did not reach: the GPU encoder paths, the editor export pipeline,
+and the target-size bitrate budget. Flag names were verified against the
+encoders' own AVOption tables, and every behavioural claim was measured.
+
+### Fixed
+
+- **"Lossless" was not lossless on most encoders.** The quality tier mapped
+  to `-crf 0` for every codec. Measured PSNR against the source, where
+  `inf` is bit-exact: libx264 `inf`, libaom-av1 `inf`, libx265 61.99 dB,
+  libvpx-vp9 85.56 dB, libsvtav1 35.83 dB. H.265 and VP9 now use their own
+  lossless switches; SVT-AV1 has none in these builds and says so instead
+  of pretending.
+- **AMF ignored B-frame quality.** `h264_amf` exposes `-qp_i`, `-qp_p` and
+  `-qp_b`, each defaulting to -1 (encoder chooses). Only I and P were set,
+  so B-frames fell outside the requested quality. All three are now set.
+- **Target-size budgets accounted for one audio stream.** Now that every
+  audio track is preserved, a three-track source was overshooting its
+  target by two tracks' worth of bitrate. The budget scales with the
+  number of streams actually written.
+- **Editor speed changes above 2x lost detail.** The `atempo` docs note
+  that "tempo greater than 2 will skip some samples rather than blend them
+  in" and recommend daisy-chaining. Speed changes are now chained so no
+  stage exceeds 2x, with the product still exactly the requested speed.
+
+### Changed
+
+- Release notes no longer carry badge cache-bust and readme-refresh
+  commits, which are pushed by workflows rather than by anyone. The
+  v4.5.6..v4.5.7 range alone contained 23 of them.
+- `gpu.ts` is now covered by tests and included in coverage reporting
+  rather than excluded from it.
+- README corrected: frame extraction offers interval, fps, count, and a
+  single midpoint thumbnail. It never had scene-change detection.
+
+### Verified, no change needed
+
+- NVENC, QSV and AMF preset and quality flags all match the encoders'
+  AVOption tables, including preset direction (NVENC p1 fastest, p7 best).
+- Hwaccel flags deliberately omit `-hwaccel_output_format`, which would
+  exhaust the decoder surface pool across concurrent batch workers.
+- The editor's audio graph is sound: `asetpts=PTS-STARTPTS` before concat,
+  `aformat` normalisation per segment, and `amix=...:normalize=0` so a
+  multi-track mix is not silently attenuated.
+
 ## [4.7.0] - 2026-08-25 - Container and extraction audit
 
 The 4.6.0 audit covered boost and normalization. This one covers the
