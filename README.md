@@ -10,11 +10,11 @@
 
 **Cross-platform media processing toolkit powered by FFmpeg**
 
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=b20968b9" alt="CI" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=cb132195" alt="build" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=992c1a88" alt="release" /></a>
-<a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=460245ba" alt="license" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=93184e4c" alt="downloads" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=22056855" alt="CI" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=2e9321a1" alt="build" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=cd144dc0" alt="release" /></a>
+<a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=36fef762" alt="license" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=7ff1e815" alt="downloads" /></a>
 
 <br/>
 
