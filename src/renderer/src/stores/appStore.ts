@@ -160,7 +160,7 @@ export const useAppStore = create<AppState>((set) => ({
       const DONE_STATUSES = new Set(['complete', 'error', 'cancelled'])
       // Any task in a terminal state belongs to a "finished" file. When the
       // user adds anything new, sweep those out so the queue only shows
-      // pending work — no more orphaned green checkmarks lingering next to
+      // pending work - no more orphaned green checkmarks lingering next to
       // freshly queued items.
       const finishedPaths = new Set(
         state.tasks
@@ -181,7 +181,7 @@ export const useAppStore = create<AppState>((set) => ({
         }
         const existing = existingByPath.get(f.path)
         if (!existing) return true
-        // Pending duplicate in the live queue — skip.
+        // Pending duplicate in the live queue - skip.
         return false
       })
       // Drop finished entries + any re-added duplicates and their stale tasks.

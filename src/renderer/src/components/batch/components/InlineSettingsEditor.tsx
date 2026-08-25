@@ -137,7 +137,7 @@ function InlineNormalizeConfig({ normalizeOptions, setNormalizeOptions, selected
         ))}
       </div>
 
-      {/* Preset description — elevated row */}
+      {/* Preset description - elevated row */}
       {selectedPreset && (() => {
         const p = BUILTIN_PRESETS.find((x) => x.id === selectedPreset)
         if (!p) return null

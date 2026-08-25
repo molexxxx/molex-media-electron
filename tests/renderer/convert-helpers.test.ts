@@ -50,7 +50,7 @@ describe('isLosslessCodec', () => {
   })
 
   it('does not cross-classify (lossless audio set is not used for video)', () => {
-    // FLAC is audio-lossless but is not a video codec — must be false in video role.
+    // FLAC is audio-lossless but is not a video codec - must be false in video role.
     expect(isLosslessCodec('flac', 'video')).toBe(false)
     // FFV1 is video-lossless but not an audio codec.
     expect(isLosslessCodec('ffv1', 'audio')).toBe(false)

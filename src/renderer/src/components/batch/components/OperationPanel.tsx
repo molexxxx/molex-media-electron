@@ -249,7 +249,7 @@ export function OperationPanel(): React.JSX.Element {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Preset header — full-width description card + separator           */
+/*  Preset header - full-width description card + separator           */
 /* ------------------------------------------------------------------ */
 
 function PresetHeader({ name, description, icon }: { name: string; description: string; icon?: string }): React.JSX.Element {
@@ -306,7 +306,7 @@ export function NormalizeConfig({ selectedPreset, onApplyPreset }: {
     <div className="flex flex-col gap-3">
       {activeNormalizePreset && <PresetHeader name={activeNormalizePreset.name} description={activeNormalizePreset.description} icon={activeNormalizePreset.icon} />}
       <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-      {/* Left column — chips, info strip, controls, advanced sliders */}
+      {/* Left column - chips, info strip, controls, advanced sliders */}
       <div className="flex-1 min-w-0 space-y-2.5">
         {/* Preset chips */}
         <div className="flex items-center gap-1 flex-wrap">
@@ -449,7 +449,7 @@ export function NormalizeConfig({ selectedPreset, onApplyPreset }: {
         )}
       </div>
 
-      {/* Right column — Advanced toggle + preset description */}
+      {/* Right column - Advanced toggle + preset description */}
       <div className="w-full md:w-72 lg:w-80 md:shrink-0 flex flex-col-reverse md:flex-col gap-2">
         <button
           onClick={() => setAdvanced(!advanced)}
@@ -656,7 +656,7 @@ export function BoostConfig({
           onChange={(v) => { setBoostPercent(v); setCustom() }}
         />
 
-        {/* Advanced — limiter + HPF */}
+        {/* Advanced - limiter + HPF */}
         {advanced && setBoostOptions && (
           <div className="space-y-2.5 pt-1">
             {/* Limiter row */}
@@ -714,7 +714,7 @@ export function BoostConfig({
         )}
       </div>
 
-      {/* Right column — Advanced toggle + preset description */}
+      {/* Right column - Advanced toggle + preset description */}
       <div className="w-full md:w-72 lg:w-80 md:shrink-0 flex flex-col-reverse md:flex-col gap-2">
         <button
           onClick={() => setAdvanced(!advanced)}
@@ -733,7 +733,7 @@ export function BoostConfig({
 }
 
 /**
- * Boost slider — smooth, no-transition drag. Internally uncontrolled while
+ * Boost slider - smooth, no-transition drag. Internally uncontrolled while
  * dragging so the React render loop doesn't introduce per-frame jitter; we
  * commit the final value to the store on `change` (release).
  */
@@ -774,7 +774,7 @@ function BoostSlider({ value, isBoost, isReduce, fillPct, onChange }: {
           setLocalValue(v)
         }}
         onChange={(e) => {
-          // Keyboard / click moves (no pointerdown) — commit immediately.
+          // Keyboard / click moves (no pointerdown) - commit immediately.
           if (!draggingRef.current) onChange(parseInt(e.target.value, 10))
         }}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -862,7 +862,7 @@ export function ConvertConfig({
               </button>
             </span>
           )}
-          {/* Active preset from outside the quick row — surfaced as a highlighted chip so the row never looks "nothing selected". */}
+          {/* Active preset from outside the quick row - surfaced as a highlighted chip so the row never looks "nothing selected". */}
           {presetId !== null && !QUICK_CONVERT_PRESETS.includes(presetId) && (() => {
             const active = ALL_PRESETS.find((x) => x.id === presetId)
             if (!active) return null
@@ -905,14 +905,14 @@ export function ConvertConfig({
           </FixedTip>
           {!audioOnly && (
             <FixedTip
-              label={`Video codec. ${losslessV ? 'Lossless / pass-through — bitrate is ignored.' : 'Lossy encode.'}${gpuEligible ? ' GPU acceleration available when enabled in settings.' : ''}`}
+              label={`Video codec. ${losslessV ? 'Lossless / pass-through - bitrate is ignored.' : 'Lossy encode.'}${gpuEligible ? ' GPU acceleration available when enabled in settings.' : ''}`}
               wide
               inline
             >
               <span className="font-mono text-accent-400/80 cursor-help">V:{codecLabel(vc)}</span>
             </FixedTip>
           )}
-          <FixedTip label={`Audio codec.${losslessA ? ' Lossless / pass-through — bitrate is ignored.' : ''}`} wide inline>
+          <FixedTip label={`Audio codec.${losslessA ? ' Lossless / pass-through - bitrate is ignored.' : ''}`} wide inline>
             <span className="font-mono text-accent-400/80 cursor-help">A:{codecLabel(ac)}</span>
           </FixedTip>
           {!audioOnly && options.videoBitrate && !losslessV && (
@@ -926,7 +926,7 @@ export function ConvertConfig({
             </FixedTip>
           )}
           {(losslessV || losslessA) && (
-            <FixedTip label="At least one stream is lossless — output is bit-exact for that stream. Bitrate dropdowns are ignored." wide inline>
+            <FixedTip label="At least one stream is lossless - output is bit-exact for that stream. Bitrate dropdowns are ignored." wide inline>
               <span className="inline-flex items-center gap-1 cursor-help text-emerald-400/90">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
@@ -941,7 +941,7 @@ export function ConvertConfig({
             </FixedTip>
           )}
           {slowEncode && (
-            <FixedTip label="This codec is known to be slow on CPU (often 5–10× slower than H.264). The app isn't hung — give it time, or pick H.264 / H.265 for faster encodes." wide inline>
+            <FixedTip label="This codec is known to be slow on CPU (often 5–10× slower than H.264). The app isn't hung - give it time, or pick H.264 / H.265 for faster encodes." wide inline>
               <span className="inline-flex items-center gap-1 cursor-help text-amber-400/80">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
@@ -962,7 +962,7 @@ export function ConvertConfig({
           )}
         </div>
 
-        {/* Basic controls — format + codecs */}
+        {/* Basic controls - format + codecs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <div>
             <FixedTip label="Output container format. Video containers (MP4, MKV, WebM…) carry both streams; audio containers (MP3, FLAC, WAV…) discard video." wide inline>
@@ -1026,7 +1026,7 @@ export function ConvertConfig({
           </div>
         </div>
 
-        {/* Advanced — bitrates / resolution / framerate */}
+        {/* Advanced - bitrates / resolution / framerate */}
         {advanced && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pt-1">
             <div>
@@ -1126,7 +1126,7 @@ export function ConvertConfig({
         )}
       </div>
 
-      {/* Right column — Advanced toggle + preset description */}
+      {/* Right column - Advanced toggle + preset description */}
       <div className="w-full md:w-72 lg:w-80 md:shrink-0 flex flex-col-reverse md:flex-col gap-2">
         <button
           onClick={() => setAdvanced(!advanced)}
@@ -1173,7 +1173,7 @@ const EXTRACT_CATEGORY_TO_MODE: Record<ExtractPreset['category'], NonNullable<Ex
   Audio: 'audio', Video: 'video', GIF: 'gif', Frames: 'frames', Subtitles: 'subtitles',
 }
 
-/** 2-3 most common presets per mode — shown as visible quick chips. Rest live in the "More" dropdown. */
+/** 2-3 most common presets per mode - shown as visible quick chips. Rest live in the "More" dropdown. */
 const EXTRACT_QUICK_PRESETS: Record<NonNullable<ExtractOptions['mode']>, string[]> = {
   audio:     ['audio-mp3-320', 'audio-aac-256', 'audio-flac'],
   video:     ['video-silent-copy', 'video-silent-h264'],
@@ -1252,7 +1252,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
     <div className="flex flex-col gap-3">
       {activePreset && <PresetHeader name={activePreset.name} description={activePreset.description} icon={activePreset.icon} />}
 
-      {/* Row 1 — Mode tabs + quick presets + More dropdown + Advanced toggle */}
+      {/* Row 1 - Mode tabs + quick presets + More dropdown + Advanced toggle */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Mode tabs */}
         <div className="inline-flex rounded-md border border-white/[0.06] overflow-hidden shrink-0">
@@ -1311,7 +1311,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
           compact
         />
 
-        {/* Advanced toggle (right-aligned) — only when relevant */}
+        {/* Advanced toggle (right-aligned) - only when relevant */}
         {showTrimSection && (
           <button
             type="button"
@@ -1349,7 +1349,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
         </div>
       )}
 
-      {/* ---------------- Per-mode primary controls — responsive grid ---------------- */}
+      {/* ---------------- Per-mode primary controls - responsive grid ---------------- */}
 
       {mode === 'audio' && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -1553,7 +1553,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
         </div>
       )}
 
-      {/* Advanced (time trim) — collapsible */}
+      {/* Advanced (time trim) - collapsible */}
       {showTrimSection && advanced && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pl-3 border-l-2 border-white/[0.06]">
           <FixedTip label="Start offset. Accepts hh:mm:ss(.ms) or plain seconds. Empty = start of file." wide inline>
@@ -1675,7 +1675,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
       <div className="flex flex-col md:flex-row gap-3 md:gap-4">
         {/* Left column */}
         <div className="flex-1 min-w-0 space-y-2.5">
-          {/* Preset selector — quick chips + categorized dropdown */}
+          {/* Preset selector - quick chips + categorized dropdown */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {!activePreset && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-medium rounded-md bg-amber-600/20 text-amber-300 border border-amber-500/30">
@@ -1719,7 +1719,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-2xs text-surface-500">Mode</span>
             <div className="inline-flex rounded-md border border-white/[0.06] overflow-hidden">
-              <FixedTip label="Constant Rate Factor — target a perceptual quality level. Output size varies with content complexity." wide inline>
+              <FixedTip label="Constant Rate Factor - target a perceptual quality level. Output size varies with content complexity." wide inline>
                 <button type="button"
                   onClick={() => patch({ mode: 'crf', targetSizeMB: 0 })}
                   className={`px-2.5 py-1 text-2xs font-medium transition-colors ${
@@ -1808,7 +1808,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
                 </label>
               </FixedTip>
               {estimatedKbps && estimatedKbps.video < 800 && (
-                <FixedTip label="Very low video bitrate. Quality will suffer noticeably — consider a larger target or lower resolution." wide inline>
+                <FixedTip label="Very low video bitrate. Quality will suffer noticeably - consider a larger target or lower resolution." wide inline>
                   <span className="inline-flex items-center gap-1 text-2xs text-amber-300/90 cursor-help">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                     Low bitrate
@@ -1823,11 +1823,11 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
             <div>
               <label className="text-2xs text-surface-500 block mb-0.5">Encoder</label>
               <SelectDropdown className="w-full" value={codec} onChange={(v) => patch({ videoCodec: v })} items={[
-                { value: 'libx264', label: 'H.264 — Universal' },
-                { value: 'libx265', label: 'H.265 — Modern' },
-                { value: 'libsvtav1', label: 'AV1 (SVT) — Fast' },
-                { value: 'libaom-av1', label: 'AV1 (aom) — Reference' },
-                { value: 'libvpx-vp9', label: 'VP9 — Web' },
+                { value: 'libx264', label: 'H.264 - Universal' },
+                { value: 'libx265', label: 'H.265 - Modern' },
+                { value: 'libsvtav1', label: 'AV1 (SVT) - Fast' },
+                { value: 'libaom-av1', label: 'AV1 (aom) - Reference' },
+                { value: 'libvpx-vp9', label: 'VP9 - Web' },
               ]} />
             </div>
             <div>
@@ -1918,14 +1918,14 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
               </FixedTip>
             )}
             {options.tune === 'grain' && (
-              <FixedTip label="grain preserves film-grain texture instead of smoothing it away — best for film transfers." wide inline>
+              <FixedTip label="grain preserves film-grain texture instead of smoothing it away - best for film transfers." wide inline>
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25 cursor-help">
                   Grain preserved
                 </span>
               </FixedTip>
             )}
             {effectiveMode === 'target-size' && options.twoPass && (
-              <FixedTip label="Two-pass encoding analyzes the file first, then encodes — much more accurate target size." wide inline>
+              <FixedTip label="Two-pass encoding analyzes the file first, then encodes - much more accurate target size." wide inline>
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-accent-500/15 text-accent-300 border border-accent-500/25 cursor-help">
                   2-pass · ~2× encode time
                 </span>
@@ -1934,7 +1934,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
           </div>
         </div>
 
-        {/* Right column — Advanced toggle */}
+        {/* Right column - Advanced toggle */}
         <div className="w-full md:w-72 lg:w-80 md:shrink-0 flex flex-col-reverse md:flex-col gap-2">
           <button
             onClick={() => setAdvanced(!advanced)}

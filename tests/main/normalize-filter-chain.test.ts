@@ -114,7 +114,7 @@ function extractEncodeFilterComplex(): string {
 
 function extractChain(filterComplex: string, streamIdx = 0): string[] {
   // Per-stream chain is wrapped `[0:a:N]…[aN]`. Filters inside may contain
-  // commas — but the `pan` filter uses `|` separators, and our top-level
+  // commas - but the `pan` filter uses `|` separators, and our top-level
   // chain segments are also comma-separated. We split by ',' which works
   // because no filter argument value contains a literal comma in our chains.
   const re = new RegExp(`\\[0:a:${streamIdx}\\](.+?)\\[a${streamIdx}\\]`)

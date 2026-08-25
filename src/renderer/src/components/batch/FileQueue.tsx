@@ -157,7 +157,7 @@ export default function FileQueue(): React.JSX.Element {
   const completedTasks = tasks.filter((t) => t.status === 'complete').length
 
   // Files whose task is in a terminal state (or has no task yet but the
-  // last batch is done) — count only pending files for the Process button.
+  // last batch is done) - count only pending files for the Process button.
   const donePathSet = new Set(
     tasks
       .filter((t) => t.status === 'complete' || t.status === 'error' || t.status === 'cancelled')

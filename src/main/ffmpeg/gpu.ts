@@ -80,7 +80,7 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
 
   // Track whether *any* attempt actually completed (spawned + exited).
   // If every attempt threw before producing an exit code (e.g. ffmpeg
-  // binary not ready yet on early app startup), do NOT cache 'off' —
+  // binary not ready yet on early app startup), do NOT cache 'off' -
   // leave _detectedMode null so a later call can retry detection.
   let anyCompleted = false
 
@@ -94,7 +94,7 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
     encoders = r.stdout + r.stderr
     if (r.code === 0 || encoders.length > 0) anyCompleted = true
   } catch {
-    // ignore — fall back to attempting each test encode blind
+    // ignore - fall back to attempting each test encode blind
   }
 
   for (const mode of ['nvenc', 'qsv', 'amf'] as const)
@@ -107,7 +107,7 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
     }
     try
     {
-      // Use 256x144 (16:9, evenly aligned) — large enough to satisfy
+      // Use 256x144 (16:9, evenly aligned) - large enough to satisfy
       // NVENC/QSV/AMF minimum-dimension constraints. The color filter is
       // a synthetic source so no input file is required.
       const { promise } = runCommand(ffmpegPath, [
@@ -132,11 +132,11 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
         // Surface the first line of stderr so the user can see *why*
         // detection failed (driver missing, no capable device, etc.).
         const reason = (result.stderr || '').split(/\r?\n/).filter(Boolean)[0] || `exit ${result.code}`
-        logger.info(`[gpu] ${mode}: test encode failed — ${reason}`)
+        logger.info(`[gpu] ${mode}: test encode failed - ${reason}`)
       }
     } catch (err)
     {
-      logger.info(`[gpu] ${mode}: spawn error — ${(err as Error)?.message ?? 'unknown'}`)
+      logger.info(`[gpu] ${mode}: spawn error - ${(err as Error)?.message ?? 'unknown'}`)
     }
   }
 

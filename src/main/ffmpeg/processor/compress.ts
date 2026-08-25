@@ -316,7 +316,7 @@ export async function compressFile(
         if (codec === 'libvpx-vp9') out.push('-b:v', '0')
       }
 
-      // Pixel format (skip for GPU encoders — they manage their own)
+      // Pixel format (skip for GPU encoders - they manage their own)
       if (opts.pixelFormat && !gpuResult.isGpu) {
         out.push('-pix_fmt', opts.pixelFormat)
       }

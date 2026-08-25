@@ -7,15 +7,15 @@
  * full test suite), it actually drives FIVE extraction modes selected via
  * `task.extractOptions.mode`:
  *
- *   1. **audio**     — demux/transcode an audio stream to a standalone
+ *   1. **audio**     - demux/transcode an audio stream to a standalone
  *                       container (MP3, AAC, M4A, FLAC, WAV, Ogg, Opus).
- *   2. **video**     — strip audio, keep the video track. Stream copy
+ *   2. **video**     - strip audio, keep the video track. Stream copy
  *                       by default; optional H.264 re-encode.
- *   3. **gif**       — render a clip to an optimized GIF using the
+ *   3. **gif**       - render a clip to an optimized GIF using the
  *                       two-step palettegen + paletteuse pipeline.
- *   4. **frames**    — export still frames at an interval, target fps,
+ *   4. **frames**    - export still frames at an interval, target fps,
  *                       evenly-spaced count, or a single thumbnail.
- *   5. **subtitles** — pull an embedded subtitle stream to .srt / .vtt /
+ *   5. **subtitles** - pull an embedded subtitle stream to .srt / .vtt /
  *                       .ass.
  *
  * When `mode` is omitted the legacy audio path runs unchanged, so all
@@ -313,10 +313,10 @@ function buildGifArgs(input: string, output: string, opts: ExtractOptions): stri
  * Build FFmpeg args for still-frame extraction. Supports four sampling
  * strategies via `framesMode`:
  *
- * - `interval`  — one frame every `frameInterval` seconds (default 1s).
- * - `fps`       — output at `framesFps` frames per second.
- * - `count`     — N evenly-spaced frames across the full duration.
- * - `thumbnail` — single frame near the midpoint of the clip.
+ * - `interval`  - one frame every `frameInterval` seconds (default 1s).
+ * - `fps`       - output at `framesFps` frames per second.
+ * - `count`     - N evenly-spaced frames across the full duration.
+ * - `thumbnail` - single frame near the midpoint of the clip.
  */
 function buildFramesArgs(
   input: string,

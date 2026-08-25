@@ -47,9 +47,9 @@ export interface ProcessingTask {
     I: number
     TP: number
     LRA: number
-    /** 'off' | 'light' | 'medium' | 'heavy' — post-loudnorm dynamic range compression. */
+    /** 'off' | 'light' | 'medium' | 'heavy' - post-loudnorm dynamic range compression. */
     compression?: 'off' | 'light' | 'medium' | 'heavy'
-    /** 'keep' | 'stereo' | 'dialog-stereo' — channel layout strategy. */
+    /** 'keep' | 'stereo' | 'dialog-stereo' - channel layout strategy. */
     downmix?: 'keep' | 'stereo' | 'dialog-stereo'
   }
   convertOptions?: ConvertOptions

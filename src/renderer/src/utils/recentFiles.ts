@@ -34,7 +34,7 @@ function write(list: RecentFile[]): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)))
   } catch {
-    /* quota or disabled — ignore */
+    /* quota or disabled - ignore */
   }
 }
 

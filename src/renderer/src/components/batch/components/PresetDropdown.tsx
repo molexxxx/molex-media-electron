@@ -10,11 +10,11 @@ export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, c
   /**
    * When set, the trigger always displays this label instead of the active
    * preset's name. Use when the dropdown sits next to quick-pick chips that
-   * already show the active selection — prevents the redundant "chip
+   * already show the active selection - prevents the redundant "chip
    * highlighted + dropdown shows same name" UX.
    */
   triggerLabel?: string
-  /** Compact trigger styling — smaller padding, no min-width. */
+  /** Compact trigger styling - smaller padding, no min-width. */
   compact?: boolean
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)

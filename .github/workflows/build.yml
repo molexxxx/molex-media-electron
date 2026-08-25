@@ -1,6 +1,6 @@
 # -----------------------------------------------------
 # Build - Cross-platform Electron builds
-# Manual trigger only — run this when you want draft
+# Manual trigger only - run this when you want draft
 # installers for testing. CI (lint/test/typecheck) and
 # Release (tagged builds) cover all automatic scenarios.
 # -----------------------------------------------------

@@ -163,7 +163,7 @@ describe('boost: filter chain construction', () => {
     expect(limIdx).toBeGreaterThan(volIdx)
   })
 
-  it('computes alimiter ceiling as 10^(ceiling/20) — -1 dBTP ≈ 0.8913', async () => {
+  it('computes alimiter ceiling as 10^(ceiling/20) - -1 dBTP ≈ 0.8913', async () => {
     await boostFile(
       makeTask({ boostOptions: { limiter: true, limiterCeiling: -1 } }),
       vi.fn()

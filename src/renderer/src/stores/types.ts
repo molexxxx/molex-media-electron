@@ -163,11 +163,11 @@ export interface ConvertOptions {
 export interface ExtractOptions {
   /**
    * Extraction mode. `audio` is the default and the legacy behaviour.
-   * - `audio`     — demux/transcode an audio track to a standalone file.
-   * - `video`     — strip audio, keep the video track (silent clip).
-   * - `gif`       — render a section to an optimized GIF (palettegen).
-   * - `frames`    — export still frames (PNG/JPG/WebP).
-   * - `subtitles` — pull an embedded subtitle track to .srt/.vtt/.ass.
+   * - `audio`     - demux/transcode an audio track to a standalone file.
+   * - `video`     - strip audio, keep the video track (silent clip).
+   * - `gif`       - render a section to an optimized GIF (palettegen).
+   * - `frames`    - export still frames (PNG/JPG/WebP).
+   * - `subtitles` - pull an embedded subtitle track to .srt/.vtt/.ass.
    */
   mode?: 'audio' | 'video' | 'gif' | 'frames' | 'subtitles'
   outputFormat: string
@@ -226,27 +226,27 @@ export interface ExtractPreset {
 export const BUILTIN_EXTRACT_PRESETS: ExtractPreset[] = [
   /* --- Audio --- */
   { id: 'audio-mp3-320', name: 'MP3 320k', category: 'Audio', icon: 'music',
-    description: 'High quality MP3 — universal compatibility, transparent to most ears.',
+    description: 'High quality MP3 - universal compatibility, transparent to most ears.',
     options: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' } },
   { id: 'audio-aac-256', name: 'AAC 256k', category: 'Audio', icon: 'headphones',
-    description: 'AAC 256 kbps in .m4a — efficient lossy, ideal for podcasts and music ripping.',
+    description: 'AAC 256 kbps in .m4a - efficient lossy, ideal for podcasts and music ripping.',
     options: { mode: 'audio', outputFormat: 'm4a', streamIndex: 0, audioBitrate: '256k', sampleRate: '', channels: '' } },
   { id: 'audio-opus-128', name: 'Opus 128k', category: 'Audio', icon: 'volume-2',
-    description: 'Opus 128 kbps — best quality at low bitrate, modern playback only.',
+    description: 'Opus 128 kbps - best quality at low bitrate, modern playback only.',
     options: { mode: 'audio', outputFormat: 'opus', streamIndex: 0, audioBitrate: '128k', sampleRate: '', channels: '' } },
   { id: 'audio-flac', name: 'FLAC Lossless', category: 'Audio', icon: 'gem',
-    description: 'Lossless FLAC — identical to the source audio stream.',
+    description: 'Lossless FLAC - identical to the source audio stream.',
     options: { mode: 'audio', outputFormat: 'flac', streamIndex: 0, audioBitrate: '', sampleRate: '', channels: '' } },
   { id: 'audio-wav', name: 'WAV PCM 16-bit', category: 'Audio', icon: 'waveform',
-    description: 'Uncompressed PCM — large files, maximum compatibility with DAWs.',
+    description: 'Uncompressed PCM - large files, maximum compatibility with DAWs.',
     options: { mode: 'audio', outputFormat: 'wav', streamIndex: 0, audioBitrate: '', sampleRate: '', channels: '' } },
   { id: 'audio-podcast', name: 'Podcast Mono 96k', category: 'Audio', icon: 'mic',
-    description: 'MP3 96 kbps mono, 44.1 kHz — tiny size for spoken-word distribution.',
+    description: 'MP3 96 kbps mono, 44.1 kHz - tiny size for spoken-word distribution.',
     options: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '96k', sampleRate: '44100', channels: 'mono' } },
 
   /* --- Video (silent) --- */
   { id: 'video-silent-copy', name: 'Silent Video (copy)', category: 'Video', icon: 'film',
-    description: 'Stream-copy the video track only — instant, lossless, no re-encode.',
+    description: 'Stream-copy the video track only - instant, lossless, no re-encode.',
     options: { mode: 'video', outputFormat: 'mp4', streamIndex: 0, videoReencode: false } },
   { id: 'video-silent-h264', name: 'Silent Video (H.264)', category: 'Video', icon: 'clapperboard',
     description: 'Re-encode the video to H.264 CRF 20 with no audio. Good for re-uploading.',
@@ -265,16 +265,16 @@ export const BUILTIN_EXTRACT_PRESETS: ExtractPreset[] = [
 
   /* --- Frames --- */
   { id: 'frames-thumb', name: 'Single Thumbnail', category: 'Frames', icon: 'monitor',
-    description: 'One PNG taken at the middle of the clip — perfect cover image.',
+    description: 'One PNG taken at the middle of the clip - perfect cover image.',
     options: { mode: 'frames', outputFormat: 'png', streamIndex: 0, framesMode: 'thumbnail', frameFormat: 'png' } },
   { id: 'frames-every-sec', name: 'Every 1 Second', category: 'Frames', icon: 'film',
     description: 'One PNG per second of source. Good for storyboarding short clips.',
     options: { mode: 'frames', outputFormat: 'png', streamIndex: 0, framesMode: 'interval', frameInterval: 1, frameFormat: 'png' } },
   { id: 'frames-every-5sec', name: 'Every 5 Seconds', category: 'Frames', icon: 'archive',
-    description: 'One JPG every 5 seconds — compact contact sheet for long videos.',
+    description: 'One JPG every 5 seconds - compact contact sheet for long videos.',
     options: { mode: 'frames', outputFormat: 'jpg', streamIndex: 0, framesMode: 'interval', frameInterval: 5, frameFormat: 'jpg', jpgQuality: 3 } },
   { id: 'frames-scene-50', name: '50 Evenly-Spaced Frames', category: 'Frames', icon: 'clapperboard',
-    description: '50 JPGs spread across the timeline — quick overview of any duration.',
+    description: '50 JPGs spread across the timeline - quick overview of any duration.',
     options: { mode: 'frames', outputFormat: 'jpg', streamIndex: 0, framesMode: 'count', frameCount: 50, frameFormat: 'jpg', jpgQuality: 4 } },
 
   /* --- Subtitles --- */
@@ -282,10 +282,10 @@ export const BUILTIN_EXTRACT_PRESETS: ExtractPreset[] = [
     description: 'Extract the first embedded subtitle track to a .srt sidecar file.',
     options: { mode: 'subtitles', outputFormat: 'srt', streamIndex: 0 } },
   { id: 'subs-vtt', name: 'Subtitles → WebVTT', category: 'Subtitles', icon: 'globe',
-    description: 'WebVTT sidecar — ideal for HTML5 <track> captions.',
+    description: 'WebVTT sidecar - ideal for HTML5 <track> captions.',
     options: { mode: 'subtitles', outputFormat: 'vtt', streamIndex: 0 } },
   { id: 'subs-ass', name: 'Subtitles → ASS', category: 'Subtitles', icon: 'feather',
-    description: 'Advanced SubStation Alpha — keeps styling/positioning from anime rips.',
+    description: 'Advanced SubStation Alpha - keeps styling/positioning from anime rips.',
     options: { mode: 'subtitles', outputFormat: 'ass', streamIndex: 0 } },
 ]
 
@@ -336,7 +336,7 @@ export interface CompressPreset {
  *
  * Curated for the most common delivery targets. Each preset is opinionated
  * about codec, CRF/target-size mode, pixel format, and audio. Users can
- * tweak any field after applying — selecting "Custom" exits the preset.
+ * tweak any field after applying - selecting "Custom" exits the preset.
  *
  * Picking the right preset:
  * - **Archival / Master**: keep maximum quality for long-term storage.

@@ -126,7 +126,7 @@ export function parseBitrateKbps(value: string | undefined | null): number {
 /**
  * Estimate the output file size in megabytes for a given duration based
  * on the configured bitrates. Returns 0 when no bitrate is set on either
- * stream (e.g. "Auto" or a lossless codec) — the UI then suppresses the
+ * stream (e.g. "Auto" or a lossless codec) - the UI then suppresses the
  * estimate rather than show a misleading number.
  *
  * Formula: `bytes = (v_kbps + a_kbps) × duration_s × 1000 / 8`.

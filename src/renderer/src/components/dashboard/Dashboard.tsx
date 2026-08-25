@@ -5,7 +5,7 @@
  * Layout:
  *   - Header row: title + inline stat pills.
  *   - Workflow strip: five compact icon-forward batch operation tiles
- *     up top — mirrors the sidebar order (Batch first).
+ *     up top - mirrors the sidebar order (Batch first).
  *   - Hero row: Editor + Player stacked vertically on the left, live
  *     System Pulse on the right spanning the full hero height.
  *   - Recent Activity + System pills footer.
@@ -204,7 +204,7 @@ function SystemPulse({
     pollGpu()
     gpuId = window.setInterval(pollGpu, 3000)
 
-    // GPU utilization poll (NVIDIA only — nvidia-smi). Returns null on
+    // GPU utilization poll (NVIDIA only - nvidia-smi). Returns null on
     // non-NVIDIA systems; we simply stop appending in that case and the
     // sparkline tile hides itself.
     const pollGpuUsage = async () => {
@@ -246,7 +246,7 @@ function SystemPulse({
     const names: Record<string, string> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }
     const p = info?.platform || ''
     const a = info?.arch || ''
-    return `${names[p] || p || '—'}${a ? ' ' + a : ''}`
+    return `${names[p] || p || '-'}${a ? ' ' + a : ''}`
   })()
 
   return (
@@ -285,7 +285,7 @@ function SystemPulse({
             <div className="text-2xs font-mono text-surface-300 truncate" title={info?.cpuModel || ''}>{info?.cpuModel || 'detecting…'}</div>
           </div>
           <div className="shrink-0 text-right">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">{cpuPct.toFixed(0)}% · {info?.cpus ?? '—'}c</div>
+            <div className="text-2xs text-surface-500 uppercase tracking-wider">{cpuPct.toFixed(0)}% · {info?.cpus ?? '-'}c</div>
             <div className="text-2xs font-mono text-surface-400 leading-tight">load · cores</div>
           </div>
         </div>
@@ -322,9 +322,9 @@ function SystemPulse({
         <div className="text-2xs text-surface-500 uppercase tracking-wider">Config</div>
         <div className="flex flex-col gap-0.5">
           <ConfigRow label="Platform" value={platformLabel} />
-          <ConfigRow label="Workers" value={config?.maxWorkers != null ? String(config.maxWorkers) : '—'} />
-          <ConfigRow label="Codec" value={config?.audioCodec || '—'} />
-          <ConfigRow label="Bitrate" value={config?.audioBitrate || '—'} />
+          <ConfigRow label="Workers" value={config?.maxWorkers != null ? String(config.maxWorkers) : '-'} />
+          <ConfigRow label="Codec" value={config?.audioCodec || '-'} />
+          <ConfigRow label="Bitrate" value={config?.audioBitrate || '-'} />
         </div>
       </div>
 
@@ -410,7 +410,7 @@ export default function Dashboard(): React.JSX.Element {
         ]} />
       </div>
 
-      {/* Workflow strip — batch operations come first to match the sidebar
+      {/* Workflow strip - batch operations come first to match the sidebar
           ordering (Batch sits above Editor/Player). Compact horizontal
           tiles; responsive: 2 cols on mobile, 3 on tablet, 5 on desktop. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 shrink-0">
