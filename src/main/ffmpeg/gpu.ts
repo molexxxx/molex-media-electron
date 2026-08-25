@@ -254,7 +254,15 @@ export function getGpuPreset(activeMode: GpuMode, softwarePreset: string): strin
 
 /**
  * Get quality args for GPU encoders (replaces -crf with the appropriate equivalent).
- * NVENC: -cq, QSV: -global_quality, AMF: -qp_i/-qp_p
+ *
+ * Verified against the encoders' own AVOption tables:
+ * - NVENC: `-rc constqp` + `-qp` (constant quantiser). `-cq` is the VBR
+ *   constant-quality knob and is not what we want here.
+ * - QSV: `-global_quality`, a generic encoder option rather than a
+ *   QSV-specific one.
+ * - AMF: `-rc cqp` + `-qp_i`/`-qp_p`/`-qp_b`. All three frame types have
+ *   to be set; any left at the default -1 is chosen by the encoder, which
+ *   makes the requested quality only partly honoured.
  */
 export function getGpuQualityArgs(activeMode: GpuMode, crf: number): string[]
 {
@@ -267,7 +275,7 @@ export function getGpuQualityArgs(activeMode: GpuMode, crf: number): string[]
     case 'qsv':
       return ['-global_quality', String(crf)]
     case 'amf':
-      return ['-rc', 'cqp', '-qp_i', String(crf), '-qp_p', String(crf)]
+      return ['-rc', 'cqp', '-qp_i', String(crf), '-qp_p', String(crf), '-qp_b', String(crf)]
     default:
       return ['-crf', String(crf)]
   }
