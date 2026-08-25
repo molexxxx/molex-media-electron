@@ -217,13 +217,46 @@ describe('buildBoostChain', () => {
     }
   })
 
-  it('orders the chain aformat -> highpass -> volume -> alimiter', () => {
+  it('orders the chain aformat -> highpass -> volume -> limiter', () => {
     const chain = buildBoostChain(75, stereo, { limiter: true, limiterCeiling: -1, hpfHz: 100 })
-    expect(chain).toHaveLength(4)
     expect(chain[0]).toMatch(/^aformat=/)
     expect(chain[1]).toBe('highpass=f=100')
     expect(chain[2]).toBe('volume=1.75')
-    expect(chain[3]).toMatch(/^alimiter=/)
+    // The limiter arrives oversampled: up, limit, back down.
+    expect(chain.slice(3)).toEqual([
+      'aresample=96000',
+      'alimiter=limit=0.8913:level=disabled:latency=1',
+      'aresample=48000'
+    ])
+  })
+
+  it('oversamples around the limiter so the dBTP ceiling holds', () => {
+    // alimiter measures sample peaks, so without oversampling the
+    // reconstructed waveform overshoots between samples. Measured asking
+    // for -1 dBTP: no oversampling gave -0.3 dBFS true peak, 2x gave -1.0.
+    const chain = buildBoostChain(100, stereo, { limiter: true, limiterCeiling: -1 })
+    const limIdx = chain.findIndex((f) => f.startsWith('alimiter='))
+    expect(chain[limIdx - 1]).toBe('aresample=96000')
+    expect(chain[limIdx + 1]).toBe('aresample=48000')
+  })
+
+  it('returns to the source rate for any input rate', () => {
+    for (const rate of ['44100', '48000', '96000']) {
+      const chain = buildBoostChain(50, { channels: 2, sampleRate: rate }, { limiter: true })
+      expect(chain).toContain(`aresample=${parseInt(rate, 10) * 2}`)
+      expect(chain[chain.length - 1]).toBe(`aresample=${rate}`)
+    }
+  })
+
+  it('skips oversampling when truePeak is disabled', () => {
+    const chain = buildBoostChain(100, stereo, { limiter: true, truePeak: false })
+    expect(chain.some((f) => f.startsWith('aresample='))).toBe(false)
+    expect(chain[chain.length - 1]).toMatch(/^alimiter=/)
+  })
+
+  it('skips oversampling when the source rate is unknown', () => {
+    const chain = buildBoostChain(100, { channels: 2 }, { limiter: true })
+    expect(chain.some((f) => f.startsWith('aresample='))).toBe(false)
   })
 
   it('places the high-pass before the gain stage', () => {
@@ -233,6 +266,11 @@ describe('buildBoostChain', () => {
     expect(chain.findIndex((f) => f.startsWith('highpass='))).toBeLessThan(
       chain.findIndex((f) => f.startsWith('volume='))
     )
+  })
+
+  it('adds no aresample stages when there is no limiter', () => {
+    const chain = buildBoostChain(50, stereo, { limiter: false })
+    expect(chain.some((f) => f.startsWith('aresample='))).toBe(false)
   })
 
   it('places the limiter after the gain stage', () => {

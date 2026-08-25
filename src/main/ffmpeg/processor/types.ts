@@ -36,6 +36,11 @@ export interface ProcessingTask {
     limiter?: boolean
     limiterCeiling?: number
     hpfHz?: number
+    /**
+     * Oversample around the limiter so the advertised dBTP ceiling holds
+     * against inter-sample peaks. Defaults to true.
+     */
+    truePeak?: boolean
   }
   preset?: string
   normalizeOptions?: {

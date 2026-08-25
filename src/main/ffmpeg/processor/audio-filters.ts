@@ -118,6 +118,19 @@ export interface LimiterSpec {
 }
 
 /**
+ * Oversampling factor used for true-peak limiting.
+ *
+ * `alimiter` inspects sample peaks, so the reconstructed waveform can rise
+ * above the ceiling between samples. The docs recommend upsampling 2x or
+ * 4x before the filter. Measured on a boosted programme asking for
+ * -1 dBTP: no oversampling landed at -0.3 dBFS true peak, while both 2x
+ * and 4x landed exactly on -1.0. 2x is chosen because it is as accurate
+ * as 4x here and roughly half the cost (536 ms vs 905 ms over 5 minutes
+ * of 48 kHz stereo, against 234 ms with no oversampling).
+ */
+const TRUE_PEAK_OVERSAMPLE = 2
+
+/**
  * Build an `alimiter` stage that actually honours the requested ceiling.
  *
  * `level=disabled` switches off the filter's auto makeup (`1/limit`),
@@ -138,6 +151,32 @@ export function buildLimiter(spec: LimiterSpec): string {
   return parts.join(':')
 }
 
+/**
+ * Build the limiter as a stage list, oversampling around it so the
+ * ceiling holds against inter-sample peaks rather than only sample peaks.
+ *
+ * Returns the bare limiter when no sample rate is known or when
+ * `truePeak` is false, since oversampling needs a rate to return to.
+ *
+ * @param spec       - Limiter settings.
+ * @param sampleRate - Source rate in Hz; the chain returns to it.
+ * @param truePeak   - Enable oversampling (default true).
+ */
+export function buildLimiterStages(
+  spec: LimiterSpec,
+  sampleRate?: string | number,
+  truePeak = true
+): string[] {
+  const limiter = buildLimiter(spec)
+  const rate = parseInt(String(sampleRate ?? ''), 10)
+  if (!truePeak || !Number.isFinite(rate) || rate <= 0) return [limiter]
+  return [
+    `aresample=${rate * TRUE_PEAK_OVERSAMPLE}`,
+    limiter,
+    `aresample=${rate}`
+  ]
+}
+
 /* ------------------------------------------------------------------ */
 /*  Volume boost chain                                                 */
 /* ------------------------------------------------------------------ */
@@ -154,6 +193,12 @@ export interface BoostSpec {
   limiter?: boolean
   limiterCeiling?: number
   hpfHz?: number
+  /**
+   * Oversample around the limiter so the ceiling holds against
+   * inter-sample peaks. Defaults to true; set false to trade the
+   * guarantee for a slightly cheaper encode.
+   */
+  truePeak?: boolean
 }
 
 /**
@@ -184,7 +229,11 @@ export function buildBoostChain(
 
   if (opts.limiter === true) {
     const ceiling = typeof opts.limiterCeiling === 'number' ? opts.limiterCeiling : -1
-    chain.push(buildLimiter({ ceilingDb: ceiling }))
+    chain.push(...buildLimiterStages(
+      { ceilingDb: ceiling },
+      stream.sampleRate,
+      opts.truePeak !== false
+    ))
   }
 
   return chain
@@ -264,6 +313,8 @@ export interface NormalizeSpec {
   downmix?: string
   /** Treat mono sources as dual-mono per EBU R128. */
   dualMono?: boolean
+  /** Oversample around the post-compressor limiter. Defaults to true. */
+  truePeak?: boolean
 }
 
 /** Measured values from the analysis pass, used for linear normalization. */
@@ -404,11 +455,18 @@ export function buildLoudnormChain(
   if (compressor) {
     chain.push(compressor)
     // Makeup gain has pushed peaks above the target ceiling; pull them back.
-    chain.push(buildLimiter({ ceilingDb: spec.TP }))
+    chain.push(...buildLimiterStages(
+      { ceilingDb: spec.TP },
+      stream.sampleRate,
+      spec.truePeak !== false
+    ))
   }
 
   const rate = stream.sampleRate ? String(stream.sampleRate) : ''
-  chain.push(rate ? `aresample=${rate}` : 'aresample')
+  const ratePin = rate ? `aresample=${rate}` : 'aresample'
+  // The limiter's own downsample already lands on the source rate; don't
+  // append a second identical stage after it.
+  if (chain[chain.length - 1] !== ratePin) chain.push(ratePin)
 
   return chain
 }

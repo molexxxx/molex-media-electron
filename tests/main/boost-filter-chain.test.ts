@@ -193,11 +193,15 @@ describe('boost: filter chain construction', () => {
       vi.fn()
     )
     const chain = extractStreamChain(extractFilterComplex())
-    expect(chain.length).toBe(4)
     expect(chain[0]).toMatch(/^aformat=/)
     expect(chain[1]).toBe('highpass=f=100')
     expect(chain[2]).toBe('volume=1.75')
-    expect(chain[3]).toMatch(/^alimiter=limit=/)
+    // The limiter is oversampled for true-peak accuracy, so it arrives as
+    // aresample-up / alimiter / aresample-down.
+    expect(chain.length).toBe(6)
+    expect(chain[3]).toBe('aresample=96000')
+    expect(chain[4]).toMatch(/^alimiter=limit=/)
+    expect(chain[5]).toBe('aresample=48000')
   })
 
   it('multiplier matches 1 + percent/100 across positive/zero/negative', async () => {

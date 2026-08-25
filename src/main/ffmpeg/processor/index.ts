@@ -36,6 +36,7 @@ export {
   percentToMultiplier,
   buildAformat,
   buildLimiter,
+  buildLimiterStages,
   buildBoostChain,
   buildCompressorFilter,
   buildDownmixFilter,

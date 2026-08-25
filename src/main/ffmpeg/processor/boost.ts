@@ -99,7 +99,7 @@ export async function boostFile(
           sampleRate: stream.sample_rate || '48000',
           channelLayout: stream.channel_layout
         },
-        { limiter: limiterOn, limiterCeiling, hpfHz }
+        { limiter: limiterOn, limiterCeiling, hpfHz, truePeak: boostOpts.truePeak }
       )
       filterParts.push(`[0:a:${i}]${chain.join(',')}[a${i}]`)
       mapArgs.push('-map', `[a${i}]`)
