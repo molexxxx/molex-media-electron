@@ -294,13 +294,33 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          fetch-tags: true
+
+      # git-cliff's --latest resolves the release boundary from the tags it
+      # can see, and inside the action's container that discovery has failed
+      # silently, emitting the entire project history as one release (v4.6.0
+      # shipped with 308 entries instead of 83). Resolve the boundary here
+      # with plain git and hand git-cliff an explicit range instead.
+      - name: Resolve changelog range
+        id: range
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          prev=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || echo "")
+          if [ -n "$prev" ]; then
+            echo "Changelog range: ${prev}..${TAG}"
+            echo "args=--strip header ${prev}..${TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No previous tag found; falling back to --latest"
+            echo "args=--strip header --latest" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Generate changelog
         id: changelog
         uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
         with:
           config: .github/cliff.toml
-          args: --latest --strip header
+          args: ${{ steps.range.outputs.args }}
         env:
           OUTPUT: RELEASE_NOTES.md
 
