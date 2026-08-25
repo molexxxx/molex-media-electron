@@ -179,6 +179,10 @@ export async function compressFile(
     // Mode resolution: explicit mode wins; otherwise legacy targetSizeMB>0 implies target-size.
     const wantsTargetSize = opts.mode === 'target-size' || (opts.mode == null && opts.targetSizeMB > 0)
     const twoPass = wantsTargetSize && opts.twoPass === true && !gpuResult.isGpu && info.isVideoFile
+    // FFmpeg defaults the two-pass stats file to "ffmpeg2pass" in the CWD.
+    // Batch workers run concurrently, so every parallel two-pass task would
+    // read and overwrite the same log. Give each task its own prefix.
+    const passLogPrefix = path.join(os.tmpdir(), `molex2pass-${task.id}-${process.pid}`)
 
     // Hardware-accel input flags must come before -i
     const hwaccelArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
@@ -251,9 +255,9 @@ export async function compressFile(
       // Two-pass scaffolding
       if (twoPass) {
         if (passNum === 1) {
-          out.push('-pass', '1', '-an', '-f', 'null')
+          out.push('-pass', '1', '-passlogfile', passLogPrefix, '-an', '-f', 'null')
         } else if (passNum === 2) {
-          out.push('-pass', '2')
+          out.push('-pass', '2', '-passlogfile', passLogPrefix)
         }
       }
 
@@ -329,10 +333,10 @@ export async function compressFile(
 
     validateOutput(tempPath, 'Compression')
 
-    // Clean up two-pass log file if present
+    // Clean up this task's two-pass log files if present
     if (twoPass) {
-      try { fs.unlinkSync('ffmpeg2pass-0.log') } catch { /* ignore */ }
-      try { fs.unlinkSync('ffmpeg2pass-0.log.mbtree') } catch { /* ignore */ }
+      try { fs.unlinkSync(`${passLogPrefix}-0.log`) } catch { /* ignore */ }
+      try { fs.unlinkSync(`${passLogPrefix}-0.log.mbtree`) } catch { /* ignore */ }
     }
 
     if (config.afterProcessing === 'replace') {
