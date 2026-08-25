@@ -143,12 +143,15 @@ describe('normalize: filter chain construction', () => {
     mockProbeMedia.mockResolvedValue(makeStereoProbe())
   })
 
-  it('default chain = loudnorm only (no DRC, no downmix, no extra limiter)', async () => {
+  it('default chain = loudnorm plus the output-rate pin (no DRC, no downmix, no extra limiter)', async () => {
     mockAnalysisAndEncode()
     await normalizeFile(makeTask({ normalizeOptions: { I: -16, TP: -1.5, LRA: 11 } }), vi.fn())
     const chain = extractChain(extractEncodeFilterComplex())
-    expect(chain.length).toBe(1)
+    expect(chain.length).toBe(2)
     expect(chain[0]).toMatch(/^loudnorm=/)
+    // loudnorm leaves dynamic-mode output at 192 kHz; the docs tell callers
+    // to set the rate explicitly, so the chain always ends with aresample.
+    expect(chain[1]).toBe('aresample=48000')
     expect(chain.some((f) => f.startsWith('acompressor='))).toBe(false)
     expect(chain.some((f) => f.startsWith('alimiter='))).toBe(false)
     expect(chain.some((f) => f.startsWith('pan='))).toBe(false)
@@ -233,7 +236,7 @@ describe('normalize: filter chain construction', () => {
     const chain = extractChain(extractEncodeFilterComplex())
     const lim = chain.find((f) => f.startsWith('alimiter='))!
     // 10^(-1.5/20) ≈ 0.8414
-    expect(lim).toBe('alimiter=limit=0.8414')
+    expect(lim).toBe('alimiter=limit=0.8414:level=disabled:latency=1')
   })
 
   it('downmix=keep on stereo source does NOT inject a pan filter', async () => {
@@ -256,7 +259,10 @@ describe('normalize: filter chain construction', () => {
     )
     const chain = extractChain(extractEncodeFilterComplex())
     expect(chain.some((f) => f.startsWith('pan='))).toBe(false)
-    expect(chain.some((f) => f.startsWith('aresample='))).toBe(false)
+    // The only aresample present is the trailing output-rate pin, never a
+    // downmix stage.
+    expect(chain.filter((f) => f.startsWith('aresample=')).length).toBe(1)
+    expect(chain[chain.length - 1]).toBe('aresample=48000')
   })
 
   it('downmix=stereo on 5.1 source injects aresample+pan BEFORE loudnorm', async () => {

@@ -13,10 +13,10 @@ import { getConfig } from '../../config'
 import { logger } from '../../logger'
 import { probeMedia, formatDuration, formatFileSize } from '../probe'
 import { runCommand, parseProgress } from '../runner'
+import { buildBoostChain } from './audio-filters'
 import {
   type ProcessingTask,
   type TaskProgressCallback,
-  channelLayout,
   stripMolexTag,
   needsStrictExperimental,
   resolveInheritedAudioEncoder,
@@ -57,7 +57,6 @@ export async function boostFile(
   }
 
   const boostPercent = task.boostPercent || 0
-  const multiplier = 1.0 + boostPercent / 100.0
 
   // Advanced knobs (all optional; legacy behaviour when omitted).
   const boostOpts = task.boostOptions || {}
@@ -90,28 +89,18 @@ export async function boostFile(
 
     const filterParts: string[] = []
     const mapArgs: string[] = []
-    let maxChannels = 0
 
     for (let i = 0; i < info.audioStreams.length; i++) {
       const stream = info.audioStreams[i]
-      const layout = channelLayout(stream.channels)
-      const sampleRate = stream.sample_rate || '48000'
-      maxChannels = Math.max(maxChannels, stream.channels)
-
-      // Chain: aformat → optional HPF → volume → optional alimiter.
-      // HPF before volume so we remove rumble BEFORE it eats headroom.
-      // Limiter AFTER volume catches any peaks produced by the gain stage.
-      const chain: string[] = [
-        `aformat=channel_layouts=${layout}:sample_fmts=s16:sample_rates=${sampleRate}`
-      ]
-      if (hpfHz > 0) {
-        chain.push(`highpass=f=${hpfHz}`)
-      }
-      chain.push(`volume=${multiplier}`)
-      if (limiterOn) {
-        const linearLimit = Math.pow(10, limiterCeiling / 20).toFixed(4)
-        chain.push(`alimiter=limit=${linearLimit}`)
-      }
+      const chain = buildBoostChain(
+        boostPercent,
+        {
+          channels: stream.channels,
+          sampleRate: stream.sample_rate || '48000',
+          channelLayout: stream.channel_layout
+        },
+        { limiter: limiterOn, limiterCeiling, hpfHz }
+      )
       filterParts.push(`[0:a:${i}]${chain.join(',')}[a${i}]`)
       mapArgs.push('-map', `[a${i}]`)
     }
@@ -164,8 +153,6 @@ export async function boostFile(
     } else {
       args.push('-c:a', config.audioCodec, '-b:a', config.audioBitrate)
     }
-
-    args.push('-ac', String(maxChannels))
 
     if (info.isVideoFile) {
       args.push('-c:v', 'copy')

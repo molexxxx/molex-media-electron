@@ -185,25 +185,9 @@ export type TaskProgressCallback = (task: ProcessingTask) => void
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-/** Maps channel count → FFmpeg layout string. */
-const CHANNEL_LAYOUTS: Record<number, string> = {
-  1: 'mono',
-  2: 'stereo',
-  6: '5.1',
-  8: '7.1'
-}
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-/**
- * Return the FFmpeg channel layout name for the given channel count.
- * Falls back to `"stereo"` for unknown counts.
- */
-export function channelLayout(channels: number): string {
-  return CHANNEL_LAYOUTS[channels] || 'stereo'
-}
 
 /**
  * Remove any `[molexAudio …]` or `[molexMedia …]` tag prefix from a

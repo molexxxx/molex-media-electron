@@ -12,7 +12,6 @@ export {
   type ExtractOptions,
   type CompressOptions,
   type TaskProgressCallback,
-  channelLayout,
   stripMolexTag,
   needsStrictExperimental,
   resolveInheritedAudioEncoder,
@@ -24,6 +23,29 @@ export {
   ensureDir,
   validateOutput
 } from './types'
+
+// Audio filter builders
+export {
+  type NormalizeSpec,
+  type LoudnessMeasurement,
+  type BoostSpec,
+  type StreamSpec,
+  channelLayoutName,
+  dbToLinear,
+  linearToDb,
+  percentToMultiplier,
+  buildAformat,
+  buildLimiter,
+  buildBoostChain,
+  buildCompressorFilter,
+  buildDownmixFilter,
+  buildPreLoudnormFilters,
+  buildLoudnormFilter,
+  predictsLinearNormalization,
+  buildAnalysisChain,
+  buildLoudnormChain,
+  COMPRESSOR_MAKEUP_DB
+} from './audio-filters'
 
 // Operations
 export { normalizeFile } from './normalize'

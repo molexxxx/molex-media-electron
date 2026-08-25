@@ -170,7 +170,7 @@ describe('boost: filter chain construction', () => {
     )
     const chain = extractStreamChain(extractFilterComplex())
     const lim = chain.find((f) => f.startsWith('alimiter='))!
-    expect(lim).toBe('alimiter=limit=0.8913')
+    expect(lim).toBe('alimiter=limit=0.8913:level=disabled:latency=1')
   })
 
   it('computes alimiter ceiling for -0.3 dBTP (loudness max)', async () => {
@@ -181,7 +181,7 @@ describe('boost: filter chain construction', () => {
     const chain = extractStreamChain(extractFilterComplex())
     const lim = chain.find((f) => f.startsWith('alimiter='))!
     // 10^(-0.3/20) ≈ 0.9661
-    expect(lim).toBe('alimiter=limit=0.9661')
+    expect(lim).toBe('alimiter=limit=0.9661:level=disabled:latency=1')
   })
 
   it('full chain order: aformat → highpass → volume → alimiter', async () => {

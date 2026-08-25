@@ -6,7 +6,7 @@ vi.mock('../../src/main/logger', () => ({
 }))
 
 import {
-  channelLayout,
+  channelLayoutName,
   stripMolexTag,
   createTempPath,
   formatElapsed,
@@ -15,18 +15,23 @@ import {
   getIsPaused
 } from '../../src/main/ffmpeg/processor'
 
-describe('channelLayout', () => {
+describe('channelLayoutName', () => {
   it('returns known layouts', () => {
-    expect(channelLayout(1)).toBe('mono')
-    expect(channelLayout(2)).toBe('stereo')
-    expect(channelLayout(6)).toBe('5.1')
-    expect(channelLayout(8)).toBe('7.1')
+    expect(channelLayoutName(1)).toBe('mono')
+    expect(channelLayoutName(2)).toBe('stereo')
+    expect(channelLayoutName(4)).toBe('quad')
+    expect(channelLayoutName(6)).toBe('5.1')
+    expect(channelLayoutName(8)).toBe('7.1')
   })
 
-  it('returns stereo for unknown channel counts', () => {
-    expect(channelLayout(3)).toBe('stereo')
-    expect(channelLayout(0)).toBe('stereo')
-    expect(channelLayout(99)).toBe('stereo')
+  it('returns null for counts with no unambiguous layout name', () => {
+    // Guarding against the old behaviour, which claimed "stereo" for these
+    // and so silently folded 3/5/7-channel sources down to two channels.
+    expect(channelLayoutName(3)).toBeNull()
+    expect(channelLayoutName(5)).toBeNull()
+    expect(channelLayoutName(7)).toBeNull()
+    expect(channelLayoutName(0)).toBeNull()
+    expect(channelLayoutName(99)).toBeNull()
   })
 })
 
