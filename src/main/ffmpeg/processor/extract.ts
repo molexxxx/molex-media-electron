@@ -28,6 +28,7 @@ import { getConfig } from '../../config'
 import { logger } from '../../logger'
 import { probeMedia, formatDuration, formatFileSize } from '../probe'
 import { runCommand, parseProgress } from '../runner'
+import { isBitmapSubtitle } from './stream-map'
 import {
   type ProcessingTask,
   type TaskProgressCallback,
@@ -49,6 +50,14 @@ const AUDIO_CODEC_MAP: Record<string, string> = {
 const SUBTITLE_CODEC_MAP: Record<string, string> = {
   srt: 'srt', vtt: 'webvtt', ass: 'ass', ssa: 'ass'
 }
+
+/**
+ * Every target format above writes text. FFmpeg reports "Subtitle
+ * encoding currently only possible from text to text or bitmap to
+ * bitmap", so a PGS or VobSub source cannot produce any of them; the
+ * attempt is refused with an explanation instead of a raw encoder error.
+ */
+const TEXT_SUBTITLE_FORMATS = new Set(['srt', 'vtt', 'ass', 'ssa'])
 
 /**
  * Extract a media stream (audio / video / gif / frames / subtitles)
@@ -99,6 +108,14 @@ export async function extractAudio(
       if (info.subtitleStreams.length === 0) throw new Error('No subtitle streams found')
       if (opts.streamIndex >= info.subtitleStreams.length) {
         throw new Error(`Subtitle stream ${opts.streamIndex} not found (file has ${info.subtitleStreams.length} subtitle stream${info.subtitleStreams.length === 1 ? '' : 's'})`)
+      }
+      const srcCodec = info.subtitleStreams[opts.streamIndex]?.codec_name
+      const targetFormat = (opts.outputFormat || 'srt').toLowerCase()
+      if (isBitmapSubtitle(srcCodec) && TEXT_SUBTITLE_FORMATS.has(targetFormat)) {
+        throw new Error(
+          `Subtitle stream ${opts.streamIndex} is image-based (${srcCodec}) and cannot be converted to ${targetFormat.toUpperCase()}. ` +
+          'FFmpeg only converts text subtitles to text. Extract to a bitmap format such as .sup, or run OCR.'
+        )
       }
     }
 
@@ -323,9 +340,11 @@ function buildFramesArgs(
     applyTimeRange(args, opts)
     args.push('-i', input)
     const count = clampInt(opts.frameCount, 1, 1000, 25)
-    // Use thumbnail filter to find best frames within evenly-sized bins.
-    // We approximate by spacing the count over the duration: fps = count / duration.
-    const dur = totalDuration > 0 ? totalDuration : 1
+    // Space the frames across the range actually being extracted. Using the
+    // whole file's duration yielded `count * range / total` frames whenever
+    // a time range was set - 2 frames instead of 6 for a 1s window of a 3s
+    // source.
+    const dur = effectiveDuration(opts, totalDuration)
     const fps = count / dur
     videoFilter = `fps=${fps}`
   } else {
@@ -370,6 +389,39 @@ function buildSubtitleArgs(input: string, output: string, opts: ExtractOptions):
 function applyTimeRange(args: string[], opts: ExtractOptions): void {
   if (opts.startTime && opts.startTime.trim()) args.push('-ss', opts.startTime.trim())
   if (opts.duration && opts.duration.trim()) args.push('-t', opts.duration.trim())
+}
+
+/**
+ * Parse an FFmpeg time string (`hh:mm:ss(.ms)`, `mm:ss`, or plain seconds)
+ * into seconds. Returns 0 when absent or unparseable.
+ */
+export function parseTimeToSeconds(value: string | undefined): number {
+  if (!value) return 0
+  const t = value.trim()
+  if (!t) return 0
+  if (t.includes(':')) {
+    const parts = t.split(':').map((p) => parseFloat(p))
+    if (parts.some((p) => Number.isNaN(p))) return 0
+    return parts.reduce((acc, p) => acc * 60 + p, 0)
+  }
+  const n = parseFloat(t)
+  return Number.isNaN(n) ? 0 : n
+}
+
+/**
+ * Duration of the section actually being extracted: the explicit
+ * `duration`, else what remains after `startTime`, else the whole file.
+ */
+export function effectiveDuration(
+  opts: Pick<ExtractOptions, 'startTime' | 'duration'>,
+  totalDuration: number
+): number {
+  const explicit = parseTimeToSeconds(opts.duration)
+  if (explicit > 0) return explicit
+  const start = parseTimeToSeconds(opts.startTime)
+  const remaining = totalDuration - start
+  if (remaining > 0) return remaining
+  return totalDuration > 0 ? totalDuration : 1
 }
 
 /** Clamp `v` to [min, max], falling back to `fallback` if missing/NaN. */
