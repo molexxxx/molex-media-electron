@@ -37,6 +37,7 @@ import {
   ensureDir,
   validateOutput
 } from './types'
+import { planStreamMap } from './stream-map'
 import {
   resolveGpuCodec,
   getHwaccelInputArgs,
@@ -184,6 +185,23 @@ export async function compressFile(
     // read and overwrite the same log. Give each task its own prefix.
     const passLogPrefix = path.join(os.tmpdir(), `molex2pass-${task.id}-${process.pid}`)
 
+    // Compression keeps the source container, but it still has to map
+    // streams explicitly: with no `-map`, FFmpeg's automatic selection
+    // keeps a single audio stream and every other track is lost.
+    const outputContainer = path.extname(task.filePath).slice(1)
+    const streamPlan = planStreamMap(
+      outputContainer,
+      {
+        videoCount: info.videoStreams.length,
+        audioCount: info.audioStreams.length,
+        subtitles: info.subtitleStreams
+      },
+      config.preserveSubtitles === true
+    )
+    if (streamPlan.droppedAudio > 0) {
+      logger.warn(`.${outputContainer} holds one audio stream; keeping track 1 of ${info.audioStreams.length} for ${task.fileName}`)
+    }
+
     // Hardware-accel input flags must come before -i
     const hwaccelArgs = getHwaccelInputArgs(gpuResult.activeMode, false)
     // Raise probe limits so streams with late dimension info (e.g. PGS
@@ -207,8 +225,18 @@ export async function compressFile(
       const out: string[] = []
 
       if (!info.isVideoFile) {
+        out.push(...streamPlan.args)
         out.push(...buildAudioOnlyArgs(opts))
         return out
+      }
+
+      // Pass 1 analyses video only (`-an`), so it needs no audio or
+      // subtitle mapping; mapping subtitles into the null muxer without a
+      // subtitle encoder would fail the pass.
+      if (passNum === 1) {
+        out.push('-map', '0:v?')
+      } else {
+        out.push(...streamPlan.args)
       }
 
       if (videoFilters.length > 0) out.push('-vf', videoFilters.join(','))
@@ -274,7 +302,7 @@ export async function compressFile(
      */
     const runPass = async (extraArgs: string[], outPath: string, pass: 0 | 1 | 2): Promise<void> => {
       const args = [...inputArgs, ...extraArgs]
-      if (info.isVideoFile && config.preserveSubtitles && pass !== 1) args.push('-c:s', 'copy')
+      if (pass !== 1 && streamPlan.subtitleCodec) args.push('-c:s', streamPlan.subtitleCodec)
       args.push(outPath)
 
       const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
