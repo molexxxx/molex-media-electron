@@ -47,7 +47,7 @@
     "electron-vite": "^5.0.0",
     "framer-motion": "^13.1.1",
     "jsdom": "^30.0.1",
-    "lucide-react": "^1.33.0",
+    "lucide-react": "^1.35.0",
     "postcss": "^8.5.26",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
