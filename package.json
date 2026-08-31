@@ -27,7 +27,7 @@
     "electron-updater": "^6.8.3",
     "tar": "^7.5.22",
     "yauzl": "^3.4.0",
-    "youtube-dl-exec": "^3.1.12",
+    "youtube-dl-exec": "^3.1.13",
     "zero-query": "^1.3.1"
   },
   "devDependencies": {
