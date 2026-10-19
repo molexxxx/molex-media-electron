@@ -46,7 +46,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "framer-motion": "^14.1.0",
-    "jsdom": "^30.1.2",
+    "jsdom": "^30.1.3",
     "lucide-react": "^1.55.0",
     "postcss": "^8.5.29",
     "react": "^19.3.0",
