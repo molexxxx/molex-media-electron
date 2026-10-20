@@ -4,7 +4,7 @@
  */
 
 import type { JobId } from '../../shared/jobs/ids'
-import type { JobProgress, JobState, RunProgress, RunStatus, StageId } from '../../shared/jobs/types'
+import type { JobPlan, JobProgress, JobState, RunProgress, RunStatus, StageId } from '../../shared/jobs/types'
 
 /** A stage of a job's plan as progress weighs it. */
 export interface PlannedStage
@@ -529,6 +529,40 @@ export function weightedMediaSec(stages: readonly PlannedStage[]): number | null
     }
   }
   return total > 0 ? total : null
+}
+
+/**
+ * A plan's stages as a job's progress weighs them, each weighted stage over the media span it processes: both passes
+ * of a two-pass video encode, and the first pass of every other stage. A later encode pass and its verify are a
+ * correction, which joins through `extend` when it starts.
+ */
+export function progressStages(plan: Pick<JobPlan, 'stages' | 'video'>, durationSec: number | null): PlannedStage[]
+{
+  const known = span(durationSec)
+  const twoPass = plan.video?.passes === 2
+  const stages: PlannedStage[] = []
+  for (const stage of plan.stages)
+  {
+    if (stage.id === 'encode' && twoPass)
+    {
+      stages.push({ id: 'encode', pass: 1, passes: 2, durationSec: known, twoPass: true })
+      stages.push({ id: 'encode', pass: 2, passes: 2, durationSec: known, twoPass: true })
+      continue
+    }
+    const entry: PlannedStage = { id: stage.id, pass: 1, passes: 1, durationSec: null }
+    stages.push({ ...entry, durationSec: stageWeight(entry) > 0 ? known : null })
+  }
+  return stages
+}
+
+/** A correction's encode pass and the verify that follows it, over the job's media span. */
+export function correctionStages(pass: number, passes: number, durationSec: number | null): PlannedStage[]
+{
+  const known = span(durationSec)
+  return [
+    { id: 'encode', pass, passes, durationSec: known },
+    { id: 'verify', pass, passes, durationSec: known }
+  ]
 }
 
 /** A job of the run as the run's progress weighs it; pending jobs are not part of the run and are left out. */

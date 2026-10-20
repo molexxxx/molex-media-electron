@@ -24,6 +24,7 @@ import {
   inspectorWidthFor,
   modeForDigit,
   modeRows,
+  openingMode,
   parsePrefs,
   PREFS_KEY,
   readPrefs,
@@ -140,6 +141,39 @@ describe('modes', () =>
     expect(modeForDigit(0)).toBeNull()
     expect(modeForDigit(5)).toBeNull()
     expect(modeForDigit(1.5)).toBeNull()
+  })
+
+  it('opens on Run while a batch is running, pausing, paused, or canceling, and leaves the mode alone while idle', () =>
+  {
+    expect((['running', 'pausing', 'paused', 'canceling'] as const).map((status) => openingMode({ status }))).toEqual(['run', 'run', 'run', 'run'])
+    expect(openingMode({ status: 'idle' })).toBeNull()
+    expect(openingMode(null)).toBeNull()
+  })
+
+  it('shows Run and makes it available when the first snapshot finds an open batch', () =>
+  {
+    const view = store()
+    expect(view.getState().openFromSnapshot({ status: 'running' })).toBe(true)
+    expect(view.getState()).toMatchObject({ mode: 'run', runAvailable: true })
+    expect(view.getState().openFromSnapshot({ status: 'paused' })).toBe(true)
+    expect(view.getState().mode).toBe('run')
+  })
+
+  it('keeps Queue and Run unavailable when the first snapshot finds no open batch', () =>
+  {
+    const view = store()
+    expect(view.getState().openFromSnapshot({ status: 'idle' })).toBe(false)
+    expect(view.getState().openFromSnapshot(null)).toBe(false)
+    expect(view.getState()).toMatchObject({ mode: 'queue', runAvailable: false })
+  })
+
+  it('keeps a mode chosen before the snapshot and still makes Run available', () =>
+  {
+    const view = store()
+    view.getState().setMode('history')
+    expect(view.getState().openFromSnapshot({ status: 'running' })).toBe(false)
+    expect(view.getState()).toMatchObject({ mode: 'history', runAvailable: true })
+    expect(view.getState().setMode('run')).toEqual({ changed: true, announcement: null })
   })
 })
 

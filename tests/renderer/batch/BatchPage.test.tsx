@@ -633,6 +633,39 @@ describe('BatchPage', () =>
     expect(screen.queryByText(notice)).toBeNull()
   })
 
+  it('opens on Run after a reload while a batch runs, with the Run tab available', () =>
+  {
+    load([job({ runId: RUN_ID, state: 'encoding', startedAt: AT }), job({ runId: RUN_ID, state: 'queued' })], { run: running() })
+    renderPage()
+    expect(useBatchView.getState()).toMatchObject({ mode: 'run', runAvailable: true })
+    const tab = within(root()).getByRole('tab', { name: /^Run/ })
+    expect(tab).toHaveAttribute('aria-selected', 'true')
+    expect(tab).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('opens on Run once when the first snapshot lands after the page mounts, and leaves a later choice alone', () =>
+  {
+    renderPage()
+    expect(useBatchView.getState()).toMatchObject({ mode: 'queue', runAvailable: false })
+    const paused = job({ runId: RUN_ID, state: 'queued' })
+    load([paused], { run: running({ status: 'paused' }) })
+    expect(useBatchView.getState()).toMatchObject({ mode: 'run', runAvailable: true })
+    act(() =>
+    {
+      useBatchView.getState().setMode('queue')
+    })
+    load([paused], { run: running(), hydrations: 2 })
+    expect(useBatchView.getState().mode).toBe('queue')
+  })
+
+  it('stays on Queue after a reload when no batch is open', () =>
+  {
+    load([job({ runId: RUN_ID, state: 'done' }), job()])
+    renderPage()
+    expect(useBatchView.getState()).toMatchObject({ mode: 'queue', runAvailable: false })
+    expect(within(root()).getByRole('tab', { name: /^Queue/ })).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('brings a job forward on a notification click', async () =>
   {
     const a = job()

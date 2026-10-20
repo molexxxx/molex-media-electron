@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  correctionStages,
   createJobProgress,
   createRunProgress,
   createThroughputWindow,
@@ -7,6 +8,7 @@ import {
   normalizeSpeed,
   parseSpeed,
   planWeight,
+  progressStages,
   stageWeight,
   weightedMediaSec,
   type PlannedStage,
@@ -559,6 +561,72 @@ describe('weightedMediaSec', () =>
     expect(weightedMediaSec([])).toBeNull()
     expect(weightedMediaSec([stage('encode', null), stage('verify', 0), stage('place', 60)])).toBeNull()
     expect(weightedMediaSec([stage('encode', Number.NaN), stage('measure', 10)])).toBe(10)
+  })
+})
+
+describe('progressStages', () =>
+{
+  const AUDIO = [{ id: 'probe' as const, passes: 1 }, { id: 'measure' as const, passes: 1 }, { id: 'encode' as const, passes: 2 }, { id: 'verify' as const, passes: 2 }]
+
+  it('plans the first pass of each stage over the source span, leaving the corrective encode for extend', () =>
+  {
+    expect(progressStages({ stages: AUDIO, video: null }, 60)).toEqual([
+      stage('probe', null),
+      stage('measure', 60),
+      stage('encode', 60),
+      stage('verify', 60)
+    ])
+    expect(weightedMediaSec(progressStages({ stages: AUDIO, video: null }, 60))).toBe(240)
+  })
+
+  it('plans both passes of a two-pass video encode, the first at weight 1', () =>
+  {
+    const stages = progressStages({ stages: [{ id: 'probe', passes: 1 }, { id: 'encode', passes: 2 }, { id: 'verify', passes: 1 }], video: { passes: 2 } as never }, 100)
+    expect(stages).toEqual([
+      stage('probe', null),
+      stage('encode', 100, { passes: 2, twoPass: true }),
+      stage('encode', 100, { pass: 2, passes: 2, twoPass: true }),
+      stage('verify', 100)
+    ])
+    expect(weightedMediaSec(stages)).toBe(400)
+  })
+
+  it('leaves every span unknown when the source has none', () =>
+  {
+    const stages = progressStages({ stages: AUDIO, video: null }, null)
+    expect(stages.map((s) => s.durationSec)).toEqual([null, null, null, null])
+    expect(weightedMediaSec(stages)).toBeNull()
+    expect(progressStages({ stages: AUDIO, video: null }, Number.NaN).every((s) => s.durationSec === null)).toBe(true)
+  })
+
+  it('drives a job percent that never drops through a correction and ends at 100', () =>
+  {
+    const tracker = createJobProgress({ stages: progressStages({ stages: AUDIO, video: null }, 60), jobClass: 'audio', speeds: createSpeedBook(), startedAt: 0 })
+    const percents = [
+      tracker.start('probe', 1, 1).percent,
+      tracker.start('measure', 1, 2).percent,
+      tracker.sample({ outTimeSec: 60, speed: 50, bytesWritten: null }, 3).percent,
+      tracker.start('encode', 1, 4).percent,
+      tracker.sample({ outTimeSec: 30, speed: 50, bytesWritten: 10 }, 5).percent,
+      tracker.start('verify', 1, 6).percent,
+      tracker.extend(correctionStages(2, 2, 60), 7).percent,
+      tracker.start('encode', 2, 8).percent,
+      tracker.sample({ outTimeSec: 30, speed: 50, bytesWritten: 10 }, 9).percent,
+      tracker.start('verify', 2, 10).percent,
+      tracker.finishStage(11).percent
+    ]
+    expect(percents.slice(0, 6)).toEqual([0, 0, 25, 25, 50, 75])
+    expect(percents.every((p, i) => i === 0 || p >= percents[i - 1])).toBe(true)
+    expect(percents.at(-1)).toBe(100)
+  })
+})
+
+describe('correctionStages', () =>
+{
+  it('adds the encode pass and its verify over the source span', () =>
+  {
+    expect(correctionStages(2, 2, 60)).toEqual([stage('encode', 60, { pass: 2, passes: 2 }), stage('verify', 60, { pass: 2, passes: 2 })])
+    expect(correctionStages(3, 3, 0)).toEqual([stage('encode', null, { pass: 3, passes: 3 }), stage('verify', null, { pass: 3, passes: 3 })])
   })
 })
 

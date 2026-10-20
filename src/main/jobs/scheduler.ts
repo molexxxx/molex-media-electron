@@ -13,6 +13,7 @@ import {
   type JobError,
   type JobErrorCode,
   type JobPlan,
+  type JobProgress,
   type JobStage,
   type JobWarning,
   type PauseMode,
@@ -34,6 +35,7 @@ import { plannedMode } from './finalize'
 import type { GpuBudget, GpuJobLease } from './gpu-budget'
 import { pathApi, partOutputPath } from './naming'
 import type { RunnerSet } from './planner'
+import { correctionStages, createJobProgress, createSpeedBook, progressStages, type JobProgressTracker } from './progress'
 import type { OutputArtifact, RunContext, RunnableJob, RunOutcome } from './runners/types'
 import { committedBytes, fitsOnVolume, volumeLabel, volumeMargin, type VolumeCommitment } from './volumes'
 import type { WorkDirCreated, WorkDirEntry, WorkDirRequest, SweepReport } from './workdirs'
@@ -157,6 +159,8 @@ export interface Scheduler
   running(): JobId[]
   /** The volume key a claimed or active job writes to. */
   volumeOf(jobId: JobId): string | null
+  /** Media seconds a running execution has processed across its stages; null when the job has none. */
+  mediaSecDone(jobId: JobId): number | null
   /** Handles an album task's end; the album tasks' `onSettled`. */
   albumSettled(outcome: AlbumOutcome): void
   /** Handles an analysis task's end; the analysis tasks' `onSettled`. */
@@ -185,6 +189,10 @@ interface Execution
   startedAt: number
   done: boolean
   stuck: unknown
+  /** The attempt's percent across its planned stages, which never drops while the execution runs. */
+  progress: JobProgressTracker
+  /** The source's media span, which a correction's stages process again. */
+  durationSec: number | null
 }
 
 type Decision =
@@ -291,6 +299,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
   const changedSources = new Set<JobId>()
   const ranOnCpu = new Set<JobId>()
   const waits = new Map<JobId, string>()
+  const speeds = createSpeedBook()
   const unsubscribe: Array<() => void> = []
   let scheduled = false
   let quitting = false
@@ -861,6 +870,8 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
       return
     }
     const onCpu = budget.onCpu(id)
+    const durationSec = result.job.media?.durationSec ?? null
+    const plan = result.job.plan === null ? null : executionPlan(result.job.plan, onCpu)
     const execution: Execution = {
       jobId: id,
       controller: new AbortController(),
@@ -870,7 +881,9 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
       lease: onCpu ? null : budget.leaseOf(id),
       startedAt: at,
       done: false,
-      stuck: null
+      stuck: null,
+      progress: createJobProgress({ stages: plan === null ? [] : progressStages(plan, durationSec), jobClass: plan?.class ?? 'audio', speeds, startedAt: at }),
+      durationSec
     }
     executions.set(id, execution)
     if (onCpu)
@@ -956,16 +969,16 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
     }
     if (target === job.state)
     {
-      core.stage(id, stageOf(update))
+      core.stage(id, stageOf(update), startProgress(execution, update))
       return
     }
     if (job.state === 'analyzing' && target === 'encoding')
     {
-      core.transition(id, ['analyzing'], 'measured', { stage: stageOf(update) })
+      core.transition(id, ['analyzing'], 'measured', { stage: stageOf(update), progress: startProgress(execution, update) })
     }
     else if (job.state === 'encoding' && target === 'verifying')
     {
-      core.transition(id, ['encoding'], 'encoded', { stage: stageOf(update) })
+      core.transition(id, ['encoding'], 'encoded', { stage: stageOf(update), progress: startProgress(execution, update) })
     }
     else if (job.state === 'verifying' && target === 'encoding')
     {
@@ -974,11 +987,31 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
         core.recordAbort(id, 'requeue', 'requeued-pause')
         return
       }
-      core.transition(id, ['verifying'], 'correct', { stage: stageOf(update) })
+      execution.progress.extend(correctionStages(update.pass, update.passes, execution.durationSec), timers.now())
+      core.transition(id, ['verifying'], 'correct', { stage: stageOf(update), progress: startProgress(execution, update) })
     }
     else
     {
       log.warn(`Ignored stage ${update.id} for ${id} in ${job.state}`)
+    }
+  }
+
+  /** The progress a stage starts with: the attempt's percent so far and nothing of the new stage yet. */
+  function startProgress(execution: Execution, update: { id: StageId; pass: number; passes: number }): JobProgress
+  {
+    const tracked = execution.progress.start(update.id, update.pass, timers.now())
+    return {
+      stage: update.id,
+      pass: update.pass,
+      passes: update.passes,
+      percent: tracked.percent,
+      stagePercent: null,
+      speed: null,
+      etaSec: null,
+      outTimeSec: null,
+      durationSec: tracked.durationSec,
+      bytesWritten: null,
+      elapsedMs: 0
     }
   }
 
@@ -993,11 +1026,12 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
     const stagePercent = span !== null && p.outTimeSec !== null ? Math.min(100, Math.max(0, (p.outTimeSec / span) * 100)) : null
     const speed = p.speed !== null && p.speed > 0 ? p.speed : null
     const etaSec = span !== null && p.outTimeSec !== null && speed !== null ? Math.max(0, (span - p.outTimeSec) / speed) : null
+    const tracked = execution.progress.sample({ outTimeSec: p.outTimeSec, speed, bytesWritten: p.bytes, durationSec: p.durationSec }, timers.now())
     core.progress(execution.jobId, {
       stage: job.stage.id,
       pass: job.stage.pass,
       passes: job.stage.passes,
-      percent: stagePercent ?? 0,
+      percent: tracked.percent,
       stagePercent,
       speed,
       etaSec,
@@ -1251,6 +1285,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
     }
     const begun = core.transition(id, ['verifying'], 'verified', {
       stage: stageOf({ id: 'place', pass: 1, passes: 1, label: 'Placing' }),
+      progress: startProgress(execution, { id: 'place', pass: 1, passes: 1 }),
       begin: { verdict, mode: plannedMode(plan.output.resolution) }
     })
     if (!begun.applied)
@@ -1480,6 +1515,11 @@ export function createScheduler(deps: SchedulerDeps): Scheduler
     checking: () => [...claims.keys()],
     running: () => [...executions.keys()].filter((id) => !(executions.get(id) as Execution).done),
     volumeOf: (jobId) => volumes.get(jobId) ?? null,
+    mediaSecDone(jobId: JobId): number | null
+    {
+      const execution = executions.get(jobId)
+      return execution === undefined || execution.done ? null : execution.progress.mediaSecDone
+    },
     albumSettled,
     analysisSettled,
     quitNow,

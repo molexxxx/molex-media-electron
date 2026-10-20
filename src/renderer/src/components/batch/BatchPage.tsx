@@ -367,6 +367,7 @@ function BatchView({ platform }: { platform: Platform }): React.JSX.Element
       if (pageSession.getState().reload === undefined && jobs.status === 'hydrated' && jobs.hydrations > 0)
       {
         pageSession.setState({ reload: reloadAttention(jobs), loadedAt: Date.now() })
+        useBatchView.getState().openFromSnapshot(jobs.run)
       }
     }
     check(useJobsStore.getState())

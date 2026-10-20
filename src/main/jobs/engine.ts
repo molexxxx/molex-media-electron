@@ -61,6 +61,7 @@ import { defaultPresetState, type PresetStore } from './presets-store'
 import type { JobProbeQueue } from './probe-queue'
 import { JobQueue, type JobChange } from './queue'
 import { recoverEngine, type RecoveredPlacement, type Recovery } from './recovery'
+import { createRunProgressFeed, type RunProgressFeed } from './run-progress'
 import { audioWarnings } from './runners/audio'
 import type { OutputArtifact } from './runners/types'
 import type { ScanFs } from './scan'
@@ -313,6 +314,7 @@ interface Parts
   jobCommands: JobCommands
   historyCommands: HistoryCommands
   presetCommands: PresetCommands
+  progress: RunProgressFeed
 }
 
 /** The GPU budget's encoder family for the detected vendor. */
@@ -647,6 +649,7 @@ export function createJobEngine(deps: EngineDeps): JobEngine
     {
       return
     }
+    parts.progress.observe(event)
     if (event.type === 'job.removed')
     {
       summaries.forget(event.jobId)
@@ -1154,6 +1157,7 @@ export function createJobEngine(deps: EngineDeps): JobEngine
       notify: (notification) => host.notify(notification),
       log
     })
+    const progress = createRunProgressFeed({ core, mediaSecDone: (id) => scheduler.mediaSecDone(id) })
 
     const history = new RunHistory({ io: deps.store, fs: deps.historyFs, paths, store, openRun: () => historyRun })
     const tombstones = new Tombstones({ timers })
@@ -1247,7 +1251,7 @@ export function createJobEngine(deps: EngineDeps): JobEngine
 
     parts = {
       core, registry, recovery, scheduler, budget, albums, analyses, runners, trash, finalizer, history, presets, tombstones,
-      queueCommands, planCommands, runCommands, jobCommands, historyCommands, presetCommands
+      queueCommands, planCommands, runCommands, jobCommands, historyCommands, presetCommands, progress
     }
     for (const job of queue.jobs())
     {

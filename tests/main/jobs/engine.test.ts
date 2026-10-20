@@ -840,6 +840,7 @@ describe('the normalize event sequence', () =>
     expect(words).toEqual([
       'state queued>analyzing',
       'stage probe',
+      'job.progress',
       'stage measure',
       'job.progress',
       'job.measured',
@@ -864,6 +865,26 @@ describe('the normalize event sequence', () =>
       assertWireSafe(line)
     }
     expect(h.journalLines().length).toBeGreaterThan(0)
+  })
+})
+
+describe('the run progress', () =>
+{
+  it('publishes the run percent with finished jobs in full and running jobs by their percent across stages', async () =>
+  {
+    const h = track(harness())
+    await h.boot()
+    const [a, b] = await h.addFiles(['one.wav', 'two.wav'])
+    await h.startRun()
+    expect(h.engine.snapshot().run.progress.percent).toBe(0)
+    await runThrough(h, a)
+    await runThrough(h, b, ['probe'])
+    expect(h.view(a).state).toBe('done')
+    expect(h.view(b).progress).toMatchObject({ stage: 'measure', percent: 12.5 })
+    expect(h.engine.snapshot().run.progress.percent).toBeCloseTo(56.25, 6)
+    expect(h.sender.events.some((e) => e.type === 'run.progress' && e.progress.percent > 50)).toBe(true)
+    await runThrough(h, b, ['measure', 'encode', 'verify'])
+    expect(h.engine.snapshot().run).toMatchObject({ status: 'idle', progress: { percent: 0 } })
   })
 })
 

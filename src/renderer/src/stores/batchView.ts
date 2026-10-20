@@ -6,7 +6,7 @@
  * appStore and never crosses IPC: the engine owns jobs, this store owns how the page looks at them.
  */
 import { create, createStore, type StateCreator, type StoreApi } from 'zustand'
-import type { JobView } from '../../../shared/jobs/types'
+import type { JobView, RunState } from '../../../shared/jobs/types'
 import { createGridSelection, gridSelectionReducer, type GridSelectionAction, type GridSelectionState } from '../ui/useGridSelection'
 import
 {
@@ -50,6 +50,15 @@ export const RUN_UNAVAILABLE_ANNOUNCEMENT = 'Run starts when you press Start.'
 export function modeForDigit(digit: number): BatchMode | null
 {
   return Number.isInteger(digit) ? BATCH_MODES[digit - 1] ?? null : null
+}
+
+/**
+ * The mode the page opens on from the engine's first snapshot in this window: Run while a batch is open (running,
+ * pausing, paused, restored, or canceling), so a reload mid-run lands where the run is; null leaves the mode alone.
+ */
+export function openingMode(run: Pick<RunState, 'status'> | null): BatchMode | null
+{
+  return run !== null && run.status !== 'idle' ? 'run' : null
 }
 
 /** A column sort as the DataGrid takes it; null is the order given (queue order). */
@@ -441,6 +450,11 @@ export interface BatchViewState
   setMode(mode: BatchMode): ModeChange
   /** Makes Run available for the rest of the session. */
   markRunAvailable(): void
+  /**
+   * The engine's first snapshot in this window: an open batch makes Run available and shows it in place of the
+   * initial Queue, so a reload mid-run reopens on Run; any other mode stays. Returns whether Run is shown.
+   */
+  openFromSnapshot(run: Pick<RunState, 'status'> | null): boolean
 
   /** Applies a DataGrid selection action to one list and returns the new selection. */
   select(key: ViewKey, action: GridSelectionAction): GridSelectionState
@@ -608,6 +622,21 @@ function batchViewCreator(deps: BatchViewDeps): StateCreator<BatchViewState>
         {
           set({ runAvailable: true })
         }
+      },
+
+      openFromSnapshot: (run) =>
+      {
+        if (openingMode(run) !== 'run')
+        {
+          return false
+        }
+        const state = get()
+        const mode = state.mode === 'queue' ? 'run' : state.mode
+        if (!state.runAvailable || mode !== state.mode)
+        {
+          set({ runAvailable: true, mode })
+        }
+        return mode === 'run'
       },
 
       select: (key, action) =>

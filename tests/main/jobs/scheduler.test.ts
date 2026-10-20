@@ -702,6 +702,62 @@ describe('execution', () =>
     expect(ctx.job(id).measurement?.measuredAt).toBe(1)
   })
 
+  it('reports the job percent across its planned stages, holds it at each stage start, and reads 100 while placing', async () =>
+  {
+    const ctx = setup({ jobs: 1 })
+    const [id] = ctx.ids
+    ctx.start()
+    await ctx.flush()
+    const run = ctx.runOf(id)
+    run.ctx.stage({ id: 'probe', pass: 1, passes: 1, label: 'Probing' })
+    expect(ctx.job(id).progress).toMatchObject({ stage: 'probe', pass: 1, percent: 0, stagePercent: null, elapsedMs: 0 })
+    run.ctx.stage({ id: 'encode', pass: 1, passes: 1, label: 'Encoding' })
+    expect(ctx.job(id).progress).toMatchObject({ stage: 'encode', pass: 1, percent: 0 })
+    run.ctx.progress({ outTimeSec: 30, durationSec: 60, speed: 2, bytes: 100 })
+    expect(ctx.job(id).progress).toMatchObject({ stage: 'encode', stagePercent: 50, etaSec: 15, bytesWritten: 100 })
+    expect(ctx.job(id).progress?.percent).toBeCloseTo(100 / 3, 6)
+    run.ctx.stage({ id: 'verify', pass: 1, passes: 1, label: 'Verifying' })
+    expect(ctx.job(id).progress).toMatchObject({ stage: 'verify', stagePercent: null })
+    expect(ctx.job(id).progress?.percent).toBeCloseTo(200 / 3, 6)
+    run.ctx.progress({ outTimeSec: 30, durationSec: 60, speed: 4, bytes: null })
+    expect(ctx.job(id).progress?.percent).toBeCloseTo(250 / 3, 6)
+    expect(ctx.scheduler.mediaSecDone(id)).toBe(90)
+    run.resolve(output(run.ctx))
+    await ctx.flush()
+    const placing = ctx.drafts().find((e) => e.type === 'job.state' && e.jobId === id && e.to === 'finalizing')
+    expect(placing?.type === 'job.state' ? placing.patch.progress : null).toMatchObject({ stage: 'place', percent: 100 })
+    expect(ctx.job(id).state).toBe('done')
+    expect(ctx.scheduler.mediaSecDone(id)).toBeNull()
+  })
+
+  it('adds a correction to the planned stages and keeps the job percent rising through it', async () =>
+  {
+    const ctx = setup({ jobs: 1 })
+    const [id] = ctx.ids
+    ctx.start()
+    await ctx.flush()
+    const run = ctx.runOf(id)
+    const percents: number[] = []
+    const report = (stage: 'encode' | 'verify', pass: number): void =>
+    {
+      run.ctx.stage({ id: stage, pass, passes: 2, label: stage })
+      percents.push(ctx.job(id).progress?.percent ?? -1)
+      run.ctx.progress({ outTimeSec: 30, durationSec: 60, speed: 2, bytes: null })
+      percents.push(ctx.job(id).progress?.percent ?? -1)
+    }
+    report('encode', 1)
+    report('verify', 1)
+    report('encode', 2)
+    expect(ctx.job(id)).toMatchObject({ state: 'encoding', stage: { id: 'encode', pass: 2 }, progress: { stage: 'encode', pass: 2, passes: 2 } })
+    report('verify', 2)
+    expect(percents.slice(0, 4).map((p) => Math.round(p * 100) / 100)).toEqual([0, 33.33, 66.67, 83.33])
+    expect(percents.every((p, i) => i === 0 || p > percents[i - 1])).toBe(true)
+    expect(percents.at(-1)).toBeLessThan(100)
+    run.resolve(output(run.ctx))
+    await ctx.flush()
+    expect(ctx.job(id).state).toBe('done')
+  })
+
   it('walks a runner that reports no stages through to verifying before the commit', async () =>
   {
     const ctx = setup({ jobs: 1 })
