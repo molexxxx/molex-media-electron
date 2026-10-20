@@ -7,7 +7,7 @@ All notable changes to the audio normalization tool are documented here.
 Completes the sweep started in 4.6.0 by covering what the previous two
 rounds did not reach: the GPU encoder paths, the editor export pipeline,
 and the target-size bitrate budget. Flag names were verified against the
-encoders' own AVOption tables, and every behavioural claim was measured.
+encoders' own AVOption tables, and every behavioral claim was measured.
 
 ### Fixed
 
@@ -46,7 +46,7 @@ encoders' own AVOption tables, and every behavioural claim was measured.
 - Hwaccel flags deliberately omit `-hwaccel_output_format`, which would
   exhaust the decoder surface pool across concurrent batch workers.
 - The editor's audio graph is sound: `asetpts=PTS-STARTPTS` before concat,
-  `aformat` normalisation per segment, and `amix=...:normalize=0` so a
+  `aformat` normalization per segment, and `amix=...:normalize=0` so a
   multi-track mix is not silently attenuated.
 
 ## [4.7.0] - 2026-08-25 - Container and extraction audit
@@ -145,7 +145,7 @@ binary before and after the change.
 
 #### Loudness normalization missed its target
 - The analysis pass measured the untouched source while the encode pass
-  normalized a downmixed one. Since a fold-down changes a programme's
+  normalized a downmixed one. Since a fold-down changes a program's
   measured loudness, the output missed the target by whatever the
   fold-down shifted it. Both passes now share one pre-filter chain.
 - `acompressor`'s `makeup` is a linear factor with a range of 1 to 64,
@@ -166,7 +166,7 @@ binary before and after the change.
   count, upmixing a stereo commentary track to 5.1 when a 5.1 main track
   was present. The per-stream layout is now preserved.
 - Channel counts with no unambiguous FFmpeg layout name (3, 5, 7) were
-  labelled `stereo`, silently folding those sources down during a
+  labeled `stereo`, silently folding those sources down during a
   volume-only operation. They are now left at their source layout.
 - The boost chain no longer quantizes to 16-bit before the gain stage,
   which cost precision on 24-bit and float sources.
@@ -180,7 +180,7 @@ binary before and after the change.
 
 - `src/main/ffmpeg/processor/audio-filters.ts`, a pure module holding
   every filter-chain decision, each pinned to the documented FFmpeg
-  behaviour it depends on.
+  behavior it depends on.
 - `src/renderer/src/stores/taskSettings.ts`, which resolves the settings
   a queued file will actually run with.
 - 97 tests across three new suites covering the filter builders, the
@@ -270,7 +270,7 @@ extract test suite continue to pass unchanged.
 #### Five extraction modes
 - **Audio** - demux/transcode an audio stream to MP3, AAC, M4A, FLAC,
   WAV, Ogg, or Opus with bitrate / sample-rate / channel overrides
-  (existing behaviour, now formalized as one mode of many).
+  (existing behavior, now formalized as one mode of many).
 - **Silent video** - strip audio and keep the video track. Defaults to a
   fast lossless stream copy (`-c:v copy`); optionally re-encode to H.264
   with CRF / preset controls for codec normalization.
@@ -403,7 +403,7 @@ while remaining backwards compatible with existing tasks.
   - Audio dispatch by codec (`aac` / `libopus` / `flac` / `copy`).
   - Two-pass loop (`-pass 1 -an -f null` → `-pass 2`) for target-size mode,
     with passlog cleanup and proportional progress reporting across passes.
-  - `custom` quality tier honoured via `customCrf`.
+  - `custom` quality tier honored via `customCrf`.
   - Backwards-compatible mode resolution: legacy callers that only set
     `targetSizeMB > 0` continue to use the bitrate-targeted path.
 - **`CompressOptions`** type extended with optional `mode`, `customCrf`,
@@ -740,7 +740,7 @@ chips in the UI.
 
 ### Changed
 - `NormalizeOptions` extended with optional `compression` and `downmix`
-  fields. Files / configs that omit them default to the previous behaviour
+  fields. Files / configs that omit them default to the previous behavior
   (DRC off, layout kept).
 - `ProcessingTask.normalizeOptions` carries `compression` and `downmix` end
   to end so per-file overrides and presets reach the FFmpeg builder intact.
