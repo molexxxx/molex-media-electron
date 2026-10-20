@@ -20,6 +20,14 @@ vi.mock('../../src/main/ffmpeg/runner', () => ({
 }))
 
 import {
+  adapterFor,
+  adapterQuery,
+  detectGpuSummary,
+  gpuEncodersFor,
+  listGpuAdapters,
+  parseAdapterNames,
+  vendorOfAdapter,
+  vendorOfMode,
   getGpuPreset,
   getGpuQualityArgs,
   getHwaccelInputArgs,
@@ -213,5 +221,123 @@ describe('resolveEffectiveMode', () => {
   it('returns an explicit mode without probing', async () => {
     expect(await resolveEffectiveMode('/ffmpeg', 'nvenc')).toBe('nvenc')
     expect(mockRunCommand).not.toHaveBeenCalled()
+  })
+})
+
+describe('adapter names', () => {
+  // Recorded on Windows 11 from (Get-CimInstance Win32_VideoController).Name on a machine with two adapters.
+  const WINDOWS = 'NVIDIA GeForce RTX 4070 SUPER\r\nAMD Radeon(TM) Graphics\r\n'
+  const MAC = 'Graphics/Displays:\n\n    Apple M2:\n\n      Chipset Model: Apple M2\n      Type: GPU\n'
+  const LINUX = '00:02.0 VGA compatible controller: Intel Corporation UHD Graphics 630 (rev 02)\n' +
+    '01:00.0 3D controller: NVIDIA Corporation TU117M [GeForce GTX 1650 Mobile] (rev a1)\n' +
+    '00:1f.3 Audio device: Intel Corporation Cannon Lake PCH cAVS (rev 10)\n'
+
+  it('parses the listing of each platform', () => {
+    expect(parseAdapterNames('win32', WINDOWS)).toEqual(['NVIDIA GeForce RTX 4070 SUPER', 'AMD Radeon(TM) Graphics'])
+    expect(parseAdapterNames('darwin', MAC)).toEqual(['Apple M2'])
+    expect(parseAdapterNames('linux', LINUX)).toEqual(['Intel Corporation UHD Graphics 630', 'NVIDIA Corporation TU117M [GeForce GTX 1650 Mobile]'])
+  })
+
+  it('names the vendor of an adapter', () => {
+    expect(vendorOfAdapter('NVIDIA GeForce RTX 4070 SUPER')).toBe('nvidia')
+    expect(vendorOfAdapter('Quadro P2000')).toBe('nvidia')
+    expect(vendorOfAdapter('Intel(R) UHD Graphics 770')).toBe('intel')
+    expect(vendorOfAdapter('AMD Radeon(TM) Graphics')).toBe('amd')
+    expect(vendorOfAdapter('Apple M2')).toBeNull()
+  })
+
+  it('picks the adapter of the encoding vendor, else the first one', () => {
+    const names = parseAdapterNames('win32', WINDOWS)
+    expect(adapterFor(names, 'nvidia')).toBe('NVIDIA GeForce RTX 4070 SUPER')
+    expect(adapterFor(names, 'amd')).toBe('AMD Radeon(TM) Graphics')
+    expect(adapterFor(names, 'intel')).toBe('NVIDIA GeForce RTX 4070 SUPER')
+    expect(adapterFor(names, null)).toBe('NVIDIA GeForce RTX 4070 SUPER')
+    expect(adapterFor([], 'nvidia')).toBeNull()
+  })
+
+  it('maps modes to vendors and encoders', () => {
+    expect(vendorOfMode('nvenc')).toBe('nvidia')
+    expect(vendorOfMode('qsv')).toBe('intel')
+    expect(vendorOfMode('amf')).toBe('amd')
+    expect(vendorOfMode('off')).toBeNull()
+    expect(vendorOfMode('auto')).toBeNull()
+    expect(gpuEncodersFor('nvenc')).toEqual(['h264_nvenc', 'hevc_nvenc'])
+    expect(gpuEncodersFor('off')).toEqual([])
+  })
+
+  it('queries without a shell on each platform', () => {
+    expect(adapterQuery('win32', 'D:\\Windows')).toEqual({
+      file: 'D:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      args: ['-NoProfile', '-NonInteractive', '-Command', '(Get-CimInstance Win32_VideoController).Name']
+    })
+    expect(adapterQuery('darwin')?.file).toBe('/usr/sbin/system_profiler')
+    expect(adapterQuery('linux')?.file).toBe('lspci')
+    expect(adapterQuery('aix')).toBeNull()
+  })
+
+  it('reads the listing once and keeps it until detection resets', async () => {
+    mockRunCommand.mockReturnValue({ promise: Promise.resolve({ code: 0, stdout: WINDOWS, stderr: '' }) })
+    expect(await listGpuAdapters('win32')).toHaveLength(2)
+    expect(await listGpuAdapters('win32')).toHaveLength(2)
+    expect(mockRunCommand).toHaveBeenCalledTimes(1)
+    expect(mockRunCommand.mock.calls[0][3]).toEqual({ log: false })
+    resetGpuDetection()
+    await listGpuAdapters('win32')
+    expect(mockRunCommand).toHaveBeenCalledTimes(2)
+  })
+
+  it('answers an empty list when the query fails, and tries again later', async () => {
+    mockRunCommand.mockReturnValueOnce({ promise: Promise.resolve({ code: 1, stdout: '', stderr: 'denied' }) })
+    expect(await listGpuAdapters('win32')).toEqual([])
+    mockRunCommand.mockReturnValueOnce({ promise: Promise.reject(new Error('ENOENT')) })
+    expect(await listGpuAdapters('linux')).toEqual([])
+    expect(await listGpuAdapters('aix')).toEqual([])
+    expect(mockRunCommand).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('detection runs', () => {
+  it('answers a concurrent request with the running detection', async () => {
+    let finish: (r: unknown) => void = () => undefined
+    mockRunCommand
+      .mockReturnValueOnce({ promise: new Promise((resolve) => { finish = resolve }) })
+      .mockReturnValue({ promise: Promise.resolve({ code: 0, stdout: '', stderr: '' }) })
+    const first = resolveEffectiveMode('/ffmpeg', 'auto')
+    const second = resolveEffectiveMode('/ffmpeg', 'auto')
+    finish({ code: 0, stdout: 'h264_qsv', stderr: '' })
+    expect(await first).toBe('qsv')
+    expect(await second).toBe('qsv')
+  })
+
+  it('retries later when no attempt could run', async () => {
+    mockRunCommand.mockReturnValue({ promise: Promise.reject(new Error('ENOENT')) })
+    expect(await resolveEffectiveMode('/ffmpeg', 'auto')).toBe('off')
+    const calls = mockRunCommand.mock.calls.length
+    await resolveEffectiveMode('/ffmpeg', 'auto')
+    expect(mockRunCommand.mock.calls.length).toBeGreaterThan(calls)
+  })
+
+  it('treats an unknown mode as software for quality', () => {
+    expect(getGpuQualityArgs('auto', 20)).toEqual(['-crf', '20'])
+  })
+})
+
+describe('detectGpuSummary', () => {
+  it('reports nothing for software encoding', async () => {
+    expect(await detectGpuSummary('/ffmpeg', 'off', 'win32')).toEqual({ vendor: null, name: null, encoders: [] })
+    expect(mockRunCommand).not.toHaveBeenCalled()
+  })
+
+  it('names the adapter of an explicit mode', async () => {
+    mockRunCommand.mockReturnValue({ promise: Promise.resolve({ code: 0, stdout: 'NVIDIA GeForce RTX 4070 SUPER\r\nAMD Radeon(TM) Graphics', stderr: '' }) })
+    expect(await detectGpuSummary('/ffmpeg', 'amf', 'win32')).toEqual({ vendor: 'amd', name: 'AMD Radeon(TM) Graphics', encoders: ['h264_amf', 'hevc_amf'] })
+  })
+
+  it('names the adapter auto detection settled on', async () => {
+    mockRunCommand
+      .mockReturnValueOnce({ promise: Promise.resolve({ code: 0, stdout: 'h264_nvenc', stderr: '' }) })
+      .mockReturnValueOnce({ promise: Promise.resolve({ code: 0, stdout: '', stderr: '' }) })
+      .mockReturnValueOnce({ promise: Promise.resolve({ code: 0, stdout: 'AMD Radeon(TM) Graphics\nNVIDIA GeForce RTX 4070 SUPER', stderr: '' }) })
+    expect(await detectGpuSummary('/ffmpeg', 'auto', 'win32')).toEqual({ vendor: 'nvidia', name: 'NVIDIA GeForce RTX 4070 SUPER', encoders: ['h264_nvenc', 'hevc_nvenc'] })
   })
 })

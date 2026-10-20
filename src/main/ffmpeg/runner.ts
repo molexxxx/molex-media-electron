@@ -27,17 +27,24 @@ export interface RunCommandResult {
  * The returned object exposes both the `promise` (resolves on exit)
  * and the raw `process` handle for external cancellation.
  *
+ * Every process started here is tracked for {@link killAllProcesses}. Job
+ * encodes never run through this function; they spawn through
+ * `createExec` in exec.ts, which the engine stops itself.
+ *
  * @param ffmpegPath - Absolute path to the FFmpeg binary.
  * @param args       - CLI arguments passed to FFmpeg.
  * @param onStderr   - Optional callback invoked for each non-empty stderr line.
+ * @param options    - `log: false` keeps the command out of the FFmpeg log,
+ *   for helper tools such as the GPU adapter query.
  * @returns An object with `promise` and `process`.
  */
 export function runCommand(
   ffmpegPath: string,
   args: string[],
-  onStderr?: (line: string) => void
+  onStderr?: (line: string) => void,
+  options: { log?: boolean } = {}
 ): { promise: Promise<RunCommandResult>; process: ChildProcess } {
-  logger.ffmpeg('CMD', `${ffmpegPath} ${args.join(' ')}`)
+  if (options.log !== false) logger.ffmpeg('CMD', `${ffmpegPath} ${args.join(' ')}`)
 
   const proc = spawn(ffmpegPath, args, {
     windowsHide: true,
@@ -108,7 +115,12 @@ export function parseProgress(line: string): { time: number; speed: string; size
   }
 }
 
-/** Sends SIGTERM to every active FFmpeg child process and clears the tracking set. */
+/**
+ * Sends SIGTERM to every child started by {@link runCommand} (the editor,
+ * playback, GPU detection, and the old batch processors) and clears the
+ * tracking set. Engine jobs are never tracked here, so this cannot stop one;
+ * the engine's shutdown does that.
+ */
 export function killAllProcesses(): void {
   for (const proc of activeProcesses) {
     try {

@@ -1,5 +1,34 @@
-import { describe, it, expect } from 'vitest'
-import { parseProgress } from '../../src/main/ffmpeg/runner'
+import { EventEmitter } from 'events'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const { mockSpawn, mockLog } = vi.hoisted(() => ({ mockSpawn: vi.fn(), mockLog: vi.fn() }))
+
+vi.mock('child_process', () => ({
+  spawn: (...a: unknown[]) => mockSpawn(...a),
+  ChildProcess: class {}
+}))
+
+vi.mock('../../src/main/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), success: vi.fn(), ffmpeg: (...a: unknown[]) => mockLog(...a) }
+}))
+
+import { parseProgress, runCommand, killAllProcesses, getActiveProcessCount } from '../../src/main/ffmpeg/runner'
+import { createExec } from '../../src/main/ffmpeg/exec'
+import { realTimers } from '../../src/main/timers'
+
+class FakeChild extends EventEmitter
+{
+  stdout = new EventEmitter()
+  stderr = new EventEmitter()
+  stdin = Object.assign(new EventEmitter(), { write: vi.fn(), end: vi.fn() })
+  pid = 100
+  killed = false
+  kill = vi.fn(() =>
+  {
+    this.killed = true
+    return true
+  })
+}
 
 describe('parseProgress', () => {
   it('parses a typical ffmpeg progress line', () => {
@@ -50,5 +79,45 @@ describe('parseProgress', () => {
     expect(result).not.toBeNull()
     expect(result!.time).toBe(5.2)
     expect(result!.size).toBe('')
+  })
+})
+
+describe('process tracking', () => {
+  beforeEach(() => {
+    killAllProcesses()
+    mockSpawn.mockReset()
+    mockLog.mockReset()
+  })
+
+  it('kills only the children started through runCommand, never a job exec', () => {
+    const tracked = new FakeChild()
+    const job = new FakeChild()
+    mockSpawn.mockReturnValueOnce(tracked)
+    runCommand('ffmpeg', ['-version'])
+    const exec = createExec('ffmpeg', { timers: realTimers, spawn: (() => job) as never })
+    void exec.run(['-i', 'in.wav', 'out.wav'], { signal: new AbortController().signal, stop: 'kill' })
+    expect(getActiveProcessCount()).toBe(1)
+    killAllProcesses()
+    expect(tracked.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(job.kill).not.toHaveBeenCalled()
+    expect(getActiveProcessCount()).toBe(0)
+  })
+
+  it('logs the command unless asked not to', () => {
+    mockSpawn.mockReturnValue(new FakeChild())
+    runCommand('ffmpeg', ['-encoders'])
+    runCommand('powershell.exe', ['-NoProfile'], undefined, { log: false })
+    expect(mockLog).toHaveBeenCalledTimes(1)
+    expect(mockLog).toHaveBeenCalledWith('CMD', 'ffmpeg -encoders')
+  })
+
+  it('stops tracking a child once it closes', async () => {
+    const child = new FakeChild()
+    mockSpawn.mockReturnValueOnce(child)
+    const { promise } = runCommand('ffmpeg', ['-version'])
+    child.stdout.emit('data', 'ffmpeg version n9.0.2')
+    child.emit('close', 0)
+    await expect(promise).resolves.toEqual({ stdout: 'ffmpeg version n9.0.2', stderr: '', code: 0, killed: false })
+    expect(getActiveProcessCount()).toBe(0)
   })
 })

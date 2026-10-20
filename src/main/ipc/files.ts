@@ -1,45 +1,44 @@
 /**
  * @module main/ipc/files
- * @description IPC handlers for FFmpeg setup, file dialogs, directory
- * scanning, and media probing.
+ * @description IPC handlers for FFmpeg setup and build information, file
+ * dialogs, directory scanning, and media probing.
  */
 
 import { ipcMain, dialog, app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
-import { saveConfig, getConfig } from '../config'
+import { getConfig } from '../config'
 import { logger } from '../logger'
-import { findSystemFFmpeg, downloadFFmpeg, getFFmpegVersion, type BootstrapProgress } from '../ffmpeg/bootstrap'
+import { getFFmpegVersion, type BootstrapProgress } from '../ffmpeg/bootstrap'
 import { probeMedia } from '../ffmpeg/probe'
 import { findMediaFiles } from '../ffmpeg/processor'
-import { initFFmpegDir } from '../ytdlp/binary'
 import { startPreviewServer, registerPreviewPath } from '../preview-server'
 import { prepareForPlayback, prepareForPlaybackAt, clearPlaybackCacheFor } from '../ffmpeg/playback'
 import { sendToAll } from './helpers'
+import {
+  checkFfmpeg, exclusiveDialog, ffmpegInfo, installPinnedFfmpeg, mediaFileFilters, mostRecentFolder, notePickedFolder, parentWindowOf,
+  rerunSelfTest, type FfmpegBuildState
+} from './jobs-host'
+
+/** The old setup answer for a build state: found with its version and paths, or not found. */
+function checkReply(state: FfmpegBuildState): { found: true; version: string; ffmpeg: string; ffprobe: string } | { found: false } {
+  if (!state.adopted || !state.info) return { found: false }
+  return { found: true, version: state.info.versionString || 'unknown', ffmpeg: state.info.ffmpegPath, ffprobe: state.info.ffprobePath }
+}
 
 /** Register FFmpeg setup, file dialog, and probe IPC handlers. */
 export function registerFilesIPC(): void {
   // --- FFmpeg Setup ---
-  ipcMain.handle('ffmpeg:check', async () => {
-    const paths = await findSystemFFmpeg()
-    if (paths) {
-      const version = await getFFmpegVersion(paths.ffmpeg)
-      await saveConfig({ ffmpegPath: paths.ffmpeg, ffprobePath: paths.ffprobe })
-      await initFFmpegDir()
-      return { found: true, version, ...paths }
-    }
-    return { found: false }
-  })
+  ipcMain.handle('ffmpeg:check', async () => checkReply(await checkFfmpeg()))
 
   ipcMain.handle('ffmpeg:download', async () => {
     try {
-      const paths = await downloadFFmpeg((progress: BootstrapProgress) => {
+      const state = await installPinnedFfmpeg((progress: BootstrapProgress) => {
         sendToAll('ffmpeg:download-progress', progress)
       })
-      const version = await getFFmpegVersion(paths.ffmpeg)
-      await saveConfig({ ffmpegPath: paths.ffmpeg, ffprobePath: paths.ffprobe })
-      await initFFmpegDir()
-      return { success: true, version, ...paths }
+      const reply = checkReply(state)
+      if (!reply.found) throw new Error(state.refusal ?? 'The installed FFmpeg could not be used')
+      return { success: true, version: reply.version, ffmpeg: reply.ffmpeg, ffprobe: reply.ffprobe }
     } catch (err: any) {
       logger.error(`FFmpeg download failed: ${err.message}`)
       return { success: false, error: err.message }
@@ -52,46 +51,79 @@ export function registerFilesIPC(): void {
     return getFFmpegVersion(config.ffmpegPath)
   })
 
-  // --- File Dialogs ---
-  ipcMain.handle('dialog:openFiles', async () => {
-    const config = await getConfig()
-    const exts = config.supportedExtensions.map((e) => e.replace('.', ''))
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Media Files', extensions: exts },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    })
-    return result.filePaths
+  ipcMain.handle('ffmpeg:info', async () => ffmpegInfo())
+
+  ipcMain.handle('ffmpeg:selfTest', async () => {
+    await rerunSelfTest()
+    return ffmpegInfo()
   })
 
-  ipcMain.handle('dialog:openDirectory', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory']
-    })
-    return result.filePaths[0] || null
+  ipcMain.handle('ffmpeg:installPinned', async (event) => {
+    try {
+      await installPinnedFfmpeg((progress: BootstrapProgress) => {
+        if (!event.sender.isDestroyed()) event.sender.send('ffmpeg:download-progress', progress)
+      })
+      return { ok: true, info: ffmpegInfo() }
+    } catch (err: any) {
+      logger.error(`Installing the tested FFmpeg build failed: ${err.message}`)
+      return { ok: false, error: err.message, info: ffmpegInfo() }
+    }
   })
 
-  ipcMain.handle('dialog:selectOutputDir', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openDirectory', 'createDirectory'],
-      title: 'Select Output Directory'
-    })
-    return result.filePaths[0] || null
-  })
+  // --- File Dialogs (parented to the calling window, one at a time) ---
+  ipcMain.handle('dialog:openFiles', async (event) =>
+    exclusiveDialog<string[]>([], async () => {
+      const win = parentWindowOf(event.sender)
+      if (!win) return []
+      const result = await dialog.showOpenDialog(win, {
+        properties: ['openFile', 'multiSelections'],
+        filters: mediaFileFilters()
+      })
+      if (result.filePaths[0]) notePickedFolder(path.dirname(result.filePaths[0]))
+      return result.filePaths
+    }))
 
-  ipcMain.handle('dialog:selectSavePath', async (_, defaultName: string, filters: { name: string; extensions: string[] }[]) => {
-    const config = await getConfig()
-    const defaultDir = config.outputDirectory || ''
-    const defaultPath = defaultDir ? path.join(defaultDir, defaultName) : defaultName
-    const result = await dialog.showSaveDialog({
-      title: 'Export As',
-      defaultPath,
-      filters
-    })
-    return result.canceled ? null : result.filePath || null
-  })
+  ipcMain.handle('dialog:openDirectory', async (event) =>
+    exclusiveDialog<string | null>(null, async () => {
+      const win = parentWindowOf(event.sender)
+      if (!win) return null
+      const config = await getConfig()
+      const result = await dialog.showOpenDialog(win, {
+        properties: ['openDirectory'],
+        defaultPath: mostRecentFolder(config.jobs.recentFolders)
+      })
+      const picked = result.filePaths[0] || null
+      notePickedFolder(picked)
+      return picked
+    }))
+
+  ipcMain.handle('dialog:selectOutputDir', async (event) =>
+    exclusiveDialog<string | null>(null, async () => {
+      const win = parentWindowOf(event.sender)
+      if (!win) return null
+      const config = await getConfig()
+      const result = await dialog.showOpenDialog(win, {
+        properties: ['openDirectory', 'createDirectory'],
+        title: 'Select Output Folder',
+        defaultPath: config.outputDirectory || undefined
+      })
+      return result.filePaths[0] || null
+    }))
+
+  ipcMain.handle('dialog:selectSavePath', async (event, defaultName: string, filters: { name: string; extensions: string[] }[]) =>
+    exclusiveDialog<string | null>(null, async () => {
+      const win = parentWindowOf(event.sender)
+      if (!win) return null
+      const config = await getConfig()
+      const defaultDir = config.outputDirectory || ''
+      const defaultPath = defaultDir ? path.join(defaultDir, defaultName) : defaultName
+      const result = await dialog.showSaveDialog(win, {
+        title: 'Export As',
+        defaultPath,
+        filters
+      })
+      return result.canceled ? null : result.filePath || null
+    }))
 
   // --- Directory scanning ---
   ipcMain.handle('files:scanDirectory', async (_, dirPath: string) => {

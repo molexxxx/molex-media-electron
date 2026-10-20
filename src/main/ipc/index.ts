@@ -10,16 +10,32 @@ import { registerProcessingIPC } from './processing'
 import { registerEditorIPC } from './editor'
 import { registerMediaIPC } from './media'
 import { registerSystemIPC } from './system'
+import { registerJobsIPC } from './jobs'
+import { hostPlatform } from './jobs-host'
+import type { CommandTarget } from '../jobs/command-gate'
+import type { JobsHost } from '../jobs/deps'
+
+export { registerJobsIPC } from './jobs'
+export { checkFfmpeg, createEngineRuntime, type EngineRuntime } from './jobs-host'
+
+/** The engine and its host, once the engine has initialized; job channels are registered only with them. */
+export interface JobsIPC {
+  engine: CommandTarget
+  host: Pick<JobsHost, 'rendererLocation' | 'logUnexpected'>
+}
 
 /**
  * Register every IPC handler for renderer ↔ main communication.
- * Called once during app initialisation.
+ * Called once during app initialization, after the engine's `init` when
+ * `jobs` is given. The old processing handlers stay registered beside the
+ * job channels; the two sets use different channel names.
  */
-export function registerIPC(): void {
+export function registerIPC(jobs?: JobsIPC): void {
   registerConfigIPC()
   registerFilesIPC()
   registerProcessingIPC()
   registerEditorIPC()
   registerMediaIPC()
   registerSystemIPC()
+  if (jobs) registerJobsIPC(jobs.engine, jobs.host, hostPlatform())
 }

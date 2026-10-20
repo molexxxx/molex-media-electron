@@ -64,6 +64,7 @@ const PRESET_MAP: Record<string, Record<string, string>> = {
 let _detectedMode: GpuMode | null = null
 let _detecting = false
 const _detectQueue: ((mode: GpuMode) => void)[] = []
+let _adapterNames: string[] | null = null
 
 /**
  * Detect available GPU encoder by trying a small encode.
@@ -162,6 +163,162 @@ export async function detectGpuMode(ffmpegPath: string): Promise<GpuMode>
 export function resetGpuDetection(): void
 {
   _detectedMode = null
+  _adapterNames = null
+}
+
+/** The hardware vendors a GPU mode encodes on. */
+export type GpuVendorName = 'nvidia' | 'intel' | 'amd'
+
+/** The vendor of a hardware mode; null for software. */
+export function vendorOfMode(mode: GpuMode): GpuVendorName | null
+{
+  switch (mode)
+  {
+    case 'nvenc':
+      return 'nvidia'
+    case 'qsv':
+      return 'intel'
+    case 'amf':
+      return 'amd'
+    default:
+      return null
+  }
+}
+
+/** The hardware encoders a mode offers, in the order of GPU_CODECS; empty for software and auto. */
+export function gpuEncodersFor(mode: GpuMode): string[]
+{
+  return Object.values(GPU_CODECS[mode] ?? {})
+}
+
+const VENDOR_PATTERNS: Record<GpuVendorName, RegExp> = {
+  nvidia: /\b(nvidia|geforce|quadro|tesla)\b/i,
+  intel: /\bintel\b/i,
+  amd: /\b(amd|radeon|ati)\b/i
+}
+
+/** The vendor a display adapter's name belongs to, or null when it names none of the three. */
+export function vendorOfAdapter(name: string): GpuVendorName | null
+{
+  const found = (Object.keys(VENDOR_PATTERNS) as GpuVendorName[]).find((v) => VENDOR_PATTERNS[v].test(name))
+  return found ?? null
+}
+
+/**
+ * Display adapter names from the platform's listing: one name per line of the Win32_VideoController query on
+ * Windows, the "Chipset Model" lines of system_profiler on macOS, and the VGA, 3D, and display controller lines of
+ * lspci on Linux.
+ */
+export function parseAdapterNames(platform: NodeJS.Platform, stdout: string): string[]
+{
+  const lines = stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (platform === 'win32')
+  {
+    return lines
+  }
+  if (platform === 'darwin')
+  {
+    return lines.flatMap((l) =>
+    {
+      const m = /^Chipset Model:\s*(.+)$/.exec(l)
+      return m ? [m[1].trim()] : []
+    })
+  }
+  return lines.flatMap((l) =>
+  {
+    const m = /(?:VGA compatible controller|3D controller|Display controller):\s*(.+)$/.exec(l)
+    return m ? [m[1].replace(/\s*\(rev [0-9a-f]+\)$/i, '').trim()] : []
+  })
+}
+
+/** The adapter a vendor's encoder runs on: the first name of that vendor, else the first listed name, else null. */
+export function adapterFor(names: readonly string[], vendor: GpuVendorName | null): string | null
+{
+  if (vendor !== null)
+  {
+    const match = names.find((n) => vendorOfAdapter(n) === vendor)
+    if (match !== undefined)
+    {
+      return match
+    }
+  }
+  return names[0] ?? null
+}
+
+/** The command that lists display adapters on a platform; null where none is known. */
+export function adapterQuery(platform: NodeJS.Platform, systemRoot: string | undefined = process.env.SystemRoot): { file: string; args: string[] } | null
+{
+  if (platform === 'win32')
+  {
+    const root = systemRoot ?? 'C:\\Windows'
+    return {
+      file: `${root}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
+      args: ['-NoProfile', '-NonInteractive', '-Command', '(Get-CimInstance Win32_VideoController).Name']
+    }
+  }
+  if (platform === 'darwin')
+  {
+    return { file: '/usr/sbin/system_profiler', args: ['SPDisplaysDataType'] }
+  }
+  if (platform === 'linux')
+  {
+    return { file: 'lspci', args: [] }
+  }
+  return null
+}
+
+/**
+ * The display adapter names of this machine, read once per detection cycle. A query that cannot run answers an
+ * empty list and is tried again on the next call.
+ */
+export async function listGpuAdapters(platform: NodeJS.Platform = process.platform): Promise<string[]>
+{
+  if (_adapterNames)
+  {
+    return _adapterNames
+  }
+  const query = adapterQuery(platform)
+  if (!query)
+  {
+    return []
+  }
+  try
+  {
+    const { promise } = runCommand(query.file, query.args, undefined, { log: false })
+    const result = await promise
+    if (result.code !== 0)
+    {
+      logger.info(`[gpu] Adapter query exited ${result.code}`)
+      return []
+    }
+    _adapterNames = parseAdapterNames(platform, result.stdout)
+    return _adapterNames
+  }
+  catch (err)
+  {
+    logger.info(`[gpu] Adapter query failed - ${(err as Error)?.message ?? 'unknown'}`)
+    return []
+  }
+}
+
+/** What the batch page shows of GPU encoding: the vendor, the adapter that encodes, and its encoders. */
+export interface GpuSummary
+{
+  vendor: GpuVendorName | null
+  name: string | null
+  encoders: string[]
+}
+
+/** The detected GPU for `CapabilitySummary.gpu`: the effective mode's vendor, its adapter's name, and encoders. */
+export async function detectGpuSummary(ffmpegPath: string, gpuMode: GpuMode, platform: NodeJS.Platform = process.platform): Promise<GpuSummary>
+{
+  const mode = await resolveEffectiveMode(ffmpegPath, gpuMode)
+  const vendor = vendorOfMode(mode)
+  if (vendor === null)
+  {
+    return { vendor: null, name: null, encoders: [] }
+  }
+  return { vendor, name: adapterFor(await listGpuAdapters(platform), vendor), encoders: gpuEncodersFor(mode) }
 }
 
 export interface GpuCodecResult
