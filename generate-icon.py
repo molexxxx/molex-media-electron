@@ -1,212 +1,226 @@
-from PIL import Image, ImageDraw, ImageFilter, ImageChops
+"""Render the molexMedia app and tray icon from the design tokens.
+
+A walnut squircle with a lighter walnut rim holds seven brass equalizer bars
+whose cream tops form an M. Colors come from src/renderer/src/styles/tokens.css.
+
+Writes build/icon.png and resources/icon.png at 512 px, and build/icon.ico with
+every Windows shell size. Frames up to 64 px are drawn on whole pixels so the
+taskbar and Explorer renders stay sharp.
+
+Usage: python generate-icon.py (requires Pillow)
+"""
+
 import math
 import os
+import re
 
-SIZE = 1024
-FINAL = 512
-PAD = 40
+import PIL
+from PIL import Image, ImageChops, ImageDraw, PngImagePlugin
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+TOKENS = os.path.join(ROOT, 'src', 'renderer', 'src', 'styles', 'tokens.css')
+PNG_OUTPUTS = [
+    os.path.join(ROOT, 'build', 'icon.png'),
+    os.path.join(ROOT, 'resources', 'icon.png'),
+]
+ICO_OUTPUT = os.path.join(ROOT, 'build', 'icon.ico')
+
+PNG_SIZE = 512
+ICO_SIZES = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 128, 256]
+SUPERSAMPLED = 2048
+
+DESIGN = 1024
+PLATE = 944
+SQUIRCLE_EXPONENT = 5
+RIM = 20
+BAR_COUNT = 7
+BAR_WIDTH = 76
+BAR_GAP = 22
+BAR_BOTTOM = 794
+BAR_TALLEST = 580
+PROFILE = [0.22, 0.42, 0.75, 1.0]
+CUT_OUTER = 0.45
+CUT_CENTER = 0.55
+
+# Plate, bar count, bar width, and gap in whole pixels. An odd glyph width
+# needs an odd plate, or the glyph cannot sit centered on the pixel grid.
+HINTS = {
+    16: (16, 5, 2, 1),
+    20: (18, 5, 2, 1),
+    24: (24, 7, 2, 1),
+    30: (28, 7, 2, 1),
+    32: (30, 7, 2, 1),
+    36: (33, 7, 3, 1),
+    40: (37, 7, 3, 1),
+    48: (44, 7, 4, 1),
+    60: (55, 7, 5, 1),
+    64: (59, 7, 5, 1),
+}
 
 
-def make_gradient(size, c1, c2):
-    img = Image.new('RGBA', (size, size))
-    pixels = img.load()
-    for y in range(size):
-        for x in range(size):
-            t = (x + y) / (2.0 * size)
-            r = int(c1[0] * (1 - t) + c2[0] * t)
-            g = int(c1[1] * (1 - t) + c2[1] * t)
-            b = int(c1[2] * (1 - t) + c2[2] * t)
-            pixels[x, y] = (r, g, b, 255)
-    return img
+def read_colors(path):
+    """Read the plate, rim, bar, and top colors from the token stylesheet."""
+    with open(path, encoding='utf-8') as handle:
+        declared = dict(re.findall(r'--(color-[\w-]+)\s*:\s*([^;]+);', handle.read()))
+
+    def resolve(name):
+        if name not in declared:
+            raise SystemExit(f'{path} does not declare --{name}')
+        value = declared[name].strip()
+        reference = re.fullmatch(r'var\(--(color-[\w-]+)\)', value)
+        if reference:
+            return resolve(reference.group(1))
+        if not re.fullmatch(r'#[0-9a-fA-F]{6}', value):
+            raise SystemExit(f'--{name} is not a six-digit hex color: {value}')
+        return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
+
+    return {
+        'plate': resolve('color-rail'),
+        'rim': resolve('color-walnut-500'),
+        'bar': resolve('color-brass'),
+        'top': resolve('color-ink'),
+    }
 
 
-def superellipse_mask(size, pad, n=5):
-    mask = Image.new('L', (size, size), 0)
-    pixels = mask.load()
-    cx, cy = size / 2.0, size / 2.0
-    a = (size - 2 * pad) / 2.0
-    b = a
-    for y in range(size):
-        for x in range(size):
-            dx = abs(x - cx) / a
-            dy = abs(y - cy) / b
-            if dx == 0 and dy == 0:
-                pixels[x, y] = 255
-                continue
-            val = dx ** n + dy ** n
-            if val <= 1.0:
-                edge_dist = 1.0 - val
-                alpha = min(255, int(edge_dist * a * 2))
-                pixels[x, y] = min(255, alpha)
-    return mask
+def bar_heights(count):
+    """Sample the M profile, edge to center to edge, at count evenly spaced bars."""
+    half = count // 2
+    steps = len(PROFILE) - 1
+    heights = []
+    for index in range(count):
+        position = abs(index - half) / half * steps
+        low = math.floor(position)
+        high = min(steps, low + 1)
+        blend = position - low
+        heights.append(PROFILE[low] * (1 - blend) + PROFILE[high] * blend)
+    return heights
 
 
-def draw_rounded_bar(draw, x, y, w, h, radius, color):
-    if h < radius * 2:
-        radius = h // 2
-    draw.ellipse([x, y, x + w, y + radius * 2], fill=color)
-    draw.ellipse([x, y + h - radius * 2, x + w, y + h], fill=color)
-    if h > radius * 2:
-        draw.rectangle([x, y + radius, x + w, y + h - radius], fill=color)
+def top_regions(bars, size, stepped):
+    """Return the area above the M cut, as one V or as a whole-pixel step per bar."""
+    first, last, middle = bars[0], bars[-1], bars[len(bars) // 2]
+    start = first[1] + (first[3] - first[1]) * CUT_OUTER
+    vertex_x = (middle[0] + middle[2]) / 2
+    vertex_y = middle[1] + (middle[3] - middle[1]) * CUT_CENTER
+
+    def cut(x):
+        if x <= vertex_x:
+            return start + (x - first[0]) * (vertex_y - start) / (vertex_x - first[0])
+        return start + (last[2] - x) * (vertex_y - start) / (last[2] - vertex_x)
+
+    if not stepped:
+        return [[(0, 0), (size, 0), (size, cut(size)), (vertex_x, vertex_y), (0, cut(0))]]
+    regions = []
+    for x0, _, x1, _ in bars:
+        y = math.floor(cut((x0 + x1) / 2) + 0.5)
+        regions.append([(x0, 0), (x1, 0), (x1, y), (x0, y)])
+    return regions
+
+
+def layout(size):
+    """Return the plate box, rim width, bar boxes, cap radius, and top regions in pixels."""
+    hint = HINTS.get(size)
+    if hint:
+        plate, count, width, gap = hint
+        rim = 1
+        radius = width / 2 if width > 3 else 0
+        origin = (size - plate) // 2
+        span = count * width + (count - 1) * gap
+        left = origin + (plate - span) // 2
+        scale = plate / PLATE
+        bottom = origin + round(BAR_BOTTOM * scale)
+        tallest = round(BAR_TALLEST * scale)
+        heights = [max(1, round(tallest * share)) for share in bar_heights(count)]
+    else:
+        scale = size / DESIGN
+        plate = PLATE * scale
+        count = BAR_COUNT
+        width = BAR_WIDTH * scale
+        gap = BAR_GAP * scale
+        rim = RIM * scale
+        radius = width / 2
+        origin = (size - plate) / 2
+        left = (size - (count * width + (count - 1) * gap)) / 2
+        bottom = origin + BAR_BOTTOM * scale
+        heights = [BAR_TALLEST * scale * share for share in bar_heights(count)]
+    bars = []
+    for index, height in enumerate(heights):
+        x0 = left + index * (width + gap)
+        bars.append((x0, bottom - height, x0 + width, bottom))
+    return {
+        'plate': (origin, origin, origin + plate, origin + plate),
+        'rim': rim,
+        'bars': bars,
+        'radius': radius,
+        'tops': top_regions(bars, size, stepped=bool(hint)),
+    }
+
+
+def squircle(box, factor, points=1024):
+    """Return the outline of the superellipse inscribed in box, scaled by factor."""
+    x0, y0, x1, y1 = (value * factor for value in box)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    rx, ry = (x1 - x0) / 2, (y1 - y0) / 2
+    power = 2 / SQUIRCLE_EXPONENT
+    outline = []
+    for step in range(points):
+        angle = 2 * math.pi * step / points
+        c, s = math.cos(angle), math.sin(angle)
+        outline.append((cx + rx * math.copysign(abs(c) ** power, c), cy + ry * math.copysign(abs(s) ** power, s)))
+    return outline
+
+
+def render(size, colors):
+    """Rasterize the icon at one size; each shape's coverage comes from a supersampled mask."""
+    shape = layout(size)
+    factor = max(1, SUPERSAMPLED // size)
+    full = (size * factor, size * factor)
+    x0, y0, x1, y1 = shape['plate']
+    rim = shape['rim']
+
+    outer = Image.new('L', full, 0)
+    ImageDraw.Draw(outer).polygon(squircle(shape['plate'], factor), fill=255)
+    inner = Image.new('L', full, 0)
+    ImageDraw.Draw(inner).polygon(squircle((x0 + rim, y0 + rim, x1 - rim, y1 - rim), factor), fill=255)
+
+    bars = Image.new('L', full, 0)
+    draw = ImageDraw.Draw(bars)
+    radius = round(shape['radius'] * factor)
+    for bx0, by0, bx1, by1 in shape['bars']:
+        box = (round(bx0 * factor), round(by0 * factor), round(bx1 * factor) - 1, round(by1 * factor) - 1)
+        if radius:
+            draw.rounded_rectangle(box, radius=radius, fill=255)
+        else:
+            draw.rectangle(box, fill=255)
+
+    above = Image.new('L', full, 0)
+    draw = ImageDraw.Draw(above)
+    for region in shape['tops']:
+        draw.polygon([(x * factor, y * factor) for x, y in region], fill=255)
+    tops = ImageChops.multiply(bars, above)
+
+    image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    for color, mask in ((colors['rim'], outer), (colors['plate'], inner), (colors['bar'], bars), (colors['top'], tops)):
+        layer = Image.new('RGBA', (size, size), color + (255,))
+        layer.putalpha(mask.resize((size, size), Image.Resampling.BOX))
+        image = Image.alpha_composite(image, layer)
+    return image
 
 
 def main():
-    print("Generating gradient...")
-    color_tl = (139, 50, 255)
-    color_br = (30, 110, 255)
-    gradient = make_gradient(SIZE, color_tl, color_br)
+    colors = read_colors(TOKENS)
+    metadata = PngImagePlugin.PngInfo()
+    metadata.add_text('Software', f'generate-icon.py, Pillow {PIL.__version__}')
+    metadata.add_text('Comment', 'Colors from src/renderer/src/styles/tokens.css')
 
-    print("Creating squircle mask...")
-    mask = superellipse_mask(SIZE, PAD, n=5)
+    icon = render(PNG_SIZE, colors)
+    for path in PNG_OUTPUTS:
+        icon.save(path, 'PNG', optimize=True, pnginfo=metadata)
+        print(f'Saved {os.path.relpath(path, ROOT)} ({PNG_SIZE} px)')
 
-    canvas = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    canvas = Image.composite(gradient, canvas, mask)
-
-    # Subtle top highlight
-    highlight = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    hl_draw = ImageDraw.Draw(highlight)
-    for i in range(40):
-        alpha = int(35 * (1 - i / 40))
-        hl_draw.ellipse(
-            [PAD + 60, PAD + i - 20, SIZE - PAD - 60, PAD + 200 + i],
-            fill=(255, 255, 255, alpha)
-        )
-    canvas = Image.alpha_composite(canvas, Image.composite(
-        highlight, Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0)), mask))
-
-    draw = ImageDraw.Draw(canvas)
-
-    # ! --- M-shaped equalizer bars ---
-    bar_count = 7
-    bar_width = 76
-    bar_gap = 22
-    total_w = bar_count * bar_width + (bar_count - 1) * bar_gap
-    start_x = (SIZE - total_w) // 2
-
-    bottom_y = SIZE - 190
-    max_height = 580
-
-    # ! bars
-    m_heights = [1.0, 0.75, 0.42, 0.22, 0.42, 0.75, 1.0]
-
-    bar_radius = bar_width // 2
-
-    bar_layer = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-    bar_draw = ImageDraw.Draw(bar_layer)
-
-    for i, h in enumerate(m_heights):
-        bx = start_x + i * (bar_width + bar_gap)
-        bh = int(max_height * h)
-        by = bottom_y - bh
-        draw_rounded_bar(bar_draw, bx + 5, by + 5, bar_width, bh, bar_radius, (0, 0, 0, 22))
-
-    for i, h in enumerate(m_heights):
-        bx = start_x + i * (bar_width + bar_gap)
-        bh = int(max_height * h)
-        by = bottom_y - bh
-        draw_rounded_bar(bar_draw, bx, by, bar_width, bh, bar_radius, (190, 200, 255, 220))
-
-    canvas = Image.alpha_composite(canvas, bar_layer)
-
-    center = len(m_heights) // 2  # index 3
-
-    outer_by = bottom_y - int(max_height * m_heights[0])
-    center_bx = start_x + center * (bar_width + bar_gap)
-    center_by = bottom_y - int(max_height * m_heights[center])
-
-    center_cap_bottom = center_by + int((bottom_y - center_by) * 0.55)
-
-    # ! -------------------------------
-
-    # Left diagonal
-    left_start_x = start_x
-    left_start_y = outer_by + int(max_height * m_heights[0] * 0.45)
-    left_end_x = center_bx + bar_width // 2
-    left_end_y = center_cap_bottom
-
-    # Right diagonal (mirror)
-    right_start_x = start_x + 6 * (bar_width + bar_gap) + bar_width
-    right_start_y = outer_by + int(max_height * m_heights[0] * 0.45)
-    right_end_x = center_bx + bar_width // 2
-    right_end_y = center_cap_bottom
-
-    def line_y_at_x(x, x0, y0, x1, y1):
-        """Get y coordinate on line at given x."""
-        if x1 == x0:
-            return y0
-        t = (x - x0) / (x1 - x0)
-        return y0 + t * (y1 - y0)
-
-    for i, h in enumerate(m_heights):
-        bx = start_x + i * (bar_width + bar_gap)
-        bh = int(max_height * h)
-        by = bottom_y - bh
-
-        bar_mask = Image.new('L', (SIZE, SIZE), 0)
-        bm_draw = ImageDraw.Draw(bar_mask)
-        draw_rounded_bar(bm_draw, bx, by, bar_width, bh, bar_radius, 255)
-
-        hi_layer = Image.new('RGBA', (SIZE, SIZE), (0, 0, 0, 0))
-        hi_draw = ImageDraw.Draw(hi_layer)
-
-        if i < center:
-            cut_left_y = line_y_at_x(bx, left_start_x, left_start_y, left_end_x, left_end_y)
-            cut_right_y = line_y_at_x(bx + bar_width, left_start_x, left_start_y, left_end_x, left_end_y)
-        elif i > center:
-            cut_left_y = line_y_at_x(bx, right_start_x, right_start_y, right_end_x, right_end_y)
-            cut_right_y = line_y_at_x(bx + bar_width, right_start_x, right_start_y, right_end_x, right_end_y)
-        else:
-            cut_left_y = line_y_at_x(bx, left_start_x, left_start_y, left_end_x, left_end_y)
-            cut_right_y = line_y_at_x(bx + bar_width, right_start_x, right_start_y, right_end_x, right_end_y)
-            cut_center_y = line_y_at_x(bx + bar_width // 2, left_start_x, left_start_y, left_end_x, left_end_y)
-
-        if i == center:
-            fill_pts = [
-                (bx - 2, by - 2),
-                (bx + bar_width + 2, by - 2),
-                (bx + bar_width + 2, int(cut_right_y)),
-                (bx + bar_width // 2, int(cut_center_y)),
-                (bx - 2, int(cut_left_y)),
-            ]
-        else:
-            fill_pts = [
-                (bx - 2, by - 2),
-                (bx + bar_width + 2, by - 2),
-                (bx + bar_width + 2, int(cut_right_y)),
-                (bx - 2, int(cut_left_y)),
-            ]
-        hi_draw.polygon(fill_pts, fill=(255, 255, 255, 140))
-
-        hi_layer.putalpha(ImageChops.multiply(hi_layer.split()[3], bar_mask.convert('L')))
-        canvas = Image.alpha_composite(canvas, hi_layer)
-
-    draw = ImageDraw.Draw(canvas)
-
-    #! -----
-
-    print("Downscaling...")
-    final = canvas.resize((FINAL, FINAL), Image.LANCZOS)
-    
-    out_dir = os.path.dirname(os.path.abspath(__file__))
-
-    build_png = os.path.join(out_dir, 'build', 'icon.png')
-    res_png = os.path.join(out_dir, 'resources', 'icon.png')
-    final.save(build_png, 'PNG')
-    final.save(res_png, 'PNG')
-    print(f"Saved {build_png}")
-    print(f"Saved {res_png}")
-
-    ico_path = os.path.join(out_dir, 'build', 'icon.ico')
-    ico_sizes = [16, 24, 32, 48, 64, 128, 256]
-    ico_images = [canvas.resize((s, s), Image.LANCZOS) for s in ico_sizes]
-    ico_images[-1].save(
-        ico_path,
-        format='ICO',
-        sizes=[(s, s) for s in ico_sizes],
-        append_images=ico_images[:-1]
-    )
-    print(f"Saved {ico_path}")
-    print("Done!")
+    frames = [render(size, colors) for size in ICO_SIZES]
+    frames[-1].save(ICO_OUTPUT, format='ICO', sizes=[(size, size) for size in ICO_SIZES], append_images=frames[:-1])
+    print(f'Saved {os.path.relpath(ICO_OUTPUT, ROOT)} ({", ".join(str(size) for size in ICO_SIZES)} px)')
 
 
 if __name__ == '__main__':
