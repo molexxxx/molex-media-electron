@@ -1,195 +1,233 @@
 /**
  * @module components/setup/SetupWizard
- * @description First-run wizard for FFmpeg download and installation.
+ * @description First-run setup: downloads the tested FFmpeg build, checks its SHA-256, and shows its self-test.
  *
- * Guides the user through a multi-step flow:
- * 1. **Welcome** - explains FFmpeg requirement with feature highlights.
- * 2. **Downloading** - progress bar during automatic download.
- * 3. **Complete** - success confirmation with "Get Started" action.
- * 4. **Error** - failure message with retry and manual-install options.
+ * Steps: Welcome (Download FFmpeg, I have it), Downloading (progress), Complete (the build and its self-test,
+ * Get started), and Error (the reason, Retry, I have it).
  */
-
-import React, { useState } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
+import type { FfmpegInfo } from '../../../../shared/ipc/api'
+import { megabytes } from '../../../../shared/jobs/describe'
 import { useAppStore } from '../../stores/appStore'
 import { Button } from '../../ui/Button'
+import { Icon } from '../../ui/Icon'
+import { ProgressBar } from '../../ui/ProgressBar'
+import { selfTestResult, testedWhen } from '../settings/tabs/AudioSettings'
 
-export default function SetupWizard(): React.JSX.Element {
+type Step = 'welcome' | 'downloading' | 'complete' | 'error'
+
+/** The wizard's words. */
+export const SETUP_WORDS = {
+  title: 'Welcome to molexMedia',
+  need: 'molexMedia needs FFmpeg to read, measure, and write media.',
+  folder: 'It goes into the app data folder; nothing else on your system changes.',
+  test: 'A self-test runs on it before any job starts.',
+  download: 'Download FFmpeg',
+  have: 'I have it',
+  settingUp: 'Setting up FFmpeg',
+  wait: 'This takes a minute or two, depending on your connection.',
+  doneTitle: 'FFmpeg is installed',
+  start: 'Get started',
+  failedTitle: 'Download failed',
+  manual: 'You can install FFmpeg yourself and add it to PATH, then choose I have it.',
+  retry: 'Retry',
+  license: 'FFmpeg is licensed under the LGPL or GPL. molexMedia downloads it from its publishers\' releases.',
+  unknownError: 'The download stopped for an unknown reason.'
+} as const
+
+/** The consequence line: "Downloads FFmpeg 9.0.2, about 194 MB, and checks its SHA-256." */
+export function setupLine(version: string | null, bytes: number | null): string
+{
+  if (version === null)
+  {
+    return 'Downloads FFmpeg and checks its SHA-256.'
+  }
+  return bytes === null
+    ? `Downloads FFmpeg ${version} and checks its SHA-256.`
+    : `Downloads FFmpeg ${version}, about ${megabytes(bytes)}, and checks its SHA-256.`
+}
+
+/** The download size of the pinned build for this platform, when the build information carries it. */
+export function pinBytes(pin: FfmpegInfo['pin']): number | null
+{
+  return 'downloadBytes' in pin && typeof pin.downloadBytes === 'number' ? pin.downloadBytes : null
+}
+
+/** The self-test result of an installed build as one line: "Self-test passed, Oct 20, 11:02, in 1.4 s". */
+export function selfTestLine(info: FfmpegInfo): { tone: 'passed' | 'failed' | 'not-run'; text: string }
+{
+  const result = selfTestResult(info.selfTest)
+  const when = testedWhen(info.selfTest.testedAt, info.selfTest.durationMs)
+  const head = `Self-test ${result.text.charAt(0).toLowerCase()}${result.text.slice(1)}`
+  return { tone: result.tone, text: when === null ? `${head}.` : `${head}, ${when}.` }
+}
+
+const TONE_INK = { 'passed': 'text-verified', 'failed': 'text-error', 'not-run': 'text-ink-2' } as const
+const TONE_ICON = { 'passed': 'status.verified', 'failed': 'status.failed', 'not-run': 'status.pending' } as const
+
+async function readInfo(): Promise<FfmpegInfo | null>
+{
+  try
+  {
+    return await window.api.getFFmpegInfo()
+  }
+  catch
+  {
+    return null
+  }
+}
+
+/** The first-run wizard shown while no usable FFmpeg is installed. */
+export default function SetupWizard(): ReactElement
+{
   const { setFFmpegReady, setShowSetup, setConfig, downloadProgress, setDownloadProgress } = useAppStore()
-  const [step, setStep] = useState<'welcome' | 'downloading' | 'complete' | 'error'>('welcome')
+  const [step, setStep] = useState<Step>('welcome')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState<FfmpegInfo | null>(null)
 
-  const handleDownload = async () => {
+  useEffect(() =>
+  {
+    let live = true
+    void readInfo().then((next) => live && next !== null && setInfo(next))
+    return () =>
+    {
+      live = false
+    }
+  }, [])
+
+  async function handleDownload(): Promise<void>
+  {
     setStep('downloading')
     setError('')
-    try {
+    try
+    {
       const result = await window.api.downloadFFmpeg()
-      if (result.success) {
+      if (result.success)
+      {
+        const next = await readInfo()
+        if (next !== null)
+        {
+          setInfo(next)
+        }
         setStep('complete')
-        setFFmpegReady(true, result.version)
-        const config = await window.api.loadConfig()
-        setConfig(config)
-      } else {
-        setError(result.error || 'Unknown error')
+        setFFmpegReady(true, next?.version ?? result.version)
+        setConfig(await window.api.loadConfig())
+      }
+      else
+      {
+        setError(result.error || SETUP_WORDS.unknownError)
         setStep('error')
       }
-    } catch (err: any) {
-      setError(err.message)
+    }
+    catch (err)
+    {
+      setError(err instanceof Error ? err.message : SETUP_WORDS.unknownError)
       setStep('error')
     }
   }
 
-  const handleSkip = async () => {
-    // Check again in case user installed manually
+  async function handleSkip(): Promise<void>
+  {
     const result = await window.api.checkFFmpeg()
-    if (result.found) {
-      setFFmpegReady(true, result.version)
-      const config = await window.api.loadConfig()
-      setConfig(config)
+    if (result.found)
+    {
+      const next = await readInfo()
+      setFFmpegReady(true, next?.version ?? result.version)
+      setConfig(await window.api.loadConfig())
       setShowSetup(false)
     }
   }
 
-  const handleDone = () => {
+  function handleDone(): void
+  {
     setShowSetup(false)
     setDownloadProgress(null)
   }
 
+  const consequence = setupLine(info?.pin.version ?? null, info === null ? null : pinBytes(info.pin))
+
   return (
-    <div className="flex-1 flex items-center justify-center p-8">
-      <div className="w-full max-w-lg">
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold gradient-text mb-2">molexMedia</h1>
-          <p className="text-surface-400 text-sm">Professional Media Processing Toolkit</p>
+    <div className='flex flex-1 items-center justify-center bg-ground p-8'>
+      <div className='flex w-full max-w-lg flex-col gap-6'>
+        <div className='flex flex-col gap-1 border-b border-line pb-4'>
+          <h1 className='type-title text-ink'>{SETUP_WORDS.title}</h1>
+          <p className='text-body text-ink-2'>{consequence}</p>
         </div>
 
-        <div className="glass rounded-2xl p-8">
-          {step === 'welcome' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-4">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent-400">
-                    <path d="M9 18V5l12-2v13" />
-                    <circle cx="6" cy="18" r="3" />
-                    <circle cx="18" cy="16" r="3" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-white mb-2">Welcome to molexMedia</h2>
-                <p className="text-surface-400 text-sm leading-relaxed">
-                  FFmpeg is required for audio processing. We&apos;ll download and configure it automatically - no command line needed.
-                </p>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-800/50">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <div>
-                    <p className="text-surface-200 font-medium">Automatic Download</p>
-                    <p className="text-surface-500 text-xs">FFmpeg will be downloaded for your operating system</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-800/50">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <div>
-                    <p className="text-surface-200 font-medium">Portable Installation</p>
-                    <p className="text-surface-500 text-xs">Stored in app data - no system modifications required</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-800/50">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <div>
-                    <p className="text-surface-200 font-medium">Cross-Platform</p>
-                    <p className="text-surface-500 text-xs">Works on Windows, macOS, and Linux</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button variant="primary" onClick={handleDownload} className="flex-1">
-                  Download FFmpeg
-                </Button>
-                <Button variant="ghost" onClick={handleSkip}>
-                  I have it
-                </Button>
-              </div>
+        {step === 'welcome' && (
+          <div className='flex flex-col gap-5'>
+            <div className='flex flex-col gap-2 text-body'>
+              <p className='text-ink'>{SETUP_WORDS.need}</p>
+              <p className='text-ink-2'>{SETUP_WORDS.folder}</p>
+              <p className='text-ink-2'>{SETUP_WORDS.test}</p>
             </div>
-          )}
-
-          {step === 'downloading' && (
-            <div className="space-y-6 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto">
-                <div className="w-8 h-8 border-2 border-accent-400 border-t-transparent rounded-full animate-spin" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-1">
-                  {downloadProgress?.message || 'Setting up FFmpeg...'}
-                </h2>
-                <p className="text-surface-500 text-xs">This may take a minute depending on your connection</p>
-              </div>
-
-              {downloadProgress && (
-                <div className="space-y-2">
-                  <div className="w-full h-2 bg-surface-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-accent-600 to-accent-400 rounded-full transition-all duration-300"
-                      style={{ width: `${downloadProgress.percent}%` }}
-                    />
-                  </div>
-                  <p className="text-2xs text-surface-500 font-mono">{downloadProgress.percent}%</p>
-                </div>
-              )}
+            <div className='flex gap-2'>
+              <Button variant='primary' icon='action.export' onClick={() => void handleDownload()} className='flex-1'>{SETUP_WORDS.download}</Button>
+              <Button variant='ghost' onClick={() => void handleSkip()}>{SETUP_WORDS.have}</Button>
             </div>
-          )}
+          </div>
+        )}
 
-          {step === 'complete' && (
-            <div className="space-y-6 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-400">
-                  <polyline points="20,6 9,17 4,12" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-1">All Set!</h2>
-                <p className="text-surface-400 text-sm">FFmpeg is installed and ready. Let&apos;s process some media.</p>
-              </div>
-              <Button variant="primary" onClick={handleDone} className="w-full">
-                Get Started
-              </Button>
+        {step === 'downloading' && (
+          <div className='flex flex-col gap-3' aria-busy='true'>
+            <h2 className='text-section text-ink'>{downloadProgress?.message || SETUP_WORDS.settingUp}</h2>
+            <p className='text-body text-ink-2'>{SETUP_WORDS.wait}</p>
+            <ProgressBar
+              tone='meter'
+              size='md'
+              label={downloadProgress?.message || SETUP_WORDS.settingUp}
+              value={downloadProgress ? downloadProgress.percent / 100 : undefined}
+            />
+          </div>
+        )}
+
+        {step === 'complete' && (
+          <div className='flex flex-col gap-5'>
+            <div className='flex flex-col gap-2'>
+              <h2 className='flex items-center gap-2 text-section text-ink'>
+                <span className='text-verified'><Icon name='status.verified' size='md' /></span>
+                {info?.version ? `${SETUP_WORDS.doneTitle}: ${info.version}` : SETUP_WORDS.doneTitle}
+              </h2>
+              {info !== null && <SelfTestResult info={info} />}
             </div>
-          )}
+            <Button variant='primary' onClick={handleDone} className='w-full'>{SETUP_WORDS.start}</Button>
+          </div>
+        )}
 
-          {step === 'error' && (
-            <div className="space-y-6 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="15" y1="9" x2="9" y2="15" />
-                  <line x1="9" y1="9" x2="15" y2="15" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-1">Download Failed</h2>
-                <p className="text-surface-400 text-sm mb-2">{error}</p>
-                <p className="text-surface-500 text-xs">
-                  You can install FFmpeg manually and add it to your PATH, then click &quot;I have it&quot;.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <Button variant="primary" onClick={handleDownload} className="flex-1">
-                  Retry
-                </Button>
-                <Button variant="ghost" onClick={handleSkip}>
-                  I have it
-                </Button>
-              </div>
+        {step === 'error' && (
+          <div className='flex flex-col gap-5'>
+            <div className='flex flex-col gap-2'>
+              <h2 className='flex items-center gap-2 text-section text-ink'>
+                <span className='text-error'><Icon name='status.failed' size='md' /></span>
+                {SETUP_WORDS.failedTitle}
+              </h2>
+              <p role='alert' className='select-text text-body text-ink'>{error}</p>
+              <p className='text-body text-ink-2'>{SETUP_WORDS.manual}</p>
             </div>
-          )}
-        </div>
+            <div className='flex gap-2'>
+              <Button variant='primary' icon='action.retry' onClick={() => void handleDownload()} className='flex-1'>{SETUP_WORDS.retry}</Button>
+              <Button variant='ghost' onClick={() => void handleSkip()}>{SETUP_WORDS.have}</Button>
+            </div>
+          </div>
+        )}
 
-        <p className="text-center text-2xs text-surface-600 mt-6">
-          FFmpeg is licensed under LGPL/GPL. molexMedia downloads it from trusted sources.
-        </p>
+        <p className='text-label text-ink-3'>{SETUP_WORDS.license}</p>
       </div>
+    </div>
+  )
+}
+
+/** The installed build's self-test result, and the reason jobs cannot start when it is not ready. */
+function SelfTestResult({ info }: { info: FfmpegInfo }): ReactElement
+{
+  const line = selfTestLine(info)
+  return (
+    <div className='flex flex-col gap-1'>
+      <p className={`flex items-center gap-2 text-body ${TONE_INK[line.tone]}`}>
+        <Icon name={TONE_ICON[line.tone]} size='sm' />
+        <span className='tabular-nums'>{line.text}</span>
+      </p>
+      {info.refusal !== null && <p className='text-body text-ink-2'>{`FFmpeg is not ready: ${info.refusal}. Jobs cannot start.`}</p>}
     </div>
   )
 }
