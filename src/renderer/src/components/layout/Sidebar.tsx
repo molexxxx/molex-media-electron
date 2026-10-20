@@ -1,278 +1,333 @@
 ﻿/**
  * @module components/layout/Sidebar
- * @description Main navigation sidebar with section-grouped nav items.
- *
- * Provides the primary navigation (Dashboard, Tools, System) with
- * Batch / Editor / Player grouped together as tools, plus Settings
- * and Logs under System. Includes a collapsible processing panel
- * with real-time task progress, and pause / cancel / clear controls.
+ * @description The walnut navigation rail: Dashboard, the tools, and the system views, with the
+ * batch's percent and need-attention count on the Batch item and a named collapse toggle.
  */
 
-import React, { useEffect, useRef, useState as useLocalState } from 'react'
-import { useAppStore, View } from '../../stores/appStore'
-import { ProcessingPanel } from './components/ProcessingPanel'
+import React, { useEffect, useRef } from 'react'
+import { useAppStore, type View } from '../../stores/appStore'
+import { useJobsStore } from '../../stores/jobs'
+import { selectAttentionCount, selectRunPercent } from '../../stores/jobsSelectors'
+import { useShellStop } from '../../hooks/useF6Region'
+import { cx } from '../../ui/cx'
+import { Icon } from '../../ui/Icon'
+import { IconButton } from '../../ui/IconButton'
+import { OverlayScrollbar } from '../../ui/OverlayScrollbar'
+import type { IconName } from '../../ui/icons'
+import { Tooltip } from '../../ui/Tooltip'
 
-/**
- * Tooltip that uses fixed positioning to escape overflow containers.
- * Measures the trigger element's position on hover and places itself to the right.
- */
-function SidebarTip({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
-  const ref = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useLocalState<{ top: number; left: number } | null>(null)
+/** Below this window width the rail collapses for the session without changing the saved choice. */
+export const RAIL_AUTO_COLLAPSE_QUERY = '(max-width: 840px)'
 
-  const show = (): void => {
-    // Measure the first child element since this wrapper is display:contents
-    const child = ref.current?.firstElementChild as HTMLElement | null
-    if (!child) return
-    const rect = child.getBoundingClientRect()
-    setPos({ top: rect.top + rect.height / 2, left: rect.right + 8 })
+/** The run percent as the rail shows it: a whole number from 0 to 100, never rounded up to done. */
+export function railPercent(percent: number): number
+{
+  if (!Number.isFinite(percent))
+  {
+    return 0
   }
-
-  return (
-    <div ref={ref} onMouseEnter={show} onMouseLeave={() => setPos(null)} className="contents">
-      {children}
-      {pos && (
-        <div
-          className="fixed px-2 py-1 rounded-md bg-surface-800 border border-surface-700 text-xs text-surface-200 whitespace-nowrap pointer-events-none z-999 shadow-lg animate-fade-in"
-          style={{ top: pos.top, left: pos.left, transform: 'translateY(-50%)' }}
-        >
-          {label}
-        </div>
-      )}
-    </div>
-  )
+  return Math.min(100, Math.max(0, Math.floor(percent)))
 }
 
-interface NavItem {
+/** "2 need attention", or "1 needs attention". */
+export function attentionWords(count: number): string
+{
+  return count === 1 ? '1 needs attention' : `${count} need attention`
+}
+
+/** The Batch item's accessible name, for example "Batch, 46 percent, 2 need attention". */
+export function batchItemName(percent: number | null, attention: number): string
+{
+  const parts = ['Batch']
+  if (percent !== null)
+  {
+    parts.push(`${railPercent(percent)} percent`)
+  }
+  if (attention > 0)
+  {
+    parts.push(attentionWords(attention))
+  }
+  return parts.join(', ')
+}
+
+/** The Batch item's tooltip in the collapsed rail, for example "Batch, 46%, 2 need attention". */
+export function batchItemTip(percent: number | null, attention: number): string
+{
+  const parts = ['Batch']
+  if (percent !== null)
+  {
+    parts.push(`${railPercent(percent)}%`)
+  }
+  if (attention > 0)
+  {
+    parts.push(attentionWords(attention))
+  }
+  return parts.join(', ')
+}
+
+interface NavEntry
+{
   id: View
   label: string
-  icon: React.JSX.Element
-  badge?: number
+  icon: IconName
 }
 
-const icons = {
-  dashboard: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  ),
-  batch: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-      <polyline points="14,2 14,8 20,8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <line x1="10" y1="9" x2="8" y2="9" />
-    </svg>
-  ),
-  processing: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="5,3 19,12 5,21" />
-    </svg>
-  ),
-  player: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  ),
-  editor: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="6" cy="6" r="3" />
-      <path d="M8.12 8.12L12 12" />
-      <path d="M20 4L8.12 15.88" />
-      <circle cx="6" cy="18" r="3" />
-      <path d="M14.8 14.8L20 20" />
-    </svg>
-  ),
-  settings: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  logs: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-    </svg>
+interface NavSection
+{
+  /** The group's caption and accessible name; the first group has none. */
+  label?: string
+  items: readonly NavEntry[]
+}
+
+/** The rail's groups in order; every glyph is a registry key. */
+export const NAV_SECTIONS: readonly NavSection[] = [
+  { items: [{ id: 'dashboard', label: 'Dashboard', icon: 'nav.dashboard' }] },
+  {
+    label: 'Tools',
+    items: [
+      { id: 'batch', label: 'Batch', icon: 'nav.batch' },
+      { id: 'editor', label: 'Editor', icon: 'nav.editor' },
+      { id: 'player', label: 'Player', icon: 'nav.player' }
+    ]
+  },
+  {
+    label: 'System',
+    items: [
+      { id: 'settings', label: 'Settings', icon: 'nav.settings' },
+      { id: 'logs', label: 'Logs', icon: 'nav.logs' }
+    ]
+  }
+]
+
+interface NavItemProps
+{
+  entry: NavEntry
+  active: boolean
+  collapsed: boolean
+  name: string
+  tip: string
+  onSelect: (view: View) => void
+  /** Text and glyphs after the label in the expanded rail. */
+  trailing?: React.ReactNode
+  /** Corner marks over the glyph in the collapsed rail. */
+  marks?: React.ReactNode
+}
+
+/** One rail item: a native button named by `name`, marked as the current page when active. */
+function NavItem({ entry, active, collapsed, name, tip, onSelect, trailing, marks }: NavItemProps): React.JSX.Element
+{
+  const button = (
+    <button
+      type="button"
+      onClick={() => onSelect(entry.id)}
+      aria-current={active ? 'page' : undefined}
+      aria-label={name}
+      data-nav={entry.id}
+      data-focus="inset"
+      className={cx(
+        'relative flex h-9 w-full items-center gap-3 rounded-sm border text-body',
+        collapsed ? 'justify-center px-0' : 'ps-2 pe-2',
+        active
+          ? 'border-brass bg-wash-selected text-ink'
+          : 'border-transparent text-ink-2 hover:bg-wash-hover hover:text-ink active:bg-wash-pressed'
+      )}
+    >
+      <Icon name={entry.icon} size="md" className={active ? 'text-brass' : undefined} />
+      {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>}
+      {!collapsed && trailing}
+      {collapsed && marks}
+    </button>
+  )
+  return collapsed ? <Tooltip content={tip} mode="label" placement="end">{button}</Tooltip> : button
+}
+
+/** The run percent and the need-attention count after the Batch label; nothing while idle and clear. */
+function BatchStatus({ percent, attention }: { percent: number | null, attention: number }): React.JSX.Element | null
+{
+  if (percent === null && attention === 0)
+  {
+    return null
+  }
+  return (
+    <span aria-hidden="true" className="flex shrink-0 items-center gap-2 text-label tabular-nums">
+      {percent !== null && <span data-part="percent" className="text-ink-2">{railPercent(percent)}%</span>}
+      {attention > 0 && (
+        <span data-part="attention" className="flex items-center gap-1 text-error">
+          <Icon name="status.failed" size="sm" />
+          {attention > 99 ? '99+' : attention}
+        </span>
+      )}
+    </span>
   )
 }
 
-/** Static update-available badge; its words reach assistive technology through the nav item's name. */
-function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element {
+/** The collapsed rail's marks: a thin meter along the item's foot while a run is open, and the octagon. */
+function BatchMarks({ percent, attention }: { percent: number | null, attention: number }): React.JSX.Element
+{
+  return (
+    <>
+      {percent !== null && (
+        <span aria-hidden="true" data-part="meter" className="absolute inset-x-1.5 bottom-1 h-0.5 rounded-xs bg-line-strong">
+          <span className="block h-full rounded-xs bg-running" style={{ width: `${railPercent(percent)}%` }} />
+        </span>
+      )}
+      {attention > 0 && (
+        <span aria-hidden="true" data-part="attention" className="absolute inset-e-0.5 top-0.5 rounded-full bg-rail text-error">
+          <Icon name="status.failed" size="sm" />
+        </span>
+      )}
+    </>
+  )
+}
+
+/** The update mark on Settings: a still glyph whose words reach assistive technology through the item's name. */
+function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element
+{
+  return (
+    <span
+      aria-hidden="true"
+      data-part="update"
+      className={collapsed ? 'absolute inset-e-0.5 top-0.5 rounded-full bg-rail text-ink' : 'flex shrink-0 items-center text-ink'}
+    >
+      <Icon name="update.available" size="sm" />
+    </span>
+  )
+}
+
+/** The unseen-error count on Logs, unchanged in look until the Logs view moves it to the engine. */
+function LogsBadge({ count, collapsed }: { count: number, collapsed: boolean }): React.JSX.Element
+{
   return collapsed ? (
-    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
-      <span className="relative w-2.5 h-2.5 rounded-full bg-accent-500 text-ink flex items-center justify-center">
-        <svg aria-hidden="true" width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
-        </svg>
-      </span>
-      <span className="sr-only">Update available</span>
-    </span>
+    <span aria-hidden="true" data-part="errors" className="absolute inset-e-0.5 top-0.5 size-2 rounded-full bg-red-500" />
   ) : (
-    <span className="relative flex items-center justify-center">
-      <span className="relative w-5 h-5 rounded-full bg-accent-600 text-ink flex items-center justify-center">
-        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
-        </svg>
-      </span>
-      <span className="sr-only">Update available</span>
+    <span aria-hidden="true" data-part="errors" className="min-w-5 rounded-full bg-red-500/20 px-1.5 py-0.5 text-center text-2xs font-bold text-red-200">
+      {count > 99 ? '99+' : count}
     </span>
   )
 }
 
-export default function Sidebar(): React.JSX.Element {
-  const { currentView, setView, files, logs, lastSeenErrorCount, sidebarCollapsed, toggleSidebar, updateStatus } = useAppStore()
+/** The main navigation rail; its landmark is the first stop of the F6 cycle. */
+export default function Sidebar(): React.JSX.Element
+{
+  const currentView = useAppStore((s) => s.currentView)
+  const setView = useAppStore((s) => s.setView)
+  const logs = useAppStore((s) => s.logs)
+  const lastSeenErrorCount = useAppStore((s) => s.lastSeenErrorCount)
+  const collapsed = useAppStore((s) => s.sidebarCollapsed)
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const updateStatus = useAppStore((s) => s.updateStatus)
+  const percent = useJobsStore(selectRunPercent)
+  const attention = useJobsStore(selectAttentionCount(null))
+  const navRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  useShellStop('rail', navRef)
 
-  const unseenErrors = logs.filter((l) => l.level === 'error').length - lastSeenErrorCount
+  const unseenErrors = Math.max(0, logs.filter((l) => l.level === 'error').length - lastSeenErrorCount)
   const hasUpdate = updateStatus === 'available' || updateStatus === 'downloaded'
 
-  // Auto-collapse on narrow windows; restore to saved config preference when wide again
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 840px)')
-    const onChange = (e: MediaQueryListEvent): void => {
-      if (e.matches) {
-        // Only update visual state - don't persist so the user's preference is preserved
+  useEffect(() =>
+  {
+    const mq = window.matchMedia(RAIL_AUTO_COLLAPSE_QUERY)
+    const apply = (narrow: boolean): void =>
+    {
+      if (narrow)
+      {
         useAppStore.setState({ sidebarCollapsed: true })
-      } else {
-        // Restore the user's persisted preference
-        const saved = useAppStore.getState().config?.sidebarCollapsed ?? false
-        useAppStore.setState({ sidebarCollapsed: saved })
+      }
+      else
+      {
+        useAppStore.setState({ sidebarCollapsed: useAppStore.getState().config?.sidebarCollapsed ?? false })
       }
     }
+    if (mq.matches)
+    {
+      apply(true)
+    }
+    const onChange = (e: MediaQueryListEvent): void => apply(e.matches)
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
-  const collapsed = sidebarCollapsed
-
-  const sections: { label?: string; items: NavItem[] }[] = [
+  const describe = (entry: NavEntry): { name: string, tip: string, trailing?: React.ReactNode, marks?: React.ReactNode } =>
+  {
+    if (entry.id === 'batch')
     {
-      items: [
-        { id: 'dashboard', label: 'Dashboard', icon: icons.dashboard }
-      ]
-    },
-    {
-      label: 'Tools',
-      items: [
-        { id: 'batch', label: 'Processor', icon: icons.batch, badge: files.length || undefined },
-        { id: 'editor', label: 'Editor', icon: icons.editor },
-        { id: 'player', label: 'Player', icon: icons.player }
-      ]
-    },
-    {
-      label: 'System',
-      items: [
-        { id: 'settings', label: 'Settings', icon: icons.settings, badge: hasUpdate ? -1 : undefined },
-        { id: 'logs', label: 'Logs', icon: icons.logs, badge: unseenErrors > 0 ? unseenErrors : undefined }
-      ]
+      return {
+        name: batchItemName(percent, attention),
+        tip: batchItemTip(percent, attention),
+        trailing: <BatchStatus percent={percent} attention={attention} />,
+        marks: <BatchMarks percent={percent} attention={attention} />
+      }
     }
-  ]
+    if (entry.id === 'settings' && hasUpdate)
+    {
+      return {
+        name: 'Settings, update available',
+        tip: 'Settings, update available',
+        trailing: <UpdateBadge collapsed={false} />,
+        marks: <UpdateBadge collapsed />
+      }
+    }
+    if (entry.id === 'logs' && unseenErrors > 0)
+    {
+      const words = unseenErrors === 1 ? '1 new error' : `${unseenErrors} new errors`
+      return {
+        name: `Logs, ${words}`,
+        tip: `Logs, ${words}`,
+        trailing: <LogsBadge count={unseenErrors} collapsed={false} />,
+        marks: <LogsBadge count={unseenErrors} collapsed />
+      }
+    }
+    return { name: entry.label, tip: entry.label }
+  }
 
   return (
-    <nav className={`${collapsed ? 'w-13' : 'w-52'} shrink-0 h-full bg-rail border-r border-rail-edge flex flex-col pt-0 pb-3 px-2 relative`}>
-      {/* Drag region + collapse toggle */}
-      <div className="drag-region h-10 shrink-0 relative">
-        {collapsed ? (
-          <SidebarTip label="Expand">
-            <button
-              onClick={toggleSidebar}
-              aria-label="Expand sidebar"
-              className="no-drag absolute top-2.5 right-0 w-6 h-6 rounded-sm flex items-center justify-center text-ink-3 hover:text-ink hover:bg-wash-hover"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-                <polyline points="14 9 17 12 14 15" />
-              </svg>
-            </button>
-          </SidebarTip>
-        ) : (
-          <button
-            onClick={toggleSidebar}
-            aria-label="Collapse sidebar"
-            className="no-drag absolute top-2.5 right-0 w-6 h-6 rounded-sm flex items-center justify-center text-ink-3 hover:text-ink hover:bg-wash-hover"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-              <polyline points="16 9 13 12 16 15" />
-            </svg>
-          </button>
-        )}
+    <nav
+      ref={navRef}
+      aria-label="Main"
+      data-collapsed={collapsed ? '' : undefined}
+      className={cx('relative flex h-full shrink-0 flex-col border-r border-rail-edge bg-rail', collapsed ? 'w-13' : 'w-52')}
+    >
+      <div className={cx('drag-region flex h-(--size-titlebar) shrink-0 items-center px-2', collapsed && 'justify-center')}>
+        <IconButton
+          className={cx('no-drag', !collapsed && 'ms-px')}
+          label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          icon={collapsed ? 'rail.expand' : 'rail.collapse'}
+          aria-expanded={!collapsed}
+          onClick={toggleSidebar}
+        />
       </div>
-      <div className="flex-1 space-y-5 overflow-y-auto scrollbar-thin">
-        {sections.map((section, si) => (
-          <div key={si}>
-            {section.label && !collapsed && (
-              <div className="px-3 mb-1">
-                <span aria-hidden="true" className="text-label text-ink-3">{section.label}</span>
-                <span className="sr-only">{section.label}</span>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pt-1 pb-3 [&::-webkit-scrollbar]:w-0">
+          {NAV_SECTIONS.map((section, index) => (
+            <div key={section.label ?? index} role={section.label ? 'group' : undefined} aria-label={section.label}>
+              {!collapsed && section.label && (
+                <div aria-hidden="true" className="type-caption px-2.5 pb-1 text-ink-3">{section.label}</div>
+              )}
+              <div className="flex flex-col gap-0.5">
+                {section.items.map((entry) =>
+                {
+                  const { name, tip, trailing, marks } = describe(entry)
+                  return (
+                    <NavItem
+                      key={entry.id}
+                      entry={entry}
+                      active={currentView === entry.id}
+                      collapsed={collapsed}
+                      name={name}
+                      tip={tip}
+                      onSelect={setView}
+                      trailing={trailing}
+                      marks={marks}
+                    />
+                  )
+                })}
               </div>
-            )}
-
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const active = currentView === item.id
-                const btn = (
-                  <button
-                    key={item.id}
-                    onClick={() => setView(item.id)}
-                    aria-current={active ? 'page' : undefined}
-                    data-focus="inset"
-                    className={`w-full h-9 flex items-center ${collapsed ? 'justify-center px-0' : 'px-3'} gap-3 rounded-sm text-body group relative
-                      ${active
-                        ? 'bg-wash-hover text-ink forced-colors:bg-[SelectedItem] forced-colors:text-[SelectedItemText]'
-                        : 'text-ink-2 hover:text-ink hover:bg-wash-hover active:bg-wash-pressed'
-                      }`}
-                  >
-                    {active && <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-xs bg-amber forced-colors:bg-[SelectedItemText]" />}
-                    <span className={`shrink-0 ${active ? 'text-amber forced-colors:text-[SelectedItemText]' : 'text-ink-3 group-hover:text-ink-2'}`}>
-                      {item.icon}
-                    </span>
-                    <span className={collapsed ? 'sr-only' : 'flex-1 text-left'}>{item.label}</span>
-                    {!collapsed && item.badge !== undefined && item.badge > 0 && (
-                      <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center
-                        ${item.id === 'logs'
-                          ? 'bg-red-500/20 text-red-200'
-                          : active
-                            ? 'bg-accent-500/30 text-accent-300'
-                            : 'bg-surface-700 text-surface-200'
-                        }`}
-                      >
-                        {item.badge > 99 ? '99+' : item.badge}
-                      </span>
-                    )}
-                    {!collapsed && item.badge === -1 && (
-                      <UpdateBadge collapsed={false} />
-                    )}
-                    {collapsed && item.badge !== undefined && item.badge > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent-500" />
-                    )}
-                    {collapsed && item.badge === -1 && (
-                      <UpdateBadge collapsed={true} />
-                    )}
-                  </button>
-                )
-                return collapsed ? (
-                  <SidebarTip key={item.id} label={item.label}>{btn}</SidebarTip>
-                ) : (
-                  <React.Fragment key={item.id}>{btn}</React.Fragment>
-                )
-              })}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <OverlayScrollbar target={listRef} />
       </div>
-
-      <ProcessingPanel collapsed={collapsed} />
     </nav>
   )
 }

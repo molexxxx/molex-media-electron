@@ -133,7 +133,7 @@ function updateTrayMenu(): void {
     { label: 'Pop Out Player', click: () => _showPopout() },
     { label: 'Player', click: () => _showMainWindow('player') },
     { label: 'Editor', click: () => _showMainWindow('editor') },
-    { label: 'Processor', click: () => _showMainWindow('batch') },
+    { label: 'Batch', click: () => _showMainWindow('batch') },
     { label: 'Logs', click: () => _showMainWindow('logs') },
     { type: 'separator' },
     { label: 'Quit', click: () => _quit() }

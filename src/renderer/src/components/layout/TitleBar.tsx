@@ -1,69 +1,115 @@
 /**
  * @module components/layout/TitleBar
- * @description Custom Electron window title bar.
- *
- * Renders the walnut drag-region header with the wordmark, version, a status lamp with its word while
- * processing, and Windows-style caption buttons (minimize / maximize / close) that call into the Electron
- * main process.
+ * @description The walnut title bar: the molexMedia wordmark, the version, the job engine's run
+ * state as a word, and the window's caption buttons.
  */
 
-import React from 'react'
-import { useAppStore } from '../../stores/appStore'
+import React, { useEffect, useState } from 'react'
+import { useJobsStore } from '../../stores/jobs'
+import { selectRunStatus } from '../../stores/jobsSelectors'
+import type { RunStatus } from '../../../../shared/jobs/types'
+import { cx } from '../../ui/cx'
+import { Icon } from '../../ui/Icon'
+import { IconButton } from '../../ui/IconButton'
+import type { IconName } from '../../ui/icons'
 
-const CAPTION_BUTTON = 'w-11.5 h-10 flex items-center justify-center text-ink-2 hover:bg-wash-hover hover:text-ink active:bg-wash-pressed'
+interface RunStateLook
+{
+  word: string
+  icon: IconName
+  ink: string
+}
 
-export default function TitleBar(): React.JSX.Element {
-  const { isProcessing, isPaused } = useAppStore()
-  const status = isProcessing ? (isPaused ? 'Paused' : 'Processing') : null
-  const lamp = isProcessing
-    ? isPaused
-      ? 'bg-ink-3'
-      : 'bg-amber shadow-[0_0_6px_var(--color-amber)]'
-    : 'bg-walnut-500'
+/** The words and still glyphs for each open run state; an idle engine shows nothing. */
+export const RUN_STATE_LOOKS: Readonly<Record<Exclude<RunStatus, 'idle'>, RunStateLook>> = {
+  running: { word: 'Batch running', icon: 'action.start', ink: 'text-running' },
+  pausing: { word: 'Batch pausing', icon: 'status.paused', ink: 'text-ink-2' },
+  paused: { word: 'Batch paused', icon: 'status.paused', ink: 'text-ink-2' },
+  canceling: { word: 'Batch stopping', icon: 'action.stop', ink: 'text-ink-2' }
+}
+
+/** The run state's look, or null while the engine is idle. */
+export function runStateLook(status: RunStatus): RunStateLook | null
+{
+  return status === 'idle' ? null : RUN_STATE_LOOKS[status]
+}
+
+/**
+ * Whether the window fills its screen's work area, which is how a maximized frameless window
+ * reports itself to the page.
+ */
+export function readMaximized(win: Pick<Window, 'outerWidth' | 'outerHeight' | 'screen'> = window): boolean
+{
+  const { availWidth, availHeight } = win.screen
+  return availWidth > 0 && availHeight > 0 && win.outerWidth >= availWidth && win.outerHeight >= availHeight
+}
+
+/** Follows the window's maximized state across resizes. */
+export function useWindowMaximized(): boolean
+{
+  const [maximized, setMaximized] = useState(() => readMaximized())
+  useEffect(() =>
+  {
+    const update = (): void => setMaximized(readMaximized())
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  return maximized
+}
+
+/** The engine's run state as a still glyph and a word in its ink. */
+function RunStateLabel({ status }: { status: RunStatus }): React.JSX.Element | null
+{
+  const look = runStateLook(status)
+  if (!look)
+  {
+    return null
+  }
+  return (
+    <span data-run-status={status} className={cx('flex min-w-0 items-center gap-1 text-label', look.ink)}>
+      <Icon name={look.icon} size="sm" />
+      <span className="truncate">{look.word}</span>
+    </span>
+  )
+}
+
+/** The drag-region header above the views; the caption buttons sit flush with the window's edge. */
+export default function TitleBar(): React.JSX.Element
+{
+  const status = useJobsStore(selectRunStatus)
+  const maximized = useWindowMaximized()
 
   return (
-    <div className="drag-region h-10 flex items-center justify-between bg-rail border-b border-rail-edge ps-4 shrink-0">
-      <div className="flex items-center gap-2.5">
-        <div aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${lamp}`} />
-        <span className="text-label font-semibold text-ink">
+    <header className="drag-region flex h-(--size-titlebar) shrink-0 items-center justify-between border-b border-rail-edge bg-rail ps-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="font-display text-section font-semibold whitespace-nowrap text-ink">
           molex<span className="text-walnut-ink">Media</span>
         </span>
-        <span className="text-label text-ink-3 tabular-nums">{__APP_VERSION__}</span>
-        {status && (
-          <span className={`text-label ${isPaused ? 'text-ink-3' : 'text-amber'}`}>{status}</span>
-        )}
+        <span className="text-label whitespace-nowrap text-ink-3 tabular-nums">{__APP_VERSION__}</span>
+        <RunStateLabel status={status} />
       </div>
 
-      <div className="flex items-stretch self-stretch no-drag">
-        <button
+      <div className="no-drag flex self-stretch">
+        <IconButton
+          size="caption"
+          label="Minimize"
+          icon="window.minimize"
           onClick={() => window.api.windowMinimize?.()}
-          aria-label="Minimize"
-          className={CAPTION_BUTTON}
-        >
-          <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor">
-            <rect width="10" height="1" />
-          </svg>
-        </button>
-        <button
+        />
+        <IconButton
+          size="caption"
+          label={maximized ? 'Restore' : 'Maximize'}
+          icon={maximized ? 'window.restore' : 'window.maximize'}
           onClick={() => window.api.windowMaximize?.()}
-          aria-label="Maximize"
-          className={CAPTION_BUTTON}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
-            <rect x="0.5" y="0.5" width="9" height="9" rx="1" />
-          </svg>
-        </button>
-        <button
+        />
+        <IconButton
+          size="caption"
+          variant="danger"
+          label="Close"
+          icon="window.close"
           onClick={() => window.api.windowClose?.()}
-          aria-label="Close"
-          className="w-11.5 h-10 flex items-center justify-center text-ink-2 hover:bg-error-fill hover:text-ink active:bg-danger-pressed"
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1">
-            <line x1="0.5" y1="0.5" x2="9.5" y2="9.5" />
-            <line x1="9.5" y1="0.5" x2="0.5" y2="9.5" />
-          </svg>
-        </button>
+        />
       </div>
-    </div>
+    </header>
   )
 }
