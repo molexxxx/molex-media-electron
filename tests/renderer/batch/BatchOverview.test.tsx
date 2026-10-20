@@ -253,7 +253,7 @@ describe('recipeProgress', () =>
     fireEvent.click(within(lines[1]).getByRole('button', { name: '2 need attention' }))
     expect(onFilter).toHaveBeenLastCalledWith({ label: 'Spotify, needs attention', ids: ids('MM-0105', 'MM-0106') })
 
-    expect(within(lines[0]).getByRole('progressbar', { name: 'Apple Podcasts progress' })).toHaveAttribute('aria-valuenow', '63')
+    expect(within(lines[0]).getByRole('progressbar', { name: 'Apple Podcasts progress' })).toHaveAttribute('aria-valuenow', '62')
     expect(within(lines[0]).queryByText('Finished')).toBeNull()
   })
 

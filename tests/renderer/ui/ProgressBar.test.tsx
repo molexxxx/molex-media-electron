@@ -73,11 +73,15 @@ describe('ProgressBar', () =>
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '46 percent, pass 1 of 2')
   })
 
-  it('rounds to whole percents and clamps to the range', () =>
+  it('rounds down to whole percents like the run readouts, and clamps to the range', () =>
   {
     const { rerender } = render(<ProgressBar value={0.456} label="Run" />)
     const bar = screen.getByRole('progressbar')
-    expect(bar).toHaveAttribute('aria-valuenow', '46')
+    expect(bar).toHaveAttribute('aria-valuenow', '45')
+    rerender(<ProgressBar value={0.999} label="Run" />)
+    expect(bar).toHaveAttribute('aria-valuenow', '99')
+    rerender(<ProgressBar value={0.29} label="Run" />)
+    expect(bar).toHaveAttribute('aria-valuenow', '29')
     rerender(<ProgressBar value={1.4} label="Run" />)
     expect(bar).toHaveAttribute('aria-valuenow', '100')
     expect(fillOf(bar).style.transform).toBe('scaleX(1)')

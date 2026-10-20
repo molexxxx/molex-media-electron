@@ -26,7 +26,8 @@ export const PROGRESS_WORKING_LABEL = 'Working'
 /**
  * A neutral progress bar inside a framed sunken track; status words carry the state, so the fill never
  * changes hue except to freeze in the error fill. Without a value it shows a traveling segment, or a
- * static hatch and the word "Working" under reduced motion.
+ * static hatch and the word "Working" under reduced motion. Its percent rounds down like every other
+ * progress readout, so it never reads 100 before the work is done.
  */
 export function ProgressBar({
   value,
@@ -41,7 +42,7 @@ export function ProgressBar({
   const reducedMotion = useReducedMotion()
   const indeterminate = value === undefined || Number.isNaN(value)
   const fraction = indeterminate ? 0 : Math.min(1, Math.max(0, value))
-  const percent = Math.round(fraction * 100)
+  const percent = Math.floor(fraction * 100 + 1e-9)
   const spoken = valueText ?? (indeterminate ? PROGRESS_WORKING_LABEL : `${percent} percent`)
   const still = indeterminate && reducedMotion
 
