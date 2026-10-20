@@ -1,7 +1,6 @@
-# -----------------------------------------------------
-# Release - Auto-generate releases with changelogs
-# Triggered by pushing a version tag: v*.*.*
-# -----------------------------------------------------
+# Release: builds, signs, and publishes installers with a generated changelog
+# when a version tag (v*.*.*) is pushed. Packaging waits for the unit tests
+# and the golden FFmpeg suite, so a tag cannot ship a failing pipeline.
 name: Release
 
 on:
@@ -20,7 +19,7 @@ concurrency:
 jobs:
   test:
     name: Test & Type Check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -39,18 +38,27 @@ jobs:
       - name: Unit tests with coverage
         run: npm run test:coverage
 
+  golden:
+    name: Golden FFmpeg suite
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      golden-only: true
+
   release:
     name: Release (${{ matrix.os }})
-    needs: test
+    needs: [test, golden]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2025
             script: package:win
-          - os: macos-latest
+          - os: macos-26
             script: package:mac
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             script: package:linux
 
     runs-on: ${{ matrix.os }}
@@ -74,14 +82,14 @@ jobs:
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
       - name: Install rpm tooling
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
 
       # macOS, signed: builds a signed (not-yet-notarized) .dmg/.zip. The next
       # step submits the .dmg to Apple without waiting; the notarize-macos job
       # polls for approval and staples it.
       - name: Build & Package (macOS, signed)
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK != ''
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,7 +104,7 @@ jobs:
       # registers the inner app's signature with Apple, so the updater .zip is
       # covered for online Gatekeeper checks even though only the .dmg is stapled.
       - name: Submit macOS .dmg for notarization (no-wait)
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK != ''
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -113,14 +121,14 @@ jobs:
 
       # macOS fallback: unsigned build when signing secrets are absent.
       - name: Build & Package (macOS, unsigned)
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK == ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK == ''
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
       - name: Build & Package (Windows/Linux)
-        if: matrix.os != 'macos-latest'
+        if: runner.os != 'macOS'
         run: npm run ${{ matrix.script }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,7 +136,7 @@ jobs:
 
       # Windows / Linux: upload directly to the draft release.
       - name: Upload installers to draft release (Windows/Linux)
-        if: matrix.os != 'macos-latest'
+        if: runner.os != 'macOS'
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           draft: true
@@ -145,7 +153,7 @@ jobs:
       # uploaded to the draft so that notarize-complete.yml can find it by tag
       # if the notarize-macos job times out (>6 h initial notarization).
       - name: Save macOS artifacts for notarization job
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK != ''
         uses: actions/upload-artifact@v7
         with:
           name: macos-notarize
@@ -157,7 +165,7 @@ jobs:
           retention-days: 90
 
       - name: Upload unstapled macOS installer to draft release
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK != ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK != ''
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           draft: true
@@ -170,7 +178,7 @@ jobs:
 
       # macOS unsigned fallback: upload directly (no notarization step needed).
       - name: Upload macOS unsigned build to draft release
-        if: matrix.os == 'macos-latest' && env.MAC_CSC_LINK == ''
+        if: runner.os == 'macOS' && env.MAC_CSC_LINK == ''
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           draft: true
@@ -189,7 +197,7 @@ jobs:
   notarize-macos:
     name: Notarize & Staple macOS
     needs: release
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 360
     steps:
       - name: Download macOS artifacts
@@ -289,7 +297,7 @@ jobs:
   publish:
     name: Publish Release
     needs: [release, notarize-macos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -337,7 +345,7 @@ jobs:
     name: Refresh profile badges
     needs: [publish]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Dispatch refresh-badges
         env:

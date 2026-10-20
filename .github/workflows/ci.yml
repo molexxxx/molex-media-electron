@@ -1,6 +1,6 @@
-# -----------------------------------------------------
-# CI - Test, Lint & Type Check on every push and PR
-# -----------------------------------------------------
+# CI: tests and type check on every push and pull request, plus the golden
+# suite on real FFmpeg builds when the media pipeline changes, weekly, and
+# for every release tag.
 name: CI
 
 on:
@@ -8,18 +8,28 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      golden-only:
+        description: Run only the golden FFmpeg jobs
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test-and-typecheck:
     name: Test, Lint & Type Check
-    runs-on: ubuntu-latest
+    if: ${{ !inputs.golden-only }}
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -49,11 +59,263 @@ jobs:
       - name: Build (ensures Vite compilation succeeds)
         run: npm run build
 
+  changes:
+    name: Detect pipeline changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      golden: ${{ steps.scope.outputs.golden }}
+    steps:
+      - name: Match changed paths against the FFmpeg pipeline
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CALLED: ${{ inputs.golden-only }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          pattern='^(src/main/ffmpeg/|src/shared/audio/|src/main/jobs/|tests/golden/|vitest\.golden\.config\.ts$|\.github/workflows/ci\.yml$)'
+          if [ "$CALLED" = 'true' ] || [ "$EVENT" = 'schedule' ] || [ "$EVENT" = 'workflow_dispatch' ]; then
+            echo 'golden=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$EVENT" = 'pull_request' ]; then
+            files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          elif ! files=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq '.files[].filename'); then
+            echo 'The pushed range could not be compared, so the golden suite runs.'
+            echo 'golden=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if printf '%s\n' "$files" | grep -Eq "$pattern"; then
+            echo 'golden=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'golden=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  golden:
+    name: Golden (${{ matrix.name }})
+    needs: changes
+    if: needs.changes.outputs.golden == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux, pinned build
+            id: linux-pinned
+            os: ubuntu-24.04
+            ffmpeg: pinned
+          - name: Linux, Ubuntu package
+            id: linux-apt
+            os: ubuntu-24.04
+            ffmpeg: apt
+          - name: Windows, pinned build
+            id: windows-pinned
+            os: windows-2025
+            ffmpeg: pinned
+          - name: macOS arm64, pinned build
+            id: macos-arm64-pinned
+            os: macos-26
+            ffmpeg: pinned
+          - name: macOS x64, pinned build
+            id: macos-x64-pinned
+            os: macos-26-intel
+            ffmpeg: pinned
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      MOLEX_GOLDEN_REQUIRED: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+        env:
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
+
+      - name: Keep golden outputs in the runner temp folder
+        run: echo "MOLEX_GOLDEN_OUT=$RUNNER_TEMP/molex-golden" >> "$GITHUB_ENV"
+
+      - name: Read the pinned asset digests
+        id: pin
+        if: matrix.ffmpeg == 'pinned'
+        run: |
+          node --input-type=module -e "
+            import { readFileSync } from 'node:fs'
+            import { selectAssets } from './tests/golden/fetch-ffmpeg.mjs'
+            const pin = JSON.parse(readFileSync('src/main/ffmpeg/pinned-builds.json', 'utf8'))
+            const sets = selectAssets(pin, process.platform, process.arch)
+            if (!sets) throw new Error('The pin has no build for ' + process.platform + '-' + process.arch)
+            const digests = [...sets.primary, ...sets.fallback].map((a) => a.sha256)
+            console.log('key=golden-ffmpeg-' + process.platform + '-' + process.arch + '-' + digests.join('-'))
+          " >> "$GITHUB_OUTPUT"
+
+      - name: Restore the pinned FFmpeg build
+        id: ffmpeg-cache
+        if: matrix.ffmpeg == 'pinned'
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.MOLEX_GOLDEN_OUT }}/ffmpeg
+          key: ${{ steps.pin.outputs.key }}
+
+      - name: Fetch the pinned FFmpeg build
+        if: matrix.ffmpeg == 'pinned'
+        run: |
+          log="$RUNNER_TEMP/fetch-ffmpeg.log"
+          code=0
+          dir=$(node tests/golden/fetch-ffmpeg.mjs 2> "$log") || code=$?
+          cat "$log" >&2
+          gone=$(grep -oE 'Download of [^ ]+ answered (404|410)' "$log" | sed -E 's/^Download of ([^ ]+) answered.*$/\1/' | sort -u || true)
+          for url in $gone; do
+            echo "::error::Pinned FFmpeg asset is no longer published: $url. Run scripts/update-ffmpeg-pin.mjs."
+          done
+          if [ -n "$gone" ]; then exit 1; fi
+          if [ "$code" -ne 0 ]; then exit "$code"; fi
+          echo "MOLEX_FFMPEG_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Save the pinned FFmpeg build
+        if: matrix.ffmpeg == 'pinned' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.MOLEX_GOLDEN_OUT }}/ffmpeg
+          key: ${{ steps.pin.outputs.key }}
+
+      - name: Install the Ubuntu FFmpeg package
+        if: matrix.ffmpeg == 'apt'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -version
+
+      - name: Golden suite
+        run: npm run test:golden
+
+      - name: Upload the oracle report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-report-${{ matrix.id }}
+          path: ${{ env.MOLEX_GOLDEN_OUT }}/report
+          if-no-files-found: warn
+          retention-days: 14
+
+  golden-minimum:
+    name: Golden (Debian bookworm, FFmpeg 5.1)
+    needs: changes
+    if: needs.changes.outputs.golden == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    container:
+      image: debian:bookworm@sha256:2c037a04925515fdd6ea85ea14a682d0e79931f5e9f5d07b6dbfc6ba12f9e858
+    env:
+      MOLEX_GOLDEN_REQUIRED: '1'
+      DEBIAN_FRONTEND: noninteractive
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install FFmpeg and the checkout tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git ffmpeg
+          ffmpeg -hide_banner -version
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+        env:
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
+          YOUTUBE_DL_SKIP_PYTHON_CHECK: '1'
+
+      - name: Keep golden outputs in the runner temp folder
+        run: echo "MOLEX_GOLDEN_OUT=$RUNNER_TEMP/molex-golden" >> "$GITHUB_ENV"
+
+      - name: Golden suite
+        run: npm run test:golden
+
+      - name: Upload the oracle report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-report-debian-bookworm
+          path: ${{ env.MOLEX_GOLDEN_OUT }}/report
+          if-no-files-found: warn
+          retention-days: 14
+
+  golden-refusal:
+    name: Golden (Ubuntu 22.04, FFmpeg 4.4 refusal)
+    needs: changes
+    if: needs.changes.outputs.golden == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ubuntu:22.04@sha256:0a9887931b0e38af2e3487ed39e29436b0535c4f3f52e57745baaf79d1898956
+    env:
+      MOLEX_GOLDEN_REQUIRED: '1'
+      MOLEX_GOLDEN_ONLY: G19
+      DEBIAN_FRONTEND: noninteractive
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install FFmpeg and the checkout tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git ffmpeg
+          ffmpeg -hide_banner -version
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+        env:
+          YOUTUBE_DL_SKIP_DOWNLOAD: '1'
+          YOUTUBE_DL_SKIP_PYTHON_CHECK: '1'
+
+      - name: Keep golden outputs in the runner temp folder
+        run: echo "MOLEX_GOLDEN_OUT=$RUNNER_TEMP/molex-golden" >> "$GITHUB_ENV"
+
+      - name: Minimum version refusal
+        run: npm run test:golden -- tests/golden/selftest.golden.ts
+
+      - name: Confirm the build was below the minimum
+        run: |
+          grep -l '"meetsMinimum": false' "$MOLEX_GOLDEN_OUT"/report/*-setup.json
+
+      - name: Upload the oracle report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-report-ubuntu-jammy
+          path: ${{ env.MOLEX_GOLDEN_OUT }}/report
+          if-no-files-found: warn
+          retention-days: 14
+
   notify-badges:
     name: Refresh profile badges
     needs: [test-and-typecheck]
-    if: github.event_name != 'pull_request' && always()
-    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'push' && !inputs.golden-only
+    runs-on: ubuntu-24.04
     steps:
       - name: Dispatch refresh-badges
         env:
