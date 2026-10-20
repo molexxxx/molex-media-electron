@@ -14,7 +14,7 @@ import type { ExecResult } from '../../src/main/ffmpeg/exec'
 import { SELF_TESTS, executableName, meetsMinimum, minimumMessage, parseEncoders, parseVersion, searchDirs } from '../../src/main/ffmpeg/build'
 import type { SelfTestId } from '../../src/main/ffmpeg/build'
 import { buildCorpus } from './corpus'
-import { runTool } from './oracle'
+import { loudnessArgs, readLoudness, runTool } from './oracle'
 
 /** The skip reason when no build is found. */
 export const SKIP_MESSAGE = 'No FFmpeg: set MOLEX_FFMPEG_DIR or put ffmpeg and ffprobe on PATH'
@@ -101,6 +101,36 @@ export function resolveBinaries(env: NodeJS.ProcessEnv, platform: NodeJS.Platfor
 export function buildIdOf(versionString: string): string
 {
   return versionString.replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 80) || 'unknown'
+}
+
+/** One corpus file as a build measures it: its first audio stream's loudness, range, and peaks. */
+export type CorpusPrint = { integrated: number, lra: number, samplePeak: number | null, truePeak: number | null } | { error: string }
+
+/**
+ * Measures every corpus file's first audio stream, four at a time, so a build that renders the corpus differently
+ * shows which file differs when its report is set beside another build's. A file without audio records its error.
+ */
+export async function corpusFingerprint(ffmpeg: string, corpus: Readonly<Record<string, string>>): Promise<Record<string, CorpusPrint>>
+{
+  const names = Object.keys(corpus).sort()
+  const prints: Record<string, CorpusPrint> = {}
+  for (let i = 0; i < names.length; i += 4)
+  {
+    await Promise.all(names.slice(i, i + 4).map(async (name) =>
+    {
+      const run = await runTool(ffmpeg, loudnessArgs(corpus[name]))
+      try
+      {
+        const reading = readLoudness(run.stderr)
+        prints[name] = { integrated: reading.integratedPrecise ?? reading.integrated, lra: reading.lraPrecise ?? reading.lra, samplePeak: reading.samplePeak, truePeak: reading.truePeak }
+      }
+      catch (error)
+      {
+        prints[name] = { error: `exit ${run.code}: ${error instanceof Error ? error.message : String(error)}` }
+      }
+    }))
+  }
+  return Object.fromEntries(names.map((name) => [name, prints[name]]))
 }
 
 /** A run folder untouched this long belongs to a run that ended without its teardown. */
@@ -190,6 +220,8 @@ export async function prepareGolden(env: NodeJS.ProcessEnv, log: (message: strin
     const manifest = await buildCorpus({ ffmpeg: bins.ffmpeg, dir: corpusDir, encoders: encoders.all, log, fresh: env.MOLEX_GOLDEN_FRESH === '1' })
     corpus = Object.fromEntries(Object.keys(manifest.files).map((name) => [name, join(corpusDir, name)]))
     missing = manifest.missing
+    await mkdir(reportDir, { recursive: true })
+    await writeFile(join(reportDir, `${buildId}-corpus.json`), JSON.stringify(await corpusFingerprint(bins.ffmpeg, corpus), null, 2))
   }
   else
   {

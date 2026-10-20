@@ -8,6 +8,7 @@ import { annex3Combine, annex3Weight, createOracle, LAYOUT_CHANNELS, parseAstats
 import { channelTruePeak, deinterleave, phaseFilters, toDb, truePeakDb, TRUE_PEAK_TAPS } from './truepeak'
 import { band, decodeAnalysis, fft, imd, smpteSource, spectrum, thd } from './distortion'
 import { buildIdOf, goldenRoot, resolveBinaries, runFolderName, SKIP_MESSAGE, STALE_RUN_MS, sweepStaleRuns } from './global-setup'
+import { readFile } from 'node:fs/promises'
 
 const golden = inject('golden')
 
@@ -265,6 +266,15 @@ describe('golden setup', () =>
 
 describe.skipIf(Boolean(golden.skip))('golden corpus', () =>
 {
+  it('reports every corpus file as this build measures it, so builds can be compared file by file', async () =>
+  {
+    const report = JSON.parse(await readFile(join(golden.reportDir, `${golden.buildId}-corpus.json`), 'utf8')) as Record<string, { integrated?: number, error?: string }>
+    expect(Object.keys(report).sort()).toEqual(Object.keys(golden.corpus).sort())
+    const music = report['music4410.flac']
+    expect(music?.error, 'music4410.flac').toBeUndefined()
+    expect(Number.isFinite(music?.integrated)).toBe(true)
+  })
+
   const oracle = createOracle({ ffmpeg: golden.ffmpeg, ffprobe: golden.ffprobe, soxr: golden.soxr })
 
   it('lives under the golden root of this build, outside the repository', () =>
