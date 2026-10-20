@@ -3,16 +3,36 @@
  * @description Electron preload script - secure bridge between renderer and main.
  *
  * Exposes a curated `window.api` object to the renderer via
- * `contextBridge.exposeInMainWorld`. Each method is a thin wrapper
- * around `ipcRenderer.invoke` or `ipcRenderer.on`, providing type-safe
- * access to file operations, FFmpeg processing, configuration, yt-dlp,
- * window controls, and system queries without granting full Node access.
+ * `contextBridge.exposeInMainWorld`, typed as `WindowApi` so the renderer
+ * and this file compile against the same contract. Each method is a thin
+ * wrapper around `ipcRenderer.invoke`, `ipcRenderer.send`, or
+ * `ipcRenderer.on`; the `jobs` section is generated from `JOB_CHANNELS`.
  */
 
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer, webFrame, webUtils, type IpcRendererEvent } from 'electron'
+import { JOB_CHANNELS, JOB_EVENT_CHANNEL, type JobEventBatch, type JobsApi } from '../shared/jobs/contract'
+import { clampZoomFactor, steppedZoomLevel, type LogEntry, type LogQuery, type WindowApi } from '../shared/ipc/api'
 
-const api = {
+/** One wrapper per job command, each invoking its channel with the request object, plus the event subscription. */
+function buildJobsApi(): JobsApi {
+  const commands = Object.fromEntries(
+    Object.entries(JOB_CHANNELS).map(([name, channel]) => [name, (req: unknown) => ipcRenderer.invoke(channel, req)])
+  )
+  const onEvents = (cb: (batch: JobEventBatch) => void): (() => void) => {
+    const listener = (_event: IpcRendererEvent, batch: JobEventBatch): void => cb(batch)
+    ipcRenderer.on(JOB_EVENT_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(JOB_EVENT_CHANNEL, listener)
+  }
+  return { ...commands, onEvents } as JobsApi
+}
+
+/** Applies a zoom level to this window's page and answers the resulting zoom factor. */
+function applyZoomLevel(level: number): number {
+  webFrame.setZoomLevel(level)
+  return webFrame.getZoomFactor()
+}
+
+const api: WindowApi = {
   // Config
   loadConfig: () => ipcRenderer.invoke('config:load'),
   saveConfig: (partial: any) => ipcRenderer.invoke('config:save', partial),
@@ -22,6 +42,9 @@ const api = {
   checkFFmpeg: () => ipcRenderer.invoke('ffmpeg:check'),
   downloadFFmpeg: () => ipcRenderer.invoke('ffmpeg:download'),
   getFFmpegVersion: () => ipcRenderer.invoke('ffmpeg:version'),
+  getFFmpegInfo: () => ipcRenderer.invoke('ffmpeg:info'),
+  rerunFFmpegSelfTest: () => ipcRenderer.invoke('ffmpeg:selfTest'),
+  installPinnedFFmpeg: () => ipcRenderer.invoke('ffmpeg:installPinned'),
   onDownloadProgress: (cb: (progress: any) => void) => {
     const listener = (_: any, progress: any) => cb(progress)
     ipcRenderer.on('ffmpeg:download-progress', listener)
@@ -140,13 +163,13 @@ const api = {
   },
 
   // Logs
-  getLogBuffer: () => ipcRenderer.invoke('logs:getBuffer'),
+  getLogBuffer: (query?: LogQuery) => ipcRenderer.invoke('logs:getBuffer', query),
   clearLogs: () => ipcRenderer.invoke('logs:clear'),
   openLogDir: () => ipcRenderer.invoke('logs:openDir'),
-  onLogEntry: (cb: (entry: any) => void) => {
-    const listener = (_: any, entry: any) => cb(entry)
-    ipcRenderer.on('logs:entry', listener)
-    return () => ipcRenderer.removeListener('logs:entry', listener)
+  onLogEntries: (cb: (entries: LogEntry[]) => void) => {
+    const listener = (_: IpcRendererEvent, entries: LogEntry[]) => cb(entries)
+    ipcRenderer.on('logs:entries', listener)
+    return () => ipcRenderer.removeListener('logs:entries', listener)
   },
 
   // System
@@ -181,6 +204,15 @@ const api = {
     return () => ipcRenderer.removeListener('navigate', listener)
   },
 
+  // Page zoom, in the zoom menu roles' steps
+  zoomIn: () => applyZoomLevel(steppedZoomLevel(webFrame.getZoomLevel(), 1)),
+  zoomOut: () => applyZoomLevel(steppedZoomLevel(webFrame.getZoomLevel(), -1)),
+  setZoomFactor: (factor: number) => {
+    webFrame.setZoomFactor(clampZoomFactor(factor))
+    return webFrame.getZoomFactor()
+  },
+  getZoomFactor: () => webFrame.getZoomFactor(),
+
   // Updater
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
   downloadUpdate: () => ipcRenderer.invoke('updater:download'),
@@ -190,17 +222,18 @@ const api = {
     const listener = (_: any, status: any) => cb(status)
     ipcRenderer.on('updater:status', listener)
     return () => ipcRenderer.removeListener('updater:status', listener)
-  }
+  },
+
+  // Job engine
+  jobs: buildJobsApi()
 }
 
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }
 } else {
-  ;(window as any).electron = electronAPI
-  ;(window as any).api = api
+  ;(window as unknown as { api: WindowApi }).api = api
 }

@@ -10,10 +10,88 @@
 
 import { useEffect } from 'react'
 import { useAppStore } from '../stores/appStore'
+import type { LogEntry, WindowApi } from '../../../shared/ipc/api'
 
-declare global {
-  interface Window {
-    api: any
+/** What log hydration needs from the preload. */
+export type LogSyncApi = Pick<WindowApi, 'getLogBuffer' | 'onLogEntries'>
+
+/** Where hydrated and live log entries go. */
+export interface LogSink {
+  /** The id of the newest entry already held, if any. */
+  newestId(): number | undefined
+  add(entries: LogEntry[]): void
+}
+
+/**
+ * Keeps a log sink in step with main's buffer: subscribes to `logs:entries`
+ * first, then fetches the buffer after the newest held id. Live batches that
+ * arrive before the reply wait for it, and an entry at or below the last
+ * applied id is dropped, so every line lands once and in order.
+ * @returns Stops listening; a reply arriving later is ignored.
+ */
+export function startLogSync(api: LogSyncApi, sink: LogSink): () => void {
+  let stopped = false
+  let hydrated = false
+  let lastId = sink.newestId() ?? Number.NEGATIVE_INFINITY
+  const waiting: LogEntry[][] = []
+
+  const apply = (entries: LogEntry[]): void => {
+    const fresh: LogEntry[] = []
+    for (const entry of entries) {
+      if (entry.id > lastId) {
+        fresh.push(entry)
+        lastId = entry.id
+      }
+    }
+    if (fresh.length > 0) sink.add(fresh)
+  }
+
+  const finishHydration = (): void => {
+    hydrated = true
+    for (const batch of waiting.splice(0)) apply(batch)
+  }
+
+  const unsubscribe = api.onLogEntries((entries) => {
+    if (stopped) return
+    if (hydrated) apply(entries)
+    else waiting.push(entries)
+  })
+
+  const afterId = sink.newestId()
+  api.getLogBuffer(afterId === undefined ? {} : { afterId }).then(
+    (entries) => {
+      if (stopped) return
+      apply(entries)
+      finishHydration()
+    },
+    (err: unknown) => {
+      if (stopped) return
+      console.error('Log buffer error:', err)
+      finishHydration()
+    }
+  )
+
+  return () => {
+    stopped = true
+    unsubscribe()
+  }
+}
+
+/** The app store as a log sink. */
+export function appStoreLogSink(): LogSink {
+  return {
+    newestId: () => {
+      const logs = useAppStore.getState().logs
+      for (let i = logs.length - 1; i >= 0; i--) {
+        const id = logs[i].id
+        if (typeof id === 'number') return id
+      }
+      return undefined
+    },
+    add: (entries) => {
+      const { addLog } = useAppStore.getState()
+      for (const entry of entries) addLog(entry)
+    }
   }
 }
 
@@ -25,7 +103,6 @@ export function useIPC(): void {
     setShowSetup,
     setSystemInfo,
     setView,
-    addLog,
     updateTask,
     setTasks,
     setActiveBatch,
@@ -38,6 +115,9 @@ export function useIPC(): void {
 
   useEffect(() => {
     let cancelled = false
+
+    // Subscribes before fetching so the startup lines appear once
+    const stopLogSync = startLogSync(window.api, appStoreLogSink())
 
     const init = async () => {
       try {
@@ -66,12 +146,6 @@ export function useIPC(): void {
           setShowSetup(true)
         }
         setFFmpegChecking(false)
-
-        // Load existing logs
-        const logs = await window.api.getLogBuffer()
-        for (const log of logs) {
-          addLog(log)
-        }
       } catch (err) {
         console.error('Init error:', err)
         setFFmpegChecking(false)
@@ -81,10 +155,6 @@ export function useIPC(): void {
     init()
 
     // Subscribe to IPC events
-    const unsubLog = window.api.onLogEntry((entry: any) => {
-      addLog(entry)
-    })
-
     const unsubTaskProgress = window.api.onTaskProgress((task: any) => {
       updateTask(task)
       if (task.status === 'complete') incrementProcessed()
@@ -121,7 +191,7 @@ export function useIPC(): void {
 
     return () => {
       cancelled = true
-      unsubLog?.()
+      stopLogSync()
       unsubTaskProgress?.()
       unsubBatchStarted?.()
       unsubBatchComplete?.()
