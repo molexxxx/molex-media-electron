@@ -12,9 +12,33 @@ import { autoUpdater } from 'electron-updater'
 import { app, ipcMain } from 'electron'
 import { logger } from './logger'
 import { sendToAll } from './ipc/helpers'
+import { APP_NAME, updateWaitingText } from './jobs/status'
+import type { RunId } from '../shared/jobs/ids'
 
-/** Initialise the updater: wire events, register IPC, optionally auto-check. */
-export async function initUpdater(): Promise<void> {
+/** How often an install armed for when the engine is idle checks again. */
+export const IDLE_INSTALL_POLL_MS = 5_000
+
+/** What `updater:install` returns: installing, or refused while the engine is busy. */
+export type InstallResult =
+  | { ok: true }
+  | { ok: false; reason: 'batch-running'; message: string; whenIdle: boolean }
+  | { ok: false; reason: 'failed'; message: string }
+
+/** What the updater reads from the app lifecycle. */
+export interface UpdaterOptions {
+  /** Whether the job engine is busy, and the run that keeps it busy. */
+  busy(): { busy: boolean; runId: RunId | null }
+  /** The async shutdown that flushes the job journal; it runs before the installer closes the windows. */
+  beforeInstall(): Promise<void>
+}
+
+/** The notice while a busy engine holds the update back. */
+export function waitingText(runId: RunId | null): string {
+  return runId === null ? 'An update is ready. It installs when the current jobs finish.' : updateWaitingText(runId)
+}
+
+/** Initialize the updater: wire events, register IPC, optionally auto-check. */
+export async function initUpdater(options: UpdaterOptions): Promise<void> {
   // electron-updater can only self-update NSIS (Windows) and the zipped .app
   // (macOS, via Squirrel.Mac). The Linux build ships as .deb/.rpm, which are
   // managed by the system package manager and have no in-app update path, so
@@ -102,8 +126,44 @@ export async function initUpdater(): Promise<void> {
     }
   })
 
-  ipcMain.handle('updater:install', () => {
-    autoUpdater.quitAndInstall(false, true)
+  let idleInstall: ReturnType<typeof setInterval> | null = null
+  let installing = false
+
+  // Electron closes every window before before-quit in this path, so the engine shuts down first
+  const install = async (): Promise<InstallResult> => {
+    if (installing) return { ok: true }
+    installing = true
+    try {
+      await options.beforeInstall()
+      autoUpdater.quitAndInstall(false, true)
+      return { ok: true }
+    } catch (err: any) {
+      installing = false
+      logger.error(`Could not install the update: ${err?.message ?? String(err)}`)
+      return { ok: false, reason: 'failed', message: `${APP_NAME} could not install the update: ${err?.message ?? String(err)}` }
+    }
+  }
+
+  const armIdleInstall = (): void => {
+    if (idleInstall !== null) return
+    idleInstall = setInterval(() => {
+      if (options.busy().busy) return
+      if (idleInstall !== null) clearInterval(idleInstall)
+      idleInstall = null
+      logger.info('The batch finished; installing the update')
+      void install()
+    }, IDLE_INSTALL_POLL_MS)
+  }
+
+  ipcMain.handle('updater:install', async (_event, request?: { whenIdle?: boolean }): Promise<InstallResult> => {
+    const state = options.busy()
+    if (state.busy) {
+      const whenIdle = request?.whenIdle === true
+      if (whenIdle) armIdleInstall()
+      logger.info(`Update install held back: ${waitingText(state.runId)}`)
+      return { ok: false, reason: 'batch-running', message: waitingText(state.runId), whenIdle }
+    }
+    return install()
   })
 
   // --- Auto-check on startup (always, regardless of autoUpdate setting) ---

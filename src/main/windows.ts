@@ -4,10 +4,11 @@
  * and global IPC handlers for window controls and player state transfer.
  */
 
-import { BrowserWindow, shell, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, dialog, shell, ipcMain, Menu } from 'electron'
 import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
-import { getConfigSync, saveConfig, getConfig } from './config'
+import { getConfigSync, saveConfig, getConfig, clampInterfaceScale } from './config'
+import { logger } from './logger'
 import { GROUND_HEX } from './theme'
 
 /* ------------------------------------------------------------------ */
@@ -18,6 +19,7 @@ let mainWindow: BrowserWindow | null = null
 let popoutWindow: BrowserWindow | null = null
 let pendingNavigate: string | null = null
 let pendingPlayerState: any = null
+const rendererReloads: number[] = []
 
 /** Set by app lifecycle; `true` when the app is actually shutting down. */
 export let isQuitting = false
@@ -25,6 +27,116 @@ export let isQuitting = false
 /** Mark the app as quitting (called from tray / lifecycle hooks). */
 export function setQuitting(value: boolean): void {
   isQuitting = value
+}
+
+/** The quitting flag, read at call time. */
+export function isAppQuitting(): boolean {
+  return isQuitting
+}
+
+/** The main window's smallest size: half of a 1280 DIP work area, so half-screen Snap keeps working. */
+export const MAIN_MIN_SIZE = { width: 640, height: 480 } as const
+
+/** A gone renderer reloads after this delay, at most `MAX_RENDERER_RELOADS` times per `RELOAD_WINDOW_MS`. */
+export const RELOAD_DELAY_MS = 1000
+export const MAX_RENDERER_RELOADS = 3
+export const RELOAD_WINDOW_MS = 60_000
+
+/**
+ * Whether a gone renderer may reload by itself: fewer than three reloads in the last minute.
+ * Drops entries older than the window from `history`.
+ */
+export function mayReloadRenderer(history: number[], now: number): boolean {
+  while (history.length > 0 && now - history[0] >= RELOAD_WINDOW_MS) history.shift()
+  return history.length < MAX_RENDERER_RELOADS
+}
+
+/** The lifecycle's handlers for the main window, installed before the window is created. */
+export interface MainWindowHooks {
+  /** The main window's close handler; it decides whether the close goes ahead. */
+  close(event: Electron.Event, win: BrowserWindow): void
+  /** Windows ends the session (shutdown, restart, or logout); `before-quit` is not emitted then. */
+  sessionEnd(win: BrowserWindow): void
+  /** A close hid the window to the tray. */
+  hiddenToTray(win: BrowserWindow): void
+}
+
+let hooks: MainWindowHooks | null = null
+
+/** Install the lifecycle's main window handlers; every main window created afterwards uses them. */
+export function setMainWindowHooks(next: MainWindowHooks | null): void {
+  hooks = next
+}
+
+/** The main window, or null when it is closed. */
+export function getMainWindow(): BrowserWindow | null {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+}
+
+/** The zoom factor for an interface size in percent, clamped to the setting's range. */
+export function zoomFactorOf(interfaceScale: unknown): number {
+  return clampInterfaceScale(interfaceScale) / 100
+}
+
+function applyZoom(win: BrowserWindow | null, interfaceScale: unknown): void {
+  if (!win || win.isDestroyed()) return
+  win.webContents.setZoomFactor(zoomFactorOf(interfaceScale))
+}
+
+/** Apply the interface size to the main window and the popout; the stored setting when none is given. */
+export function applyInterfaceScale(interfaceScale: unknown = getConfigSync().interfaceScale): void {
+  applyZoom(mainWindow, interfaceScale)
+  applyZoom(popoutWindow, interfaceScale)
+}
+
+/** Hide the main window to the tray after a close. */
+export function hideMainToTray(): void {
+  const win = getMainWindow()
+  if (!win) return
+  win.hide()
+  hooks?.hiddenToTray(win)
+}
+
+/**
+ * A close with minimize to tray on: the renderer's close modal asks first while it is enabled and the renderer is
+ * alive; otherwise the window hides at once.
+ */
+export function closeMainToTray(): void {
+  const win = getMainWindow()
+  if (!win) return
+  if (getConfigSync().showTrayNotification !== false && !win.webContents.isCrashed()) {
+    win.webContents.send('close:confirm')
+    return
+  }
+  hideMainToTray()
+}
+
+function onRendererGone(win: BrowserWindow, reason: string): void {
+  logger.error(`The window's page stopped (${reason})`)
+  const now = Date.now()
+  if (mayReloadRenderer(rendererReloads, now)) {
+    rendererReloads.push(now)
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.webContents.reload()
+    }, RELOAD_DELAY_MS)
+    return
+  }
+  void dialog.showMessageBox(win, {
+    type: 'error',
+    message: 'The molexMedia window stopped working.',
+    detail: `It was reloaded ${MAX_RENDERER_RELOADS} times in the last minute. Jobs keep running in the background.`,
+    buttons: ['Reload', 'Quit'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true
+  }).then(({ response }) => {
+    if (response === 1) {
+      app.quit()
+      return
+    }
+    rendererReloads.length = 0
+    if (!win.isDestroyed()) win.webContents.reload()
+  }, (err) => logger.error(`Could not offer a reload: ${err instanceof Error ? err.message : String(err)}`))
 }
 
 /* ------------------------------------------------------------------ */
@@ -36,8 +148,8 @@ export function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1657,
     height: 1061,
-    minWidth: 420,
-    minHeight: 380,
+    minWidth: MAIN_MIN_SIZE.width,
+    minHeight: MAIN_MIN_SIZE.height,
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
@@ -53,29 +165,24 @@ export function createWindow(): void {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+  const win = mainWindow
+
+  win.on('ready-to-show', () => {
+    win.show()
   })
 
-  // Minimize to tray on close (instead of quitting)
-  mainWindow.on('close', (e) => {
-    if (isQuitting) return
+  // The quit guard decides; without it a close goes ahead
+  win.on('close', (e) => {
+    hooks?.close(e, win)
+  })
 
-    const config = getConfigSync()
+  win.on('session-end', () => {
+    hooks?.sessionEnd(win)
+  })
 
-    if (!config.minimizeToTray) {
-      isQuitting = true
-      return
-    }
-
-    e.preventDefault()
-
-    if (config.showTrayNotification !== false) {
-      mainWindow?.webContents.send('close:confirm')
-      return
-    }
-
-    mainWindow?.hide()
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (isQuitting || details.reason === 'clean-exit' || win.isDestroyed()) return
+    onRendererGone(win, details.reason)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -84,6 +191,7 @@ export function createWindow(): void {
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
+    applyZoom(win, getConfigSync().interfaceScale)
     if (pendingNavigate && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('navigate', pendingNavigate)
       pendingNavigate = null
@@ -169,7 +277,9 @@ export function createPopoutWindow(): void {
     popoutWindow.loadFile(path.join(__dirname, '../renderer/index.html'), { hash: 'popout' })
   }
 
+  const popout = popoutWindow
   popoutWindow.webContents.on('did-finish-load', () => {
+    applyZoom(popout, getConfigSync().interfaceScale)
     // Send state eagerly; the popout also pulls via player:getPendingState
     // in case this fires before React registers its listener.
     if (pendingPlayerState && popoutWindow && !popoutWindow.isDestroyed()) {
@@ -230,11 +340,10 @@ export function registerGlobalIPC(): void {
     }
     if (action === 'quit') {
       isQuitting = true
-      const { app } = require('electron')
       app.quit()
       return
     }
-    mainWindow?.hide()
+    hideMainToTray()
   })
 
   // Popout player
