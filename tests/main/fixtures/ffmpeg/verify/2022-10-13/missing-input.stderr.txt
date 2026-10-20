@@ -1,0 +1,2 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[error] IN/missing.flac: No such file or directory

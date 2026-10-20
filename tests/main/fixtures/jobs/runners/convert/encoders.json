@@ -1,0 +1,996 @@
+{
+  "recorded": "2026-10-17",
+  "builds": {
+    "2022": "ffmpeg version 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev",
+    "9.0.2": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 (BtbN win64 gpl)"
+  },
+  "sources": {
+    "even": "testsrc2=size=320x240:rate=25, 1 s, ffv1 yuv420p in mkv",
+    "odd": "testsrc=size=321x241:rate=25, 1 s, ffv1 yuv444p in mkv"
+  },
+  "note": "Each case runs the argument list below on the source named in it; exit is signed, and error is the first stderr line naming the failure. Without the even crop, x264 and x265 refuse 321x241 on both builds and SVT-AV1 refuses it on the 2022 build.",
+  "cases": {
+    "libx264 quality": {
+      "encoder": "libx264",
+      "kbps": null,
+      "container": "mp4",
+      "muxer": "mp4",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx264",
+        "-crf:v:0",
+        "23",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "mp4",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libx264 bitrate": {
+      "encoder": "libx264",
+      "kbps": 500,
+      "container": "mp4",
+      "muxer": "mp4",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx264",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "mp4",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libx264 odd without crop": {
+      "encoder": "libx264",
+      "kbps": null,
+      "container": "mp4",
+      "muxer": "mp4",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx264",
+        "-crf:v:0",
+        "23",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "mp4",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 1,
+          "error": "[libx264] width not divisible by 2 (321x241)"
+        },
+        "9.0.2": {
+          "exit": -542398533,
+          "error": "[libx264] width not divisible by 2 (321x241)"
+        }
+      }
+    },
+    "libx264 odd with even crop": {
+      "encoder": "libx264",
+      "kbps": null,
+      "container": "mp4",
+      "muxer": "mp4",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx264",
+        "-crf:v:0",
+        "23",
+        "-filter:v:0",
+        "crop=w='trunc(iw/2)*2':h='trunc(ih/2)*2':x=0:y=0,format=yuv420p",
+        "-f",
+        "mp4",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "h264",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libx265 quality": {
+      "encoder": "libx265",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx265",
+        "-crf:v:0",
+        "28",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libx265 bitrate": {
+      "encoder": "libx265",
+      "kbps": 500,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx265",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libx265 odd without crop": {
+      "encoder": "libx265",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx265",
+        "-crf:v:0",
+        "28",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 1,
+          "error": "x265 [error]: Picture width must be an integer multiple of the specified chroma subsampling"
+        },
+        "9.0.2": {
+          "exit": -1094995529,
+          "error": "x265 [error]: Picture width must be an integer multiple of the specified chroma subsampling"
+        }
+      }
+    },
+    "libx265 odd with even crop": {
+      "encoder": "libx265",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libx265",
+        "-crf:v:0",
+        "28",
+        "-filter:v:0",
+        "crop=w='trunc(iw/2)*2':h='trunc(ih/2)*2':x=0:y=0,format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "hevc",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libvpx-vp9 quality": {
+      "encoder": "libvpx-vp9",
+      "kbps": null,
+      "container": "webm",
+      "muxer": "webm",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libvpx-vp9",
+        "-crf:v:0",
+        "31",
+        "-b:v:0",
+        "0",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "webm",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "vp9",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "vp9",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libvpx-vp9 bitrate": {
+      "encoder": "libvpx-vp9",
+      "kbps": 500,
+      "container": "webm",
+      "muxer": "webm",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libvpx-vp9",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "webm",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "vp9",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "vp9",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libaom-av1 quality": {
+      "encoder": "libaom-av1",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libaom-av1",
+        "-crf:v:0",
+        "32",
+        "-b:v:0",
+        "0",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libaom-av1 bitrate": {
+      "encoder": "libaom-av1",
+      "kbps": 500,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libaom-av1",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libsvtav1 quality": {
+      "encoder": "libsvtav1",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libsvtav1",
+        "-crf:v:0",
+        "35",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libsvtav1 bitrate": {
+      "encoder": "libsvtav1",
+      "kbps": 500,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libsvtav1",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libsvtav1 odd without crop": {
+      "encoder": "libsvtav1",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libsvtav1",
+        "-crf:v:0",
+        "35",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 1,
+          "error": "Svt[error]: Error Instance 1: Source Width must be even for YUV_420 colorspace"
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "321x241",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libsvtav1 odd with even crop": {
+      "encoder": "libsvtav1",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<odd>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libsvtav1",
+        "-crf:v:0",
+        "35",
+        "-filter:v:0",
+        "crop=w='trunc(iw/2)*2':h='trunc(ih/2)*2':x=0:y=0,format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "av1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "prores_ks quality": {
+      "encoder": "prores_ks",
+      "kbps": null,
+      "container": "mov",
+      "muxer": "mov",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "prores_ks",
+        "-filter:v:0",
+        "null",
+        "-f",
+        "mov",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "prores",
+          "size": "320x240",
+          "pixFmt": "yuv422p10le",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "prores",
+          "size": "320x240",
+          "pixFmt": "yuv422p10le",
+          "error": null
+        }
+      }
+    },
+    "ffv1 quality": {
+      "encoder": "ffv1",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "ffv1",
+        "-filter:v:0",
+        "null",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "ffv1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "ffv1",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "utvideo quality": {
+      "encoder": "utvideo",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "utvideo",
+        "-filter:v:0",
+        "null",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "utvideo",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "utvideo",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "mpeg2video quality": {
+      "encoder": "mpeg2video",
+      "kbps": null,
+      "container": "ts",
+      "muxer": "mpegts",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "mpeg2video",
+        "-q:v:0",
+        "3",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "mpegts",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "mpeg2video",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "mpeg2video",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "mpeg2video bitrate": {
+      "encoder": "mpeg2video",
+      "kbps": 500,
+      "container": "ts",
+      "muxer": "mpegts",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "mpeg2video",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "mpegts",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "mpeg2video",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "mpeg2video",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "mpeg4 quality": {
+      "encoder": "mpeg4",
+      "kbps": null,
+      "container": "avi",
+      "muxer": "avi",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "mpeg4",
+        "-q:v:0",
+        "3",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "avi",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "mpeg4",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "mpeg4",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "mpeg4 bitrate": {
+      "encoder": "mpeg4",
+      "kbps": 500,
+      "container": "avi",
+      "muxer": "avi",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "mpeg4",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "avi",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "mpeg4",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "mpeg4",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libtheora quality": {
+      "encoder": "libtheora",
+      "kbps": null,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libtheora",
+        "-q:v:0",
+        "7",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "theora",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "theora",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "libtheora bitrate": {
+      "encoder": "libtheora",
+      "kbps": 500,
+      "container": "mkv",
+      "muxer": "matroska",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "libtheora",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "matroska",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "theora",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "theora",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "wmv2 quality": {
+      "encoder": "wmv2",
+      "kbps": null,
+      "container": "wmv",
+      "muxer": "asf",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "wmv2",
+        "-q:v:0",
+        "3",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "asf",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "wmv2",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "wmv2",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    },
+    "wmv2 bitrate": {
+      "encoder": "wmv2",
+      "kbps": 500,
+      "container": "wmv",
+      "muxer": "asf",
+      "args": [
+        "-i",
+        "<even>",
+        "-map",
+        "0:0",
+        "-c:v:0",
+        "wmv2",
+        "-b:v:0",
+        "500k",
+        "-filter:v:0",
+        "format=yuv420p",
+        "-f",
+        "asf",
+        "<out>"
+      ],
+      "result": {
+        "2022": {
+          "exit": 0,
+          "codec": "wmv2",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        },
+        "9.0.2": {
+          "exit": 0,
+          "codec": "wmv2",
+          "size": "320x240",
+          "pixFmt": "yuv420p",
+          "error": null
+        }
+      }
+    }
+  }
+}

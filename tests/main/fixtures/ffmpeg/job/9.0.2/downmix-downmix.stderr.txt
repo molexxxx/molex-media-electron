@@ -1,0 +1,24 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/surround.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 450 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, 5.1(side), fltp, 448 kb/s
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 ac3
+[info]       DURATION        : 00:00:08.000000000
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 000001a75c4aa780] [info] n:0 pts:0 pts_time:0 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1280 checksum:D3E3935B plane_checksums: [ 54E80629 0A6A6F26 C44D00B4 59156BA0 2837FDED 4143B3AD ]
+[Parsed_ashowinfo_0 @ 000001a75c4aa780] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]       DURATION        : 00:00:08.000000000
+[Parsed_ashowinfo_0 @ 000001a75c4aa780] [info] n:1 pts:1280 pts_time:0.0266667 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:93B89567 plane_checksums: [ ADCBFB48 9912AB95 EDBCD290 7CF7100C 9198E667 B209255A ]
+[Parsed_ashowinfo_0 @ 000001a75c4aa780] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[out#0/null @ 000001a75c45ad00] [info] video:0KiB audio:15KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:00.02 bitrate=N/A speed=9.39x elapsed=0:00:00.00    

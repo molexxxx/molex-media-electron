@@ -10,9 +10,13 @@ export default defineConfig({
       reportsDirectory: './coverage',
       include: [
         'src/main/**/*.ts',
-        'src/renderer/src/stores/**/*.ts'
+        'src/renderer/src/stores/**/*.ts',
+        'src/renderer/src/ui/**/*.{ts,tsx}',
+        'src/shared/**/*.ts'
       ],
       exclude: [
+        'src/renderer/src/ui/**/*.typecheck.ts',
+        'src/shared/**/*.typecheck.ts',
         'src/main/index.ts',
         'src/main/ipc.ts',
         'src/main/protocol.ts',
@@ -45,8 +49,11 @@ export default defineConfig({
         }
       },
       {
+        esbuild: { jsx: 'automatic' },
+        define: { __APP_VERSION__: JSON.stringify('0.0.0-test') },
         test: {
           name: 'renderer',
+          globals: true,
           environment: 'jsdom',
           include: ['tests/renderer/**/*.test.ts', 'tests/renderer/**/*.test.tsx'],
           setupFiles: ['tests/renderer/setup.ts'],

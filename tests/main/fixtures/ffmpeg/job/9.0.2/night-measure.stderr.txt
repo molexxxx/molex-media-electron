@@ -1,0 +1,34 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/surround.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 450 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, 5.1(side), fltp, 448 kb/s
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 ac3
+[info]       DURATION        : 00:00:08.000000000
+[info] Stream mapping:
+[info]   Stream #0:0 (ac3) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[ebur128@m0 @ 00000285b9ed60c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -21.0 LUFS
+    Threshold: -31.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -41.0 LUFS
+    LRA low:   -21.0 LUFS
+    LRA high:  -21.0 LUFS
+
+  True peak:
+    Peak:      -15.2 dBFS
+[out#0/null @ 00000285b803f180] [info] video:0KiB audio:4497KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:07.99 bitrate=N/A speed= 202x elapsed=0:00:00.03    

@@ -1,0 +1,18 @@
+{
+  "prefix": ["-hide_banner", "-nostdin", "-nostats", "-progress", "pipe:1", "-stats_period", "0.5"],
+  "inputs": [
+    { "name": "tone ü.wav", "args": ["-f", "lavfi", "-i", "sine=frequency=440:duration=0.5"] }
+  ],
+  "runs": [
+    { "name": "progress-null", "args": ["-f", "lavfi", "-i", "sine=frequency=1000:duration=2", "-f", "null", "-"] },
+    { "name": "progress-file", "args": ["-re", "-f", "lavfi", "-i", "sine=frequency=1000:duration=1.6", "-c:a", "flac", "-y", "OUT/tone.flac"] },
+    { "name": "progress-video", "args": ["-re", "-f", "lavfi", "-i", "testsrc2=size=160x120:rate=25:duration=2.2", "-c:v", "libx264", "-y", "OUT/clip.mp4"] },
+    { "name": "collision", "args": ["-f", "lavfi", "-i", "sine=duration=0.2", "-n", "OUT/exists.wav"], "files": { "OUT/exists.wav": "x" } },
+    { "name": "collision-levels", "args": ["-loglevel", "level+info", "-f", "lavfi", "-i", "sine=duration=0.2", "-n", "OUT/exists.wav"], "files": { "OUT/exists.wav": "x" } },
+    { "name": "exit-aac-in-ac3", "args": ["-loglevel", "level+info", "-f", "lavfi", "-i", "sine=duration=0.2", "-c:a", "aac", "-f", "ac3", "-y", "OUT/out.ac3"] },
+    { "name": "exit-missing-input", "args": ["-loglevel", "level+info", "-i", "IN/missing.wav", "-f", "null", "-"] },
+    { "name": "exit-no-outputs", "args": ["-loglevel", "level+info", "-f", "lavfi", "-i", "sine=duration=0.2", "-filter_complex", "[0:a:0]anullsink", "-f", "null", "-"] },
+    { "name": "exit-unknown-encoder", "args": ["-loglevel", "level+info", "-f", "lavfi", "-i", "sine=duration=0.2", "-c:a", "nosuchencoder", "-f", "null", "-"] },
+    { "name": "stderr-utf8", "args": ["-loglevel", "level+info", "-i", "IN/tone ü.wav", "-f", "null", "-"] }
+  ]
+}

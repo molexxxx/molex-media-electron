@@ -1,0 +1,190 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, mp3, from 'IN/damaged.mp3':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Duration: 00:00:06.03, start: 0.025057, bitrate: 128 kb/s
+[info]   Stream #0:0: Audio: mp3, 44100 Hz, mono, fltp, 128 kb/s
+[ebur128@v0 @ 000001f07e7ab9c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[info] Stream mapping:
+[info]   Stream #0:0 (mp3float) -> asplit:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -5 -5
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -5 -5
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -6 -6
+[mp3float @ 000001f07e79cec0] [error] Header missing
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 16175 >= 12573
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[astats@s0 @ 000001f07e7afbc0] [info] Overall
+[astats@s0 @ 000001f07e7afbc0] [info] Peak level dB: -16.565895
+[astats@t0 @ 000001f07e7af600] [info] Overall
+[astats@t0 @ 000001f07e7af600] [info] Peak level dB: -17.684164
+[ebur128@v0 @ 000001f07e7b1340] [info] Summary:
+
+  Integrated loudness:
+    I:         -22.2 LUFS
+    Threshold: -32.2 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -4 -4
+[astats@s0 @ 000001f07e814c80] [info] Overall
+[astats@s0 @ 000001f07e814c80] [info] Peak level dB: -15.003390
+[astats@t0 @ 000001f07e815c80] [info] Overall
+[astats@t0 @ 000001f07e815c80] [info] Peak level dB: nan
+[ebur128@v0 @ 000001f07e815480] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 20783
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 21935
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -1 -1
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 23087
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -3 -3
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 24239
+[mp3float @ 000001f07e79cec0] [info] overread, skip -8 enddists: -6 -6
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 25391
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 27054 >= 26543
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -3 -3
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -6 -6
+[mp3float @ 000001f07e79cec0] [error] Header missing
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 62255 >= 46010
+[astats@s0 @ 000001f07e815280] [info] Overall
+[astats@s0 @ 000001f07e815280] [info] Peak level dB: -15.960104
+[astats@t0 @ 000001f07e814e80] [info] Overall
+[astats@t0 @ 000001f07e814e80] [info] Peak level dB: -15.957362
+[ebur128@v0 @ 000001f07e814980] [info] Summary:
+
+  Integrated loudness:
+    I:         -22.6 LUFS
+    Threshold: -32.6 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[astats@s0 @ 000001f07e814980] [info] Overall
+[astats@s0 @ 000001f07e814980] [info] Peak level dB: -13.856594
+[astats@t0 @ 000001f07e815a80] [info] Overall
+[astats@t0 @ 000001f07e815a80] [info] Peak level dB: nan
+[ebur128@v0 @ 000001f07e815f80] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 66863
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 68015
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 69167
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 70319
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 71471
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 72623
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -1 -1
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 73775
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 74927
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 76079
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 77231
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 78383
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 79535
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 80687
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 81839
+[mp3float @ 000001f07e79cec0] [info] overread, skip -4 enddists: -1 -1
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 82991
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 84143
+[mp3float @ 000001f07e79cec0] [info] overread, skip -8 enddists: -6 -6
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 85295
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 86447
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 87599
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 88751
+[null @ 000001f07e7ab7c0] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 90558 >= 89903
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -8 enddists: -6 -6
+[mp3float @ 000001f07e79cec0] [error] Header missing
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -2 -2
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -5 -5
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -3 -3
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [error] big_values too big
+[mp3float @ 000001f07e79cec0] [error] Error while decoding MPEG audio frame.
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [error] Header missing
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -4 -4
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -2 -2
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -5 -5
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -3 -3
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -3 -3
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -6 -6
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -6 enddists: -2 -2
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -3 -3
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -2 -2
+[mp3float @ 000001f07e79cec0] [error] big_values too big
+[mp3float @ 000001f07e79cec0] [error] Error while decoding MPEG audio frame.
+[error] Error while decoding stream #0:0: Invalid data found when processing input
+[mp3float @ 000001f07e79cec0] [info] overread, skip -7 enddists: -1 -1
+[mp3float @ 000001f07e79cec0] [info] overread, skip -5 enddists: -2 -2
+[info] size=N/A time=00:00:05.93 bitrate=N/A speed= 115x    
+[info] video:0kB audio:501kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[astats@s0 @ 000001f07e814780] [info] Overall
+[astats@s0 @ 000001f07e814780] [info] Peak level dB: -11.413255
+[astats@t0 @ 000001f07e814880] [info] Overall
+[astats@t0 @ 000001f07e814880] [info] Peak level dB: -11.411688
+[ebur128@v0 @ 000001f07e814180] [info] Summary:
+
+  Integrated loudness:
+    I:         -22.3 LUFS
+    Threshold: -32.3 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -42.3 LUFS
+    LRA low:   -22.3 LUFS
+    LRA high:  -22.3 LUFS

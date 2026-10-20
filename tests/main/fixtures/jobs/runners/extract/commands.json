@@ -1,0 +1,362 @@
+{
+  "measured": "2026-10-18",
+  "note": "buildExtractCommand argv run as ffmpeg -hide_banner -nostdin -v error <args> on both builds; the source is 320x240 testsrc2 at 25 fps for 10 s with keyframes every 2 s, a 24-bit mono PCM stream, a jpn AAC stereo stream, and a three-cue SRT stream; frame folders are named \"<case> 100% done\"",
+  "results": {
+    "legacy": {
+      "wav-24": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "pcm_s24le",
+            "sample_fmt": "s32",
+            "channel_layout": "mono",
+            "bits_per_sample": 24
+          }
+        ]
+      },
+      "aiff-copy": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10.026667,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "pcm_s16be",
+            "sample_fmt": "s16",
+            "bits_per_sample": 16
+          }
+        ]
+      },
+      "m4a-copy-trim": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 3.013,
+        "expected": {
+          "expectedSec": 3,
+          "rule": "covers"
+        },
+        "streams": [
+          {
+            "codec_name": "aac",
+            "sample_fmt": "fltp",
+            "channel_layout": "stereo",
+            "bits_per_sample": 0
+          }
+        ]
+      },
+      "opus-mono": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10.033167,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "opus",
+            "sample_fmt": "fltp",
+            "channel_layout": "mono",
+            "bits_per_sample": 0
+          }
+        ]
+      },
+      "video-copy-trim": {
+        "exitCode": 0,
+        "issues": [
+          "keyframe-trim"
+        ],
+        "duration": 4.101,
+        "expected": {
+          "expectedSec": 4,
+          "rule": "covers"
+        },
+        "streams": [
+          {
+            "codec_name": "h264"
+          }
+        ]
+      },
+      "video-x264": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 4.04,
+        "expected": {
+          "expectedSec": 4,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "h264"
+          }
+        ]
+      },
+      "video-vp9": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 2.04,
+        "expected": {
+          "expectedSec": 2,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "vp9"
+          }
+        ]
+      },
+      "gif-3-plays": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 3.01,
+        "expected": {
+          "expectedSec": 3,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "gif"
+          }
+        ]
+      },
+      "frames-count": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 24,
+        "expected": 24
+      },
+      "frames-thumb-jpg": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 1,
+        "expected": 1
+      },
+      "frames-webp": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 4,
+        "expected": 4
+      },
+      "subs-srt": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "subrip"
+          }
+        ]
+      },
+      "subs-vtt": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "webvtt"
+          }
+        ]
+      },
+      "subs-ass": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "ass"
+          }
+        ]
+      }
+    },
+    "pinned": {
+      "wav-24": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "pcm_s24le",
+            "sample_fmt": "s32",
+            "channel_layout": "mono",
+            "bits_per_sample": 24
+          }
+        ]
+      },
+      "aiff-copy": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10.005333,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "pcm_s16be",
+            "sample_fmt": "s16",
+            "bits_per_sample": 16
+          }
+        ]
+      },
+      "m4a-copy-trim": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 3.013,
+        "expected": {
+          "expectedSec": 3,
+          "rule": "covers"
+        },
+        "streams": [
+          {
+            "codec_name": "aac",
+            "sample_fmt": "fltp",
+            "channel_layout": "stereo",
+            "bits_per_sample": 0
+          }
+        ]
+      },
+      "opus-mono": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 10.011833,
+        "expected": {
+          "expectedSec": 10,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "opus",
+            "sample_fmt": "fltp",
+            "channel_layout": "mono",
+            "bits_per_sample": 0
+          }
+        ]
+      },
+      "video-copy-trim": {
+        "exitCode": 0,
+        "issues": [
+          "keyframe-trim"
+        ],
+        "duration": 4.08,
+        "expected": {
+          "expectedSec": 4,
+          "rule": "covers"
+        },
+        "streams": [
+          {
+            "codec_name": "h264"
+          }
+        ]
+      },
+      "video-x264": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 4,
+        "expected": {
+          "expectedSec": 4,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "h264"
+          }
+        ]
+      },
+      "video-vp9": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 2,
+        "expected": {
+          "expectedSec": 2,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "vp9"
+          }
+        ]
+      },
+      "gif-3-plays": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": 3,
+        "expected": {
+          "expectedSec": 3,
+          "rule": "tolerance"
+        },
+        "streams": [
+          {
+            "codec_name": "gif"
+          }
+        ]
+      },
+      "frames-count": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 24,
+        "expected": 24
+      },
+      "frames-thumb-jpg": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 1,
+        "expected": 1
+      },
+      "frames-webp": {
+        "exitCode": 0,
+        "issues": [],
+        "files": 4,
+        "expected": 4
+      },
+      "subs-srt": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "subrip"
+          }
+        ]
+      },
+      "subs-vtt": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "webvtt"
+          }
+        ]
+      },
+      "subs-ass": {
+        "exitCode": 0,
+        "issues": [],
+        "duration": null,
+        "expected": null,
+        "streams": [
+          {
+            "codec_name": "ass"
+          }
+        ]
+      }
+    }
+  }
+}

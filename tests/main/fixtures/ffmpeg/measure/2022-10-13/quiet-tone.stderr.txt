@@ -1,0 +1,45 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, wav, from 'IN/quiet.wav':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Duration: 00:00:03.00, bitrate: 1536 kb/s
+[info]   Stream #0:0: Audio: pcm_f32le ([3][0][0][0] / 0x0003), 48000 Hz, mono, flt, 1536 kb/s
+[ebur128@m0 @ 0000027fd7de2480] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_f32le) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:02.90 bitrate=N/A speed= 394x    
+[info] video:0kB audio:281kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[ebur128@m0 @ 0000027fd8298c40] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:      -98.1 dBFS

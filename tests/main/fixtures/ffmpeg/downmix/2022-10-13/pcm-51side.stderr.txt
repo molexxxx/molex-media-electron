@@ -1,0 +1,17 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, wav, from 'IN/pcm-51side.wav':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Duration: 00:00:01.00, bitrate: 4608 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (pcm_s16le (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 000002b6c5b15040] [info] n:0 pts:0 pts_time:0 pos:102 fmt:s16 channels:6 chlayout:5.1(side) rate:48000 nb_samples:341 checksum:905CBE37 plane_checksums: [ 905CBE37 ]
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:00.00 bitrate=N/A speed=   0x    
+[info] video:0kB audio:4kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown

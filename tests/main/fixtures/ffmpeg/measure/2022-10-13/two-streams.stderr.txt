@@ -1,0 +1,109 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/multi.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf59.34.101
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 5562 kb/s
+[info]   Stream #0:0: Audio: flac, 48000 Hz, stereo, s32 (24 bit) (default)
+[info]     Metadata:
+[info]       ENCODER         : Lavc59.50.100 flac
+[info]       DURATION        : 00:00:08.000000000
+[info]   Stream #0:1: Audio: flac, 48000 Hz, 5.1(side), s32 (24 bit)
+[info]     Metadata:
+[info]       ENCODER         : Lavc59.50.100 flac
+[info]       DURATION        : 00:00:08.000000000
+[ebur128@d1 @ 00000177172d3b80] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[ebur128@m1 @ 0000017717351ac0] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[ebur128@m0 @ 000001771738cc00] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[info] Stream mapping:
+[info]   Stream #0:0 (flac) -> aformat:default
+[info]   Stream #0:1 (flac) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info]   ebur128:out0 -> Stream #0:1 (pcm_s16le)
+[Parsed_pan_5 @ 0000017717941c00] [SWR @ 0000017717aca200] [warning] Input channel layout has a different number of channels than the number of used channels, ignoring layout
+[Parsed_pan_5 @ 0000017717941c00] [info] Pure channel mapping detected: 2
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:1: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:07.90 bitrate=N/A speed= 118x    
+[info] video:0kB audio:6000kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[ebur128@d1 @ 0000017717942d00] [info] Summary:
+
+  Integrated loudness:
+    I:         -40.6 LUFS
+    Threshold: -50.6 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -60.6 LUFS
+    LRA low:   -40.7 LUFS
+    LRA high:  -40.6 LUFS
+[ebur128@m1 @ 000001771738a140] [info] Summary:
+
+  Integrated loudness:
+    I:         -22.3 LUFS
+    Threshold: -32.3 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -42.3 LUFS
+    LRA low:   -22.3 LUFS
+    LRA high:  -22.2 LUFS
+
+  True peak:
+    Peak:      -14.0 dBFS
+[ebur128@m0 @ 00000177156a3f40] [info] Summary:
+
+  Integrated loudness:
+    I:         -23.6 LUFS
+    Threshold: -33.6 LUFS
+
+  Loudness range:
+    LRA:         0.1 LU
+    Threshold: -43.6 LUFS
+    LRA low:   -23.7 LUFS
+    LRA high:  -23.6 LUFS
+
+  True peak:
+    Peak:      -13.7 dBFS

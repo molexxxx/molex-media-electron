@@ -1,0 +1,15 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, lavfi, from 'sine=duration=0.2':
+[info]   Duration: N/A, start: 0.000000, bitrate: 705 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (pcm_s16le (native) -> aac (native))
+[info] Output #0, ac3, to 'OUT/out.ac3':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: aac (LC), 44100 Hz, mono, fltp, 69 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 aac
+[info] size=       2kB time=00:00:00.18 bitrate=  88.4kbits/s speed=31.9x    
+[info] video:0kB audio:2kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 0.000000%
+[aac @ 000002a666790d00] [info] Qavg: 105.675

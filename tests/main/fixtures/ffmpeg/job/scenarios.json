@@ -1,0 +1,570 @@
+{
+  "prefix": [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-progress",
+    "pipe:1",
+    "-stats_period",
+    "0.5"
+  ],
+  "inputs": [
+    {
+      "name": "music.flac",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=44100:duration=8:seed=7:amplitude=0.3",
+        "-ac",
+        "2",
+        "-sample_fmt",
+        "s16",
+        "-c:a",
+        "flac"
+      ]
+    },
+    {
+      "name": "surround.mkv",
+      "args": [
+        "-filter_complex",
+        "anoisesrc=color=pink:sample_rate=48000:duration=8:seed=1:amplitude=0.2[n1];anoisesrc=color=pink:sample_rate=48000:duration=8:seed=2:amplitude=0.2[n2];anoisesrc=color=pink:sample_rate=48000:duration=8:seed=3:amplitude=0.2[n3];anoisesrc=color=pink:sample_rate=48000:duration=8:seed=4:amplitude=0.2[n4];anoisesrc=color=pink:sample_rate=48000:duration=8:seed=5:amplitude=0.2[n5];anoisesrc=color=pink:sample_rate=48000:duration=8:seed=6:amplitude=0.2[n6];[n1][n2][n3][n4][n5][n6]join=inputs=6:channel_layout=5.1(side)",
+        "-c:a",
+        "ac3",
+        "-b:a",
+        "448k"
+      ]
+    },
+    {
+      "name": "music-pass1.m4a",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=2.20dB:precision=double,aresample=220500,alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod"
+      ]
+    },
+    {
+      "name": "music-pass2.m4a",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=2.70dB:precision=double,aresample=220500,alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod"
+      ]
+    },
+    {
+      "name": "music-hot.m4a",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=12.20dB:precision=double,aresample=220500,alimiter=limit=0.00dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod"
+      ]
+    },
+    {
+      "name": "music-quiet.m4a",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=-0.80dB:precision=double,aresample=220500,alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod"
+      ]
+    },
+    {
+      "name": "downmix-pass1.mkv",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,pan=stereo|FL=FL+0.594604*FC+0.5*SL|FR=FR+0.594604*FC+0.5*SR,aformat=sample_fmts=dbl:channel_layouts=stereo,volume=0.40dB:precision=double,aresample=192000,alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=48000:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "ac3",
+        "-b:a:0",
+        "192k",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "matroska"
+      ]
+    },
+    {
+      "name": "night-pass1.mkv",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,acompressor=threshold=-21.00dB:ratio=3:attack=25:release=300:knee=2.8284:detection=rms:link=maximum,volume=3.70dB:precision=double,aresample=192000,alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=48000:channel_layouts=5.1(side),asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "ac3",
+        "-b:a:0",
+        "448k",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "matroska"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "name": "music-measure",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "music-encode",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-n",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=2.20dB:precision=double,aresample=220500,alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod",
+        "OUT/music-pass1.m4a.part"
+      ]
+    },
+    {
+      "name": "music-verify",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/music-pass1.m4a",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "music-encode-2",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-n",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=2.70dB:precision=double,aresample=220500,alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod",
+        "OUT/music-pass2.m4a.part"
+      ]
+    },
+    {
+      "name": "music-verify-2",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/music-pass2.m4a",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "music-encode-hot",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-n",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/music.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,volume=12.20dB:precision=double,aresample=220500,alimiter=limit=0.00dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=44100:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "aac",
+        "-b:a:0",
+        "128k",
+        "-aac_coder:a:0",
+        "fast",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "ipod",
+        "OUT/music-hot.m4a.part"
+      ]
+    },
+    {
+      "name": "music-verify-hot",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/music-hot.m4a",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "music-verify-quiet",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/music-quiet.m4a",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "downmix-downmix",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "downmix-measure",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,pan=stereo|FL=FL+0.594604*FC+0.5*SL|FR=FR+0.594604*FC+0.5*SR,aformat=sample_fmts=dbl:channel_layouts=stereo,ebur128@m0=peak=true:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "downmix-encode",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-n",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,pan=stereo|FL=FL+0.594604*FC+0.5*SL|FR=FR+0.594604*FC+0.5*SR,aformat=sample_fmts=dbl:channel_layouts=stereo,volume=0.40dB:precision=double,aresample=192000,alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=48000:channel_layouts=stereo,asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "ac3",
+        "-b:a:0",
+        "192k",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "matroska",
+        "OUT/downmix-pass1.mkv.part"
+      ]
+    },
+    {
+      "name": "downmix-verify",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/downmix-pass1.mkv",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "night-measure",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "night-measure-dynamics",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,acompressor=threshold=-21.00dB:ratio=3:attack=25:release=300:knee=2.8284:detection=rms:link=maximum,ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "night-encode",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-n",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/surround.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,acompressor=threshold=-21.00dB:ratio=3:attack=25:release=300:knee=2.8284:detection=rms:link=maximum,volume=3.70dB:precision=double,aresample=192000,alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=48000:channel_layouts=5.1(side),asplit=2[a0][q0];[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[a0]",
+        "-c:a:0",
+        "ac3",
+        "-b:a:0",
+        "448k",
+        "-disposition:a:0",
+        "0",
+        "-f",
+        "matroska",
+        "OUT/night-pass1.mkv.part"
+      ]
+    },
+    {
+      "name": "night-verify",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/night-pass1.mkv",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "music-probe",
+      "tool": "ffprobe",
+      "args": [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        "-show_chapters",
+        "-i",
+        "IN/music.flac"
+      ]
+    },
+    {
+      "name": "surround-probe",
+      "tool": "ffprobe",
+      "args": [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        "-show_chapters",
+        "-i",
+        "IN/surround.mkv"
+      ]
+    }
+  ]
+}

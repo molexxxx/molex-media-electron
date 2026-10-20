@@ -1,0 +1,1 @@
+[flac @ 0000023dabac3400] [warning] encoding as 24 bits-per-sample, more is considered experimental. Add -strict experimental if you want to encode more than 24 bits-per-sample

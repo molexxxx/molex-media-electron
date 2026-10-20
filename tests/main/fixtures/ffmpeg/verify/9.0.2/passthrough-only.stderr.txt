@@ -1,0 +1,28 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/multi.mka':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:06.00, start: 0.000000, bitrate: 7638 kb/s
+[info]   Stream #0:0: Audio: flac, 48000 Hz, 7.1, s32 (24 bit) (default)
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 flac
+[info]       DURATION        : 00:00:06.000000000
+[info]   Stream #0:1: Audio: flac, 48000 Hz, stereo, s32 (24 bit)
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 flac
+[info]       DURATION        : 00:00:06.000000000
+[info]   Stream #0:2: Audio: flac, 48000 Hz, stereo, s16
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 flac
+[info]       DURATION        : 00:00:06.000000000
+[info] Stream mapping:
+[info]   Stream #0:2 -> #0:0 (flac (native) -> pcm_s16le (native))
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]       DURATION        : 00:00:06.000000000
+[out#0/null @ 000002515efc58c0] [info] video:0KiB audio:1125KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:06.00 bitrate=N/A speed= 280x elapsed=0:00:00.02    

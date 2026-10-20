@@ -4,14 +4,47 @@
  * shell operations.
  */
 
-import { ipcMain, shell } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import * as os from 'os'
 import { execFile } from 'child_process'
 import { getConfig, getLogDir } from '../config'
-import { logger, type LogEntry } from '../logger'
+import { logger, type LogEntry, type LogQuery } from '../logger'
 import { getFFmpegVersion } from '../ffmpeg/bootstrap'
+import type { FfmpegBuildInfo } from '../ffmpeg/build'
 import { detectGpuMode, type GpuMode } from '../ffmpeg/gpu'
 import { sendToAll } from './helpers'
+
+/** The longest job or run id a log query accepts. */
+const MAX_QUERY_ID_LENGTH = 64
+
+/** Reads a renderer's `logs:getBuffer` query, dropping any field that is not well formed. */
+function readLogQuery(value: unknown): LogQuery {
+  if (typeof value !== 'object' || value === null) return {}
+  const raw = value as Record<string, unknown>
+  const query: LogQuery = {}
+  if (typeof raw.afterId === 'number' && Number.isFinite(raw.afterId)) query.afterId = raw.afterId
+  if (typeof raw.jobId === 'string' && raw.jobId.length <= MAX_QUERY_ID_LENGTH) query.jobId = raw.jobId
+  if (typeof raw.runId === 'string' && raw.runId.length <= MAX_QUERY_ID_LENGTH) query.runId = raw.runId
+  return query
+}
+
+let buildCache: { ffmpegPath: string; version: Promise<string> } | null = null
+
+/** Records the build the app adopted, so `system:info` reports it without running FFmpeg. */
+export function rememberBuild(info: Pick<FfmpegBuildInfo, 'ffmpegPath' | 'versionString'>): void {
+  buildCache = { ffmpegPath: info.ffmpegPath, version: Promise.resolve(info.versionString || 'unknown') }
+}
+
+/** The configured build's version, read once per binary path instead of on every poll; a failed read is retried. */
+function cachedFfmpegVersion(ffmpegPath: string): Promise<string> {
+  if (buildCache && buildCache.ffmpegPath === ffmpegPath) return buildCache.version
+  const entry = { ffmpegPath, version: getFFmpegVersion(ffmpegPath).catch(() => 'error') }
+  buildCache = entry
+  void entry.version.then((version) => {
+    if (version === 'error' && buildCache === entry) buildCache = null
+  })
+  return entry.version
+}
 
 /**
  * Compute CPU usage percentage by comparing the current os.cpus()
@@ -111,8 +144,8 @@ async function detectGpuModelName(): Promise<string | null> {
 /** Register system-info, logging, and shell IPC handlers. */
 export function registerSystemIPC(): void {
   // --- Logging ---
-  ipcMain.handle('logs:getBuffer', () => {
-    return logger.getBuffer()
+  ipcMain.handle('logs:getBuffer', (_, query?: unknown) => {
+    return logger.getBuffer(readLogQuery(query))
   })
 
   ipcMain.handle('logs:clear', () => {
@@ -124,7 +157,14 @@ export function registerSystemIPC(): void {
     shell.openPath(logDir)
   })
 
-  // Log streaming - forward every log entry to all renderer windows
+  // New entries reach every window in batches, at most one message every 100 ms
+  logger.onEntries((entries: LogEntry[]) => {
+    try {
+      sendToAll('logs:entries', entries)
+    } catch { /* best-effort */ }
+  })
+
+  // The per-entry channel the current preload still subscribes to; removed with its preload listener
   logger.onLog((entry: LogEntry) => {
     try {
       sendToAll('logs:entry', entry)
@@ -134,10 +174,8 @@ export function registerSystemIPC(): void {
   // --- System Info ---
   ipcMain.handle('system:info', async () => {
     const config = await getConfig()
-    let ffmpegVersion = 'Not installed'
-    if (config.ffmpegPath) {
-      ffmpegVersion = await getFFmpegVersion(config.ffmpegPath)
-    }
+    const ffmpegPath = config.ffmpeg?.ffmpegPath || config.ffmpegPath
+    const ffmpegVersion = ffmpegPath ? await cachedFfmpegVersion(ffmpegPath) : 'Not installed'
     const cpus = os.cpus()
     return {
       platform: process.platform,
@@ -150,7 +188,7 @@ export function registerSystemIPC(): void {
       nodeVersion: process.versions.node,
       electronVersion: process.versions.electron,
       ffmpegVersion,
-      appVersion: config.version
+      appVersion: app.getVersion()
     }
   })
 

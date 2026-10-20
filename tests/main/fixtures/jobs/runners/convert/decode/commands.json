@@ -1,0 +1,32 @@
+{
+  "recorded": "2026-10-17",
+  "builds": {
+    "9.0.2": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 (BtbN win64 gpl)",
+    "2022": "ffmpeg version 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev"
+  },
+  "input": {
+    "make": ["-f", "lavfi", "-i", "testsrc2=size=320x240:rate=25", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-f", "lavfi", "-i", "sine=frequency=880:sample_rate=48000", "-map", "0:v", "-map", "1:a", "-map", "2:a", "-t", "90", "-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-c:a", "aac", "-b:a", "96k", "src90.mp4"],
+    "corrupt": "bad90.mp4 is src90.mp4 with 20000 random bytes written at offsets 2000000, 3500000, 5000000, 6500000, and 8000000"
+  },
+  "prefix": ["-hide_banner", "-nostdin", "-nostats", "-progress", "pipe:1", "-stats_period", "0.5"],
+  "runs": {
+    "clean-full": {
+      "args": ["-v", "error", "-i", "src90.mp4", "-map", "0:v", "-map", "0:a", "-f", "null", "-"],
+      "result": { "9.0.2": { "exit": 0, "stderrLines": 0, "frames": 2250 }, "2022": { "exit": 0, "stderrLines": 0, "frames": 2250 } }
+    },
+    "clean-sampled": {
+      "args": ["-v", "error", "-i", "src90.mp4", "-ss", "0", "-t", "20", "-i", "src90.mp4", "-ss", "35", "-t", "20", "-i", "src90.mp4", "-ss", "70", "-t", "20", "-i", "src90.mp4", "-map", "0:a", "-map", "1:v", "-map", "2:v", "-map", "3:v", "-f", "null", "-"],
+      "result": { "9.0.2": { "exit": 0, "stderrLines": 0, "firstWindowFrames": 500, "outTimeSec": 90 }, "2022": { "exit": 0, "stderrLines": 0, "firstWindowFrames": 500, "outTimeSec": 89.984 } }
+    },
+    "corrupt-full": {
+      "args": ["-v", "error", "-i", "bad90.mp4", "-map", "0:v", "-map", "0:a", "-f", "null", "-"],
+      "stderr": "<build>/corrupt-full.stderr.txt",
+      "result": { "9.0.2": { "exit": 0, "stderrLines": 286 }, "2022": { "exit": 0, "stderrLines": 283 } }
+    },
+    "corrupt-sampled": {
+      "args": ["-v", "error", "-i", "bad90.mp4", "-ss", "0", "-t", "20", "-i", "bad90.mp4", "-ss", "35", "-t", "20", "-i", "bad90.mp4", "-ss", "70", "-t", "20", "-i", "bad90.mp4", "-map", "0:a", "-map", "1:v", "-map", "2:v", "-map", "3:v", "-f", "null", "-"],
+      "stderr": "<build>/corrupt-sampled.stderr.txt",
+      "result": { "9.0.2": { "exit": 0, "stderrLines": 247 }, "2022": { "exit": 0, "stderrLines": 243 } }
+    }
+  }
+}

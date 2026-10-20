@@ -1,0 +1,333 @@
+{
+  "prefix": [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-progress",
+    "pipe:1",
+    "-stats_period",
+    "0.5"
+  ],
+  "inputs": [
+    {
+      "name": "ac3-51side.ac3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-c:a",
+        "ac3",
+        "-b:a",
+        "384k"
+      ]
+    },
+    {
+      "name": "eac3-loro.eac3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-c:a",
+        "eac3",
+        "-b:a",
+        "384k",
+        "-dmix_mode",
+        "loro",
+        "-loro_cmixlev",
+        "0.707",
+        "-loro_surmixlev",
+        "0.5"
+      ]
+    },
+    {
+      "name": "eac3-ltrt.eac3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-c:a",
+        "eac3",
+        "-b:a",
+        "384k",
+        "-dmix_mode",
+        "ltrt",
+        "-ltrt_cmixlev",
+        "0.5",
+        "-ltrt_surmixlev",
+        "0.5"
+      ]
+    },
+    {
+      "name": "ac3-dplii.ac3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-c:a",
+        "ac3",
+        "-b:a",
+        "384k",
+        "-dmix_mode",
+        "dplii"
+      ]
+    },
+    {
+      "name": "ac3-stereo-dsur.ac3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-ac",
+        "2",
+        "-c:a",
+        "ac3",
+        "-dsur_mode",
+        "on"
+      ]
+    },
+    {
+      "name": "dts-51side.dts",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-strict",
+        "-2",
+        "-c:a",
+        "dca"
+      ]
+    },
+    {
+      "name": "pcm-51side.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-af",
+        "pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0",
+        "-c:a",
+        "pcm_s16le"
+      ]
+    },
+    {
+      "name": "two-audio.mkv",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=1",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=660:sample_rate=48000:duration=1",
+        "-filter_complex",
+        "[1:a]pan=5.1(side)|c0=c0|c1=c0|c2=c0|c3=c0|c4=c0|c5=c0[s]",
+        "-map",
+        "0:a",
+        "-map",
+        "[s]",
+        "-c:a:0",
+        "aac",
+        "-c:a:1",
+        "ac3",
+        "-b:a:1",
+        "384k"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "name": "ac3-51side",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/ac3-51side.ac3",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "eac3-loro",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/eac3-loro.eac3",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "eac3-ltrt",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/eac3-ltrt.eac3",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "ac3-dplii",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/ac3-dplii.ac3",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "ac3-stereo-dsur",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/ac3-stereo-dsur.ac3",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "dts-51side",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/dts-51side.dts",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "pcm-51side",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/pcm-51side.wav",
+        "-map",
+        "0:a:0",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "two-audio-second",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/two-audio.mkv",
+        "-map",
+        "0:a:1",
+        "-frames:a",
+        "1",
+        "-af",
+        "ashowinfo",
+        "-f",
+        "null",
+        "-"
+      ]
+    }
+  ]
+}

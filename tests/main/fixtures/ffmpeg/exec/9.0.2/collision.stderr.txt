@@ -1,0 +1,6 @@
+ffmpeg stats and -progress period set to 0.5.
+Input #0, lavfi, from 'sine=duration=0.2':
+  Duration: N/A, start: 0.000000, bitrate: 705 kb/s
+  Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+File 'OUT/exists.wav' already exists. Exiting.
+Error opening output file OUT/exists.wav.

@@ -228,10 +228,8 @@ describe('probeMedia', () => {
     expect(result.format.format_name).toBe('unknown')
   })
 
-  it('returns default MediaInfo when fallback probe also fails', async () => {
-    // Primary probe fails with invalid JSON
+  it('rejects instead of inventing a stream when the fallback probe also fails', async () => {
     const primaryProc = createMockProbeProcess('INVALID')
-    // Fallback probe also fails (non-zero exit)
     const fallbackProc = new EventEmitter() as any
     fallbackProc.stdout = new EventEmitter()
     fallbackProc.stderr = new EventEmitter()
@@ -244,10 +242,28 @@ describe('probeMedia', () => {
 
     mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
 
-    const result = await probeMedia('/test/corrupt.mp3')
-    expect(result.audioStreams).toHaveLength(1)
-    expect(result.audioStreams[0].codec_name).toBe('unknown')
-    expect(result.isAudioOnly).toBe(true)
+    await expect(probeMedia('/test/corrupt.mp3')).rejects.toThrow('Could not read media information: ffprobe exited with 1: error')
+  })
+
+  it('rejects instead of inventing a stream when the fallback output is unreadable too', async () => {
+    mockSpawn.mockReturnValueOnce(createMockProbeProcess('INVALID')).mockReturnValueOnce(createMockProbeProcess('[]'))
+    await expect(probeMedia('/test/corrupt.mp3')).rejects.toThrow('Could not read media information: ffprobe printed no JSON object')
+  })
+
+  it('passes a failing ffprobe run through without a fallback', async () => {
+    const proc = new EventEmitter() as any
+    proc.stdout = new EventEmitter()
+    proc.stderr = new EventEmitter()
+    proc.kill = vi.fn()
+    setTimeout(() => {
+      proc.stdout.emit('data', Buffer.from('{\n\n}\n'))
+      proc.stderr.emit('data', Buffer.from('missing.wav: No such file or directory\n'))
+      proc.emit('close', 1, null)
+    }, 0)
+    mockSpawn.mockReturnValueOnce(proc)
+
+    await expect(probeMedia('/test/missing.wav')).rejects.toThrow('ffprobe exited with 1: missing.wav: No such file or directory')
+    expect(mockSpawn).toHaveBeenCalledTimes(1)
   })
 
   it('handles empty streams array', async () => {
@@ -284,18 +300,14 @@ describe('probeMedia', () => {
     expect(result.dataStreams![1].codec_name).toBe('ttf')
   })
 
-  it('fallback probe provides audio even when no streams parsed', async () => {
-    // Primary probe fails with invalid JSON
+  it('fallback probe reports no audio when ffprobe listed none', async () => {
     const primaryProc = createMockProbeProcess('BROKEN JSON')
-    // Fallback returns empty streams
     const fallbackProc = createMockProbeProcess(JSON.stringify({ streams: [] }))
     mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
 
     const result = await probeMedia('/test/empty-fallback.mp3')
-    // fallbackProbe pushes a default audio stream when length === 0
-    expect(result.audioStreams).toHaveLength(1)
-    expect(result.audioStreams[0].codec_name).toBe('unknown')
-    expect(result.audioStreams[0].channels).toBe(2)
+    expect(result.audioStreams).toEqual([])
+    expect(result.isAudioOnly).toBe(false)
   })
 
   it('fallback probe handles missing streams key in JSON', async () => {
@@ -304,8 +316,8 @@ describe('probeMedia', () => {
     mockSpawn.mockReturnValueOnce(primaryProc).mockReturnValueOnce(fallbackProc)
 
     const result = await probeMedia('/test/no-streams-key.mp3')
-    expect(result.audioStreams).toHaveLength(1)
-    expect(result.audioStreams[0].codec_name).toBe('unknown')
+    expect(result.audioStreams).toEqual([])
+    expect(result.chapters).toEqual([])
   })
 
   it('fallback probe uses defaults for sparse stream fields', async () => {
@@ -321,5 +333,84 @@ describe('probeMedia', () => {
     expect(result.audioStreams[0].codec_name).toBe('unknown')
     expect(result.audioStreams[0].channels).toBe(2)
     expect(result.audioStreams[0].sample_rate).toBe('48000')
+  })
+})
+
+// Recorded from ffprobe n9.0.2 (BtbN win64) on lavfi-generated files; the 2022 build printed the same chapter and stream fields.
+const recordedFlac24 = {
+  streams: [
+    {
+      index: 0, codec_name: 'flac', codec_type: 'audio', sample_fmt: 's32', sample_rate: '48000', channels: 1,
+      channel_layout: 'mono', bits_per_sample: 0, time_base: '1/48000', start_time: '0.000000', duration_ts: 96000,
+      duration: '2.000000', bits_per_raw_sample: '24', disposition: { default: 0 }
+    }
+  ],
+  chapters: [],
+  format: { filename: 'a24.flac', nb_streams: 1, format_name: 'flac', start_time: '0.000000', duration: '2.000000', size: '45383', bit_rate: '181532', tags: { title: 'Probe Fixture' } }
+}
+
+const recordedMkaChapters = {
+  streams: [
+    {
+      index: 0, codec_name: 'flac', codec_type: 'audio', sample_fmt: 's16', sample_rate: '48000', channels: 1,
+      channel_layout: 'mono', bits_per_sample: 0, time_base: '1/1000', start_time: '0.000000', bits_per_raw_sample: '16',
+      tags: { ENCODER: 'Lavc63.1.102 flac', DURATION: '00:00:02.000000000' }
+    }
+  ],
+  chapters: [
+    { id: 1, time_base: '1/1000000000', start: 0, start_time: '0.000000', end: 1000000000, end_time: '1.000000', tags: { title: 'Intro' } },
+    { id: 2, time_base: '1/1000000000', start: 1000000000, start_time: '1.000000', end: 2000000000, end_time: '2.000000', tags: { title: 'Outro' } }
+  ],
+  format: { filename: 'ch.mka', nb_streams: 1, format_name: 'matroska,webm', start_time: '0.000000', duration: '2.000000', size: '38349', bit_rate: '153396' }
+}
+
+const recordedAacInMkv = {
+  streams: [
+    { index: 0, codec_name: 'h264', codec_type: 'video', width: 64, height: 48, pix_fmt: 'yuv420p', r_frame_rate: '25/1', bits_per_raw_sample: '8' },
+    { index: 1, codec_name: 'aac', codec_type: 'audio', profile: 'LC', sample_fmt: 'fltp', sample_rate: '48000', channels: 1, channel_layout: 'mono', bits_per_sample: 0, start_time: '0.000000', tags: { DURATION: '00:00:01.021000000' } }
+  ],
+  chapters: [],
+  format: { filename: 'av.mkv', nb_streams: 2, format_name: 'matroska,webm', duration: '1.021000', size: '9000', bit_rate: '70000' }
+}
+
+describe('probeMedia fields from recorded ffprobe output', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetConfig.mockResolvedValue({ ffprobePath: '/usr/bin/ffprobe' })
+  })
+
+  it('runs one hidden ffprobe with chapters in the output', async () => {
+    mockSpawn.mockReturnValue(createMockProbeProcess(JSON.stringify(recordedFlac24)))
+    await probeMedia('/test/a24.flac')
+    expect(mockSpawn).toHaveBeenCalledTimes(1)
+    const [bin, args, options] = mockSpawn.mock.calls[0]
+    expect(bin).toBe('/usr/bin/ffprobe')
+    expect(args).toEqual(['-hide_banner', '-loglevel', 'error', '-print_format', 'json', '-show_format', '-show_streams', '-show_chapters', '-i', '/test/a24.flac'])
+    expect(options).toMatchObject({ windowsHide: true })
+  })
+
+  it('reads sample format, bit depth from bits_per_raw_sample, and stream duration', async () => {
+    mockSpawn.mockReturnValue(createMockProbeProcess(JSON.stringify(recordedFlac24)))
+    const result = await probeMedia('/test/a24.flac')
+    expect(result.audioStreams).toHaveLength(1)
+    expect(result.audioStreams[0]).toMatchObject({ codec_name: 'flac', sample_fmt: 's32', bit_depth: 24, duration: '2.000000', channels: 1, channel_layout: 'mono' })
+    expect(result.chapters).toEqual([])
+  })
+
+  it('keeps chapters and reads a Matroska stream duration from its DURATION tag', async () => {
+    mockSpawn.mockReturnValue(createMockProbeProcess(JSON.stringify(recordedMkaChapters)))
+    const result = await probeMedia('/test/ch.mka')
+    expect(result.chapters).toEqual(recordedMkaChapters.chapters)
+    expect(result.audioStreams[0]).toMatchObject({ sample_fmt: 's16', bit_depth: 16, duration: '2.000000' })
+  })
+
+  it('leaves the bit depth out for a lossy stream that reports 0 bits', async () => {
+    mockSpawn.mockReturnValue(createMockProbeProcess(JSON.stringify(recordedAacInMkv)))
+    const result = await probeMedia('/test/av.mkv')
+    expect(result.audioStreams).toHaveLength(1)
+    expect(result.audioStreams[0]).toMatchObject({ codec_name: 'aac', sample_fmt: 'fltp', duration: '1.021000' })
+    expect(result.audioStreams[0]).not.toHaveProperty('bit_depth')
+    expect(result.videoStreams).toHaveLength(1)
+    expect(result.isVideoFile).toBe(true)
   })
 })

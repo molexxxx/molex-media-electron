@@ -1,0 +1,5 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, lavfi, from 'sine=duration=0.2':
+[info]   Duration: N/A, start: 0.000000, bitrate: 705 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[fatal] Unknown encoder 'nosuchencoder'

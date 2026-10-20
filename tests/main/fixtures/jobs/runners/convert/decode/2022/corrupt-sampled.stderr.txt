@@ -1,0 +1,243 @@
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-614945135 > 3151).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 3155
+[NULL @ 0000028ed4751640] Invalid NAL unit size (550382971 > 4206).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 4210
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-68771301 > 2745).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 2749
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-1845439629 > 4230).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 4234
+[h264 @ 0000028ed523d7c0] P sub_mb_type 5 out of range at 16 6
+[h264 @ 0000028ed523d7c0] error while decoding MB 16 6
+[h264 @ 0000028ed523b3c0] Invalid NAL unit size (-614945135 > 3151).
+[h264 @ 0000028ed523b3c0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523dfc0] Invalid NAL unit size (550382971 > 4206).
+[h264 @ 0000028ed523dfc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523dbc0] Invalid NAL unit size (-68771301 > 2745).
+[h264 @ 0000028ed523dbc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523b7c0] Invalid NAL unit size (-1845439629 > 4230).
+[h264 @ 0000028ed523b7c0] Error splitting the input into NAL units.
+Error while decoding stream #2:0: Invalid data found when processing input
+    Last message repeated 3 times
+[NULL @ 0000028ed4582700] Invalid NAL unit size (2029629338 > 4602).
+[NULL @ 0000028ed4582700] missing picture in access unit with size 4606
+[NULL @ 0000028ed4582700] Invalid NAL unit size (150083747 > 3115).
+[NULL @ 0000028ed4582700] missing picture in access unit with size 3119
+[NULL @ 0000028ed4582700] Invalid NAL unit size (-620373208 > 4217).
+[NULL @ 0000028ed4582700] missing picture in access unit with size 4221
+[NULL @ 0000028ed4582700] Invalid NAL unit size (2055580160 > 3444).
+[NULL @ 0000028ed4582700] missing picture in access unit with size 3448
+[h264 @ 0000028ed4456f40] corrupted macroblock 16 9 (total_coeff=-1)
+[h264 @ 0000028ed4456f40] error while decoding MB 16 9
+[h264 @ 0000028ed4457f40] Invalid NAL unit size (2029629338 > 4602).
+[h264 @ 0000028ed4457f40] Error splitting the input into NAL units.
+[h264 @ 0000028ed523abc0] Invalid NAL unit size (150083747 > 3115).
+[h264 @ 0000028ed523abc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523bfc0] Invalid NAL unit size (-620373208 > 4217).
+[h264 @ 0000028ed523bfc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed5239fc0] Invalid NAL unit size (2055580160 > 3444).
+[h264 @ 0000028ed5239fc0] Error splitting the input into NAL units.
+[aac @ 0000028ed4583880] channel element 0.12 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] ms_present = 3 is reserved.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.0 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.1 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Number of bands (31) exceeds limit (4).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.2 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 2.12 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.10 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.10 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.1 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 0.9 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+Error while decoding stream #1:0: Invalid data found when processing input
+    Last message repeated 3 times
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-2032852616 > 4410).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 4414
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-1830502359 > 3174).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 3178
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-266702364 > 4298).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 4302
+[NULL @ 0000028ed4751640] Invalid NAL unit size (-1778281299 > 3683).
+[NULL @ 0000028ed4751640] missing picture in access unit with size 3687
+[h264 @ 0000028ed523b3c0] Invalid NAL unit size (-2032852616 > 4410).
+[h264 @ 0000028ed523b3c0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523dfc0] Invalid NAL unit size (-1830502359 > 3174).
+[h264 @ 0000028ed523dfc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523dbc0] Invalid NAL unit size (-266702364 > 4298).
+[h264 @ 0000028ed523dbc0] Error splitting the input into NAL units.
+[h264 @ 0000028ed523b7c0] Invalid NAL unit size (-1778281299 > 3683).
+[h264 @ 0000028ed523b7c0] Error splitting the input into NAL units.
+Error while decoding stream #0:1: Not yet implemented in FFmpeg, patches welcome
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] decode_pce: Input buffer exhausted before END element found
+Error while decoding stream #0:2: Operation not permitted
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.10 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 2.6 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.7 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] decode_pce: Input buffer exhausted before END element found
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Number of bands (24) exceeds limit (8).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 2.6 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Number of bands (27) exceeds limit (24).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of scalefactor bands in group (15) exceeds limit (14).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+Error while decoding stream #0:1: Not yet implemented in FFmpeg, patches welcome
+[aac @ 0000028ed4582300] channel element 2.6 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Number of bands (18) exceeds limit (1).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] decode_pce: Input buffer exhausted before END element found
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 2.1 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Number of bands (25) exceeds limit (7).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Number of bands (7) exceeds limit (5).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of bands (3) exceeds limit (2).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.4 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Number of bands (23) exceeds limit (10).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.6 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Number of scalefactor bands in group (15) exceeds limit (14).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.11 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of bands (15) exceeds limit (14).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.4 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of bands (13) exceeds limit (12).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Input buffer exhausted before END element found
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.7 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of bands (6) exceeds limit (4).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.10 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.3 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Number of bands (47) exceeds limit (36).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.6 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.9 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+Error while decoding stream #0:2: Invalid data found when processing input
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] skip_data_stream_element: Input buffer exhausted before END element found
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] invalid band type
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Number of scalefactor bands in group (56) exceeds limit (49).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.6 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 3.4 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 3.10 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input
+Error while decoding stream #0:1: Not yet implemented in FFmpeg, patches welcome
+[aac @ 0000028ed4582300] channel element 2.15 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] channel element 2.3 is not allocated
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.15 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Number of scalefactor bands in group (60) exceeds limit (49).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Number of bands (15) exceeds limit (11).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Number of bands (22) exceeds limit (17).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Number of scalefactor bands in group (56) exceeds limit (49).
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] channel element 2.5 is not allocated
+Error while decoding stream #0:2: Invalid data found when processing input
+[aac @ 0000028ed4583880] Reserved bit set.
+[aac @ 0000028ed4583880] Number of bands (53) exceeds limit (33).
+Error while decoding stream #0:1: Invalid data found when processing input
+[aac @ 0000028ed4582300] Reserved bit set.
+[aac @ 0000028ed4582300] Prediction is not allowed in AAC-LC.
+Error while decoding stream #0:2: Invalid data found when processing input

@@ -1,0 +1,9 @@
+bitrate=N/A
+total_size=N/A
+out_time_us=85333
+out_time_ms=85333
+out_time=00:00:00.085333
+dup_frames=0
+drop_frames=0
+speed=31.4x
+progress=end

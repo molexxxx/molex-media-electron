@@ -1,0 +1,38 @@
+{
+  "recorded": "2026-10-17",
+  "builds": {
+    "9.0.2": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 (BtbN win64 gpl)",
+    "2022": "ffmpeg version 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev"
+  },
+  "sources": {
+    "land": { "make": "testsrc2=size=1920x1080, 1 s, libx264 yuv420p", "display": "1920x1080" },
+    "anam": { "make": "testsrc2=size=1440x1080 with setsar=4/3", "display": "1920x1080" },
+    "small": { "make": "testsrc2=size=640x360", "display": "640x360" },
+    "four3": { "make": "testsrc2=size=1920x1440", "display": "1920x1440" },
+    "rot": { "make": "land.mp4 copied with -display_rotation 90", "display": "1080x1920" }
+  },
+  "command": ["-i", "<source>", "-map", "0:0", "-c:v:0", "libx264", "-preset", "ultrafast", "-filter:v:0", "<filters>,format=yuv420p", "-f", "mp4", "<out>.part"],
+  "note": "Both builds wrote the same width, height, and SAR for every case, with no rotation side data left on the output.",
+  "cases": {
+    "fit 1280x720": {
+      "fit": { "maxWidth": 1280, "maxHeight": 720, "mode": "fit" },
+      "result": { "land": [1280, 720, "1:1"], "anam": [1280, 720, "1:1"], "small": [640, 360, "1:1"], "four3": [960, 720, "1:1"], "rot": [404, 720, "1:1"] }
+    },
+    "pad 1080x1920": {
+      "fit": { "maxWidth": 1080, "maxHeight": 1920, "mode": "pad" },
+      "result": { "land": [1080, 1920, "1:1"], "anam": [1080, 1920, "1:1"], "small": [1080, 1920, "1:1"], "four3": [1080, 1920, "1:1"], "rot": [1080, 1920, "1:1"] }
+    },
+    "crop 1080x1920": {
+      "fit": { "maxWidth": 1080, "maxHeight": 1920, "mode": "crop" },
+      "result": { "land": [1080, 1080, "1:1"], "anam": [1080, 1080, "1:1"], "small": [640, 360, "1:1"], "four3": [1080, 1440, "1:1"], "rot": [1080, 1920, "1:1"] }
+    },
+    "crop 1280x720": {
+      "fit": { "maxWidth": 1280, "maxHeight": 720, "mode": "crop" },
+      "result": { "land": [1280, 720, "1:1"], "anam": [1280, 720, "1:1"], "small": [640, 360, "1:1"], "four3": [1280, 720, "1:1"], "rot": [1080, 720, "1:1"] }
+    },
+    "width 1280 only": {
+      "fit": { "maxWidth": 1280, "maxHeight": null, "mode": "fit" },
+      "result": { "land": [1280, 720, "1:1"], "anam": [1280, 720, "1:1"], "small": [640, 360, "1:1"], "four3": [1280, 960, "1:1"], "rot": [1080, 1920, "1:1"] }
+    }
+  }
+}

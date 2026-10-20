@@ -1,0 +1,15 @@
+{
+  "recorded": "2026-10-18",
+  "machine": "Windows 11, NVIDIA GeForce RTX 4070 SUPER (10de:2783), AMD Radeon Graphics (1002:13c0), no Intel GPU",
+  "builds": {
+    "n9.0.2": "ffmpeg-n9.0.2-17-g2a571b6068-win64-gpl-9.0",
+    "2022": "2022-10-13-git-9e8a327e68-full_build-www.gyan.dev"
+  },
+  "files": {
+    "nvenc-session-limit": "16 concurrent: -f lavfi -i testsrc2=size=1920x1080:rate=60 -t 20 -c:v h264_nvenc -f null - (12 ran, 4 failed on both builds)",
+    "nvenc-no-device": "-f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -c:v h264_nvenc -gpu 7 -f null -",
+    "nvenc-ok": "-f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -c:v h264_nvenc -f null -",
+    "qsv-init": "-f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -c:v h264_qsv -f null -",
+    "amf-init": "-init_hw_device d3d11va=dx:0 -filter_hw_device dx -f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -vf format=nv12,hwupload -c:v h264_amf -f null - (adapter 0 is the NVIDIA card)"
+  }
+}

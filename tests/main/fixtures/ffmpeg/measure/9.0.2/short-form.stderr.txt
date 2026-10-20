@@ -1,0 +1,271 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, wav, from 'IN/shortform.wav':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Duration: 00:00:12.00, bitrate: 1152 kb/s
+[info]   Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, mono, s32 (24 bit), 1152 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_s24le) -> aformat:default
+[info]   ametadata:default -> Stream #0:0 (pcm_s16le)
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:0    pts:0       pts_time:0
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:1    pts:4800    pts_time:0.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:2    pts:9600    pts_time:0.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:3    pts:14400   pts_time:0.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:4    pts:19200   pts_time:0.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:5    pts:24000   pts_time:0.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:6    pts:28800   pts_time:0.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:7    pts:33600   pts_time:0.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:8    pts:38400   pts_time:0.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:9    pts:43200   pts_time:0.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:10   pts:48000   pts_time:1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:11   pts:52800   pts_time:1.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:12   pts:57600   pts_time:1.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:13   pts:62400   pts_time:1.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:14   pts:67200   pts_time:1.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:15   pts:72000   pts_time:1.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:16   pts:76800   pts_time:1.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:17   pts:81600   pts_time:1.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:18   pts:86400   pts_time:1.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:19   pts:91200   pts_time:1.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:20   pts:96000   pts_time:2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:21   pts:100800  pts_time:2.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:22   pts:105600  pts_time:2.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:23   pts:110400  pts_time:2.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:24   pts:115200  pts_time:2.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:25   pts:120000  pts_time:2.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:26   pts:124800  pts_time:2.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:27   pts:129600  pts_time:2.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:28   pts:134400  pts_time:2.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:29   pts:139200  pts_time:2.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.661
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:30   pts:144000  pts_time:3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.673
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:31   pts:148800  pts_time:3.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.680
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:32   pts:153600  pts_time:3.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.681
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:33   pts:158400  pts_time:3.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.683
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:34   pts:163200  pts_time:3.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.659
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:35   pts:168000  pts_time:3.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.640
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:36   pts:172800  pts_time:3.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.654
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:37   pts:177600  pts_time:3.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.659
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:38   pts:182400  pts_time:3.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.652
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:39   pts:187200  pts_time:3.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.649
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:40   pts:192000  pts_time:4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.640
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:41   pts:196800  pts_time:4.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.643
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:42   pts:201600  pts_time:4.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.646
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:43   pts:206400  pts_time:4.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.653
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:44   pts:211200  pts_time:4.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.643
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:45   pts:216000  pts_time:4.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.649
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:46   pts:220800  pts_time:4.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.651
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:47   pts:225600  pts_time:4.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.656
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:48   pts:230400  pts_time:4.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.669
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:49   pts:235200  pts_time:4.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.671
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:50   pts:240000  pts_time:5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.655
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:51   pts:244800  pts_time:5.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.644
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:52   pts:249600  pts_time:5.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.644
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:53   pts:254400  pts_time:5.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.637
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:54   pts:259200  pts_time:5.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.635
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:55   pts:264000  pts_time:5.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.639
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:56   pts:268800  pts_time:5.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.646
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:57   pts:273600  pts_time:5.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.639
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:58   pts:278400  pts_time:5.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.649
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:59   pts:283200  pts_time:5.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.650
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:60   pts:288000  pts_time:6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.640
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:61   pts:292800  pts_time:6.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.644
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:62   pts:297600  pts_time:6.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.645
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:63   pts:302400  pts_time:6.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.648
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:64   pts:307200  pts_time:6.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.654
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:65   pts:312000  pts_time:6.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.654
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:66   pts:316800  pts_time:6.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.648
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:67   pts:321600  pts_time:6.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.655
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:68   pts:326400  pts_time:6.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.651
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:69   pts:331200  pts_time:6.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.649
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:70   pts:336000  pts_time:7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.644
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:71   pts:340800  pts_time:7.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.647
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:72   pts:345600  pts_time:7.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.639
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:73   pts:350400  pts_time:7.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.650
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:74   pts:355200  pts_time:7.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.640
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:75   pts:360000  pts_time:7.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.630
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:76   pts:364800  pts_time:7.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.627
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:77   pts:369600  pts_time:7.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.624
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:78   pts:374400  pts_time:7.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.608
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:79   pts:379200  pts_time:7.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-40.617
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:80   pts:384000  pts_time:8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-39.558
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:81   pts:388800  pts_time:8.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-38.594
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:82   pts:393600  pts_time:8.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-37.828
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:83   pts:398400  pts_time:8.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-37.186
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:84   pts:403200  pts_time:8.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-36.658
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:85   pts:408000  pts_time:8.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-36.177
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:86   pts:412800  pts_time:8.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-35.708
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:87   pts:417600  pts_time:8.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-35.299
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:88   pts:422400  pts_time:8.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-34.923
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:89   pts:427200  pts_time:8.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-34.589
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:90   pts:432000  pts_time:9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-34.271
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:91   pts:436800  pts_time:9.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-33.967
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:92   pts:441600  pts_time:9.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-33.689
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:93   pts:446400  pts_time:9.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-33.431
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:94   pts:451200  pts_time:9.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-33.199
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:95   pts:456000  pts_time:9.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.976
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:96   pts:460800  pts_time:9.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.755
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:97   pts:465600  pts_time:9.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.558
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:98   pts:470400  pts_time:9.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.373
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:99   pts:475200  pts_time:9.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.187
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:100  pts:480000  pts_time:10
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-32.003
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:101  pts:484800  pts_time:10.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.830
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:102  pts:489600  pts_time:10.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.666
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:103  pts:494400  pts_time:10.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.507
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:104  pts:499200  pts_time:10.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.361
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:105  pts:504000  pts_time:10.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.216
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:106  pts:508800  pts_time:10.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-31.077
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:107  pts:513600  pts_time:10.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.923
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:108  pts:518400  pts_time:10.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.785
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:109  pts:523200  pts_time:10.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.650
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:110  pts:528000  pts_time:11
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.645
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:111  pts:532800  pts_time:11.1
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.659
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:112  pts:537600  pts_time:11.2
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.670
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:113  pts:542400  pts_time:11.3
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.661
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:114  pts:547200  pts_time:11.4
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.653
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:115  pts:552000  pts_time:11.5
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.652
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:116  pts:556800  pts_time:11.6
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.666
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:117  pts:561600  pts_time:11.7
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.661
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:118  pts:566400  pts_time:11.8
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.669
+[ametadata@s0 @ 000001a46b67e4c0] [info] frame:119  pts:571200  pts_time:11.9
+[ametadata@s0 @ 000001a46b67e4c0] [info] lavfi.r128.S=-30.668
+[ebur128@m0 @ 000001a46b67e140] [info] Summary:
+
+  Integrated loudness:
+    I:         -34.7 LUFS
+    Threshold: -44.7 LUFS
+
+  Loudness range:
+    LRA:        10.0 LU
+    Threshold: -55.2 LUFS
+    LRA low:   -40.7 LUFS
+    LRA high:  -30.7 LUFS
+
+  True peak:
+    Peak:      -17.5 dBFS
+[out#0/null @ 000001a46be93d00] [info] video:0KiB audio:1125KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:12.00 bitrate=N/A speed= 683x elapsed=0:00:00.01    

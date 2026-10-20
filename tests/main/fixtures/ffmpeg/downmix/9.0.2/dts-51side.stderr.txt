@@ -1,0 +1,19 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[in#0/dts @ 00000206dd28eb00] [warning] Estimating duration from bitrate, this may be inaccurate
+[info] Input #0, dts, from 'IN/dts-51side.dts':
+[info]   Duration: 00:00:01.00, start: 0.000000, bitrate: 1411 kb/s
+[info]   Stream #0:0: Audio: dts (dca) (DTS), 48000 Hz, 5.1(side), fltp, 1411 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (dts (dca) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 00000206dd298a80] [info] n:0 pts:0 pts_time:0 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:512 checksum:A9EC71ED plane_checksums: [ 92D44C05 92D44C05 92D44C05 ADDBF5B6 92D44C05 92D44C05 ]
+[Parsed_ashowinfo_0 @ 00000206dd298a80] [info]   side data - matrix encoding: none
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[Parsed_ashowinfo_0 @ 00000206dd298a80] [info] n:1 pts:512 pts_time:0.0106667 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:512 checksum:BFBFD6E0 plane_checksums: [ 22E14639 22E14639 22E14639 8D0F77B4 22E14639 22E14639 ]
+[Parsed_ashowinfo_0 @ 00000206dd298a80] [info]   side data - matrix encoding: none
+[out#0/null @ 00000206dd291b00] [info] video:0KiB audio:6KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:00.01 bitrate=N/A speed=3.67x elapsed=0:00:00.00    

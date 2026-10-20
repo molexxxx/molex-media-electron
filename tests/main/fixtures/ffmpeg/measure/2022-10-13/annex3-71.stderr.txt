@@ -1,0 +1,67 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, wav, from 'IN/eq71.wav':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Duration: 00:00:06.00, bitrate: 9216 kb/s
+[info]   Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s
+[ebur128@w0 @ 000001fd71185f00] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+[ebur128@m0 @ 000001fd71186540] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_s24le) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 7.1, s16, 6144 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:05.90 bitrate=N/A speed=84.9x    
+[info] video:0kB audio:4500kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[ebur128@w0 @ 000001fd716468c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -19.7 LUFS
+    Threshold: -29.7 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -39.7 LUFS
+    LRA low:   -19.7 LUFS
+    LRA high:  -19.7 LUFS
+[ebur128@m0 @ 000001fd71648640] [info] Summary:
+
+  Integrated loudness:
+    I:         -19.2 LUFS
+    Threshold: -29.2 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -39.2 LUFS
+    LRA low:   -19.3 LUFS
+    LRA high:  -19.2 LUFS
+
+  True peak:
+    Peak:      -15.6 dBFS

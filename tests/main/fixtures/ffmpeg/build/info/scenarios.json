@@ -1,0 +1,7 @@
+{
+  "runs": [
+    { "name": "version", "args": ["-version"] },
+    { "name": "encoders", "args": ["-hide_banner", "-encoders"] },
+    { "name": "ffprobe-version", "tool": "ffprobe", "args": ["-version"] }
+  ]
+}

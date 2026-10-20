@@ -8,6 +8,7 @@ import { BrowserWindow, shell, ipcMain, Menu } from 'electron'
 import * as path from 'path'
 import { is } from '@electron-toolkit/utils'
 import { getConfigSync, saveConfig, getConfig } from './config'
+import { GROUND_HEX } from './theme'
 
 /* ------------------------------------------------------------------ */
 /*  State                                                              */
@@ -40,7 +41,7 @@ export function createWindow(): void {
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#080b14',
+    backgroundColor: GROUND_HEX,
     icon: process.platform === 'win32'
       ? path.join(__dirname, '../../build/icon.ico')
       : path.join(__dirname, '../../resources/icon.png'),
@@ -150,7 +151,7 @@ export function createPopoutWindow(): void {
     frame: false,
     titleBarStyle: 'hidden',
     alwaysOnTop: true,
-    backgroundColor: '#080b14',
+    backgroundColor: GROUND_HEX,
     icon: process.platform === 'win32'
       ? path.join(__dirname, '../../build/icon.ico')
       : path.join(__dirname, '../../resources/icon.png'),

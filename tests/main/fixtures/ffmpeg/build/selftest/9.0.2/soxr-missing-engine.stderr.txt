@@ -1,0 +1,5 @@
+[Parsed_aresample_0 @ 0000029a969f2300] [Eval @ 0000009c6cbfd490] [error] Undefined constant or missing '(' in 'nosuchengine'
+[Parsed_aresample_0 @ 0000029a969f2300] [error] Unable to parse "resampler" option value "nosuchengine"
+[fc#-1 @ 0000029a969f1a40] [error] Error applying option 'resampler' to filter 'aresample': Invalid argument
+[error] Error opening output file -.
+[fatal] Error opening output files: Invalid argument

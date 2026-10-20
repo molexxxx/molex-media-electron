@@ -1,0 +1,244 @@
+{
+  "prefix": [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-progress",
+    "pipe:1",
+    "-stats_period",
+    "0.5"
+  ],
+  "inputs": [
+    {
+      "name": "out.flac",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=44100:duration=6:seed=41:amplitude=0.3",
+        "-ac",
+        "2",
+        "-c:a",
+        "flac"
+      ]
+    },
+    {
+      "name": "square.mp3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "aevalsrc=0.9*sgn(sin(2*PI*441*t)):s=44100:d=4",
+        "-ac",
+        "2",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "128k"
+      ]
+    },
+    {
+      "name": "multi.mka",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=6:seed=51:amplitude=0.2",
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=6:seed=52:amplitude=0.2",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-filter_complex",
+        "[0:a]pan=7.1|FL=c0|FR=c0|FC=c0|LFE=0*c0|BL=c0|BR=c0|SL=c0|SR=c0[w];[1:a]pan=stereo|c0=c0|c1=c0[s];[2:a]atrim=duration=6[z]",
+        "-map",
+        "[w]",
+        "-map",
+        "[s]",
+        "-map",
+        "[z]",
+        "-c:a",
+        "flac"
+      ]
+    },
+    {
+      "name": "tagged.flac",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=3",
+        "-metadata",
+        "title=[error] live take",
+        "-c:a",
+        "flac"
+      ]
+    },
+    {
+      "name": "damaged.mp3",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=44100:duration=6",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "128k",
+        "-bsf:a",
+        "noise=amount=200"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "name": "flac-soxr",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/out.flac",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "flac-swr",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/out.flac",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "mp3-overs",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/square.mp3",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "multi-mixed",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/multi.mka",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,pan=7.1|FL=FL|FR=FR|FC=FC|LFE=LFE|BL=0.842152*BL|BR=0.842152*BR|SL=SL|SR=SR,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[0:a:1]asplit=3[x1][y1][z1];[x1]aformat=sample_fmts=dbl,ebur128@v1=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s1=mode=print:key=lavfi.r128.S[v1];[y1]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t1=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z1]astats@s1=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-map",
+        "[v1]",
+        "-map",
+        "0:a:2",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "passthrough-only",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/multi.mka",
+        "-map",
+        "0:a:2",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "zero-outputs",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/multi.mka",
+        "-filter_complex",
+        "[0:a:2]astats@s2=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "0:a:2",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "tagged-title",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/tagged.flac",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "damaged",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/damaged.mp3",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "missing-input",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-i",
+        "IN/missing.flac",
+        "-filter_complex",
+        "[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink",
+        "-map",
+        "[v0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    }
+  ]
+}

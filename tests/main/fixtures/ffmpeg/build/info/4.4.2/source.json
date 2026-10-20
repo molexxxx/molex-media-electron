@@ -1,0 +1,16 @@
+{
+  "package": "ffmpeg 7:4.4.2-0ubuntu0.22.04.1 (Ubuntu 22.04)",
+  "urls": [
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/ffmpeg_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libavutil56_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libavcodec58_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libavformat58_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libavdevice58_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libavfilter7_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libswscale5_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libswresample3_4.4.2-0ubuntu0.22.04.1_amd64.deb",
+    "http://archive.ubuntu.com/ubuntu/pool/universe/f/ffmpeg/libpostproc55_4.4.2-0ubuntu0.22.04.1_amd64.deb"
+  ],
+  "fetched": "2026-10-17",
+  "method": "Assembled with the -version format strings of FFmpeg 4.4 from the strings embedded in usr/bin/ffmpeg (version, compiler, configuration) and the library versions in the shared object file names; the Linux binary was not run on this host."
+}

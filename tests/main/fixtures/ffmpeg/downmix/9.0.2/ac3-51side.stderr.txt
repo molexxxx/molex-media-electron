@@ -1,0 +1,19 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[in#0/ac3 @ 000001f5dbc20380] [warning] Estimating duration from bitrate, this may be inaccurate
+[info] Input #0, ac3, from 'IN/ac3-51side.ac3':
+[info]   Duration: 00:00:01.02, start: 0.000000, bitrate: 384 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, 5.1(side), fltp, 384 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 000001f5dbc29e00] [info] n:0 pts:0 pts_time:0 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:CF0EAF75 plane_checksums: [ E467B9BF 1AB89F85 929692D0 9E3661D3 9E3ABA17 4080A74A ]
+[Parsed_ashowinfo_0 @ 000001f5dbc29e00] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[Parsed_ashowinfo_0 @ 000001f5dbc29e00] [info] n:1 pts:1536 pts_time:0.032 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:6C8F9D4C plane_checksums: [ 1BF1F592 DBE6F265 69BD18AB AE82938C 78C70BEC F0BEFD05 ]
+[Parsed_ashowinfo_0 @ 000001f5dbc29e00] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[out#0/null @ 000001f5dbc22b40] [info] video:0KiB audio:18KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:00.03 bitrate=N/A speed=11.3x elapsed=0:00:00.00    

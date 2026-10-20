@@ -1,0 +1,52 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[warning] Guessed Channel Layout for Input Stream #0.0 : mono
+[info] Input #0, wav, from 'IN/clip.wav':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Duration: 00:00:00.30, bitrate: 770 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le ([1][0][0][0] / 0x0001), 48000 Hz, 1 channels, s16, 768 kb/s
+[ebur128@m0 @ 0000020e04caa880] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_s16le) -> aformat:default
+[info]   ametadata:default -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[ametadata@s0 @ 0000020e04cd4300] [info] frame:0    pts:0       pts_time:0
+[ametadata@s0 @ 0000020e04cd4300] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 0000020e04cd4300] [info] frame:1    pts:4800    pts_time:0.1
+[ametadata@s0 @ 0000020e04cd4300] [info] lavfi.r128.S=-120.691
+[ametadata@s0 @ 0000020e04cd4300] [info] frame:2    pts:9600    pts_time:0.2
+[ametadata@s0 @ 0000020e04cd4300] [info] lavfi.r128.S=-120.691
+[info] size=N/A time=00:00:00.20 bitrate=N/A speed=60.8x    
+[info] video:0kB audio:28kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[ebur128@m0 @ 0000020e04cd48c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:      -18.1 dBFS

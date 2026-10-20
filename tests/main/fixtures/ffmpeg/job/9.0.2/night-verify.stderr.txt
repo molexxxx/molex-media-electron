@@ -1,0 +1,35 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/night-pass1.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 450 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, 5.1(side), fltp, 448 kb/s
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 ac3
+[info]       DURATION        : 00:00:08.000000000
+[info] Stream mapping:
+[info]   Stream #0:0 (ac3) -> asplit:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[astats@s0 @ 0000025bd7bcabc0] [info] Overall
+[astats@s0 @ 0000025bd7bcabc0] [info] Peak level dB: -11.566286
+[astats@t0 @ 0000025bd7bcb5c0] [info] Overall
+[astats@t0 @ 0000025bd7bcb5c0] [info] Peak level dB: -11.551616
+[ebur128@v0 @ 0000025bd7bcb3c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -18.3 LUFS
+    Threshold: -28.3 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -38.3 LUFS
+    LRA low:   -18.3 LUFS
+    LRA high:  -18.3 LUFS
+[out#0/null @ 0000025bd7bdb9c0] [info] video:0KiB audio:4497KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:07.99 bitrate=N/A speed=80.7x elapsed=0:00:00.09    

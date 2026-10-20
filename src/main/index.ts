@@ -7,7 +7,7 @@
  * tray, and window sub-modules.
  */
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { registerIPC } from './ipc'
 import { loadConfig } from './config'
@@ -60,8 +60,12 @@ app.whenReady().then(async () => {
 
   electronApp.setAppUserModelId('com.molex.media')
 
+  // The UI is dark only; this also darkens the native text-field and tray menus
+  nativeTheme.themeSource = 'dark'
+
+  // zoom: true stops the toolkit from swallowing Ctrl+Plus and Ctrl+Minus, so the default menu's zoom roles act
   app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    optimizer.watchWindowShortcuts(window, { zoom: true })
   })
 
   await loadConfig()

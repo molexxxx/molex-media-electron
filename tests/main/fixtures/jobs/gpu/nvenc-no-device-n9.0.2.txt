@@ -1,0 +1,16 @@
+Input #0, lavfi, from 'testsrc2=size=640x360:rate=30':
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0: Video: wrapped_avframe, yuv420p, 640x360 [SAR 1:1 DAR 16:9], 30 fps, 30 tbr, 30 tbn
+Stream mapping:
+  Stream #0:0 -> #0:0 (wrapped_avframe (native) -> h264 (h264_nvenc))
+[h264_nvenc @ 000001e504d3cc00] No capable devices found
+[vost#0:0/h264_nvenc @ 000001e503006a40] [enc:h264_nvenc @ 000001e502ffbe40] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.
+[vf#0:0 @ 000001e503041400] Error sending frames to consumers: Generic error in an external library
+[vf#0:0 @ 000001e503041400] Task finished with error code: -542398533 (Generic error in an external library)
+[vf#0:0 @ 000001e503041400] Terminating thread with return code -542398533 (Generic error in an external library)
+[vost#0:0/h264_nvenc @ 000001e503006a40] [enc:h264_nvenc @ 000001e502ffbe40] Could not open encoder before EOF
+[vost#0:0/h264_nvenc @ 000001e503006a40] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/h264_nvenc @ 000001e503006a40] Terminating thread with return code -22 (Invalid argument)
+[out#0/null @ 000001e502febf00] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.02    
+Conversion failed!

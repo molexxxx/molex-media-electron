@@ -1,0 +1,69 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/multi.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 5602 kb/s
+[info]   Stream #0:0: Audio: flac, 48000 Hz, stereo, s32 (24 bit) (default)
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 flac
+[info]       DURATION        : 00:00:08.000000000
+[info]   Stream #0:1: Audio: flac, 48000 Hz, 5.1(side), s32 (24 bit)
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 flac
+[info]       DURATION        : 00:00:08.000000000
+[info] Stream mapping:
+[info]   Stream #0:0 (flac) -> aformat:default
+[info]   Stream #0:1 (flac) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info]   ebur128:out0 -> Stream #0:1 (pcm_s16le)
+[Parsed_pan_5 @ 000002dd397fc1c0] [info] Pure channel mapping detected: 2
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]   Stream #0:1: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[ebur128@d1 @ 000002dd397fa7c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -40.6 LUFS
+    Threshold: -50.6 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -60.6 LUFS
+    LRA low:   -40.7 LUFS
+    LRA high:  -40.6 LUFS
+[ebur128@m1 @ 000002dd397fa8c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -22.3 LUFS
+    Threshold: -32.3 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -42.3 LUFS
+    LRA low:   -22.3 LUFS
+    LRA high:  -22.2 LUFS
+
+  True peak:
+    Peak:      -14.0 dBFS
+[ebur128@m0 @ 000002dd397fc3c0] [info] Summary:
+
+  Integrated loudness:
+    I:         -23.6 LUFS
+    Threshold: -33.6 LUFS
+
+  Loudness range:
+    LRA:         0.1 LU
+    Threshold: -43.6 LUFS
+    LRA low:   -23.7 LUFS
+    LRA high:  -23.6 LUFS
+
+  True peak:
+    Peak:      -13.7 dBFS
+[out#0/null @ 000002dd397a2500] [info] video:0KiB audio:6000KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:08.00 bitrate=N/A speed= 131x elapsed=0:00:00.06    

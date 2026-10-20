@@ -1,0 +1,1 @@
+[Parsed_pan_1 @ 0000022bced87d40] [SWR @ 0000022bcee100c0] [warning] Input channel layout has a different number of channels than the number of used channels, ignoring layout

@@ -1,0 +1,1 @@
+[aist#0:0/pcm_s16le @ 0000014e4c750400] [warning] Guessed Channel Layout: mono

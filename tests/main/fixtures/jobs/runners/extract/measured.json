@@ -1,0 +1,455 @@
+{
+  "measured": "2026-10-18",
+  "builds": {
+    "legacy": "ffmpeg 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev",
+    "pinned": "ffmpeg n9.0.2-17-g2a571b6068 (BtbN win64 gpl)"
+  },
+  "source": "testsrc2 321x241 at 25 fps for 10 s (libx264, keyframe every 50 frames), a 48 kHz sine as pcm_s24le, and a three-cue SRT stream, in Matroska",
+  "builds_results": {
+    "legacy": {
+      "percentFolder": {
+        "folder": "50% off",
+        "unescaped": {
+          "exitCode": -22,
+          "files": [
+            "frame_%06d.png"
+          ]
+        },
+        "escaped": {
+          "pattern": "50%% off/frame_%06d.png",
+          "exitCode": 0,
+          "files": [
+            "frame_000001.png",
+            "frame_000002.png",
+            "frame_000003.png",
+            "frame_000004.png",
+            "frame_000005.png"
+          ]
+        }
+      },
+      "frames": {
+        "interval-1s-whole": {
+          "range": [],
+          "vf": "fps=1/1",
+          "spanSec": 10,
+          "frames": 10
+        },
+        "interval-2s-whole": {
+          "range": [],
+          "vf": "fps=1/2",
+          "spanSec": 10,
+          "frames": 5
+        },
+        "interval-0.5s-range-2-5": {
+          "range": [
+            "-ss",
+            "2",
+            "-t",
+            "5"
+          ],
+          "vf": "fps=1/0.5",
+          "spanSec": 5,
+          "frames": 10
+        },
+        "fps-3-whole": {
+          "range": [],
+          "vf": "fps=3",
+          "spanSec": 10,
+          "frames": 30
+        },
+        "count-24-range-3-4": {
+          "range": [
+            "-ss",
+            "3",
+            "-t",
+            "4"
+          ],
+          "vf": "fps=6",
+          "spanSec": 4,
+          "frames": 24
+        },
+        "count-7-whole": {
+          "range": [],
+          "vf": "fps=0.7",
+          "spanSec": 10,
+          "frames": 7
+        },
+        "count-10-range-1-3.3": {
+          "range": [
+            "-ss",
+            "1",
+            "-t",
+            "3.3"
+          ],
+          "vf": "fps=3.0303030303030303",
+          "spanSec": 3.3,
+          "frames": 10
+        },
+        "count-5-start-7": {
+          "range": [
+            "-ss",
+            "7"
+          ],
+          "vf": "fps=1.6666666666666667",
+          "spanSec": 3,
+          "frames": 5
+        }
+      },
+      "thumbnail": {
+        "args": [
+          "-ss",
+          "5",
+          "-frames:v",
+          "1",
+          "-c:v",
+          "mjpeg",
+          "-q:v",
+          "2"
+        ],
+        "files": [
+          "frame_000001.jpg"
+        ]
+      },
+      "webp": {
+        "vf": "fps=1/5",
+        "frames": 2,
+        "exitCode": 0
+      },
+      "gifUnlabeled": {
+        "forever": {
+          "loop": 0,
+          "exitCode": 0,
+          "error": null
+        },
+        "once": {
+          "loop": -1,
+          "exitCode": 0,
+          "error": null
+        },
+        "three-plays": {
+          "loop": 2,
+          "exitCode": 0,
+          "error": null
+        }
+      },
+      "gif": {
+        "forever": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=sierra2_4a[gif]",
+          "loop": 0,
+          "exitCode": 0,
+          "netscapeLoop": 0,
+          "durationSec": 3.01,
+          "size": [
+            160,
+            120
+          ]
+        },
+        "once": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=bayer[gif]",
+          "loop": -1,
+          "exitCode": 0,
+          "netscapeLoop": null,
+          "durationSec": 3.01,
+          "size": [
+            160,
+            120
+          ]
+        },
+        "three-plays": {
+          "graph": "[0:v:0]fps=12,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=none[gif]",
+          "loop": 2,
+          "exitCode": 0,
+          "netscapeLoop": 2,
+          "durationSec": 3.01,
+          "size": [
+            320,
+            240
+          ]
+        },
+        "floyd": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=floyd_steinberg[gif]",
+          "loop": 0,
+          "exitCode": 0,
+          "netscapeLoop": 0,
+          "durationSec": 3.01,
+          "size": [
+            160,
+            120
+          ]
+        }
+      },
+      "wav24": {
+        "codec_name": "pcm_s24le",
+        "sample_fmt": "s32",
+        "sample_rate": "48000",
+        "channel_layout": "mono",
+        "bits_per_sample": 24
+      },
+      "trims": {
+        "copy": {
+          "requestedSec": 4,
+          "durationSec": 4.08
+        },
+        "libx264": {
+          "requestedSec": 4,
+          "durationSec": 4
+        },
+        "libvpx-vp9": {
+          "requestedSec": 2,
+          "args": [
+            "-c:v",
+            "libvpx-vp9",
+            "-crf",
+            "32",
+            "-b:v",
+            "0",
+            "-row-mt",
+            "1"
+          ],
+          "durationSec": 2
+        }
+      },
+      "subtitles": {
+        "srt": {
+          "exitCode": 0,
+          "text": "1\n00:00:01,000 --> 00:00:02,000\nOne\n\n2\n00:00:03,000 --> 00:00:04,000\nTwo\n\n3\n00:00:05,000 --> 00:00:06,500\nThree\n\n"
+        },
+        "vtt": {
+          "exitCode": 0,
+          "text": "WEBVTT\n\n00:01.000 --> 00:02.000\nOne\n\n00:03.000 --> 00:04.000\nTwo\n\n00:05.000 --> 00:06.500\nThree\n"
+        },
+        "ass": {
+          "exitCode": 0,
+          "text": "[Script Info]\n; Script generated by FFmpeg/Lavc\nScriptType: v4.00+\nPlayResX: 384\nPlayResY: 288\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,16,&Hffffff,&Hffffff,&H0,&H0,0,0,0,0,100,100,0,0,1,1,0,2,10,10,10,0\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,One\nDialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,Two\nDialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Three\n"
+        }
+      }
+    },
+    "pinned": {
+      "percentFolder": {
+        "folder": "50% off",
+        "unescaped": {
+          "exitCode": -22,
+          "files": [
+            "frame_%06d.png"
+          ]
+        },
+        "escaped": {
+          "pattern": "50%% off/frame_%06d.png",
+          "exitCode": 0,
+          "files": [
+            "frame_000001.png",
+            "frame_000002.png",
+            "frame_000003.png",
+            "frame_000004.png",
+            "frame_000005.png"
+          ]
+        }
+      },
+      "frames": {
+        "interval-1s-whole": {
+          "range": [],
+          "vf": "fps=1/1",
+          "spanSec": 10,
+          "frames": 10
+        },
+        "interval-2s-whole": {
+          "range": [],
+          "vf": "fps=1/2",
+          "spanSec": 10,
+          "frames": 5
+        },
+        "interval-0.5s-range-2-5": {
+          "range": [
+            "-ss",
+            "2",
+            "-t",
+            "5"
+          ],
+          "vf": "fps=1/0.5",
+          "spanSec": 5,
+          "frames": 10
+        },
+        "fps-3-whole": {
+          "range": [],
+          "vf": "fps=3",
+          "spanSec": 10,
+          "frames": 30
+        },
+        "count-24-range-3-4": {
+          "range": [
+            "-ss",
+            "3",
+            "-t",
+            "4"
+          ],
+          "vf": "fps=6",
+          "spanSec": 4,
+          "frames": 24
+        },
+        "count-7-whole": {
+          "range": [],
+          "vf": "fps=0.7",
+          "spanSec": 10,
+          "frames": 7
+        },
+        "count-10-range-1-3.3": {
+          "range": [
+            "-ss",
+            "1",
+            "-t",
+            "3.3"
+          ],
+          "vf": "fps=3.0303030303030303",
+          "spanSec": 3.3,
+          "frames": 10
+        },
+        "count-5-start-7": {
+          "range": [
+            "-ss",
+            "7"
+          ],
+          "vf": "fps=1.6666666666666667",
+          "spanSec": 3,
+          "frames": 5
+        }
+      },
+      "thumbnail": {
+        "args": [
+          "-ss",
+          "5",
+          "-frames:v",
+          "1",
+          "-c:v",
+          "mjpeg",
+          "-q:v",
+          "2"
+        ],
+        "files": [
+          "frame_000001.jpg"
+        ]
+      },
+      "webp": {
+        "vf": "fps=1/5",
+        "frames": 2,
+        "exitCode": 0
+      },
+      "gifUnlabeled": {
+        "forever": {
+          "loop": 0,
+          "exitCode": -22,
+          "error": [
+            "[fc#0 @ 00000208a0c91ec0] Cannot find an unused video input stream to feed the unlabeled input pad fps:default.",
+            "Error binding filtergraph inputs/outputs: Invalid argument"
+          ]
+        },
+        "once": {
+          "loop": -1,
+          "exitCode": -22,
+          "error": [
+            "[fc#0 @ 0000018427c71e80] Cannot find an unused video input stream to feed the unlabeled input pad fps:default.",
+            "Error binding filtergraph inputs/outputs: Invalid argument"
+          ]
+        },
+        "three-plays": {
+          "loop": 2,
+          "exitCode": -22,
+          "error": [
+            "[fc#0 @ 00000152d6bb12c0] Cannot find an unused video input stream to feed the unlabeled input pad fps:default.",
+            "Error binding filtergraph inputs/outputs: Invalid argument"
+          ]
+        }
+      },
+      "gif": {
+        "forever": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=sierra2_4a[gif]",
+          "loop": 0,
+          "exitCode": 0,
+          "netscapeLoop": 0,
+          "durationSec": 3,
+          "size": [
+            160,
+            120
+          ]
+        },
+        "once": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=bayer[gif]",
+          "loop": -1,
+          "exitCode": 0,
+          "netscapeLoop": null,
+          "durationSec": 3,
+          "size": [
+            160,
+            120
+          ]
+        },
+        "three-plays": {
+          "graph": "[0:v:0]fps=12,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=none[gif]",
+          "loop": 2,
+          "exitCode": 0,
+          "netscapeLoop": 2,
+          "durationSec": 3,
+          "size": [
+            320,
+            240
+          ]
+        },
+        "floyd": {
+          "graph": "[0:v:0]fps=12,scale=160:-1:flags=lanczos,split[g0][g1];[g0]palettegen=stats_mode=diff[gp];[g1][gp]paletteuse=dither=floyd_steinberg[gif]",
+          "loop": 0,
+          "exitCode": 0,
+          "netscapeLoop": 0,
+          "durationSec": 3,
+          "size": [
+            160,
+            120
+          ]
+        }
+      },
+      "wav24": {
+        "codec_name": "pcm_s24le",
+        "sample_fmt": "s32",
+        "sample_rate": "48000",
+        "channel_layout": "mono",
+        "bits_per_sample": 24
+      },
+      "trims": {
+        "copy": {
+          "requestedSec": 4,
+          "durationSec": 4.08
+        },
+        "libx264": {
+          "requestedSec": 4,
+          "durationSec": 4
+        },
+        "libvpx-vp9": {
+          "requestedSec": 2,
+          "args": [
+            "-c:v",
+            "libvpx-vp9",
+            "-crf",
+            "32",
+            "-b:v",
+            "0",
+            "-row-mt",
+            "1"
+          ],
+          "durationSec": 2
+        }
+      },
+      "subtitles": {
+        "srt": {
+          "exitCode": 0,
+          "text": "1\n00:00:01,000 --> 00:00:02,000\nOne\n\n2\n00:00:03,000 --> 00:00:04,000\nTwo\n\n3\n00:00:05,000 --> 00:00:06,500\nThree\n\n"
+        },
+        "vtt": {
+          "exitCode": 0,
+          "text": "WEBVTT\n\n00:01.000 --> 00:02.000\nOne\n\n00:03.000 --> 00:04.000\nTwo\n\n00:05.000 --> 00:06.500\nThree\n"
+        },
+        "ass": {
+          "exitCode": 0,
+          "text": "[Script Info]\n; Script generated by FFmpeg/Lavc\nScriptType: v4.00+\nPlayResX: 384\nPlayResY: 288\nScaledBorderAndShadow: yes\nYCbCr Matrix: None\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,16,&Hffffff,&Hffffff,&H0,&H0,0,0,0,0,100,100,0,0,1,1,0,2,10,10,10,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,One\nDialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,Two\nDialogue: 0,0:00:05.00,0:00:06.50,Default,,0,0,0,,Three\n"
+        }
+      }
+    }
+  }
+}

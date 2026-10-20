@@ -1,0 +1,571 @@
+{
+  "measured": "2026-10-18",
+  "sources": {
+    "lossless": "testsrc2 320x240 25 fps 1 s, FFV1 in Matroska, as yuv420p and yuv444p; PSNR of the encode against the source, inf is bit-exact",
+    "twoPass": "the yuv420p source at -b:v:0 300k; pass 1 -pass:v:0 1 -passlogfile:v:0 <folder>/stats -f null -, then -pass:v:0 2 into Matroska; statsFiles lists the folder after both passes",
+    "target": "testsrc2 1280x720 25 fps 10 s with temporal noise (alls=30) and a 440 Hz sine; AAC 128k; target 2,000,000 bytes budgeted at 97 percent: videoBps = 2,000,000 * 0.97 * 8 / 10 - 128,000, with -maxrate 2x and -bufsize 4x; x264 and x265 at veryfast, VP9 at cpu-used 5"
+  },
+  "builds": {
+    "pinned": {
+      "version": "n9.0.2-17-g2a571b6068-20260930",
+      "lossless": {
+        "x264-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "x265-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "64.447483",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "57.227108",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "x265-lossless": {
+          "args": [
+            "-x265-params:v:0",
+            "lossless=1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "vp9-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0",
+            "-b:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "115.735028",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "vp9-lossless": {
+          "args": [
+            "-lossless:v:0",
+            "1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "aom-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0",
+            "-b:v:0",
+            "0",
+            "-cpu-used:v:0",
+            "8"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "svt-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "42.098702",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "41.746957",
+              "pixFmt": "yuv420p"
+            }
+          }
+        },
+        "svt-crf1": {
+          "args": [
+            "-crf:v:0",
+            "1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "62.267901",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "61.673273",
+              "pixFmt": "yuv420p"
+            }
+          }
+        },
+        "ffv1": {
+          "args": [],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "utvideo": {
+          "args": [],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        }
+      },
+      "twoPass": {
+        "libx264": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log",
+            "stats-0.log.mbtree"
+          ]
+        },
+        "libx265": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log",
+            "stats-0.log.cutree"
+          ]
+        },
+        "libvpx-vp9": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "libaom-av1": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "libsvtav1": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "mpeg4": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        }
+      },
+      "target": [
+        {
+          "encoder": "libx264",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1964449
+        },
+        {
+          "encoder": "libx265",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1941592
+        },
+        {
+          "encoder": "libvpx-vp9",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 4983683
+        },
+        {
+          "encoder": "libx264",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1903789
+        },
+        {
+          "encoder": "libx265",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1935767
+        },
+        {
+          "encoder": "libvpx-vp9",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 3396115
+        }
+      ]
+    },
+    "legacy": {
+      "version": "2022-10-13-git-9e8a327e68-full_build-www.gyan.dev",
+      "lossless": {
+        "x264-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "x265-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "64.434587",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "57.227004",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "x265-lossless": {
+          "args": [
+            "-x265-params:v:0",
+            "lossless=1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "vp9-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0",
+            "-b:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "115.735028",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "vp9-lossless": {
+          "args": [
+            "-lossless:v:0",
+            "1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "aom-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0",
+            "-b:v:0",
+            "0",
+            "-cpu-used:v:0",
+            "8"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "svt-crf0": {
+          "args": [
+            "-crf:v:0",
+            "0"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "41.727829",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "41.560293",
+              "pixFmt": "yuv420p"
+            }
+          }
+        },
+        "svt-crf1": {
+          "args": [
+            "-crf:v:0",
+            "1"
+          ],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "57.249812",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "57.009189",
+              "pixFmt": "yuv420p"
+            }
+          }
+        },
+        "ffv1": {
+          "args": [],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        },
+        "utvideo": {
+          "args": [],
+          "results": {
+            "yuv420p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv420p"
+            },
+            "yuv444p": {
+              "exit": 0,
+              "psnr": "inf",
+              "pixFmt": "yuv444p"
+            }
+          }
+        }
+      },
+      "twoPass": {
+        "libx264": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log",
+            "stats-0.log.mbtree"
+          ]
+        },
+        "libx265": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "libvpx-vp9": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "libaom-av1": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "libsvtav1": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        },
+        "mpeg4": {
+          "pass1Exit": 0,
+          "encodeExit": 0,
+          "statsFiles": [
+            "stats-0.log"
+          ]
+        }
+      },
+      "target": [
+        {
+          "encoder": "libx264",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1966598
+        },
+        {
+          "encoder": "libx265",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1924383
+        },
+        {
+          "encoder": "libvpx-vp9",
+          "passes": 1,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 4983990
+        },
+        {
+          "encoder": "libx264",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1909501
+        },
+        {
+          "encoder": "libx265",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 1923413
+        },
+        {
+          "encoder": "libvpx-vp9",
+          "passes": 2,
+          "targetBytes": 2000000,
+          "videoBps": 1424000,
+          "exit": 0,
+          "bytes": 3396174
+        }
+      ]
+    }
+  }
+}

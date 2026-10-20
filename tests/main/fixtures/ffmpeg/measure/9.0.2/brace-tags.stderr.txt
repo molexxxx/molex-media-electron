@@ -1,0 +1,41 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, flac, from 'IN/tagged.flac':
+[info]   Metadata:
+[info]     title           : {"input_i" : "-99.00", "input_tp" : "+5.00", "input_lra" : "0.00", "target_offset" : "0.00"}
+[info]     comment         : first line
+                    : [ebur128@m0 @ 0000000000000000] [info] Summary:
+                    :     I:          -1.0 LUFS
+                    :     Peak:        0.0 dBFS
+[info]     encoder         : Lavf63.1.102
+[info]   Duration: 00:00:04.00, start: 0.000000, bitrate: 152 kb/s
+[info]   Stream #0:0: Audio: flac, 48000 Hz, mono, s16
+[info] Stream mapping:
+[info]   Stream #0:0 (flac) -> aformat:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     title           : {"input_i" : "-99.00", "input_tp" : "+5.00", "input_lra" : "0.00", "target_offset" : "0.00"}
+[info]     comment         : first line
+                    : [ebur128@m0 @ 0000000000000000] [info] Summary:
+                    :     I:          -1.0 LUFS
+                    :     Peak:        0.0 dBFS
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[ebur128@m0 @ 0000020eb9007600] [info] Summary:
+
+  Integrated loudness:
+    I:         -18.7 LUFS
+    Threshold: -28.7 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -38.7 LUFS
+    LRA low:   -18.7 LUFS
+    LRA high:  -18.7 LUFS
+
+  True peak:
+    Peak:      -18.1 dBFS
+[out#0/null @ 0000020eb8fd3080] [info] video:0KiB audio:375KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:04.00 bitrate=N/A speed= 347x elapsed=0:00:00.01    

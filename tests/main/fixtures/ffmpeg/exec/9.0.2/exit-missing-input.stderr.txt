@@ -1,0 +1,4 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[in#0 @ 0000018c7f703700] [error] Error opening input: No such file or directory
+[error] Error opening input file IN/missing.wav.
+[fatal] Error opening input files: No such file or directory

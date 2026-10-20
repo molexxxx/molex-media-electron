@@ -1,0 +1,28 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/two-audio.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf63.1.102
+[info]   Duration: 00:00:01.02, start: 0.000000, bitrate: 466 kb/s
+[info]   Stream #0:0: Audio: aac (LC), 48000 Hz, mono, fltp (default)
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 aac
+[info]       DURATION        : 00:00:01.021000000
+[info]   Stream #0:1: Audio: ac3, 48000 Hz, 5.1(side), fltp, 384 kb/s
+[info]     Metadata:
+[info]       ENCODER         : Lavc63.1.102 ac3
+[info]       DURATION        : 00:00:01.005000000
+[info] Stream mapping:
+[info]   Stream #0:1 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 00000244b6382d80] [info] n:0 pts:0 pts_time:0 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1280 checksum:EC5C00B8 plane_checksums: [ 7BF8C2B0 5F91C2B8 471BCC10 270948CA 819ABACB 5BE4AB6F ]
+[Parsed_ashowinfo_0 @ 00000244b6382d80] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]       DURATION        : 00:00:01.005000000
+[Parsed_ashowinfo_0 @ 00000244b6382d80] [info] n:1 pts:1280 pts_time:0.0266667 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:DA076790 plane_checksums: [ 540A07EA 9F61FBE3 D86CE369 60517BF3 580112A7 CE59F193 ]
+[Parsed_ashowinfo_0 @ 00000244b6382d80] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[out#0/null @ 00000244b6344f00] [info] video:0KiB audio:15KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:00.02 bitrate=N/A speed=9.22x elapsed=0:00:00.00    

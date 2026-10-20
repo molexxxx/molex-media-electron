@@ -4,7 +4,9 @@
     "electron.vite.config.*",
     "package.json",
     "src/main/**/*",
-    "src/preload/**/*"
+    "src/main/**/*.json",
+    "src/preload/**/*",
+    "src/shared/**/*"
   ],
   "exclude": ["out", "dist", "node_modules"],
   "compilerOptions": {

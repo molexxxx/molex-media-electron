@@ -1,0 +1,41 @@
+{
+  "version": "ffmpeg version 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev Copyright (c) 2000-2022 the FFmpeg developers",
+  "label": "2022-10-13",
+  "platform": "win32",
+  "runs": [
+    {
+      "name": "version",
+      "tool": "ffmpeg",
+      "argv": [
+        "-version"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "version.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "encoders",
+      "tool": "ffmpeg",
+      "argv": [
+        "-hide_banner",
+        "-encoders"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "encoders.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "ffprobe-version",
+      "tool": "ffprobe",
+      "argv": [
+        "-version"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "ffprobe-version.stdout.txt",
+      "stderr": null
+    }
+  ]
+}

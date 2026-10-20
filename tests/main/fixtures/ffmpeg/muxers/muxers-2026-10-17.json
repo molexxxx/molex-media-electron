@@ -1,0 +1,2199 @@
+{
+  "measured": "2026-10-17",
+  "versions": {
+    "legacy": "ffmpeg version 2022-10-13-git-9e8a327e68-full_build-www.gyan.dev",
+    "pinned": "ffmpeg version n9.0.2-17-g2a571b6068-20260930"
+  },
+  "encoders": {
+    "libx264": {
+      "codec": "h264",
+      "args": [
+        "-preset",
+        "ultrafast",
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    },
+    "libx265": {
+      "codec": "hevc",
+      "args": [
+        "-preset",
+        "ultrafast",
+        "-pix_fmt",
+        "yuv420p",
+        "-x265-params",
+        "log-level=error"
+      ]
+    },
+    "libvpx-vp9": {
+      "codec": "vp9",
+      "args": [
+        "-deadline",
+        "realtime",
+        "-cpu-used",
+        "8",
+        "-b:v",
+        "200k"
+      ]
+    },
+    "libaom-av1": {
+      "codec": "av1",
+      "args": [
+        "-cpu-used",
+        "8",
+        "-crf",
+        "45",
+        "-b:v",
+        "0"
+      ]
+    },
+    "libsvtav1": {
+      "codec": "av1",
+      "args": [
+        "-preset",
+        "12",
+        "-crf",
+        "45"
+      ]
+    },
+    "prores_ks": {
+      "codec": "prores",
+      "args": [
+        "-pix_fmt",
+        "yuv422p10le"
+      ]
+    },
+    "ffv1": {
+      "codec": "ffv1",
+      "args": []
+    },
+    "utvideo": {
+      "codec": "utvideo",
+      "args": [
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    },
+    "mpeg2video": {
+      "codec": "mpeg2video",
+      "args": [
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    },
+    "mpeg4": {
+      "codec": "mpeg4",
+      "args": [
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    },
+    "libtheora": {
+      "codec": "theora",
+      "args": [
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    },
+    "wmv2": {
+      "codec": "wmv2",
+      "args": [
+        "-pix_fmt",
+        "yuv420p"
+      ]
+    }
+  },
+  "extensions": [
+    "mp4",
+    "mkv",
+    "avi",
+    "mov",
+    "flv",
+    "wmv",
+    "webm",
+    "m4v",
+    "mpg",
+    "mpeg",
+    "ts",
+    "vob",
+    "3gp",
+    "mts",
+    "m2ts",
+    "divx",
+    "f4v",
+    "ogv",
+    "rm",
+    "rmvb",
+    "asf"
+  ],
+  "results": {
+    "legacy": {
+      "libx264": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "ok",
+          "message": ""
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libx265": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "unreadable",
+          "message": "probes as 'rawvideo'"
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec hevc not compatible with flv"
+        },
+        "wmv": {
+          "status": "refused",
+          "message": "Could not write header for output file #0 (incorrect codec parameters ?): Invalid argument"
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "refused",
+          "message": "Could not write header for output file #0 (incorrect codec parameters ?): Invalid argument"
+        }
+      },
+      "libvpx-vp9": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "vp9 only supported in MP4."
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec vp9 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libaom-av1": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "av1 only supported in MP4 and AVIF."
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec av1 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libsvtav1": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "av1 only supported in MP4 and AVIF."
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec av1 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "prores_ks": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec prores not compatible with flv"
+        },
+        "wmv": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        }
+      },
+      "ffv1": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec ffv1 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "utvideo": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec utvideo not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "mpeg2video": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec mpeg2video not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "mpeg4": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Codec mpeg4 is not supported in the official FLV specification, use vstrict=-1 / -strict -1 to use it anyway."
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "ok",
+          "message": ""
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg4 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libtheora": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec theora not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "ok",
+          "message": ""
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "wmv2": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec wmv2 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.divx'"
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to find a suitable output format for 'out.rmvb'"
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      }
+    },
+    "pinned": {
+      "libx264": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "ok",
+          "message": ""
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libx265": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "unreadable",
+          "message": "probes as 'rawvideo'"
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "refused",
+          "message": "Could not write header (incorrect codec parameters ?): Invalid argument"
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec hevc in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "refused",
+          "message": "Could not write header (incorrect codec parameters ?): Invalid argument"
+        }
+      },
+      "libvpx-vp9": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "vp9 only supported in MP4."
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec vp9 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libaom-av1": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "av1 only supported in MP4 and AVIF."
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libsvtav1": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "refused",
+          "message": "av1 only supported in MP4 and AVIF."
+        },
+        "flv": {
+          "status": "ok",
+          "message": ""
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "ok",
+          "message": ""
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec av1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "prores_ks": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec prores not compatible with flv"
+        },
+        "wmv": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec prores in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        }
+      },
+      "ffv1": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec ffv1 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec ffv1 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "utvideo": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec utvideo not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec utvideo in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "mpeg2video": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec mpeg2video not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg2video in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "mpeg4": {
+        "mp4": {
+          "status": "ok",
+          "message": ""
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Codec mpeg4 is not supported in the official FLV specification, use vstrict=-1 / -strict -1 to use it anyway."
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpg": {
+          "status": "ok",
+          "message": ""
+        },
+        "mpeg": {
+          "status": "ok",
+          "message": ""
+        },
+        "ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "vob": {
+          "status": "ok",
+          "message": ""
+        },
+        "3gp": {
+          "status": "ok",
+          "message": ""
+        },
+        "mts": {
+          "status": "ok",
+          "message": ""
+        },
+        "m2ts": {
+          "status": "ok",
+          "message": ""
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec mpeg4 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "libtheora": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec theora not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'; Header missing"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec theora in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "ok",
+          "message": ""
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      },
+      "wmv2": {
+        "mp4": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mkv": {
+          "status": "ok",
+          "message": ""
+        },
+        "avi": {
+          "status": "ok",
+          "message": ""
+        },
+        "mov": {
+          "status": "ok",
+          "message": ""
+        },
+        "flv": {
+          "status": "refused",
+          "message": "Video codec wmv2 not compatible with flv"
+        },
+        "wmv": {
+          "status": "ok",
+          "message": ""
+        },
+        "webm": {
+          "status": "refused",
+          "message": "Only VP8 or VP9 or AV1 video and Vorbis or Opus audio and WebVTT subtitles are supported for WebM."
+        },
+        "m4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mpg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "mpeg": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "vob": {
+          "status": "unreadable",
+          "message": "probes as 'unknown'"
+        },
+        "3gp": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "mts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "m2ts": {
+          "status": "unreadable",
+          "message": "probes as 'nothing'"
+        },
+        "divx": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.divx'; use a standard extension for the filename or specify the format manually."
+        },
+        "f4v": {
+          "status": "refused",
+          "message": "Could not find tag for codec wmv2 in stream #0, codec not currently supported in container"
+        },
+        "ogv": {
+          "status": "refused",
+          "message": "Unsupported codec id in stream 0"
+        },
+        "rm": {
+          "status": "unreadable",
+          "message": "probes as 'rv20'"
+        },
+        "rmvb": {
+          "status": "no-muxer",
+          "message": "Unable to choose an output format for 'out.rmvb'; use a standard extension for the filename or specify the format manually."
+        },
+        "asf": {
+          "status": "ok",
+          "message": ""
+        }
+      }
+    }
+  }
+}

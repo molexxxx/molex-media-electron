@@ -1,0 +1,15 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, lavfi, from 'sine=duration=0.2':
+[info]   Duration: N/A, start: 0.000000, bitrate: 705 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (pcm_s16le (native) -> aac (native))
+[ac3 @ 000001ccc3f3e3c0] [error] ac3 muxer supports only codec ac3 for type audio
+[out#0/ac3 @ 000001ccc3f0ed40] [error] Could not write header (incorrect codec parameters ?): Invalid argument
+[af#0:0 @ 000001ccc468a840] [error] Error sending frames to consumers: Invalid argument
+[af#0:0 @ 000001ccc468a840] [error] Task finished with error code: -22 (Invalid argument)
+[af#0:0 @ 000001ccc468a840] [error] Terminating thread with return code -22 (Invalid argument)
+[out#0/ac3 @ 000001ccc3f0ed40] [error] Nothing was written into output file, because at least one of its streams received no packets.
+[info] size=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.00    
+[aac @ 000001ccc3f40340] [info] Qavg: nan
+[info] Conversion failed!

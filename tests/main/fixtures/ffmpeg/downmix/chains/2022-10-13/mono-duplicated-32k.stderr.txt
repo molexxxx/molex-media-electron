@@ -1,0 +1,2 @@
+[warning] Guessed Channel Layout for Input Stream #0.0 : mono
+[Parsed_pan_1 @ 00000283ea655040] [SWR @ 00000283ea6a8280] [warning] Input channel layout has a different number of channels than the number of used channels, ignoring layout

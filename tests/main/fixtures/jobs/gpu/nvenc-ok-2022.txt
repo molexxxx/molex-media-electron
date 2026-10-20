@@ -1,0 +1,15 @@
+Input #0, lavfi, from 'testsrc2=size=640x360:rate=30':
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0: Video: wrapped_avframe, yuv420p, 640x360 [SAR 1:1 DAR 16:9], 30 fps, 30 tbr, 30 tbn
+Stream mapping:
+  Stream #0:0 -> #0:0 (wrapped_avframe (native) -> h264 (h264_nvenc))
+Output #0, null, to 'pipe:':
+  Metadata:
+    encoder         : Lavf59.34.101
+  Stream #0:0: Video: h264 (Main), yuv420p(progressive), 640x360 [SAR 1:1 DAR 16:9], q=2-31, 2000 kb/s, 30 fps, 30 tbn
+    Metadata:
+      encoder         : Lavc59.50.100 h264_nvenc
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/2000000 buffer size: 4000000 vbv_delay: N/A
+frame=    0 fps=0.0 q=0.0 size=       0kB time=-577014:32:22.77 bitrate=  -0.0kbits/s speed=N/A    frame=   30 fps=0.0 q=11.0 Lsize=N/A time=00:00:00.86 bitrate=N/A speed=8.98x    
+video:262kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown

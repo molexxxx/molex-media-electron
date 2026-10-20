@@ -1,0 +1,18 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[ac3 @ 00000183bdb69e80] [warning] Estimating duration from bitrate, this may be inaccurate
+[info] Input #0, ac3, from 'IN/ac3-dplii.ac3':
+[info]   Duration: 00:00:01.02, start: 0.000000, bitrate: 384 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, 5.1(side), fltp, 384 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 00000183bdbd5980] [info] n:0 pts:0 pts_time:0 pos:0 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:3B73E17F plane_checksums: [ C21CC372 7DFBAED7 863AAA74 B1D367B0 36D9B21D 0099AAC8 ]
+[Parsed_ashowinfo_0 @ 00000183bdbd5980] [info]   side data - matrix encoding: none
+[Parsed_ashowinfo_0 @ 00000183bdbd5980] [info]   side data - downmix: preferred downmix type - Dolby Pro Logic II Mix levels: center 0.594604 (0.594604 ltrt) - surround 0.500000 (0.500000 ltrt) - lfe 0.000000
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:00.00 bitrate=N/A speed=   0x    
+[info] video:0kB audio:18kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown

@@ -1,0 +1,21 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, flac, from 'IN/music.flac':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Duration: 00:00:08.00, start: 0.000000, bitrate: 537 kb/s
+[info]   Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
+[info] Stream mapping:
+[info]   Stream #0:0 (flac) -> aformat:default
+[info]   asplit -> Stream #0:0 (aac)
+[ipod @ 00000268529a74c0] [warning] Warning, extension is not .m4a nor .m4v Quicktime/Ipod might not play the file
+[info] Output #0, ipod, to 'OUT/music-hot.m4a.part':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 128 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 aac
+[astats@p0 @ 00000268529001c0] [info] Overall
+[astats@p0 @ 00000268529001c0] [info] Peak level dB: -2.324909
+[out#0/ipod @ 0000026852972b00] [info] video:0KiB audio:126KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.701460%
+[info] size=     128KiB time=00:00:08.00 bitrate= 130.9kbits/s speed= 133x elapsed=0:00:00.06    
+[aac @ 00000268529ab540] [info] Qavg: 250.771

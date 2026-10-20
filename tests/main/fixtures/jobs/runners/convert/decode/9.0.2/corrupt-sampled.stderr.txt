@@ -1,0 +1,247 @@
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-614945135 > 3151).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 3155
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (550382971 > 4206).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 4210
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-68771301 > 2745).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 2749
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-1845439629 > 4230).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 4234
+[h264 @ 0000016cf3ac1580] Invalid NAL unit size (-614945135 > 3151).
+[h264 @ 0000016cf3ac1580] Error splitting the input into NAL units.
+[h264 @ 0000016cf3abf800] P sub_mb_type 5 out of range at 16 6
+[h264 @ 0000016cf3abf800] error while decoding MB 16 6
+[h264 @ 0000016cf3abfbc0] Invalid NAL unit size (550382971 > 4206).
+[h264 @ 0000016cf3abfbc0] Error splitting the input into NAL units.
+[h264 @ 0000016cf3ac1d00] Invalid NAL unit size (-68771301 > 2745).
+[h264 @ 0000016cf3ac1d00] Error splitting the input into NAL units.
+[h264 @ 0000016cf3abf0c0] Invalid NAL unit size (-1845439629 > 4230).
+[h264 @ 0000016cf3abf0c0] Error splitting the input into NAL units.
+[vist#2:0/h264 @ 0000016cf151a9c0] [dec:h264 @ 0000016cf35844c0] Error submitting packet to decoder: Invalid data found when processing input
+    Last message repeated 3 times
+[h264 @ 0000016cf35eeb00] Invalid NAL unit size (2029629338 > 4602).
+[h264 @ 0000016cf35eeb00] missing picture in access unit with size 4606
+[h264 @ 0000016cf35eeb00] Invalid NAL unit size (150083747 > 3115).
+[h264 @ 0000016cf35eeb00] missing picture in access unit with size 3119
+[h264 @ 0000016cf35eeb00] Invalid NAL unit size (-620373208 > 4217).
+[h264 @ 0000016cf35eeb00] missing picture in access unit with size 4221
+[h264 @ 0000016cf35eeb00] Invalid NAL unit size (2055580160 > 3444).
+[h264 @ 0000016cf35eeb00] missing picture in access unit with size 3448
+[h264 @ 0000016cf3899b00] Invalid NAL unit size (2029629338 > 4602).
+[h264 @ 0000016cf3899b00] Error splitting the input into NAL units.
+[h264 @ 0000016cf389b4c0] corrupted macroblock 16 9 (total_coeff=-1)
+[h264 @ 0000016cf389b4c0] error while decoding MB 16 9
+[h264 @ 0000016cf389c740] Invalid NAL unit size (150083747 > 3115).
+[h264 @ 0000016cf389c740] Error splitting the input into NAL units.
+[h264 @ 0000016cf389bfc0] Invalid NAL unit size (-620373208 > 4217).
+[h264 @ 0000016cf389bfc0] Error splitting the input into NAL units.
+[h264 @ 0000016cf389a9c0] Invalid NAL unit size (2055580160 > 3444).
+[h264 @ 0000016cf389a9c0] Error splitting the input into NAL units.
+[vist#1:0/h264 @ 0000016cf33ada40] [dec:h264 @ 0000016cf33be700] Error submitting packet to decoder: Invalid data found when processing input
+    Last message repeated 2 times
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] ms_present = 3 is reserved.
+[vist#1:0/h264 @ 0000016cf33ada40] [dec:h264 @ 0000016cf33be700] Error submitting packet to decoder: Invalid data found when processing input
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.1 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Number of bands (31) exceeds limit (4).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.2 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.10 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.10 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 0.12 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.0 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 2.12 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.1 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 0.9 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-2032852616 > 4410).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 4414
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-1830502359 > 3174).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 3178
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-266702364 > 4298).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 4302
+[h264 @ 0000016cf33c3680] Invalid NAL unit size (-1778281299 > 3683).
+[h264 @ 0000016cf33c3680] missing picture in access unit with size 3687
+[h264 @ 0000016cf3ac1580] Invalid NAL unit size (-2032852616 > 4410).
+[h264 @ 0000016cf3ac1580] Error splitting the input into NAL units.
+[h264 @ 0000016cf3abfbc0] Invalid NAL unit size (-1830502359 > 3174).
+[h264 @ 0000016cf3abfbc0] Error splitting the input into NAL units.
+[h264 @ 0000016cf3ac1d00] Invalid NAL unit size (-266702364 > 4298).
+[h264 @ 0000016cf3ac1d00] Error splitting the input into NAL units.
+[h264 @ 0000016cf3abf0c0] Invalid NAL unit size (-1778281299 > 3683).
+[h264 @ 0000016cf3abf0c0] Error splitting the input into NAL units.
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] decode_pce: Input buffer exhausted before END element found
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Operation not permitted
+[aac @ 0000016cf152e400] channel element 3.10 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.7 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Number of bands (24) exceeds limit (8).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Number of bands (27) exceeds limit (24).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.6 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] decode_pce: Input buffer exhausted before END element found
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Number of bands (25) exceeds limit (7).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of scalefactor bands in group (60) exceeds limit (49).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 2.6 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] decode_pce: Input buffer exhausted before END element found
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 2.6 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of scalefactor bands in group (15) exceeds limit (14).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+    Last message repeated 1 times
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of bands (18) exceeds limit (1).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 2.1 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of bands (7) exceeds limit (5).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of bands (3) exceeds limit (2).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.4 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of bands (23) exceeds limit (10).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of scalefactor bands in group (15) exceeds limit (14).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of bands (15) exceeds limit (14).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of bands (13) exceeds limit (12).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+    Last message repeated 1 times
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.6 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.11 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.4 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Input buffer exhausted before END element found
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of bands (6) exceeds limit (4).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.3 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.7 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.9 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.10 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Number of bands (47) exceeds limit (36).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.6 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+    Last message repeated 1 times
+[aac @ 0000016cf152e400] skip_data_stream_element: Input buffer exhausted before END element found
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] invalid band type
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Number of scalefactor bands in group (56) exceeds limit (49).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.6 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 3.4 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.15 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.15 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Number of scalefactor bands in group (60) exceeds limit (49).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 3.10 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Number of bands (15) exceeds limit (11).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Number of scalefactor bands in group (56) exceeds limit (49).
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] channel element 2.5 is not allocated
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152e400] Reserved bit set.
+[aac @ 0000016cf152e400] Prediction is not allowed in AAC-LC.
+[aist#0:2/aac @ 0000016cf335ae00] [dec:aac @ 0000016cf344a600] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] skip_data_stream_element: Input buffer exhausted before END element found
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] channel element 2.3 is not allocated
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Number of bands (22) exceeds limit (17).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Prediction is not allowed in AAC-LC.
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input
+[aac @ 0000016cf152f680] Reserved bit set.
+[aac @ 0000016cf152f680] Number of bands (53) exceeds limit (33).
+[aist#0:1/aac @ 0000016cf335ac40] [dec:aac @ 0000016cf1566580] Error submitting packet to decoder: Invalid data found when processing input

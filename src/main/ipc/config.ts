@@ -1,6 +1,9 @@
 /**
  * @module main/ipc/config
  * @description IPC handlers for configuration persistence and URL history.
+ *
+ * Main-owned keys never cross these channels: every config returned to the
+ * renderer and every partial it saves passes through `stripMainOwned`.
  */
 
 import { ipcMain } from 'electron'
@@ -10,21 +13,22 @@ import {
   getConfig,
   getUrlHistory,
   removeUrlHistory,
-  clearUrlHistory
+  clearUrlHistory,
+  stripMainOwned
 } from '../config'
 
 /** Register config and URL-history IPC handlers. */
 export function registerConfigIPC(): void {
   ipcMain.handle('config:load', async () => {
-    return loadConfig()
+    return stripMainOwned(await loadConfig())
   })
 
   ipcMain.handle('config:save', async (_, partial) => {
-    return saveConfig(partial)
+    return stripMainOwned(await saveConfig(stripMainOwned(partial ?? {})))
   })
 
   ipcMain.handle('config:get', async () => {
-    return getConfig()
+    return stripMainOwned(await getConfig())
   })
 
   // --- URL History ---

@@ -1,0 +1,14 @@
+ffmpeg stats and -progress period set to 0.5.
+Input #0, lavfi, from 'sine=frequency=1000:duration=1.6':
+  Duration: N/A, start: 0.000000, bitrate: 705 kb/s
+  Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+Stream mapping:
+  Stream #0:0 -> #0:0 (pcm_s16le (native) -> flac (native))
+Output #0, flac, to 'OUT/tone.flac':
+  Metadata:
+    encoder         : Lavf59.34.101
+  Stream #0:0: Audio: flac, 44100 Hz, mono, s16, 128 kb/s
+    Metadata:
+      encoder         : Lavc59.50.100 flac
+size=      28kB time=00:00:01.60 bitrate= 141.6kbits/s speed=0.994x    
+video:0kB audio:20kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: 41.373802%

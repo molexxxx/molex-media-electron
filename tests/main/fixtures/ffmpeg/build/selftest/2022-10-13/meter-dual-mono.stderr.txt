@@ -1,0 +1,42 @@
+[info] Input #0, lavfi, from 'sine=frequency=997:sample_rate=48000:duration=5':
+[info]   Duration: N/A, start: 0.000000, bitrate: 768 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[ebur128@st @ 0000023bbbfe1980] [info] Summary:
+
+  Integrated loudness:
+    I:         -70.0 LUFS
+    Threshold:   0.0 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold:   0.0 LUFS
+    LRA low:     0.0 LUFS
+    LRA high:    0.0 LUFS
+
+  True peak:
+    Peak:       -inf dBFS
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_s16le) -> ebur128:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:04.90 bitrate=N/A speed= 517x    
+[info] video:0kB audio:469kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[ebur128@st @ 0000023bbbff0040] [info] Summary:
+
+  Integrated loudness:
+    I:         -18.1 LUFS
+    Threshold: -28.1 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -38.1 LUFS
+    LRA low:   -18.1 LUFS
+    LRA high:  -18.1 LUFS
+
+  True peak:
+    Peak:      -18.1 dBFS

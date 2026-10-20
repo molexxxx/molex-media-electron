@@ -1,0 +1,19 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[in#0/ac3 @ 0000018d6c193c40] [warning] Estimating duration from bitrate, this may be inaccurate
+[info] Input #0, ac3, from 'IN/ac3-stereo-dsur.ac3':
+[info]   Duration: 00:00:01.02, start: 0.000000, bitrate: 192 kb/s
+[info]   Stream #0:0: Audio: ac3, 48000 Hz, stereo, fltp, 192 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 0000018d6c223b40] [info] n:0 pts:0 pts_time:0 fmt:fltp channels:2 chlayout:stereo rate:48000 nb_samples:1536 checksum:9FC4DBC0 plane_checksums: [ 9211EBB8 821EEFF9 ]
+[Parsed_ashowinfo_0 @ 0000018d6c223b40] [info]   side data - matrix encoding: Dolby Surround
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[Parsed_ashowinfo_0 @ 0000018d6c223b40] [info] n:1 pts:1536 pts_time:0.032 fmt:fltp channels:2 chlayout:stereo rate:48000 nb_samples:1536 checksum:5C5C622D plane_checksums: [ A92833F7 42142E36 ]
+[Parsed_ashowinfo_0 @ 0000018d6c223b40] [info]   side data - matrix encoding: Dolby Surround
+[out#0/null @ 0000018d6c1c6b00] [info] video:0KiB audio:6KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:00.03 bitrate=N/A speed=12.5x elapsed=0:00:00.00    

@@ -1,0 +1,3 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[fc#0 @ 00000238111cfd40] [fatal] A filtergraph has zero outputs, this is not supported
+[fatal] Error : Function not implemented

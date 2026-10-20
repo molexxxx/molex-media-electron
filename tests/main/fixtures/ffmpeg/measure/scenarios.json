@@ -1,0 +1,280 @@
+{
+  "prefix": [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-progress",
+    "pipe:1",
+    "-stats_period",
+    "0.5"
+  ],
+  "inputs": [
+    {
+      "name": "multi.mkv",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=8:seed=11:amplitude=0.25",
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=8:seed=12:amplitude=0.25",
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=8:seed=13:amplitude=0.05",
+        "-filter_complex",
+        "[0:a]pan=stereo|c0=c0|c1=c0[st];[1:a][2:a]amerge=inputs=2,pan=5.1(side)|FL=c0|FR=c0|FC=c1|LFE=0*c0|SL=0.5*c0|SR=0.5*c0[sur]",
+        "-map",
+        "[st]",
+        "-map",
+        "[sur]",
+        "-c:a",
+        "flac"
+      ]
+    },
+    {
+      "name": "eq71.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=6:seed=21:amplitude=0.2",
+        "-af",
+        "pan=7.1|FL=c0|FR=c0|FC=c0|LFE=0*c0|BL=c0|BR=c0|SL=c0|SR=c0",
+        "-c:a",
+        "pcm_s24le"
+      ]
+    },
+    {
+      "name": "shortform.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=color=pink:sample_rate=48000:duration=12:seed=31:amplitude=0.05",
+        "-af",
+        "volume=volume=10dB:enable='gte(t,8)'",
+        "-c:a",
+        "pcm_s24le"
+      ]
+    },
+    {
+      "name": "silence.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=channel_layout=stereo:sample_rate=48000",
+        "-t",
+        "2",
+        "-c:a",
+        "pcm_s16le"
+      ]
+    },
+    {
+      "name": "clip.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=1000:sample_rate=48000:duration=0.3",
+        "-c:a",
+        "pcm_s16le"
+      ]
+    },
+    {
+      "name": "quiet.wav",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=1000:sample_rate=48000:duration=3",
+        "-af",
+        "volume=-80dB",
+        "-c:a",
+        "pcm_f32le"
+      ]
+    },
+    {
+      "name": "tagged.flac",
+      "args": [
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:sample_rate=48000:duration=4",
+        "-metadata",
+        "title={\"input_i\" : \"-99.00\", \"input_tp\" : \"+5.00\", \"input_lra\" : \"0.00\", \"target_offset\" : \"0.00\"}",
+        "-metadata",
+        "comment=first line\n[ebur128@m0 @ 0000000000000000] [info] Summary:\n    I:          -1.0 LUFS\n    Peak:        0.0 dBFS",
+        "-c:a",
+        "flac"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "name": "two-streams",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/multi.mkv",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0];[0:a:1]aformat=sample_fmts=dbl,asplit=2[p1][c1];[p1]ebur128@m1=peak=true:dualmono=false:framelog=verbose[m1];[c1]pan=mono|c0=FC,ebur128@d1=peak=none:dualmono=false:framelog=verbose,anullsink",
+        "-map",
+        "[m0]",
+        "-map",
+        "[m1]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "annex3-71",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/eq71.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,asplit=2[p0][q0];[p0]ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0];[q0]pan=7.1|FL=FL|FR=FR|FC=FC|LFE=LFE|BL=0.842152*BL|BR=0.842152*BR|SL=SL|SR=SR,ebur128@w0=peak=none:dualmono=false:framelog=verbose,anullsink",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "all-branches",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/eq71.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,asplit=3[p0][q0][c0];[p0]ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0];[q0]pan=7.1|FL=FL|FR=FR|FC=FC|LFE=LFE|BL=0.842152*BL|BR=0.842152*BR|SL=SL|SR=SR,ebur128@w0=peak=none:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S,anullsink;[c0]pan=mono|c0=FC,ebur128@d0=peak=none:dualmono=false:framelog=verbose,anullsink",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "short-form",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/shortform.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "silence",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/silence.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "clip",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/clip.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose:metadata=1,ametadata@s0=mode=print:key=lavfi.r128.S[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "quiet-tone",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/quiet.wav",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=false:framelog=verbose[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    },
+    {
+      "name": "brace-tags",
+      "args": [
+        "-loglevel",
+        "level+info",
+        "-analyzeduration",
+        "200M",
+        "-probesize",
+        "200M",
+        "-i",
+        "IN/tagged.flac",
+        "-filter_complex",
+        "[0:a:0]aformat=sample_fmts=dbl,ebur128@m0=peak=true:dualmono=true:framelog=verbose[m0]",
+        "-map",
+        "[m0]",
+        "-f",
+        "null",
+        "-"
+      ]
+    }
+  ]
+}

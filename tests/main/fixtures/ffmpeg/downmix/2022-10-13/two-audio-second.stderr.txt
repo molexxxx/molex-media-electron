@@ -1,0 +1,27 @@
+[info] ffmpeg stats and -progress period set to 0.5.
+[info] Input #0, matroska,webm, from 'IN/two-audio.mkv':
+[info]   Metadata:
+[info]     ENCODER         : Lavf59.34.101
+[info]   Duration: 00:00:01.02, start: -0.021000, bitrate: 464 kb/s
+[info]   Stream #0:0: Audio: aac (LC), 48000 Hz, mono, fltp (default)
+[info]     Metadata:
+[info]       ENCODER         : Lavc59.50.100 aac
+[info]       DURATION        : 00:00:01.021000000
+[info]   Stream #0:1: Audio: ac3, 48000 Hz, 5.1(side), fltp, 384 kb/s
+[info]     Metadata:
+[info]       ENCODER         : Lavc59.50.100 ac3
+[info]       DURATION        : 00:00:01.024000000
+[info] Stream mapping:
+[info]   Stream #0:1 -> #0:0 (ac3 (native) -> pcm_s16le (native))
+[Parsed_ashowinfo_0 @ 00000167cfc8fb40] [info] n:0 pts:768 pts_time:0.016 pos:912 fmt:fltp channels:6 chlayout:5.1(side) rate:48000 nb_samples:1536 checksum:5E1214FF plane_checksums: [ 7FD8DE95 DB45C3F7 11D9BFDE C7F02F4E 92B3BCA9 1252C662 ]
+[Parsed_ashowinfo_0 @ 00000167cfc8fb40] [info]   side data - matrix encoding: none
+[Parsed_ashowinfo_0 @ 00000167cfc8fb40] [info]   side data - downmix: preferred downmix type - unknown Mix levels: center 0.594604 (0.707107 ltrt) - surround 0.500000 (0.707107 ltrt) - lfe 0.000000
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf59.34.101
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 5.1(side), s16, 4608 kb/s
+[info]     Metadata:
+[info]       DURATION        : 00:00:01.024000000
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:00.01 bitrate=N/A speed=8.13x    
+[info] video:0kB audio:18kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown

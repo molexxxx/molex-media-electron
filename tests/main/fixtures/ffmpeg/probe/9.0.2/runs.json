@@ -1,0 +1,673 @@
+{
+  "version": "ffmpeg version n9.0.2-17-g2a571b6068-20260930 Copyright (c) 2000-2026 the FFmpeg developers",
+  "label": "9.0.2",
+  "platform": "win32",
+  "runs": [
+    {
+      "name": "brace.mp3",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/brace.mp3"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "brace.mp3.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "coherent51-s16.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/coherent51_s16.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "coherent51-s16.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "cover.flac",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/cover.flac"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "cover.flac.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "cover.m4a",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/cover.m4a"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "cover.m4a.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "cover.mp3",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/cover.mp3"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "cover.mp3.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "dts51side.mkv",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/dts51side.mkv"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "dts51side.mkv.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "dynamic.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/dynamic.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "dynamic.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "eac3-51side-meta.mka",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/eac3_51side_meta.mka"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "eac3-51side-meta.mka.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "eq51.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/eq51.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "eq51.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "eq61.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/eq61.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "eq61.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "eq61back.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/eq61back.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "eq61back.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "eq71.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/eq71.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "eq71.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "hex.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/hex.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "hex.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "hires96.flac",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/hires96.flac"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "hires96.flac.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "isp-fs4.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/isp_fs4.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "isp-fs4.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "loud.mp3",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/loud.mp3"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "loud.mp3.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "loud-aac.m4a",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/loud_aac.m4a"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "loud-aac.m4a.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "loudmaster.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/loudmaster.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "loudmaster.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "mono-speech.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/mono_speech.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "mono-speech.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "mono-speech-32k.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/mono_speech_32k.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "mono-speech-32k.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "music4410.flac",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/music4410.flac"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "music4410.flac.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "opus.opus",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/opus.opus"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "opus.opus.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "opus.webm",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/opus.webm"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "opus.webm.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "rear71.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/rear71.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "rear71.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "short1500.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/short1500.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "short1500.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "shortform30.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/shortform30.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "shortform30.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "silence.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/silence.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "silence.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "spaced-name-u.flac",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/spaced name ü.flac"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "spaced-name-u.flac.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "square-clip.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/square_clip.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "square-clip.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "surround51back.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/surround51back.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "surround51back.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "surround51side.mkv",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/surround51side.mkv"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "surround51side.mkv.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "surround71.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/surround71.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "surround71.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "surroundonly51side.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/surroundonly51side.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "surroundonly51side.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "tiny300.wav",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/tiny300.wav"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "tiny300.wav.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "video-multi.mkv",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/video_multi.mkv"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "video-multi.mkv.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "video-multi.mp4",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/video_multi.mp4"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "video-multi.mp4.stdout.txt",
+      "stderr": null
+    },
+    {
+      "name": "vorbis.ogg",
+      "tool": "ffprobe",
+      "argv": [
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-show_chapters",
+        "-of",
+        "json",
+        "IN/vorbis.ogg"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "vorbis.ogg.stdout.txt",
+      "stderr": null
+    }
+  ]
+}

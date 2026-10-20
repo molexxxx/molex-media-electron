@@ -1,0 +1,7 @@
+[flac @ 00000239fbd40900] [warning] encoding as 24 bits-per-sample, more is considered experimental. Add -strict experimental if you want to encode more than 24 bits-per-sample
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48008
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48048
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48088
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48128
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48168
+[null @ 00000239fbd3c980] [error] Application provided invalid, non monotonically increasing dts to muxer in stream 0: 48216 >= 48208
