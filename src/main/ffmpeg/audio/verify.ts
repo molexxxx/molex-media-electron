@@ -6,7 +6,7 @@
 import type { GainPlan, LoudnessTarget, StreamVerdict, UnreachablePolicy, VerifiedStream } from '../../../shared/audio/types'
 import { filterComplex } from './chains'
 import type { FilterPart } from './chains'
-import { ebur128Stage, isSummaryLine, parseEbur128Blocks, shortTermStage } from './measure'
+import { ebur128Stage, isSummaryLine, LRA_MIN_SEC, parseEbur128Blocks, shortTermStage } from './measure'
 
 /** How one output stream is verified. */
 export interface VerifySpec
@@ -22,6 +22,8 @@ export interface VerifySpec
   passthrough: boolean
   /** From the encode run's astats@p<k> line; null for lossless outputs. */
   preEncodeTruePeakDbtp: number | null
+  /** The stream's duration; loudness range is reported only from {@link LRA_MIN_SEC} on. */
+  durationSec: number | null
 }
 
 /** Subtracted from every true-peak limit: swresample's 8x reference under-reads clipped content by up to 0.169 dB. */
@@ -152,7 +154,7 @@ export function parseVerify(lines: Iterable<string>, specs: readonly VerifySpec[
     streams.set(n, {
       outIndex: n,
       integratedLufs: block.integratedLufs,
-      loudnessRangeLu: block.loudnessRangeLu,
+      loudnessRangeLu: spec.durationSec !== null && spec.durationSec >= LRA_MIN_SEC ? block.loudnessRangeLu : null,
       maxShortTermLufs: spec.shortTerm ? (blocks.get(`s${n}`)?.maxShortTermLufs ?? null) : null,
       preEncodeTruePeakDbtp: spec.preEncodeTruePeakDbtp ?? truePeak,
       truePeakDbtp: truePeak,

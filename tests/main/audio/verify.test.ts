@@ -76,7 +76,7 @@ function parseCase(build: Build, name: string, transform: (text: string) => Iter
 
 function verifySpec(outIndex: number, options: Partial<VerifySpec> = {}): VerifySpec
 {
-  return { outIndex, sampleRate: 44100, dualMono: false, weights: null, shortTerm: false, passthrough: false, preEncodeTruePeakDbtp: null, ...options }
+  return { outIndex, sampleRate: 44100, dualMono: false, weights: null, shortTerm: false, passthrough: false, preEncodeTruePeakDbtp: null, durationSec: 6, ...options }
 }
 
 function ceiling(options: Partial<Ceiling> = {}): Ceiling
@@ -243,7 +243,7 @@ describe('parseVerify on recorded fixtures', () =>
     expect(soxr.streams.get(0)).toEqual({
       outIndex: 0,
       integratedLufs: -25.1,
-      loudnessRangeLu: 0.1,
+      loudnessRangeLu: null,
       maxShortTermLufs: null,
       preEncodeTruePeakDbtp: -14.630675,
       truePeakDbtp: -14.630675,
@@ -252,6 +252,15 @@ describe('parseVerify on recorded fixtures', () =>
     })
     const swr = parseCase(build, 'flac-swr', transform)
     expect(swr.streams.get(0)).toMatchObject({ truePeakDbtp: -14.626676, samplePeakDbfs: -14.78779, meter: 'swr-8x' })
+  })
+
+  it.each(MATRIX)('reports loudness range only for an item of a minute or more (%s, %s)', (build, _variant, transform) =>
+  {
+    const read = (durationSec: number | null): number | null | undefined =>
+      parseVerify(transform(stderrOf(build, 'flac-soxr')), [verifySpec(0, { durationSec })], 'soxr').streams.get(0)?.loudnessRangeLu
+    expect(read(60)).toBe(0.1)
+    expect(read(59.9)).toBeNull()
+    expect(read(null)).toBeNull()
   })
 
   it.each(MATRIX)('keeps the encode run pre-encode value of a lossy output (%s, %s)', (build, _variant, transform) =>

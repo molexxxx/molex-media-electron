@@ -1,1 +1,1 @@
-[aist#0:0/pcm_s16le @ 00000228bf3a9b40] [warning] Guessed Channel Layout: mono
+[aist#0:0/pcm_s16le @ 000001a3276cce00] [warning] Guessed Channel Layout: mono

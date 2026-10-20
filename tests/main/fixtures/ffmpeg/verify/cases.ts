@@ -48,6 +48,7 @@ function spec(outIndex: number, sampleRate: number, options: Partial<VerifySpec>
     shortTerm: false,
     passthrough: false,
     preEncodeTruePeakDbtp: null,
+    durationSec: 6,
     ...options
   }
 }

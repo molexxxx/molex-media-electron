@@ -743,7 +743,8 @@ export function buildEncodeArgs(input: EncodeInputs, plans: readonly GainPlan[],
       dualMono: choice.channels === 1 && recipe.mono === 'two-speakers',
       weights: weights.ok ? weights.stage : null,
       shortTerm: plan.shortTermLimitLufs !== null,
-      passthrough: plan.mode === 'passthrough'
+      passthrough: plan.mode === 'passthrough',
+      durationSec: streamDuration(facts, a) > 0 ? streamDuration(facts, a) : null
     }
     if (copies(a, choice, plan))
     {

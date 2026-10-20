@@ -108,16 +108,29 @@ export function meterPrefix(spec: Pick<ChainSpec, 'inputLayout' | 'monoToStereo'
   return stages
 }
 
-/** Stages 1 to 8 of one stream: the meter prefix, the high-pass, the gain, the oversampled limiter, and the pin. */
+/**
+ * Stages 1 to 8 of one stream: the meter prefix, the high-pass, the gain, the oversampled limiter, and the pin. A
+ * mono source that becomes two speakers is processed and pinned in mono and duplicated last, so dither is drawn once
+ * and both channels carry identical samples; gain and limiting on identical channels match the duplicated meter.
+ */
 export function encodeChain(spec: ChainSpec): string[]
 {
+  const duplicate = spec.monoToStereo && spec.inputLayout === 'mono'
   return [
-    ...meterPrefix(spec),
+    ...meterPrefix(duplicate ? { ...spec, monoToStereo: false } : spec),
     ...(spec.highpassHz > 0 ? [`highpass=f=${spec.highpassHz}:poles=2`] : []),
     `volume=${formatDb(spec.gainDb)}:precision=double`,
     ...limiterStages(spec.limiterCeilingDbtp, spec.processRate),
-    ...pinStages(spec.out)
+    ...(duplicate ? duplicatedPinStages(spec.out) : pinStages(spec.out))
   ]
+}
+
+/** The pin of a duplicated mono stream: pinned in mono, then copied to both channels and pinned again as stereo. */
+export function duplicatedPinStages(out: ChainOutput): string[]
+{
+  const mono = pinStages({ ...out, layout: 'mono' })
+  const stereo = pinStages({ ...out, layout: 'stereo' })
+  return [...mono, MONO_TO_STEREO, stereo[stereo.length - 1]]
 }
 
 /** The oversampler unless the signal already runs at 192 kHz or more, then the limiter at L. */

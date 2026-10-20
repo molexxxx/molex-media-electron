@@ -10,7 +10,7 @@ import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 import {
   LIMITER, OVERSAMPLE_MIN_RATE, encodeChain, encodeParts, exportLimiterTail, filterComplex, formatDb, limiterStages,
-  meterPrefix, oversampleRate, pinStages, preEncodeMeterStages
+  duplicatedPinStages, meterPrefix, oversampleRate, pinStages, preEncodeMeterStages
 } from '../../../src/main/ffmpeg/audio/chains'
 import type { ChainOutput, ChainSpec } from '../../../src/main/ffmpeg/audio/chains'
 import { LIMITER_MARGIN_DB } from '../../../src/main/ffmpeg/audio/ceilings'
@@ -272,9 +272,25 @@ describe('encodeChain', () =>
   {
     for (const spec of chainMatrix())
     {
-      const prefix = meterPrefix(spec)
+      const duplicated = spec.monoToStereo && spec.inputLayout === 'mono'
+      const prefix = meterPrefix(duplicated ? { ...spec, monoToStereo: false } : spec)
       expect(encodeChain(spec).slice(0, prefix.length)).toEqual(prefix)
     }
+  })
+
+  it('duplicates a mono source after its pin, so one dither reaches both channels', () =>
+  {
+    const chain = encodeChain(chainSpec({ inputLayout: 'mono', monoToStereo: true }))
+    expect(meterPrefix(chainSpec({ inputLayout: 'mono', monoToStereo: true }))).toContain('pan=stereo|c0=c0|c1=c0')
+    expect(chain.indexOf('pan=stereo|c0=c0|c1=c0')).toBe(chain.length - 2)
+    expect(chain.slice(-3)).toEqual([
+      'aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=mono',
+      'pan=stereo|c0=c0|c1=c0',
+      'aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=stereo'
+    ])
+    expect(duplicatedPinStages({ sampleRate: 48000, layout: 'stereo', pin: 'encoder' }))
+      .toEqual(['aformat=sample_rates=48000:channel_layouts=mono', 'pan=stereo|c0=c0|c1=c0', 'aformat=sample_rates=48000:channel_layouts=stereo'])
+    expect(duplicatedPinStages({ sampleRate: 48000, layout: 'stereo', pin: 's32' }).at(-1)).toBe('aformat=sample_fmts=s32:sample_rates=48000:channel_layouts=stereo')
   })
 
   it('applies the gain as volume in dB at double precision, never a linear factor', () =>
@@ -348,15 +364,17 @@ describe('documented encode commands', () =>
   it('mono podcast to WAV for Apple Podcasts, duplicated into two channels', () =>
   {
     expect(graph(chainSpec({ inputLayout: 'mono', monoToStereo: true, gainDb: 5 }))).toBe(
-      `[0:a:0]aformat=sample_fmts=dbl,pan=stereo|c0=c0|c1=c0,volume=5.00dB:precision=double,aresample=220500,${LIMITER_15},` +
-      'aresample=osr=44100:osf=s16:dither_method=triangular,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=stereo[a0]')
+      `[0:a:0]aformat=sample_fmts=dbl,volume=5.00dB:precision=double,aresample=220500,${LIMITER_15},` +
+      'aresample=osr=44100:osf=s16:dither_method=triangular,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=mono,' +
+      'pan=stereo|c0=c0|c1=c0,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=stereo[a0]')
   })
 
   it('a 32 kHz mono source oversampled to 192 kHz and pinned to 44.1 kHz', () =>
   {
     expect(graph(chainSpec({ inputLayout: 'mono', processRate: 32000, monoToStereo: true, gainDb: 5 }))).toBe(
-      `[0:a:0]aformat=sample_fmts=dbl,pan=stereo|c0=c0|c1=c0,volume=5.00dB:precision=double,aresample=192000,${LIMITER_15},` +
-      'aresample=osr=44100:osf=s16:dither_method=triangular,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=stereo[a0]')
+      `[0:a:0]aformat=sample_fmts=dbl,volume=5.00dB:precision=double,aresample=192000,${LIMITER_15},` +
+      'aresample=osr=44100:osf=s16:dither_method=triangular,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=mono,' +
+      'pan=stereo|c0=c0|c1=c0,aformat=sample_fmts=s16:sample_rates=44100:channel_layouts=stereo[a0]')
   })
 
   it('mono speech to EBU R 128 as one channel', () =>

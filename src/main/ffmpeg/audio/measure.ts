@@ -288,7 +288,7 @@ export function streamBlock(blocks: ReadonlyMap<string, Ebur128Block>, spec: Mea
 const GATING_BLOCK_SEC = 0.4
 
 /** Loudness range is reported only for items of at least a minute (EBU R 128, Tech 3342). */
-const LRA_MIN_SEC = 60
+export const LRA_MIN_SEC = 60
 
 /** I at or under -70.0 with a threshold of 0.0: no gating block passed the absolute gate. */
 function gateFailed(block: Ebur128Block): boolean
