@@ -61,7 +61,23 @@
   }
 
   /* The browser forces overflow: visible on the select, so a long label can only end in an ellipsis inside an
-     author selectedcontent; the select's built-in label wraps past its box instead. */
+     author selectedcontent; the select's built-in label wraps past its box instead. The author button holding it
+     takes the select's row and leaves the picker icon its place. */
+  select.ui-select > button.ui-select-button
+  {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-inline-size: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: inherit;
+  }
+
   select.ui-select selectedcontent
   {
     min-inline-size: 0;
@@ -618,11 +634,16 @@
   /* Overlays drop the centered popover insets so position-area places them beside the anchor named on the
      trigger; the gap sits on the anchor side and flips with the fallback. */
   .ui-tooltip,
+  /* A popover opens on the side with more room and never grows past it: with position-area its percentages resolve
+     against that side, so a long list scrolls inside the window instead of running off its edge. */
   .ui-popover
   {
     inset: auto;
     margin: 0;
     position-try-fallbacks: flip-block, flip-inline;
+    position-try-order: most-block-size;
+    max-block-size: calc(100% - 8px);
+    overflow-y: auto;
   }
 
   :is(.ui-tooltip, .ui-popover)[data-placement='top']

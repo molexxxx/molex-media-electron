@@ -1,6 +1,7 @@
-import { useId, type ChangeEvent, type ReactElement, type Ref } from 'react'
+import { useId, useState, type ChangeEvent, type ReactElement, type Ref, type SyntheticEvent } from 'react'
 import { cx } from './cx'
 import { FieldMessage, MIXED_LABEL } from './NumberField'
+import { Tooltip } from './Tooltip'
 
 /** One choice of a {@link Select}. The label is plain text: secondary facts belong in it or in a hint. */
 export interface SelectOption
@@ -47,6 +48,20 @@ function isGroup(entry: SelectOption | SelectGroup): entry is SelectGroup
   return 'group' in entry
 }
 
+/** The label of the option holding `value`. */
+function labelOf(options: ReadonlyArray<SelectOption | SelectGroup>, value: string): string
+{
+  for (const entry of options)
+  {
+    const found = isGroup(entry) ? entry.options.find((option) => option.value === value) : entry.value === value ? entry : undefined
+    if (found)
+    {
+      return found.label
+    }
+  }
+  return value
+}
+
 function renderOption(option: SelectOption): ReactElement
 {
   return (
@@ -60,7 +75,9 @@ function renderOption(option: SelectOption): ReactElement
  * A native select drawn as a customizable select, with native keyboard, typeahead, and combobox semantics.
  * A null value renders a selected, disabled first option reading `nullLabel` ("Mixed"), so no one job's
  * value reads as shared; a value missing from the options shows itself the same way instead of the first
- * option. Options and groups are plain text, as the select's content model requires.
+ * option. Options and groups are plain text, as the select's content model requires. The closed select shows the
+ * chosen label on one line through the browser's selectedcontent copy, ending in an ellipsis when it is too long,
+ * and only then shows the whole label as its tooltip.
  */
 export function Select({
   value,
@@ -79,12 +96,20 @@ export function Select({
 }: SelectProps): ReactElement
 {
   const errorId = useId()
+  const [truncated, setTruncated] = useState(false)
   const selected = value !== null && options.some((entry) => isGroup(entry)
     ? entry.options.some((option) => option.value === value)
     : entry.value === value)
     ? value
     : null
   const placeholder = selected === null ? value ?? nullLabel : null
+  const shown = placeholder ?? labelOf(options, selected as string)
+
+  const measure = (event: SyntheticEvent<HTMLSelectElement>): void =>
+  {
+    const content = event.currentTarget.querySelector('selectedcontent')
+    setTruncated(content !== null && content.scrollWidth > content.clientWidth + 1)
+  }
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>): void =>
   {
@@ -97,28 +122,35 @@ export function Select({
 
   return (
     <span className={cx('inline-flex flex-col gap-1', className)}>
-      <select
-        ref={ref}
-        id={id}
-        value={selected ?? ''}
-        disabled={disabled}
-        aria-label={label}
-        aria-labelledby={labelledBy}
-        aria-describedby={cx(describedBy, error && errorId) || undefined}
-        aria-invalid={Boolean(error) || undefined}
-        data-size={size}
-        className="ui-select w-full"
-        onChange={handleChange}
-      >
-        {placeholder !== null && <option value="" disabled>{placeholder}</option>}
-        {options.map((entry) => isGroup(entry)
-          ? (
-            <optgroup key={`group:${entry.group}`} label={entry.group}>
-              {entry.options.map(renderOption)}
-            </optgroup>
-          )
-          : renderOption(entry))}
-      </select>
+      <Tooltip content={truncated ? shown : ''} mode="label">
+        <select
+          ref={ref}
+          id={id}
+          value={selected ?? ''}
+          disabled={disabled}
+          aria-label={label}
+          aria-labelledby={labelledBy}
+          aria-describedby={cx(describedBy, error && errorId) || undefined}
+          aria-invalid={Boolean(error) || undefined}
+          data-size={size}
+          className="ui-select w-full"
+          onChange={handleChange}
+          onPointerEnter={measure}
+          onFocus={measure}
+        >
+          <button type="button" className="ui-select-button">
+            <selectedcontent />
+          </button>
+          {placeholder !== null && <option value="" disabled>{placeholder}</option>}
+          {options.map((entry) => isGroup(entry)
+            ? (
+              <optgroup key={`group:${entry.group}`} label={entry.group}>
+                {entry.options.map(renderOption)}
+              </optgroup>
+            )
+            : renderOption(entry))}
+        </select>
+      </Tooltip>
       {error && <FieldMessage id={errorId}>{error}</FieldMessage>}
     </span>
   )
