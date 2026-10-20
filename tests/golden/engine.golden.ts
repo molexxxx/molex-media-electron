@@ -766,7 +766,7 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
     expect(await workDirsIn(h.media)).toEqual([])
   })
 
-  it('catches an output planted in the work folder before FFmpeg is spawned, since -n exits 0 on newer builds', async () =>
+  it('catches an output planted in the work folder before FFmpeg is spawned, since -n exits 0 from libavformat 60', async () =>
   {
     const planted = partOutputName(1, 'mkv')
     let plantedAt = ''
@@ -802,7 +802,8 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
     const refused = await runTool(golden.ffmpeg, ['-hide_banner', '-nostdin', '-n', '-f', 'lavfi', '-i', 'sine=duration=1', '-f', 'matroska', existing])
     expect(refused.stderr).toContain('already exists')
     expect(await readFile(existing, 'utf8')).toBe('planted')
-    expect(refused.code).toBe(golden.versionString.startsWith('n9.') ? 0 : 1)
+    const avformatMajor = (golden.libs.avformat ?? [0])[0]
+    expect(refused.code, `libavformat ${avformatMajor}`).toBe(avformatMajor >= 60 ? 0 : 1)
   })
 
   it.runIf(isWindows)('places over a file another process holds open without sharing once it closes', async () =>
