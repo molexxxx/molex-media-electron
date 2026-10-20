@@ -1,0 +1,66 @@
+name: FFmpeg candidates
+
+# Checks candidate FFmpeg builds on Apple Silicon before one is pinned: each build meters one 997 Hz tone as mono and
+# copied into the five full-range channels of 5.1(side), and BS.1770 weights put the surround reading
+# 10*log10(3 + 2*1.41) = 7.65 dB above the mono one. A push that changes this file checks the default list.
+
+on:
+  push:
+    paths:
+      - .github/workflows/ffmpeg-candidates.yml
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: Space-separated ffmpeg.zip URLs to check
+        required: true
+        type: string
+      homebrew:
+        description: Also check Homebrew's ffmpeg
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  surround-meter:
+    name: Surround metering on Apple Silicon
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Meter each candidate
+        env:
+          URLS: ${{ inputs.urls || 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1792426763_N-127654-g7045cc9b80/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1756401489_8.0/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffmpeg.zip' }}
+          HOMEBREW: ${{ github.event_name == 'push' || inputs.homebrew }}
+        run: |
+          set -u
+          check()
+          {
+            label="$1"
+            bin="$2"
+            version=$("$bin" -hide_banner -version 2>&1 | head -1)
+            out=$("$bin" -hide_banner -nostdin -nostats -f lavfi -i "sine=frequency=997:sample_rate=48000:duration=5" \
+              -filter_complex "[0:a]asplit=2[a][b];[a]ebur128@mono[m];[b]pan=5.1(side)|FL=c0|FR=c0|FC=c0|LFE=0*c0|SL=c0|SR=c0,ebur128@surround[s]" \
+              -map "[m]" -f null - -map "[s]" -f null - 2>&1)
+            mono=$(printf '%s\n' "$out" | awk '/ebur128@mono @/ && /Summary/ { f = 1 } f && $1 == "I:" { print $2; exit }')
+            surround=$(printf '%s\n' "$out" | awk '/ebur128@surround @/ && /Summary/ { f = 1 } f && $1 == "I:" { print $2; exit }')
+            verdict=$(awk -v m="$mono" -v s="$surround" 'BEGIN { if (m == "" || s == "") { print "no reading"; exit } d = s - m; e = d - 7.65; if (e < 0) e = -e; printf "%s (difference %.2f dB, expected 7.65)", (e <= 0.3 ? "correct" : "WRONG"), d }')
+            echo "$label | $version | mono $mono LUFS | 5.1 $surround LUFS | $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
+          }
+          uname -m
+          for url in $URLS
+          do
+            dir=$(mktemp -d)
+            if curl -fsSL -o "$dir/ffmpeg.zip" "$url" && unzip -q "$dir/ffmpeg.zip" -d "$dir"
+            then
+              chmod +x "$dir/ffmpeg"
+              check "$url" "$dir/ffmpeg"
+            else
+              echo "$url | download failed" | tee -a "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          if [ "$HOMEBREW" = "true" ]
+          then
+            brew install ffmpeg >/dev/null 2>&1 && check "homebrew" "$(brew --prefix)/bin/ffmpeg"
+          fi
