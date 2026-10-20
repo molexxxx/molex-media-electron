@@ -9,11 +9,14 @@ import * as crypto from 'crypto'
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
-import type { ChildProcess } from 'child_process'
 import { getConfigSync } from '../config'
 import { runCommand } from '../ffmpeg/runner'
+import { createExec } from '../ffmpeg/exec'
 import { probeMedia, type MediaInfo } from '../ffmpeg/probe'
-import { buildExportCommand, getExportDurationSeconds, type ExportRequest } from '../ffmpeg/processor/editor'
+import type { ExportRequest } from '../ffmpeg/processor/editor'
+import { runExportJob, type ExportVerification } from '../ffmpeg/processor/export'
+import { realTimers } from '../timers'
+import { currentBuildState } from './jobs-host'
 import { startPreviewServer, registerPreviewPath } from '../preview-server'
 import { sendToAll } from './helpers'
 import { logger } from '../logger'
@@ -32,8 +35,20 @@ function getClipMp4CompatArgs(_videoCodec: string): string[] {
 }
 void getClipMp4CompatArgs
 
-/** Ref to the active export process for cancellation. */
-let activeExportProcess: ChildProcess | null = null
+/** Stops the active timeline export. */
+let activeExport: AbortController | null = null
+
+/** The completion line of a timeline export, naming a verify that did not pass. */
+function exportCompleteMessage(verification: ExportVerification | null): string {
+  if (!verification || verification.outcome === 'verified') return 'Export complete'
+  if (verification.outcome === 'failed') {
+    return verification.decodeErrorCount > 0
+      ? `Export complete, but it decoded with ${verification.decodeErrorCount} error(s)`
+      : 'Export complete, but its audio could not be verified'
+  }
+  const peak = verification.truePeakDbtp === null ? 'its true peak' : `its true peak of ${verification.truePeakDbtp.toFixed(2)} dBTP`
+  return `Export complete, but ${peak} is over the ${verification.limitDbtp.toFixed(2)} dBTP limit`
+}
 
 /** Cache: source file path → temp WAV path for clean audio decode. */
 const audioPreviewCache = new Map<string, string>()
@@ -87,7 +102,7 @@ export function registerEditorIPC(): void {
       }
     ) => {
       const config = getConfigSync()
-      const ffmpegPath = config?.ffmpegPath
+      const ffmpegPath = config?.ffmpeg?.ffmpegPath
       if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
       if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'Source file not found' }
 
@@ -266,7 +281,7 @@ export function registerEditorIPC(): void {
       }
 
       const config = getConfigSync()
-      const ffmpegPath = config?.ffmpegPath
+      const ffmpegPath = config?.ffmpeg?.ffmpegPath
       if (!ffmpegPath) {
         const token = registerPreviewPath(filePath)
         return { success: true, data: `${baseUrl}/${token}` }
@@ -346,7 +361,7 @@ export function registerEditorIPC(): void {
     }
 
     const config = getConfigSync()
-    const ffmpegPath = config?.ffmpegPath
+    const ffmpegPath = config?.ffmpeg?.ffmpegPath
     if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
 
     try {
@@ -433,7 +448,7 @@ export function registerEditorIPC(): void {
       }
     ) => {
       const config = getConfigSync()
-      const ffmpegPath = config?.ffmpegPath
+      const ffmpegPath = config?.ffmpeg?.ffmpegPath
       if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
       if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'Source file not found' }
 
@@ -516,7 +531,7 @@ export function registerEditorIPC(): void {
   // ---------------------------------------------------------------
   ipcMain.handle('editor:export', async (_, request: ExportRequest) => {
     const config = getConfigSync()
-    const ffmpegPath = config?.ffmpegPath
+    const ffmpegPath = config?.ffmpeg?.ffmpegPath
     if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
 
     // Validate that all source files exist on disk
@@ -526,56 +541,48 @@ export function registerEditorIPC(): void {
       }
     }
 
+    const controller = new AbortController()
+    activeExport?.abort()
+    activeExport = controller
     try {
-      const gpuMode = (config.gpuAcceleration || 'off') as GpuMode
-      const args = await buildExportCommand(request, ffmpegPath, gpuMode)
-      const totalDuration = getExportDurationSeconds(request)
-
-      logger.info(
-        `[editor:export] Starting timeline export (${totalDuration.toFixed(1)}s) → ${request.output.filePath}`
-      )
-
-      const { promise, process: proc } = runCommand(ffmpegPath, args, (line) => {
-        const match = line.match(/time=(\d+):(\d+):(\d+\.\d+)/)
-        if (match && totalDuration > 0) {
-          const secs =
-            parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseFloat(match[3])
-          const percent = Math.min(99, Math.round((secs / totalDuration) * 100))
-          sendToAll('editor:progress', { percent, message: `Rendering… ${percent}%` })
+      const result = await runExportJob(request, {
+        exec: createExec(ffmpegPath, { timers: realTimers }),
+        output: () => request.output.filePath,
+        fs: {
+          remove: (file) => fs.promises.rm(file, { force: true }),
+          size: async (file) => (await fs.promises.stat(file)).size
+        },
+        log: (entry) => logger[entry.level](`[editor:export] ${entry.message}`, entry.data ? JSON.stringify(entry.data) : undefined),
+        meter: currentBuildState().info?.soxr ? 'soxr' : 'swr',
+        gpu: { ffmpegPath, mode: (config.gpuAcceleration || 'off') as GpuMode },
+        onProgress: (p) => {
+          if (p.stage === 'verify') {
+            sendToAll('editor:progress', { percent: 99, message: 'Verifying…' })
+          } else if (p.percent !== null) {
+            sendToAll('editor:progress', { percent: p.percent, message: `Rendering… ${p.percent}%` })
+          }
         }
-      })
+      }, controller.signal)
 
-      activeExportProcess = proc
-      const res = await promise
-      activeExportProcess = null
-
-      if (res.killed) {
-        return { success: false, error: 'Export cancelled' }
-      }
-      if (res.code !== 0) {
-        // Extract a useful error from stderr
-        const lines = res.stderr.split('\n').filter((l) => l.trim())
-        const errMsg = lines.slice(-3).join(' ').slice(0, 300)
-        return { success: false, error: errMsg || `FFmpeg exited with code ${res.code}` }
-      }
-
-      sendToAll('editor:progress', { percent: 100, message: 'Export complete' })
-      logger.info(`[editor:export] Complete → ${request.output.filePath}`)
-      return { success: true, outputPath: request.output.filePath }
+      if (result.status === 'canceled') return { success: false, error: 'Export canceled' }
+      if (result.status === 'failed') return { success: false, error: result.error }
+      sendToAll('editor:progress', { percent: 100, message: exportCompleteMessage(result.verification) })
+      return { success: true, outputPath: result.outputPath }
     } catch (err: any) {
-      activeExportProcess = null
-      logger.error('[editor:export] Failed:', err)
-      return { success: false, error: err.message || 'Export failed' }
+      logger.error('[editor:export] Failed:', err?.message ?? String(err))
+      return { success: false, error: err?.message || 'Export failed' }
+    } finally {
+      if (activeExport === controller) activeExport = null
     }
   })
 
   // ---------------------------------------------------------------
-  // editor:cancelExport - Kill the active export process
+  // editor:cancelExport - Stop the active export
   // ---------------------------------------------------------------
   ipcMain.handle('editor:cancelExport', async () => {
-    if (activeExportProcess) {
-      activeExportProcess.kill('SIGTERM')
-      activeExportProcess = null
+    if (activeExport) {
+      activeExport.abort()
+      activeExport = null
       return { success: true }
     }
     return { success: false, error: 'No export in progress' }
@@ -590,7 +597,7 @@ export function registerEditorIPC(): void {
 
   ipcMain.handle('editor:thumbnailStrip', async (_, filePath: string, durationSeconds: number) => {
     const config = getConfigSync()
-    const ffmpegPath = config?.ffmpegPath
+    const ffmpegPath = config?.ffmpeg?.ffmpegPath
     if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
     if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'File not found' }
 
@@ -671,7 +678,7 @@ export function registerEditorIPC(): void {
   // ---------------------------------------------------------------
   ipcMain.handle('editor:thumbnail', async (_, filePath: string, timeSec: number) => {
     const config = getConfigSync()
-    const ffmpegPath = config?.ffmpegPath
+    const ffmpegPath = config?.ffmpeg?.ffmpegPath
     if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
     if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'File not found' }
 
@@ -734,7 +741,7 @@ export function registerEditorIPC(): void {
   // ---------------------------------------------------------------
   ipcMain.handle('editor:waveform', async (_, filePath: string, numSamples?: number) => {
     const config = getConfigSync()
-    const ffmpegPath = config?.ffmpegPath
+    const ffmpegPath = config?.ffmpeg?.ffmpegPath
     if (!ffmpegPath) return { success: false, error: 'FFmpeg not configured' }
     if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'File not found' }
 

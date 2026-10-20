@@ -13,6 +13,9 @@ import {
   getGpuQualityArgs,
   type GpuMode
 } from '../gpu'
+import { exportLimiterTail } from '../audio/chains'
+import { kbpsPerPair, resolveCeiling } from '../audio/ceilings'
+import type { Ceiling } from '../../../shared/audio/types'
 
 // ---------------------------------------------------------------------------
 // Export request types (serialisable contract between renderer ↔ main)
@@ -117,6 +120,39 @@ export interface ExportRequest {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** The export's maximum true peak: a timeline has no loudness preset, so the common -1 dBTP maximum applies. */
+export const EXPORT_MAX_TRUE_PEAK_DBTP = -1
+
+/** The audio encoder an export writes; aac when the request names none. */
+export function exportAudioEncoder(output: ExportOutputOptions): string {
+  return output.audioCodec || 'aac'
+}
+
+/** The rate in kbps of a bitrate such as '192k', '192000', or '1.5M'; null when absent or unreadable. */
+export function parseBitrateKbps(text: string | undefined): number | null {
+  const match = /^\s*(\d+(?:\.\d+)?)\s*([kKmM]?)\s*$/.exec(text ?? '')
+  if (!match) return null
+  const value = Number(match[1])
+  const unit = match[2].toLowerCase()
+  const kbps = unit === 'k' ? value : unit === 'm' ? value * 1000 : value / 1000
+  return kbps > 0 ? kbps : null
+}
+
+/** The layout every audio track and the mix are formatted to. */
+export function exportLayout(channels: number): string {
+  return channels === 1 ? 'mono' : 'stereo'
+}
+
+/** The ceiling of the exported audio stream under the -1 dBTP maximum, from its encoder and rate per channel pair. */
+export function exportCeiling(output: ExportOutputOptions): Ceiling {
+  const channels = exportLayout(output.audioChannels ?? 2) === 'mono' ? 1 : 2
+  return resolveCeiling(
+    exportAudioEncoder(output),
+    kbpsPerPair(parseBitrateKbps(output.audioBitrate), channels),
+    EXPORT_MAX_TRUE_PEAK_DBTP
+  )
+}
 
 function framesToSec(frames: number, fps: number): number {
   return fps > 0 ? frames / fps : 0
@@ -503,7 +539,7 @@ function buildAudioTrack(
 
   if (sorted.length === 0) return null
 
-  const layout = ch === 1 ? 'mono' : 'stereo'
+  const layout = exportLayout(ch)
   const segments: string[] = []
   let cursorSec = 0
 
@@ -806,14 +842,20 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
 
   // Mix audio tracks
   let aOut: string | null = null
+  let mixed: string | null = null
   if (aLabels.length === 1) {
-    aOut = aLabels[0]
+    mixed = aLabels[0]
   } else if (aLabels.length > 1) {
-    const out = label()
+    mixed = label()
     filters.push(
-      `${aLabels.map((l) => `[${l}]`).join('')}amix=inputs=${aLabels.length}:duration=longest:normalize=0[${out}]`
+      `${aLabels.map((l) => `[${l}]`).join('')}amix=inputs=${aLabels.length}:duration=longest:normalize=0[${mixed}]`
     )
-    aOut = out
+  }
+  // amix with normalize=0 sums at full level, so the mix is limited under the export ceiling before encoding
+  if (mixed) {
+    aOut = label()
+    const tail = exportLimiterTail(exportCeiling(output), sr, exportLayout(ch))
+    filters.push(`[${mixed}]${tail.join(',')}[${aOut}]`)
   }
 
   // Assemble final command
@@ -855,9 +897,11 @@ export async function buildExportCommand(req: ExportRequest, ffmpegPath?: string
 
   // Audio encoding
   if (aOut) {
-    const ac = output.audioCodec || 'aac'
+    const ac = exportAudioEncoder(output)
     args.push('-c:a', ac)
     if (output.audioBitrate) args.push('-b:a', output.audioBitrate)
+    // The default twoloop coder overshoots an abrupt onset by about 2.5 dB; the fast coder stays under the ceiling
+    if (ac === 'aac') args.push('-aac_coder', 'fast')
     args.push('-ar', String(sr), '-ac', String(ch))
   }
 

@@ -14,7 +14,12 @@ vi.mock('../../src/main/ffmpeg/gpu', () => ({
 
 import {
   buildExportCommand,
+  exportAudioEncoder,
+  exportCeiling,
+  exportLayout,
   getExportDurationSeconds,
+  parseBitrateKbps,
+  EXPORT_MAX_TRUE_PEAK_DBTP,
   type ExportRequest,
   type ExportSource,
   type ExportClip,
@@ -286,6 +291,16 @@ describe('buildExportCommand', () => {
       }))
       const fc = getFilterComplex(args)
       expect(fc).toMatch(/amix=inputs=/)
+      const mix = fc.split(';').find((part) => part.includes('amix='))!
+      const mixLabel = /\[(\w+)\]$/.exec(mix)![1]
+      const tail = fc.split(';').find((part) => part.startsWith(`[${mixLabel}]`))!
+      expect(tail).toBe(
+        `[${mixLabel}]aformat=sample_fmts=dbl,aresample=192000,` +
+          'alimiter=limit=-3.50dB:attack=20:release=200:level=disabled:latency=1,' +
+          'aformat=sample_rates=48000:channel_layouts=stereo' +
+          tail.slice(tail.lastIndexOf('['))
+      )
+      expect(getMaps(args)).toContain(tail.slice(tail.lastIndexOf('[')))
     })
 
     it('de-duplicates source inputs', async () => {
@@ -636,5 +651,106 @@ describe('getExportDurationSeconds', () => {
   it('returns 0 for empty clips', () => {
     const dur = getExportDurationSeconds(mkRequest({ clips: [] }))
     expect(dur).toBe(0)
+  })
+})
+
+describe('export limiter tail', () => {
+  const twoTracks = (output: Partial<ExportOutputOptions> = {}): ExportRequest =>
+    mkRequest({
+      tracks: [mkAudioTrack('a1', 0), mkAudioTrack('a2', 1)],
+      clips: [
+        mkClip({ id: 'c1', trackId: 'a1', volume: 2 }),
+        mkClip({ id: 'c2', trackId: 'a2' })
+      ],
+      output: mkOutput({ filePath: '/out/mix.m4a', format: 'mp4', ...output })
+    })
+
+  it('limits the amix output at the AAC 192k ceiling: L = -2.5 dB, oversampled, pinned to the export format', async () => {
+    const fc = getFilterComplex(await buildExportCommand(twoTracks({ audioBitrate: '192k' })))
+    expect(fc).toMatch(
+      /amix=inputs=2:duration=longest:normalize=0\[(\w+)\];\[\1\]aformat=sample_fmts=dbl,aresample=192000,alimiter=limit=-2\.50dB:attack=20:release=200:level=disabled:latency=1,aformat=sample_rates=48000:channel_layouts=stereo\[(\w+)\]$/
+    )
+  })
+
+  it('maps the limited output, never the bare mix', async () => {
+    const args = await buildExportCommand(twoTracks({ audioBitrate: '192k' }))
+    const fc = getFilterComplex(args)
+    const limited = /\[(\w+)\]$/.exec(fc)![1]
+    const mix = /normalize=0\[(\w+)\]/.exec(fc)![1]
+    expect(getMaps(args)).toEqual([`[${limited}]`])
+    expect(getMaps(args)).not.toContain(`[${mix}]`)
+  })
+
+  it('takes the lossless ceiling for PCM and FLAC: L = -1.5 dB', async () => {
+    for (const audioCodec of ['pcm_s16le', 'flac']) {
+      const fc = getFilterComplex(await buildExportCommand(twoTracks({ audioCodec })))
+      expect(fc).toContain('alimiter=limit=-1.50dB:attack=20:release=200:level=disabled:latency=1')
+    }
+  })
+
+  it('keeps the oversampler off at 192 kHz and pins the export rate and mono layout', async () => {
+    const fc = getFilterComplex(await buildExportCommand(twoTracks({ sampleRate: 192000, audioChannels: 1, audioCodec: 'flac' })))
+    expect(fc).not.toContain('aresample=')
+    expect(fc).toMatch(/alimiter=[^,]+,aformat=sample_rates=192000:channel_layouts=mono\[\w+\]$/)
+  })
+
+  it('limits a single audio track too, since a clip volume above 1 can clip it', async () => {
+    const args = await buildExportCommand(mkRequest({
+      tracks: [mkAudioTrack('a1', 0)],
+      clips: [mkClip({ id: 'c1', trackId: 'a1', volume: 2 })],
+      output: mkOutput({ audioCodec: 'libopus', audioBitrate: '160k' })
+    }))
+    const fc = getFilterComplex(args)
+    expect(fc).not.toContain('amix=')
+    expect(fc).toContain('alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1')
+    expect(args).toContain('-vn')
+  })
+
+  it('encodes AAC with the fast coder, which keeps an abrupt onset under the ceiling, and only AAC', async () => {
+    const aac = await buildExportCommand(twoTracks({ audioBitrate: '192k' }))
+    expect(aac.slice(aac.indexOf('-c:a'), aac.indexOf('-ar'))).toEqual(['-c:a', 'aac', '-b:a', '192k', '-aac_coder', 'fast'])
+    const opus = await buildExportCommand(twoTracks({ audioCodec: 'libopus', audioBitrate: '160k' }))
+    expect(opus).not.toContain('-aac_coder')
+  })
+
+  it('adds no limiter to a video-only export', async () => {
+    const args = await buildExportCommand(mkRequest({ sources: [mkSource({ audioChannels: 0 })] }))
+    expect(getFilterComplex(args)).not.toContain('alimiter')
+    expect(args).not.toContain('-c:a')
+  })
+})
+
+describe('export ceiling helpers', () => {
+  it('reads bitrates in k, M, and bits per second', () => {
+    expect(parseBitrateKbps('192k')).toBe(192)
+    expect(parseBitrateKbps(' 1.5M ')).toBe(1500)
+    expect(parseBitrateKbps('128000')).toBe(128)
+    expect(parseBitrateKbps(undefined)).toBeNull()
+    expect(parseBitrateKbps('')).toBeNull()
+    expect(parseBitrateKbps('fast')).toBeNull()
+    expect(parseBitrateKbps('0k')).toBeNull()
+  })
+
+  it('defaults the encoder to aac', () => {
+    expect(exportAudioEncoder(mkOutput({ audioCodec: '' }))).toBe('aac')
+    expect(exportAudioEncoder(mkOutput({ audioCodec: 'libopus' }))).toBe('libopus')
+  })
+
+  it('formats one channel as mono and every other count as stereo', () => {
+    expect(exportLayout(1)).toBe('mono')
+    expect(exportLayout(2)).toBe('stereo')
+    expect(exportLayout(6)).toBe('stereo')
+  })
+
+  it('resolves the ceiling under -1 dBTP from the rate per channel pair', () => {
+    expect(EXPORT_MAX_TRUE_PEAK_DBTP).toBe(-1)
+    const high = exportCeiling(mkOutput({ audioBitrate: '192k' }))
+    expect(high).toMatchObject({ presetMaxDbtp: -1, ceilingDbtp: -2, limiterCeilingDbtp: -2.5, gateDbtp: -1, outputClass: 'lossy-high' })
+    const monoHigh = exportCeiling(mkOutput({ audioBitrate: '96k', audioChannels: 1 }))
+    expect(monoHigh.ceilingDbtp).toBe(-2)
+    const low = exportCeiling(mkOutput({ audioBitrate: '128k' }))
+    expect(low).toMatchObject({ ceilingDbtp: -3, limiterCeilingDbtp: -3.5 })
+    const lossless = exportCeiling(mkOutput({ audioCodec: 'flac' }))
+    expect(lossless).toMatchObject({ codecCeilingDbtp: null, ceilingDbtp: -1, limiterCeilingDbtp: -1.5, decodedLimitDbtp: -1 })
   })
 })

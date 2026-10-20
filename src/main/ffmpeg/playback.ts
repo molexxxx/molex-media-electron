@@ -21,6 +21,10 @@ import { app } from 'electron'
 import { logger } from '../logger'
 import { getConfig } from '../config'
 import { runCommand } from './runner'
+import { chooseEncoder, encoderArgs, type BuildCapabilities } from './audio/encoders'
+import { pinStages } from './audio/chains'
+import { resolveLayout } from './audio/facts'
+import type { AudioFacts } from '../../shared/audio/types'
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -73,6 +77,96 @@ const NATIVE_CODEC_MAP: Record<string, { ext: string; codec: string }> = {
 const DIRECT_AUDIO_EXTS = new Set([
   '.mp3', '.wav', '.ogg', '.flac', '.opus', '.aac', '.m4a'
 ])
+
+/** The first audio stream as the playback target reads it. */
+export interface PlaybackStream {
+  codec: string
+  channels: number
+  /** The probed layout name; absent or unknown takes FFmpeg's default for the channel count. */
+  layout?: string
+  sampleRate: number
+}
+
+/** What a playback extraction writes: the cache extension and the audio arguments after `-map 0:a:0`. */
+export interface PlaybackTarget {
+  ext: string
+  args: string[]
+  mode: 'remux' | 'transcode'
+  /** The layout written when libopus needed a relabel, such as 5.1(side) written as 5.1; null otherwise. */
+  remappedTo: string | null
+}
+
+/** The Opus rate per channel pair of the playback transcode. */
+export const PLAYBACK_KBPS_PER_PAIR = 192
+
+/** The playback transcode always writes libopus, so its target never depends on the build's other encoders. */
+const OPUS_ONLY: BuildCapabilities = { encoders: new Set(['libopus']), experimental: new Set(), soxr: false }
+
+function playbackFacts(stream: PlaybackStream): AudioFacts {
+  const { layout, guessed } = resolveLayout(stream.channels, stream.layout)
+  return {
+    audioIndex: 0,
+    streamIndex: 0,
+    codecName: stream.codec,
+    profile: null,
+    channels: stream.channels,
+    layout,
+    layoutGuessed: guessed,
+    sampleRate: stream.sampleRate,
+    sampleFmt: null,
+    bitsPerRawSample: null,
+    bitRate: null,
+    durationSec: null,
+    language: null,
+    title: null,
+    disposition: {}
+  }
+}
+
+/**
+ * The output of a playback extraction. A codec Chromium decodes is copied bit for bit, so PCM keeps its depth;
+ * any other codec is encoded with libopus into WebM through chooseEncoder, which relabels a layout libopus lacks
+ * (5.1(side) is written as 5.1) and pins the rate and layout. A stream libopus cannot write at its own layout,
+ * such as more than eight channels or an unnamed layout, is folded to stereo for listening.
+ */
+export function playbackTarget(stream: PlaybackStream): PlaybackTarget {
+  const native = NATIVE_CODEC_MAP[stream.codec]
+  if (native) return { ext: native.ext, args: ['-c:a', native.codec], mode: 'remux', remappedTo: null }
+  const facts = playbackFacts(stream)
+  const policy = { kind: 'codec', codec: 'opus', kbpsPerPair: PLAYBACK_KBPS_PER_PAIR } as const
+  const own = chooseEncoder(facts, policy, 'webm', { channels: stream.channels, layout: facts.layout ?? '', minSampleRate: null }, OPUS_ONLY)
+  const decision = own.ok ? own : chooseEncoder(facts, policy, 'webm', { channels: 2, layout: 'stereo', minSampleRate: null }, OPUS_ONLY)
+  if (!decision.ok) throw new Error(`No playback encoder for ${stream.codec}`)
+  const c = decision.choice
+  const pin = pinStages({ sampleRate: c.sampleRate, layout: c.layout, pin: c.pin, encoder: c.encoder })
+  return {
+    ext: 'webm',
+    args: [...encoderArgs(c, 0), '-af', pin.join(',')],
+    mode: 'transcode',
+    remappedTo: c.notes.includes('layout-remapped') ? c.layout : null
+  }
+}
+
+/** Reads the first audio stream from ffprobe's JSON; null when there is none. */
+export function parsePlaybackProbe(json: string): PlaybackStream | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    return null
+  }
+  const streams = (parsed as { streams?: unknown } | null)?.streams
+  const first = Array.isArray(streams) ? (streams[0] as Record<string, unknown> | undefined) : undefined
+  if (!first || typeof first.codec_name !== 'string' || first.codec_name === '') return null
+  const channels = Number(first.channels)
+  const sampleRate = Number(first.sample_rate)
+  return {
+    codec: first.codec_name,
+    channels: Number.isInteger(channels) && channels > 0 ? channels : 2,
+    ...(typeof first.channel_layout === 'string' && first.channel_layout !== '' ? { layout: first.channel_layout } : {}),
+    sampleRate: Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : 48000
+  }
+}
 
 /** Temp directory for extracted playback files. */
 let playbackTempDir: string | null = null
@@ -139,36 +233,27 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
   }
 
   const config = await getConfig()
-  if (!config.ffmpegPath) throw new Error('FFmpeg not configured')
-  if (!config.ffprobePath) throw new Error('ffprobe not configured')
+  const ffmpegPath = config.ffmpeg?.ffmpegPath
+  const ffprobePath = config.ffmpeg?.ffprobePath
+  if (!ffmpegPath) throw new Error('FFmpeg not configured')
+  if (!ffprobePath) throw new Error('ffprobe not configured')
 
-  // Probe the source to find the first audio stream's codec
-  const codec = await probeAudioCodec(config.ffprobePath, filePath)
-  if (!codec) throw new Error('No audio stream found in file')
+  // Probe the source to find the first audio stream
+  const stream = await probeAudioStream(ffprobePath, filePath)
+  if (!stream) throw new Error('No audio stream found in file')
 
-  const native = NATIVE_CODEC_MAP[codec]
   const baseName = path.basename(filePath, path.extname(filePath))
   // Use a hash of the full path to avoid collisions
   const hash = simpleHash(filePath)
 
-  let outExt: string
-  let ffmpegCodecArgs: string[]
-
-  if (native) {
-    outExt = native.ext
-    ffmpegCodecArgs = ['-c:a', native.codec]
-    // Add bitrate for non-copy encoders (e.g. AAC → libopus)
-    if (native.codec !== 'copy') {
-      ffmpegCodecArgs.push('-b:a', '192k')
-      logger.info(`Playback: transcoding ${codec} → ${native.codec}/.${outExt}`)
-    } else {
-      logger.info(`Playback: remuxing ${codec} → .${outExt} (stream copy)`)
-    }
+  const target = playbackTarget(stream)
+  const outExt = target.ext
+  const ffmpegCodecArgs = target.args
+  if (target.mode === 'remux') {
+    logger.info(`Playback: remuxing ${stream.codec} → .${outExt} (stream copy)`)
   } else {
-    // Unknown codec - transcode to Opus in WebM container
-    outExt = 'webm'
-    ffmpegCodecArgs = ['-c:a', 'libopus', '-b:a', '192k']
-    logger.info(`Playback: transcoding ${codec} → Opus/WebM`)
+    const layoutNote = target.remappedTo ? `, written as ${target.remappedTo}` : ''
+    logger.info(`Playback: transcoding ${stream.codec} → Opus/WebM${layoutNote}`)
   }
 
   const outPath = path.join(getTempDir(), `${baseName}_${hash}.${outExt}`)
@@ -208,7 +293,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
     outPath
   ]
 
-  const { promise } = runCommand(config.ffmpegPath, args)
+  const { promise } = runCommand(ffmpegPath, args)
   const result = await promise
 
   if (result.code !== 0) {
@@ -239,28 +324,21 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
   if (isBrowserNative(filePath)) return filePath
 
   const config = await getConfig()
-  if (!config.ffmpegPath) throw new Error('FFmpeg not configured')
-  if (!config.ffprobePath) throw new Error('ffprobe not configured')
+  const ffmpegPath = config.ffmpeg?.ffmpegPath
+  const ffprobePath = config.ffmpeg?.ffprobePath
+  if (!ffmpegPath) throw new Error('FFmpeg not configured')
+  if (!ffprobePath) throw new Error('ffprobe not configured')
 
-  const codec = await probeAudioCodec(config.ffprobePath, filePath)
-  if (!codec) throw new Error('No audio stream found in file')
+  const stream = await probeAudioStream(ffprobePath, filePath)
+  if (!stream) throw new Error('No audio stream found in file')
 
-  const native = NATIVE_CODEC_MAP[codec]
   const baseName = path.basename(filePath, path.extname(filePath))
   const hash = simpleHash(filePath)
   const seekTag = `seek${Math.floor(seekTime)}`
 
-  let outExt: string
-  let ffmpegCodecArgs: string[]
-
-  if (native) {
-    outExt = native.ext
-    ffmpegCodecArgs = ['-c:a', native.codec]
-    if (native.codec !== 'copy') ffmpegCodecArgs.push('-b:a', '192k')
-  } else {
-    outExt = 'webm'
-    ffmpegCodecArgs = ['-c:a', 'libopus', '-b:a', '192k']
-  }
+  const target = playbackTarget(stream)
+  const outExt = target.ext
+  const ffmpegCodecArgs = target.args
 
   const outPath = path.join(getTempDir(), `${baseName}_${hash}_${seekTag}.${outExt}`)
 
@@ -298,7 +376,7 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
   ]
 
   logger.info(`Playback: seek-extracting ${path.basename(filePath)} from ${seekTime.toFixed(1)}s`)
-  const { promise } = runCommand(config.ffmpegPath, args)
+  const { promise } = runCommand(ffmpegPath, args)
   const result = await promise
 
   if (result.code !== 0) {
@@ -345,22 +423,22 @@ export function cleanupPlaybackTemp(): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Probe the first audio stream's codec name using ffprobe.
+ * Probe the first audio stream's codec, channels, layout, and rate using ffprobe.
  */
-async function probeAudioCodec(ffprobePath: string, filePath: string): Promise<string | null> {
+async function probeAudioStream(ffprobePath: string, filePath: string): Promise<PlaybackStream | null> {
   const { spawn } = await import('child_process')
   return new Promise((resolve) => {
     const args = [
       '-v', 'quiet',
       '-select_streams', 'a:0',
-      '-show_entries', 'stream=codec_name',
-      '-of', 'csv=p=0',
+      '-show_entries', 'stream=codec_name,sample_rate,channels,channel_layout',
+      '-of', 'json',
       filePath
     ]
     const proc = spawn(ffprobePath, args, { windowsHide: true })
     let out = ''
     proc.stdout?.on('data', (d) => { out += d.toString() })
-    proc.on('close', () => resolve(out.trim() || null))
+    proc.on('close', () => resolve(parsePlaybackProbe(out)))
     proc.on('error', () => resolve(null))
   })
 }
