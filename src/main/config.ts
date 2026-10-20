@@ -50,7 +50,7 @@ export interface JobsConfig {
 
 export interface AppConfig {
   version: string
-  /** Legacy loudness target, read by the old processors; an upgrade carries it into the "Earlier default" preset. */
+  /** Legacy loudness target; an upgrade carries it, with the legacy codec keys, into the "Earlier default" preset. */
   normalization: {
     I: number
     TP: number
@@ -59,10 +59,8 @@ export interface AppConfig {
   audioCodec: string
   fallbackCodec: string
   audioBitrate: string
-  supportedExtensions: string[]
   maxWorkers: number
   logDir: string
-  tempSuffix: string
   /** Mirror of `ffmpeg.ffmpegPath`; read-only. */
   ffmpegPath: string
   /** Mirror of `ffmpeg.ffprobePath`; read-only. */
@@ -104,8 +102,8 @@ export const READ_ONLY_MIRRORS = ['ffmpegPath', 'ffprobePath'] as const
 /** The configuration as the renderer sees it. */
 export type RendererConfig = Omit<AppConfig, MainOwnedKey>
 
-const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts', '.vob', '.3gp', '.mts', '.m2ts', '.divx', '.f4v', '.ogv', '.rm', '.rmvb', '.asf']
-const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.wma', '.aac', '.opus', '.ac3', '.eac3', '.dts', '.amr', '.ape', '.wv']
+/** Keys earlier versions stored that nothing reads; loads remove them and saves never write them. */
+export const DROPPED_KEYS = ['tempSuffix', 'supportedExtensions'] as const
 
 /** The interface size range and default, in percent. */
 export const INTERFACE_SCALE = { min: 90, max: 200, default: 100 } as const
@@ -139,10 +137,8 @@ const DEFAULT_CONFIG: AppConfig = {
   audioCodec: 'inherit',
   fallbackCodec: 'ac3',
   audioBitrate: '256k',
-  supportedExtensions: [...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS],
   maxWorkers: 0,
   logDir: 'logs',
-  tempSuffix: '_temp_processing',
   ffmpegPath: '',
   ffprobePath: '',
   ffmpeg: null,
@@ -560,6 +556,9 @@ export async function loadConfig(): Promise<AppConfig> {
     store.set('afterProcessing', migrated)
     store.delete('overwriteOriginal')
   }
+  for (const key of DROPPED_KEYS) {
+    if (store.get(key) !== undefined) store.delete(key)
+  }
 
   for (const key of Object.keys(DEFAULT_CONFIG) as (keyof AppConfig)[]) {
     const val = store.get(key)
@@ -620,6 +619,7 @@ export async function saveConfig(partial: Partial<AppConfig>): Promise<AppConfig
   const store = await getStore()
   for (const [key, val] of Object.entries(partial)) {
     if ((READ_ONLY_MIRRORS as readonly string[]).includes(key)) continue
+    if ((DROPPED_KEYS as readonly string[]).includes(key)) continue
     if (key === 'ffmpeg') {
       const block = readFfmpegConfig(val)
       store.set('ffmpeg', block)
@@ -752,4 +752,4 @@ export async function clearUrlHistory(): Promise<void> {
   await saveConfig({ urlHistory: [] })
 }
 
-export { DEFAULT_CONFIG, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS }
+export { DEFAULT_CONFIG }

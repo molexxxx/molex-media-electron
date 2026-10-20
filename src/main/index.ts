@@ -52,9 +52,6 @@ import {
   type MainWindowHooks
 } from './windows'
 
-// Re-export for IPC helpers (they import updateTrayProgress from here)
-export { updateTrayProgress } from './tray'
-
 type QuitChoice = Parameters<typeof quitChoiceEffect>[0]
 
 /** Commands the lifecycle and the tray send come from no window. */
@@ -411,7 +408,6 @@ app.whenReady().then(async () => {
     quit: requestQuit
   })
   setEngineTray({
-    busy: engineBusy,
     act: (action) => {
       void trayAction(action).catch((err) => logger.error(`Tray ${action} failed: ${errorText(err)}`))
     }

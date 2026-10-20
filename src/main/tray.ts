@@ -1,12 +1,10 @@
 /**
  * @module main/tray
- * @description System tray icon, context menu, and live processing
- * progress display.
+ * @description System tray icon and context menu.
  *
- * Two writers until the batch UI switches to the job engine: while the
- * engine is busy the tray renders the engine's status and ignores the old
- * batch path's `updateTrayProgress`; otherwise the old path drives it while
- * it processes, and the engine's idle status shows the rest of the time.
+ * The job engine is the only writer of the tray's status: once the engine's
+ * host renders its first status the tray shows it, and before that the
+ * basic navigation menu.
  */
 
 import { Tray, Menu, nativeImage, type MenuItemConstructorOptions } from 'electron'
@@ -20,11 +18,7 @@ import { formatRunLabel, type RunId } from '../shared/jobs/ids'
 /* ------------------------------------------------------------------ */
 
 let tray: Tray | null = null
-let trayProgressTotal = 0
-let trayProgressDone = 0
-let trayProgressActive = ''
 let engineStatus: TrayStatus | null = null
-let engineBusy: () => boolean = () => false
 let engineAction: (action: TrayAction) => void = () => {}
 
 /** Callbacks injected from index.ts to avoid circular deps. */
@@ -46,9 +40,8 @@ export function setTrayCallbacks(cbs: {
   _quit = cbs.quit
 }
 
-/** Connect the job engine: whether it is busy, and what its menu items do. */
-export function setEngineTray(options: { busy: () => boolean; act: (action: TrayAction) => void }): void {
-  engineBusy = options.busy
+/** Connect the job engine: what its menu items do. */
+export function setEngineTray(options: { act: (action: TrayAction) => void }): void {
   engineAction = options.act
 }
 
@@ -71,10 +64,6 @@ export function cancelBatchPrompt(runId: RunId, active: number, queued: number):
   }
   parts.push('Finished jobs keep their outputs.')
   return { message: `Cancel ${formatRunLabel(runId)}?`, detail: parts.join(' ') }
-}
-
-function engineDrives(): boolean {
-  return engineStatus !== null && (engineBusy() || trayProgressTotal === 0)
 }
 
 function engineTemplate(status: TrayStatus): MenuItemConstructorOptions[] {
@@ -130,30 +119,17 @@ export function hasTray(): boolean {
 function updateTrayMenu(): void {
   if (!tray) return
 
-  if (engineStatus !== null && engineDrives()) {
+  if (engineStatus !== null) {
     tray.setToolTip(engineStatus.tooltip)
     tray.setContextMenu(Menu.buildFromTemplate(engineTemplate(engineStatus)))
     return
   }
 
-  const progressItems: Electron.MenuItemConstructorOptions[] = []
-  if (trayProgressTotal > 0) {
-    progressItems.push(
-      { label: `Processing: ${trayProgressDone}/${trayProgressTotal}`, enabled: false },
-      ...(trayProgressActive ? [{ label: trayProgressActive, enabled: false } as Electron.MenuItemConstructorOptions] : []),
-      { type: 'separator' as const }
-    )
-  }
-
-  const tooltip = trayProgressTotal > 0
-    ? `molexMedia - Processing ${trayProgressDone}/${trayProgressTotal}`
-    : 'molexMedia'
-  tray.setToolTip(tooltip)
+  tray.setToolTip('molexMedia')
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show molexMedia', click: () => _showMainWindow() },
     { type: 'separator' },
-    ...progressItems,
     { label: 'Pop Out Player', click: () => _showPopout() },
     { label: 'Player', click: () => _showMainWindow('player') },
     { label: 'Editor', click: () => _showMainWindow('editor') },
@@ -164,21 +140,4 @@ function updateTrayMenu(): void {
   ])
 
   tray.setContextMenu(contextMenu)
-}
-
-/* ------------------------------------------------------------------ */
-/*  Live progress                                                      */
-/* ------------------------------------------------------------------ */
-
-/**
- * Update the tray tooltip and context menu with live batch progress.
- * Called from the IPC helpers on every task-progress event; ignored while
- * the job engine is busy, so the old path can never clear the engine's status.
- */
-export function updateTrayProgress(total: number, done: number, activeLabel: string): void {
-  if (engineStatus !== null && engineBusy()) return
-  trayProgressTotal = total
-  trayProgressDone = done
-  trayProgressActive = activeLabel
-  updateTrayMenu()
 }

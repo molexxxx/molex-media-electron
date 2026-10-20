@@ -24,7 +24,6 @@ export default defineConfig({
         'src/main/tray.ts',
         'src/main/windows.ts',
         'src/main/ipc/**',
-        'src/main/ffmpeg/processor/index.ts',
         'src/main/ffmpeg/bootstrap.ts',
         'src/main/updater.ts',
         'src/main/ytdlp/index.ts',

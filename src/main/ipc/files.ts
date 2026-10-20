@@ -1,7 +1,7 @@
 /**
  * @module main/ipc/files
  * @description IPC handlers for FFmpeg setup and build information, file
- * dialogs, directory scanning, and media probing.
+ * dialogs, and local file playback for the Player.
  */
 
 import { ipcMain, dialog, app } from 'electron'
@@ -10,8 +10,6 @@ import * as fs from 'fs'
 import { getConfig } from '../config'
 import { logger } from '../logger'
 import { getFFmpegVersion, type BootstrapProgress } from '../ffmpeg/bootstrap'
-import { probeMedia } from '../ffmpeg/probe'
-import { findMediaFiles } from '../ffmpeg/processor'
 import { startPreviewServer, registerPreviewPath } from '../preview-server'
 import { prepareForPlayback, prepareForPlaybackAt, clearPlaybackCacheFor } from '../ffmpeg/playback'
 import { sendToAll } from './helpers'
@@ -124,23 +122,6 @@ export function registerFilesIPC(): void {
       })
       return result.canceled ? null : result.filePath || null
     }))
-
-  // --- Directory scanning ---
-  ipcMain.handle('files:scanDirectory', async (_, dirPath: string) => {
-    const config = await getConfig()
-    const files = findMediaFiles(dirPath, config.supportedExtensions)
-    return files.map((f) => ({
-      path: f,
-      name: path.basename(f),
-      size: fs.statSync(f).size,
-      ext: path.extname(f).toLowerCase()
-    }))
-  })
-
-  // --- Media probing ---
-  ipcMain.handle('files:probe', async (_, filePath: string) => {
-    return probeMedia(filePath)
-  })
 
   // --- Read local file as buffer for blob URL creation ---
   ipcMain.handle('files:readFileBuffer', async (_, filePath: string) => {

@@ -26,20 +26,22 @@ vi.mock('fs', () => ({
 const storeData: Record<string, any> = {}
 const mockStoreGet = vi.fn((key: string) => storeData[key])
 const mockStoreSet = vi.fn((key: string, val: any) => { storeData[key] = val })
+const mockStoreDelete = vi.fn((key: string) => { delete storeData[key] })
 
 vi.mock('electron-store', () => ({
   default: class MockStore {
     get = mockStoreGet
     set = mockStoreSet
+    delete = mockStoreDelete
     store = storeData
   }
 }))
 
-const { loadConfig, saveConfig, getConfig, getConfigSync, getUserDataPath, getFFmpegBinDir, getLogDir, addUrlHistory, getUrlHistory, removeUrlHistory, clearUrlHistory, getFFmpegRoot, migrateFfmpegConfig, readFfmpegConfig, saveFfmpegConfig, stripMainOwned, MAIN_OWNED_KEYS, READ_ONLY_MIRRORS, DEFAULT_CONFIG, legacyEncoderPolicy, legacyCustomRecipe, firstDefaultRecipe, clampInterfaceScale, INTERFACE_SCALE, migrateJobsConfig, legacyWorkers, legacyPolicy, saveJobsConfig, takeJobsAlerts, DEFAULT_RUN_SETTINGS, MAX_RECENT_FOLDERS } = await import('../../src/main/config')
+const { loadConfig, saveConfig, getConfig, getConfigSync, getUserDataPath, getFFmpegBinDir, getLogDir, addUrlHistory, getUrlHistory, removeUrlHistory, clearUrlHistory, getFFmpegRoot, migrateFfmpegConfig, readFfmpegConfig, saveFfmpegConfig, stripMainOwned, MAIN_OWNED_KEYS, READ_ONLY_MIRRORS, DEFAULT_CONFIG, legacyEncoderPolicy, legacyCustomRecipe, firstDefaultRecipe, clampInterfaceScale, INTERFACE_SCALE, migrateJobsConfig, legacyWorkers, legacyPolicy, saveJobsConfig, takeJobsAlerts, DEFAULT_RUN_SETTINGS, MAX_RECENT_FOLDERS, DROPPED_KEYS } = await import('../../src/main/config')
 const { applyLoudnessPreset, applyGainPreset } = await import('../../src/shared/audio/presets')
 const { EARLIER_DEFAULT_PRESET, presetSeed } = await import('../../src/shared/jobs/presets')
 const { validateAudioRecipe } = await import('../../src/shared/audio/limits')
-const { registerConfigIPC } = await import('../../src/main/ipc/config')
+const { registerConfigIPC, onConfigSaved } = await import('../../src/main/ipc/config')
 
 describe('config', () => {
   beforeEach(() => {
@@ -93,6 +95,48 @@ describe('config', () => {
       storeData.audioCodec = 'opus'
       const config = await saveConfig({ audioCodec: 'opus' })
       expect(config.audioCodec).toBe('opus')
+    })
+
+    it('never writes the dropped temp suffix or extension list', async () => {
+      await saveConfig({ tempSuffix: '_temp', supportedExtensions: ['.mp3'], theme: 'light' } as any)
+      expect(mockStoreSet).not.toHaveBeenCalledWith('tempSuffix', expect.anything())
+      expect(mockStoreSet).not.toHaveBeenCalledWith('supportedExtensions', expect.anything())
+      expect(mockStoreSet).toHaveBeenCalledWith('theme', 'light')
+    })
+  })
+
+  describe('dropped keys', () => {
+    it('names the temp suffix and the extension list, which the job engine replaced', () => {
+      expect([...DROPPED_KEYS]).toEqual(['tempSuffix', 'supportedExtensions'])
+    })
+
+    it('removes them from an upgraded store and leaves them out of the config', async () => {
+      storeData.tempSuffix = '_temp_processing'
+      storeData.supportedExtensions = ['.mp3', '.mkv']
+      storeData.outputDirectory = 'D:/Exports'
+      const config = await loadConfig()
+      expect(mockStoreDelete).toHaveBeenCalledWith('tempSuffix')
+      expect(mockStoreDelete).toHaveBeenCalledWith('supportedExtensions')
+      expect('tempSuffix' in storeData).toBe(false)
+      expect('supportedExtensions' in storeData).toBe(false)
+      expect('tempSuffix' in config).toBe(false)
+      expect('supportedExtensions' in config).toBe(false)
+      expect(config.outputDirectory).toBe('D:/Exports')
+    })
+
+    it('deletes nothing from a store that never held them', async () => {
+      await loadConfig()
+      expect(mockStoreDelete).not.toHaveBeenCalled()
+      expect('tempSuffix' in DEFAULT_CONFIG).toBe(false)
+      expect('supportedExtensions' in DEFAULT_CONFIG).toBe(false)
+    })
+
+    it('keeps the legacy loudness and codec keys an upgrade migrates', async () => {
+      const config = await loadConfig()
+      expect(config.normalization).toEqual({ I: -16.0, TP: -1.5, LRA: 11.0 })
+      expect(config.audioCodec).toBe('inherit')
+      expect(config.fallbackCodec).toBe('ac3')
+      expect(config.audioBitrate).toBe('256k')
     })
   })
 
@@ -855,6 +899,20 @@ describe('jobs key', () => {
       expect('jobs' in saved).toBe(false)
       expect(saved.announceProgress).toBe(true)
       expect(saved.interfaceScale).toBe(150)
+    })
+
+    it('hands each save listener the saved config and the stripped partial until it unsubscribes', async () => {
+      await loadConfig()
+      const listener = vi.fn()
+      const unsubscribe = onConfigSaved(listener)
+      await ipcHandlers.get('config:save')!({}, { jobs: { policy: { rev: 0 } }, interfaceScale: 125 })
+      expect(listener).toHaveBeenCalledTimes(1)
+      const [config, saved] = listener.mock.calls[0]
+      expect(config.interfaceScale).toBe(125)
+      expect(saved).toEqual({ interfaceScale: 125 })
+      unsubscribe()
+      await ipcHandlers.get('config:save')!({}, { interfaceScale: 150 })
+      expect(listener).toHaveBeenCalledTimes(1)
     })
   })
 })

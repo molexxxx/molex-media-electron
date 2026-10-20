@@ -6,7 +6,6 @@
 
 import { registerConfigIPC } from './config'
 import { registerFilesIPC } from './files'
-import { registerProcessingIPC } from './processing'
 import { registerEditorIPC } from './editor'
 import { registerMediaIPC } from './media'
 import { registerSystemIPC } from './system'
@@ -27,13 +26,11 @@ export interface JobsIPC {
 /**
  * Register every IPC handler for renderer ↔ main communication.
  * Called once during app initialization, after the engine's `init` when
- * `jobs` is given. The old processing handlers stay registered beside the
- * job channels; the two sets use different channel names.
+ * `jobs` is given; batch processing runs only through the job channels.
  */
 export function registerIPC(jobs?: JobsIPC): void {
   registerConfigIPC()
   registerFilesIPC()
-  registerProcessingIPC()
   registerEditorIPC()
   registerMediaIPC()
   registerSystemIPC()
