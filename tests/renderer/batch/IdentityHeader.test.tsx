@@ -31,6 +31,7 @@ import
   statusKey
 } from '../../../src/renderer/src/components/batch/inspector/IdentityHeader'
 import { ScopeFooter, scopeLines } from '../../../src/renderer/src/components/batch/inspector/ScopeFooter'
+import { PlatformProvider } from '../../../src/renderer/src/ui/Kbd'
 
 const OUT = { kind: 'same-as-source' } as const
 
@@ -266,9 +267,10 @@ function spokenText(element: Element): string
   return copy.textContent ?? ''
 }
 
+/** Renders as on Windows on every host, since the fixtures compare Windows paths. */
 function provide(overrides: Partial<BatchActions>, ui: React.ReactElement): ReturnType<typeof render>
 {
-  return render(<TestBatchActionsProvider overrides={overrides}>{ui}</TestBatchActionsProvider>)
+  return render(<PlatformProvider platform="win32"><TestBatchActionsProvider overrides={overrides}>{ui}</TestBatchActionsProvider></PlatformProvider>)
 }
 
 describe('decision and locate words', () =>
