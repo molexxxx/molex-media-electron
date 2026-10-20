@@ -625,6 +625,7 @@ describe('plan sentences', () =>
     expect(issueActions('source-missing').map((action) => ISSUE_ACTION_LABELS[action])).toEqual(['Locate\u2026'])
     expect(issueActions('same-as-source')).toEqual(['change-file-name', 'choose-replace'])
     expect(issueActions('container-changed')).toEqual([])
+    expect(issueActions('surround-meter-failed')).toEqual(['open-settings'])
     const sorted = sortIssues([issue('chapters-dropped', 'info', 'a'), issue('disk-tight', 'warning', 'b'), issue('not-media', 'error', 'c'), issue('path-long', 'warning', 'd')])
     expect(sorted.map((item) => item.message)).toEqual(['c', 'b', 'd', 'a'])
   })

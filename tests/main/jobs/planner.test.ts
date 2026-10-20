@@ -11,7 +11,7 @@ import type { FileStat, PlannerIO, VolumeInfo } from '../../../src/main/jobs/dep
 import type { JobRunner, PlanInput, RunnerPlan } from '../../../src/main/jobs/runners/types'
 import { containerFor } from '../../../src/main/ffmpeg/audio/containers'
 import { volumeRoot } from '../../../src/main/jobs/volumes'
-import { encoderLabel, firstIssue, fixTargets, formatSize, muxerFor, planFingerprint, planPreflight, reserveBytes } from '../../../src/main/jobs/planner'
+import { encoderLabel, firstIssue, fixTargets, formatSize, muxerFor, planFingerprint, planPreflight, reserveBytes, surroundMeterIssues } from '../../../src/main/jobs/planner'
 import type { AlbumGroup, OtherJob, PlanJob, PreflightInput, PreflightResult, ProbeOutcome, RunnerSet } from '../../../src/main/jobs/planner'
 
 const ENCODERS = [
@@ -315,7 +315,7 @@ function summary(over: Partial<CapabilitySummary> = {}): CapabilitySummary
 {
   return {
     rev: 7,
-    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
     encoders: ENCODERS,
     gpu: { status: 'ready', vendor: null, name: null, encoders: [] },
     cpuCount: 8,
@@ -801,6 +801,94 @@ describe('FFmpeg and encoder checks', () =>
   {
     const p = await plan({ summary: { ffmpeg: { ...summary().ffmpeg, version: null, selfTest: 'failed' } }, jobs: [[1, 'D:\\Media\\song.wav', normalize()]] })
     expect(p.issue(1, 'self-test-failed').message).toBe('FFmpeg failed its self-test; repair it in Settings.')
+  })
+
+  describe('surround loudness on a build whose surround meter misreads', () =>
+  {
+    const misreads: Partial<CapabilitySummary> = { ffmpeg: { ...summary().ffmpeg, surroundMeter: false } }
+    const NORMALIZE_REFUSAL = 'This FFmpeg build measures surround loudness incorrectly, so surround files are not normalized. Choose another FFmpeg build in Settings, FFmpeg.'
+    const GAIN_REFUSAL = 'This FFmpeg build measures surround loudness incorrectly, so Gain does not run on surround files. Choose another FFmpeg build in Settings, FFmpeg.'
+    const DOWNMIX = { kind: 'patch-recipe', label: 'Downmix to stereo', patch: { field: 'downmix', value: 'standard' }, scope: 'jobs' }
+
+    function film(layout = '5.1(side)', channels = 6): MediaFacts
+    {
+      return movie({ audio: [stream(0, { codecName: 'ac3', profile: null, channels, layout })] })
+    }
+
+    it('blocks a 5.1 normalize with the plain refusal and the stereo downmix as its fix', async () =>
+    {
+      const p = await plan({ summary: misreads, jobs: [[1, 'D:\\Media\\film.mkv', normalize(), { facts: film() }]] })
+      expect(p.entry(1).status).toBe('blocked')
+      expect(p.issue(1, 'surround-meter-failed')).toEqual({ code: 'surround-meter-failed', severity: 'error', message: NORMALIZE_REFUSAL, field: 'encoder', fix: DOWNMIX })
+      expect(p.codes(1)).not.toContain('self-test-failed')
+      expect(p.report.blocking.filter((i) => i.code === 'surround-meter-failed')).toHaveLength(1)
+    })
+
+    it('plans a 5.1 normalize that downmixes to stereo, since the meter then reads two channels', async () =>
+    {
+      const p = await plan({ summary: misreads, jobs: [[1, 'D:\\Media\\film.mkv', { ...normalize(), downmix: 'standard' }, { facts: film() }]] })
+      expect(p.codes(1)).not.toContain('surround-meter-failed')
+      expect(p.entry(1).status).toBe('ready')
+    })
+
+    it('blocks a 5.1 Gain job without a fix, since Gain has no downmix', async () =>
+    {
+      const p = await plan({ summary: misreads, jobs: [[1, 'D:\\Media\\film.mkv', boost(), { facts: film('5.1') }]] })
+      expect(p.issue(1, 'surround-meter-failed')).toMatchObject({ severity: 'error', message: GAIN_REFUSAL, field: 'encoder', fix: null })
+      expect(p.entry(1).status).toBe('blocked')
+    })
+
+    it('leaves stereo, mono, and jobs that never measure loudness alone', async () =>
+    {
+      const mono = song({ audio: [stream(0, { codecName: 'pcm_s16le', profile: null, channels: 1, layout: 'mono', sampleFmt: 's16' })] })
+      const p = await plan({
+        summary: misreads,
+        jobs: [
+          [1, 'D:\\Media\\song.wav', normalize()],
+          [2, 'D:\\Media\\voice.wav', boost(), { facts: mono }],
+          [3, 'D:\\Media\\voice2.wav', { ...normalize(), monoToStereo: true }, { facts: mono }],
+          [4, 'D:\\Media\\film.mkv', convert({ container: 'mkv' }), { facts: film() }],
+          [5, 'D:\\Media\\film2.mkv', compress({ container: 'mkv' }), { facts: film() }]
+        ]
+      })
+      for (const n of [1, 2, 3, 4, 5])
+      {
+        expect(p.codes(n)).not.toContain('surround-meter-failed')
+        expect(p.entry(n).status).toBe('ready')
+      }
+    })
+
+    it('reads every audio stream the output keeps, so a 5.1 track beside a stereo one still blocks', async () =>
+    {
+      const both = movie({ audio: [stream(0), stream(1, { codecName: 'ac3', profile: null, channels: 6, layout: '5.1' })] })
+      const p = await plan({ summary: misreads, jobs: [[1, 'D:\\Media\\film.mkv', normalize(), { facts: both }]] })
+      expect(p.issue(1, 'surround-meter-failed').fix).toEqual(DOWNMIX)
+    })
+
+    it('offers no downmix fix when a surround layout has no stereo downmix', async () =>
+    {
+      const p = await plan({ summary: misreads, jobs: [[1, 'D:\\Media\\film.mkv', normalize(), { facts: film('7.1(wide)', 8) }]] })
+      expect(p.issue(1, 'surround-meter-failed')).toMatchObject({ message: NORMALIZE_REFUSAL, fix: null })
+    })
+
+    it('adds nothing on a build whose surround meter passed, or one the self-test already refuses', async () =>
+    {
+      const passed = await plan({ jobs: [[1, 'D:\\Media\\film.mkv', normalize(), { facts: film() }]] })
+      expect(passed.codes(1)).not.toContain('surround-meter-failed')
+      expect(passed.entry(1).status).toBe('ready')
+      const refused = await plan({ summary: { ffmpeg: { ...summary().ffmpeg, selfTest: 'failed', surroundMeter: false } }, jobs: [[1, 'D:\\Media\\film.mkv', normalize(), { facts: film() }]] })
+      expect(refused.codes(1)).toContain('self-test-failed')
+      expect(refused.codes(1)).not.toContain('surround-meter-failed')
+    })
+
+    it('keeps only the default stream of a one-track container, so a non-default 5.1 track is not metered', () =>
+    {
+      const facts = movie({ audio: [stream(0), stream(1, { codecName: 'ac3', profile: null, channels: 6, layout: '5.1' })] })
+      const ffmpeg = { ...summary().ffmpeg, surroundMeter: false }
+      expect(surroundMeterIssues(normalize(), facts, 'flac', ffmpeg)).toEqual([])
+      expect(surroundMeterIssues(normalize(), facts, 'mkv', ffmpeg).map((i) => i.code)).toEqual(['surround-meter-failed'])
+      expect(surroundMeterIssues(extractAudio(), facts, 'mkv', ffmpeg)).toEqual([])
+    })
   })
 
   it('blocks a missing or experimental video encoder, with a fix only where the recipe names the encoder', async () =>

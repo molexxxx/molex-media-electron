@@ -1,0 +1,37 @@
+[info] Input #0, lavfi, from 'sine=frequency=997:sample_rate=48000:duration=5':
+[info]   Duration: N/A, start: 0.000000, bitrate: 768 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info] Stream mapping:
+[info]   Stream #0:0 (pcm_s16le) -> asplit:default
+[info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[Parsed_pan_2 @ 000002848829db40] [info] Pure channel mapping detected: 0 0 0 M 0 0
+[info] Output #0, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[ebur128@surround @ 000002848829bf40] [info] Summary:
+
+  Integrated loudness:
+    I:         -13.4 LUFS
+    Threshold: -23.4 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -33.4 LUFS
+    LRA low:   -13.4 LUFS
+    LRA high:  -13.4 LUFS
+[ebur128@mono @ 000002848829c740] [info] Summary:
+
+  Integrated loudness:
+    I:         -21.1 LUFS
+    Threshold: -31.1 LUFS
+
+  Loudness range:
+    LRA:         0.0 LU
+    Threshold: -41.1 LUFS
+    LRA low:   -21.1 LUFS
+    LRA high:  -21.1 LUFS
+[out#0/null @ 0000028488336940] [info] video:0KiB audio:469KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:05.00 bitrate=N/A speed= 492x elapsed=0:00:00.01    

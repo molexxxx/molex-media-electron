@@ -15,7 +15,7 @@ export type LibName = 'avutil' | 'avcodec' | 'avformat' | 'avfilter' | 'swresamp
 export type LibVersion = readonly [number, number, number]
 
 /** The startup self-tests, in the order they run. */
-export type SelfTestId = 'chain-flac-s16' | 'chain-opus-51side' | 'chain-aac-mono' | 'meter-dual-mono' | 'soxr' | 'encoders'
+export type SelfTestId = 'chain-flac-s16' | 'chain-opus-51side' | 'chain-aac-mono' | 'meter-dual-mono' | 'meter-surround' | 'soxr' | 'encoders'
 
 /** Where a build came from: the app's own install, a PATH search, or a binary the user chose. */
 export type BuildSource = 'bundled' | 'path' | 'custom'
@@ -41,6 +41,8 @@ export interface FfmpegBuildInfo
   encoders: ReadonlySet<string>
   experimental: ReadonlySet<string>
   soxr: boolean
+  /** The meter-surround self-test passed; when false, loudness jobs that meter more than two channels are refused. */
+  surroundMeter: boolean
   meetsMinimum: boolean
   selfTest: Readonly<Record<SelfTestId, boolean>>
   identity: BinaryIdentity
@@ -186,10 +188,23 @@ export function minimumMessage(versionString: string): string
 }
 
 /** The self-test ids in the order they run. */
-export const SELF_TEST_IDS: readonly SelfTestId[] = ['chain-flac-s16', 'chain-opus-51side', 'chain-aac-mono', 'meter-dual-mono', 'soxr', 'encoders']
+export const SELF_TEST_IDS: readonly SelfTestId[] =
+  ['chain-flac-s16', 'chain-opus-51side', 'chain-aac-mono', 'meter-dual-mono', 'meter-surround', 'soxr', 'encoders']
 
 /** Raised when the self-test commands or pass rules change, so a cached result from older rules runs again. */
-export const SELF_TEST_REV = 1
+export const SELF_TEST_REV = 2
+
+/** BS.1770 weights the surround channels 1.41 and the front and center channels 1.0. */
+const SURROUND_WEIGHT = 1.41
+
+/** How much louder a signal reads panned into the five full-range channels of 5.1 than alone in mono. */
+export const SURROUND_GAIN_DB = 10 * Math.log10(3 + 2 * SURROUND_WEIGHT)
+
+/** How far the measured surround gain may stray from {@link SURROUND_GAIN_DB}. */
+export const SURROUND_TOLERANCE_DB = 0.3
+
+/** Self-tests whose failure narrows what runs instead of disabling the pipeline. */
+const NARROWING_TESTS: ReadonlySet<SelfTestId> = new Set(['soxr', 'meter-surround'])
 
 /** Encoders the pipeline writes with; each must be listed and not flagged experimental. libvorbis is optional. */
 export const REQUIRED_ENCODERS: readonly string[] = ['aac', 'flac', 'alac', 'libmp3lame', 'libopus', 'ac3', 'eac3', 'pcm_s16le', 'pcm_s24le']
@@ -223,9 +238,19 @@ export function hasRequiredEncoders(encoders: ReadonlySet<string>, experimental:
   return REQUIRED_ENCODERS.every((name) => encoders.has(name) && !experimental.has(name))
 }
 
+/** The surround meter's integrated loudness minus the mono meter's, or null when either reading is missing. */
+export function surroundGainDb(lines: readonly string[]): number | null
+{
+  const blocks = parseEbur128Blocks(lines.join('\n'))
+  const mono = blocks.get('mono')?.integratedLufs ?? null
+  const surround = blocks.get('surround')?.integratedLufs ?? null
+  return mono === null || surround === null ? null : surround - mono
+}
+
 /**
  * The startup self-tests. The chain commands are the production builders' outputs for fixed inputs, so each run
- * exercises the rate change and layout pin after a 4x or 5x resampler on whatever binary is installed.
+ * exercises the rate change and layout pin after a 4x or 5x resampler on whatever binary is installed. The surround
+ * meter reads one sine in mono and in the five full-range channels of 5.1(side), LFE silent, in a single run.
  */
 export const SELF_TESTS: ReadonlyArray<SelfTest> = [
   {
@@ -262,6 +287,14 @@ export const SELF_TESTS: ReadonlyArray<SelfTest> = [
       const block = parseEbur128Blocks(lines.join('\n')).get('st')
       return ranClean(r) && within(block?.integratedLufs, -18.1, 0.1) && within(block?.truePeakDbtp, -18.1, 0.1)
     }
+  },
+  {
+    id: 'meter-surround',
+    args: [...QUIET, '-nostats', '-loglevel', 'level+info', '-f', 'lavfi', '-i', 'sine=frequency=997:sample_rate=48000:duration=5',
+      '-filter_complex', '[0:a]asplit=2[m][s];[m]ebur128@mono=peak=none:framelog=verbose[o];[s]pan=5.1(side)|FL=c0|FR=c0|FC=c0|SL=c0|SR=c0,ebur128@surround=peak=none:framelog=verbose,anullsink',
+      '-map', '[o]', '-f', 'null', '-'],
+    reads: 'stderr',
+    pass: (r, lines) => ranClean(r) && within(surroundGainDb(lines), SURROUND_GAIN_DB, SURROUND_TOLERANCE_DB)
   },
   {
     id: 'soxr',
@@ -313,10 +346,13 @@ export function cachedSelfTest(record: SelfTestRecord | null | undefined, identi
   return { ...record.results }
 }
 
-/** The first failing self-test that disables the pipeline; soxr only switches the verify meter, so it never does. */
+/**
+ * The first failing self-test that disables the pipeline. soxr only switches the verify meter and meter-surround only
+ * refuses loudness jobs on surround streams, so neither ever does.
+ */
 export function selfTestFailure(results: Readonly<Record<SelfTestId, boolean>>): SelfTestId | null
 {
-  return SELF_TEST_IDS.find((id) => id !== 'soxr' && !results[id]) ?? null
+  return SELF_TEST_IDS.find((id) => !NARROWING_TESTS.has(id) && !results[id]) ?? null
 }
 
 /** Why the audio pipeline cannot run on a build, or null when it can. */
@@ -570,7 +606,8 @@ export function notRun(): Record<SelfTestId, boolean>
 
 /**
  * Puts together what was read from a build: its `-version` and `-encoders` output and its self-test results (null
- * when the tests did not run). `soxr` follows the soxr self-test, which decides the true-peak meter.
+ * when the tests did not run). `soxr` follows the soxr self-test, which decides the true-peak meter, and
+ * `surroundMeter` follows meter-surround, which decides whether loudness jobs may meter more than two channels.
  */
 export function assembleBuildInfo(o: {
   candidate: Pick<BuildCandidate, 'source' | 'ffmpegPath' | 'ffprobePath'>
@@ -591,6 +628,7 @@ export function assembleBuildInfo(o: {
     encoders: listed.all,
     experimental: listed.experimental,
     soxr: selfTest.soxr,
+    surroundMeter: selfTest['meter-surround'],
     meetsMinimum: meetsMinimum(version.libs),
     selfTest,
     identity: { ...o.identity }

@@ -63,7 +63,7 @@ function capabilities(over: Partial<CapabilitySummary['gpu']> = {}): CapabilityS
 {
   return {
     rev: 1,
-    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
     encoders: [],
     gpu: gpu(over),
     cpuCount: 16,

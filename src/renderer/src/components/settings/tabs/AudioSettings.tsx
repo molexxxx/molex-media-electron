@@ -48,6 +48,7 @@ export const SELF_TEST_LABELS: Readonly<Record<FfmpegSelfTestId, string>> =
   'chain-opus-51side': '5.1 limiter chain to Opus',
   'chain-aac-mono': 'Mono limiter chain to AAC',
   'meter-dual-mono': 'Dual-mono loudness meter',
+  'meter-surround': 'Surround loudness meter',
   'soxr': 'SoX resampler',
   'encoders': 'Required encoders'
 }
@@ -81,6 +82,17 @@ export function selfTestResult(selfTest: FfmpegInfo['selfTest']): { tone: 'passe
     return { tone: 'failed', text: selfTest.failedTest === null ? 'Failed' : `Failed: ${SELF_TEST_LABELS[selfTest.failedTest]}` }
   }
   return { tone: 'not-run', text: 'Not run' }
+}
+
+/** What a failed surround meter test means for jobs, or null when it passed or the self-test did not run. */
+export function surroundMeterNote(selfTest: FfmpegInfo['selfTest']): string | null
+{
+  const ran = selfTest.status === 'passed' || selfTest.status === 'failed'
+  if (!ran || selfTest.results === null || selfTest.results['meter-surround'])
+  {
+    return null
+  }
+  return 'This build measures surround loudness incorrectly, so Normalize and Gain do not run on surround files. Stereo and mono files are not affected.'
 }
 
 /** Whether the minimum version is met, or why not. */
@@ -290,6 +302,7 @@ function BuildFacts({ info, busy, progress, onRerun, onInstall }: BuildFactsProp
 {
   const result = selfTestResult(info.selfTest)
   const when = testedWhen(info.selfTest.testedAt, info.selfTest.durationMs)
+  const surround = surroundMeterNote(info.selfTest)
   return (
     <>
       {info.refusal !== null && (
@@ -314,6 +327,12 @@ function BuildFacts({ info, busy, progress, onRerun, onInstall }: BuildFactsProp
               <span>{result.text}</span>
               {when !== null && <span className='tabular-nums text-label text-ink-3'>{when}</span>}
             </span>
+            {surround !== null && (
+              <span className='flex items-start gap-2 text-label text-warning'>
+                <Icon name='status.warning' size='sm' />
+                <span>{surround}</span>
+              </span>
+            )}
             {info.selfTest.results !== null && <SelfTestDetails results={info.selfTest.results} />}
           </span>
         </Fact>

@@ -10,10 +10,10 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import {
-  CHECKSUM_MESSAGE, MINIMUM, REQUIRED_ENCODERS, SELF_TESTS, SELF_TEST_IDS, SELF_TEST_REV, alternativesMessage, assembleBuildInfo,
-  cachedSelfTest, configBlock, discoveryCandidates, displayVersion, executableName, notRun,
+  CHECKSUM_MESSAGE, MINIMUM, REQUIRED_ENCODERS, SELF_TESTS, SELF_TEST_IDS, SELF_TEST_REV, SURROUND_GAIN_DB, SURROUND_TOLERANCE_DB,
+  alternativesMessage, assembleBuildInfo, cachedSelfTest, configBlock, discoveryCandidates, displayVersion, executableName, notRun,
   foldersToDelete, hasRequiredEncoders, isPinId, meetsMinimum, minimumMessage, parseEncoders, parsePin, parseVersion,
-  pinKey, pipelineRefusal, planInstall, searchDirs, selectAssets, selfTestFailure, verifyDigest
+  pinKey, pipelineRefusal, planInstall, searchDirs, selectAssets, selfTestFailure, surroundGainDb, verifyDigest
 } from '../../src/main/ffmpeg/build'
 import type { BinaryIdentity, LibVersion, PinnedBuilds, SelfTestId, SelfTestRecord } from '../../src/main/ffmpeg/build'
 import { execArgv, normalizeLines, signedExitCode, exitName } from '../../src/main/ffmpeg/exec'
@@ -276,10 +276,11 @@ describe('SELF_TESTS', () =>
   const scenarios = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'selftest', 'scenarios.json'), 'utf8')) as
     { prefix: string[]; runs: Array<{ name: string; args: string[] }> }
 
-  it('runs the six tests in order', () =>
+  it('runs the seven tests in order, under rules newer than the ones without the surround meter', () =>
   {
     expect(SELF_TESTS.map((t) => t.id)).toEqual(SELF_TEST_IDS)
-    expect(SELF_TEST_REV).toBeGreaterThan(0)
+    expect(SELF_TEST_IDS).toEqual(['chain-flac-s16', 'chain-opus-51side', 'chain-aac-mono', 'meter-dual-mono', 'meter-surround', 'soxr', 'encoders'])
+    expect(SELF_TEST_REV).toBe(2)
   })
 
   it('records with the exec prefix, so the fixtures replay the argv the bootstrap runs', () =>
@@ -338,6 +339,53 @@ describe('SELF_TESTS', () =>
     expect(meter.pass(result(), lines.map((line) => line.replace('Peak:      -18.1 dBFS', 'Peak:      -17.9 dBFS')))).toBe(false)
     expect(meter.pass(result(), lines.map((line) => line.replace('ebur128@st', 'ebur128@m0')))).toBe(false)
     expect(meter.pass(result({ code: 1 }), lines)).toBe(false)
+  })
+
+  it('expects the 5.1 reading 10*log10(3 + 2*1.41) dB over the mono one', () =>
+  {
+    expect(SURROUND_GAIN_DB).toBeCloseTo(7.649, 3)
+    expect(SURROUND_TOLERANCE_DB).toBe(0.3)
+  })
+
+  it.each(SELFTEST_BUILDS)('reads mono -21.1 and 5.1 -13.4 LUFS from the recorded %s surround meter', (build) =>
+  {
+    const lines = recordedLines(build, 'meter-surround', 'stderr')
+    expect(surroundGainDb(lines)).toBeCloseTo(7.7, 6)
+    expect(selfTest('meter-surround').pass(recordedResult(build, 'meter-surround'), lines)).toBe(true)
+  })
+
+  it('fails the surround meter when 5.1 strays more than 0.3 dB from the weighting, as on a build that reads surround too loud', () =>
+  {
+    const meter = selfTest('meter-surround')
+    const lines = recordedLines('9.0.2', 'meter-surround', 'stderr')
+    const surround = (lufs: string): string[] => lines.map((line) => line.replace('I:         -13.4 LUFS', `I:         ${lufs} LUFS`))
+    expect(meter.pass(result(), surround('-13.6'))).toBe(true)
+    expect(meter.pass(result(), surround('-13.2'))).toBe(true)
+    expect(meter.pass(result(), surround('-13.0'))).toBe(false)
+    expect(meter.pass(result(), surround('-13.8'))).toBe(false)
+    expect(meter.pass(result(), surround('10.0'))).toBe(false)
+    expect(meter.pass(result(), surround('-21.1'))).toBe(false)
+    expect(meter.pass(result(), lines.map((line) => line.replace('I:         -21.1 LUFS', 'I:          -5.0 LUFS')))).toBe(false)
+  })
+
+  it('fails the surround meter when either block or its reading is missing, or the run did not end cleanly', () =>
+  {
+    const meter = selfTest('meter-surround')
+    const lines = recordedLines('9.0.2', 'meter-surround', 'stderr')
+    expect(meter.pass(result(), lines.map((line) => line.replace('ebur128@surround', 'ebur128@other')))).toBe(false)
+    expect(meter.pass(result(), lines.map((line) => line.replace('ebur128@mono', 'ebur128@other')))).toBe(false)
+    expect(surroundGainDb(lines.map((line) => line.replace('I:         -21.1 LUFS', 'I:         nan LUFS')))).toBeNull()
+    expect(meter.pass(result(), [])).toBe(false)
+    expect(meter.pass(result({ code: 1 }), lines)).toBe(false)
+    expect(meter.pass(result({ stopped: 'killed' }), lines)).toBe(false)
+  })
+
+  it('reads the last Summary of each meter past the empty first ones the 2022 build prints', () =>
+  {
+    const lines = recordedLines('2022-10-13', 'meter-surround', 'stderr')
+    expect(lines.filter((line) => line.endsWith('] [info] Summary:'))).toHaveLength(4)
+    expect(lines.filter((line) => line.includes('I:         -70.0 LUFS'))).toHaveLength(2)
+    expect(surroundGainDb(lines)).toBeCloseTo(7.7, 6)
   })
 
   it('fails the encoder test when a required encoder is missing or experimental', () =>
@@ -405,6 +453,13 @@ describe('selfTestFailure and pipelineRefusal', () =>
   {
     expect(selfTestFailure({ ...pass, soxr: false })).toBeNull()
     expect(pipelineRefusal({ versionString: '9.0.2', meetsMinimum: true, selfTest: { ...pass, soxr: false } })).toBeNull()
+  })
+
+  it('lets the pipeline run with a surround meter that misreads, since only surround loudness jobs depend on it', () =>
+  {
+    expect(selfTestFailure({ ...pass, 'meter-surround': false })).toBeNull()
+    expect(selfTestFailure({ ...pass, 'meter-surround': false, soxr: false, encoders: false })).toBe('encoders')
+    expect(pipelineRefusal({ versionString: '9.0.2', meetsMinimum: true, selfTest: { ...pass, 'meter-surround': false } })).toBeNull()
   })
 
   it('names the first failing test', () =>
@@ -764,6 +819,7 @@ describe('assembleBuildInfo and configBlock', () =>
     expect(built.versionString).toBe('n9.0.2-17-g2a571b6068-20260930')
     expect(built.meetsMinimum).toBe(true)
     expect(built.soxr).toBe(true)
+    expect(built.surroundMeter).toBe(true)
     expect(hasRequiredEncoders(built.encoders, built.experimental)).toBe(true)
     expect(built.identity).toEqual(identity)
     expect(pipelineRefusal(built)).toBeNull()
@@ -776,6 +832,7 @@ describe('assembleBuildInfo and configBlock', () =>
     expect(built.meetsMinimum).toBe(false)
     expect(built.selfTest).toEqual(notRun())
     expect(built.soxr).toBe(false)
+    expect(built.surroundMeter).toBe(false)
     expect(pipelineRefusal(built)).toBe('FFmpeg 5.1 or newer is required; found 4.4.2')
   })
 
@@ -785,6 +842,16 @@ describe('assembleBuildInfo and configBlock', () =>
     expect(built.meetsMinimum).toBe(true)
     expect(built.soxr).toBe(false)
     expect(pipelineRefusal(built)).toBe('FFmpeg failed the chain-opus-51side self-test')
+  })
+
+  it('adopts a build whose surround meter misreads, carrying the result as surroundMeter', () =>
+  {
+    const results = { ...passed, 'meter-surround': false }
+    const built = assembleBuildInfo({ candidate, identity, versionStdout: info('9.0.2', 'version.stdout.txt'), encodersStdout: info('9.0.2', 'encoders.stdout.txt'), selfTest: results })
+    expect(built.surroundMeter).toBe(false)
+    expect(built.soxr).toBe(true)
+    expect(pipelineRefusal(built)).toBeNull()
+    expect(cachedSelfTest(configBlock(candidate, built).selfTest, identity)).toEqual(results)
   })
 
   it('records the accepted build with its self-test under the current rules, so the cache hits next time', () =>

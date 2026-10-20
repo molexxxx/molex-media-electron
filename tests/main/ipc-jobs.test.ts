@@ -632,6 +632,7 @@ function buildInfo(candidate: Pick<BuildCandidate, 'source' | 'ffmpegPath' | 'ff
     encoders: new Set(['aac', 'flac', 'libopus', 'h264_nvenc', 'opus']),
     experimental: new Set(['opus']),
     soxr: selfTest.soxr,
+    surroundMeter: selfTest['meter-surround'],
     meetsMinimum,
     selfTest,
     identity: { path: candidate.ffmpegPath, size: st.size, mtimeMs: st.mtimeMs }
@@ -721,6 +722,28 @@ describe('FFmpeg build state', () =>
     expect(host.capabilitySummary({ build: soxr, gpu: null, rev: 4, cores: 8, platform: 'win32' }).ffmpeg).toMatchObject({ selfTest: 'passed', soxr: false })
   })
 
+  it('keeps a build whose surround meter misreads and carries that to the capability summary alone', async () =>
+  {
+    m.inspect = async (c: unknown) => buildInfo(c as BuildCandidate, results(['meter-surround']))
+    const misreads = await host.rerunSelfTest()
+    expect(misreads.adopted).toBe(true)
+    expect(misreads.refusal).toBeNull()
+    expect(m.savedFfmpeg.at(-1)).toMatchObject({ selfTest: { rev: SELF_TEST_REV, results: results(['meter-surround']) } })
+    expect(host.ffmpegInfo().selfTest).toMatchObject({ status: 'passed', failedTest: null, results: { 'meter-surround': false, soxr: true } })
+    expect(host.capabilitySummary({ build: misreads, gpu: null, rev: 5, cores: 8, platform: 'win32' }).ffmpeg)
+      .toMatchObject({ ready: true, selfTest: 'passed', soxr: true, surroundMeter: false })
+
+    m.inspect = async (c: unknown) => buildInfo(c as BuildCandidate, results(['meter-surround', 'encoders']))
+    const failed = await host.rerunSelfTest()
+    expect(failed.adopted).toBe(false)
+    expect(host.ffmpegInfo().selfTest.failedTest).toBe('encoders')
+    expect(host.capabilitySummary({ build: failed, gpu: null, rev: 6, cores: 8, platform: 'win32' }).ffmpeg).toMatchObject({ selfTest: 'failed', surroundMeter: false })
+
+    m.inspect = async (c: unknown) => buildInfo(c as BuildCandidate, results())
+    const passes = await host.rerunSelfTest()
+    expect(host.capabilitySummary({ build: passes, gpu: null, rev: 7, cores: 8, platform: 'win32' }).ffmpeg).toMatchObject({ selfTest: 'passed', surroundMeter: true })
+  })
+
   it('reports no usable build when nothing is found', async () =>
   {
     m.config = { ffmpeg: null, jobs: { recentFolders: [] } }
@@ -728,7 +751,7 @@ describe('FFmpeg build state', () =>
     expect(state).toMatchObject({ info: null, adopted: false, refusal: null })
     expect(host.ffmpegInfo()).toMatchObject({ found: false, usable: false, version: null })
     expect(host.capabilitySummary({ build: state, gpu: null, rev: 1, cores: 4, platform: 'linux' }).ffmpeg).toEqual({
-      ready: false, version: null, source: null, meetsMinimum: false, selfTest: null, soxr: false
+      ready: false, version: null, source: null, meetsMinimum: false, selfTest: null, soxr: false, surroundMeter: false
     })
   })
 
@@ -792,6 +815,7 @@ describe('build information', () =>
     const state: host.FfmpegBuildState = { info, candidate: { source: 'path', buildId: null, ffmpegPath: file, ffprobePath: file }, adopted: true, refusal: null, testedAt: 5, testMs: 9, rev: 2 }
     const detecting = host.capabilitySummary({ build: state, gpu: null, rev: 7, cores: 12, platform: 'win32' })
     expect(detecting).toMatchObject({ rev: 7, cpuCount: 12, platform: 'win32', gpu: { status: 'detecting', vendor: null, name: null, encoders: [] } })
+    expect(detecting.ffmpeg).toMatchObject({ selfTest: 'passed', soxr: true, surroundMeter: true })
     expect(detecting.encoders).toEqual(['aac', 'flac', 'h264_nvenc', 'libopus'])
     const ready = host.capabilitySummary({ build: state, gpu: { vendor: 'nvidia', name: 'NVIDIA GeForce RTX 4070 SUPER', encoders: ['h264_nvenc'] }, rev: 8, cores: 12, platform: 'win32' })
     expect(ready.gpu).toEqual({ status: 'ready', vendor: 'nvidia', name: 'NVIDIA GeForce RTX 4070 SUPER', encoders: ['h264_nvenc'] })

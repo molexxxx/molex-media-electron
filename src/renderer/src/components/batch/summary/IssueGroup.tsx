@@ -49,6 +49,7 @@ const PAGE_ACTIONS: Partial<Readonly<Record<PlanIssueCode, readonly IssueActionI
   'ffmpeg-unavailable': ['open-settings'],
   'ffmpeg-below-minimum': ['open-settings'],
   'self-test-failed': ['open-settings'],
+  'surround-meter-failed': ['open-settings'],
   'album-incomplete': ['select-album']
 }
 

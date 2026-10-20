@@ -708,7 +708,7 @@ class PreviewEngine
   readonly capabilities: CapabilitySummary =
   {
     rev: 1,
-    ffmpeg: { ready: true, version: PREVIEW_VERSION, source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+    ffmpeg: { ready: true, version: PREVIEW_VERSION, source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
     encoders: ['aac', 'libmp3lame', 'libopus', 'libvorbis', 'flac', 'alac', 'ac3', 'eac3', 'pcm_s16le', 'pcm_s24le', 'libx264', 'libx265', 'libvpx-vp9', 'libaom-av1', 'libsvtav1', 'prores_ks', 'ffv1', 'gif', 'png', 'mjpeg', 'libwebp'],
     gpu: { status: 'ready', vendor: null, name: null, encoders: [] },
     cpuCount: 8,

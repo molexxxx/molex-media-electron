@@ -45,7 +45,8 @@ export interface LogQuery
 export type FfmpegBuildSource = 'bundled' | 'path' | 'custom'
 
 /** One self-test run against an FFmpeg build. */
-export type FfmpegSelfTestId = 'chain-flac-s16' | 'chain-opus-51side' | 'chain-aac-mono' | 'meter-dual-mono' | 'soxr' | 'encoders'
+export type FfmpegSelfTestId =
+  | 'chain-flac-s16' | 'chain-opus-51side' | 'chain-aac-mono' | 'meter-dual-mono' | 'meter-surround' | 'soxr' | 'encoders'
 
 /** The Settings FFmpeg section's data, as `ffmpeg:info` answers it. */
 export interface FfmpegInfo
@@ -62,7 +63,7 @@ export interface FfmpegInfo
   selfTest:
   {
     status: 'passed' | 'failed' | 'not-run' | null
-    /** The first failing test that disables the pipeline. */
+    /** The first failing test that disables the pipeline; soxr and meter-surround never appear here. */
     failedTest: FfmpegSelfTestId | null
     results: Record<FfmpegSelfTestId, boolean> | null
     testedAt: number | null

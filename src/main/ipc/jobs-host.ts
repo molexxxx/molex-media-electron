@@ -39,6 +39,7 @@ import type { EngineAudio, EngineDeps, EngineParts, EngineShell, JobEngine } fro
 import { createFsOps } from '../jobs/fsops'
 import { createNodeHistoryFs } from '../jobs/history'
 import { createNodePersistenceIO } from '../jobs/persistence'
+import { surroundMeterIssues } from '../jobs/planner'
 import { createPlannerIO, createVolumeQueries } from '../jobs/planner-io'
 import { createProbeQueue } from '../jobs/probe-queue'
 import { audioInput, createBoostRunner, createNormalizeRunner, endingText, expectedKey, measurementOf, renderMessages } from '../jobs/runners/audio'
@@ -538,7 +539,7 @@ export interface FfmpegInfo
   selfTest:
   {
     status: 'passed' | 'failed' | 'not-run' | null
-    /** The first failing test that disables the pipeline; soxr only switches the meters and never appears here. */
+    /** The first failing test that disables the pipeline; soxr and meter-surround only narrow what runs and never appear here. */
     failedTest: SelfTestId | null
     results: Record<SelfTestId, boolean> | null
     testedAt: number | null
@@ -853,7 +854,8 @@ export function buildCapabilitiesOf(info: Pick<FfmpegBuildInfo, 'encoders' | 'ex
 
 /**
  * The capability summary for a build state and GPU detection. A failing self-test leaves the binary ready but
- * marks the self-test failed, which blocks every job in the plan; soxr false only switches the meters to swr.
+ * marks the self-test failed, which blocks every job in the plan; soxr false only switches the meters to swr, and
+ * surroundMeter false only blocks loudness jobs that meter more than two channels.
  */
 export function capabilitySummary(o: { build: FfmpegBuildState; gpu: GpuSummary | null; rev: number; cores: number; platform: Platform }): CapabilitySummary
 {
@@ -867,7 +869,8 @@ export function capabilitySummary(o: { build: FfmpegBuildState; gpu: GpuSummary 
       source: o.build.candidate?.source ?? null,
       meetsMinimum: info?.meetsMinimum ?? false,
       selfTest: info === null ? null : !info.meetsMinimum ? 'pending' : failed === null ? 'passed' : 'failed',
-      soxr: info?.soxr ?? false
+      soxr: info?.soxr ?? false,
+      surroundMeter: info?.surroundMeter ?? false
     },
     encoders: info ? [...info.encoders].filter((e) => !info.experimental.has(e)).sort() : [],
     gpu: o.gpu === null
@@ -1067,6 +1070,11 @@ export async function createEngineRuntime(options: ElectronJobsHostOptions = {})
     if (staticPlan.refusals.length > 0)
     {
       throw new Error(renderMessages(staticPlan.refusals.map((r) => r.message)))
+    }
+    const surround = surroundMeterIssues(recipe, facts, staticPlan.container, summary().ffmpeg)
+    if (surround.length > 0)
+    {
+      throw new Error(surround[0].message)
     }
     audioPlans.set(jobId, { recipe, staticPlan })
     const input = audioInput(jobId, view.source, recipe, facts, output)

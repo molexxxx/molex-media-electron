@@ -292,6 +292,7 @@ describe('issue groups', () =>
     expect(issueActions('source-missing').map(issueActionLabel)).toEqual(['Locate…'])
     expect(issueActions('probe-failed').map(issueActionLabel)).toEqual(['Probe again', 'Show log'])
     expect(issueActions('ffmpeg-below-minimum').map(issueActionLabel)).toEqual(['Open Settings'])
+    expect(issueActions('surround-meter-failed').map(issueActionLabel)).toEqual(['Open Settings'])
     expect(issueActions('template-unknown-token').map(issueActionLabel)).toEqual(['Change file name'])
     expect(issueActions('album-incomplete').map(issueActionLabel)).toEqual(['Select the whole album'])
     expect(issueActions('odd-dimensions')).toEqual([])

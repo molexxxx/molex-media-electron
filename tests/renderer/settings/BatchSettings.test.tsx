@@ -52,7 +52,7 @@ function capabilities(encoders: string[] = []): CapabilitySummary
 {
   return {
     rev: 1,
-    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+    ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
     encoders: [],
     gpu: { status: 'ready', vendor: encoders.length > 0 ? 'nvidia' : null, name: null, encoders },
     cpuCount: 8,

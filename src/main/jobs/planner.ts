@@ -23,8 +23,11 @@ import type {
 import { binPhrase } from '../../shared/text/platform'
 import type { Platform } from '../../shared/text/platform'
 import { canonicalAudioContainer, containerFor, VIDEO_FALLBACK_CONTAINER } from '../ffmpeg/audio/containers'
+import { DOWNMIX_LAYOUTS } from '../ffmpeg/audio/downmix'
 import { chooseEncoder } from '../ffmpeg/audio/encoders'
 import type { BuildCapabilities } from '../ffmpeg/audio/encoders'
+import { outputShape } from '../ffmpeg/audio/job'
+import { audioToKeep } from '../ffmpeg/audio/streams'
 import type { FileStat, PlannerIO, VolumeInfo } from './deps'
 import { displacedPath, exceedsPathLimit, numberedName, partOutputName, pathApi, pathKey, RENAME_FIRST, RENAME_LAST, workDirPath } from './naming'
 import type { JobRunner, RunnerPlan } from './runners/types'
@@ -207,6 +210,8 @@ export const planText =
     `molexMedia cannot read how much room the Recycle Bin on ${drive} has, and this batch would send ${formatSize(need)} there, more than 5 percent of the drive.`,
   ffmpegRequired: (minimum: string, found: string | null): string => `FFmpeg ${minimum} or newer is required; found ${found ?? 'none'}.`,
   selfTestFailed: (version: string | null): string => `${version === null ? 'FFmpeg' : `FFmpeg ${version}`} failed its self-test; repair it in Settings.`,
+  surroundMeter: (kind: 'normalize' | 'boost'): string =>
+    `This FFmpeg build measures surround loudness incorrectly, so ${kind === 'boost' ? 'Gain does not run on surround files' : 'surround files are not normalized'}. Choose another FFmpeg build in Settings, FFmpeg.`,
   encoderMissing: (encoder: string): string => `This FFmpeg has no ${encoder} encoder.`,
   gpuMissing: (): string => 'GPU encoding is required, but no GPU encoder was found.',
   gpuCannotEncode: (gpu: string, codec: string): string => `${gpu} cannot encode ${codec}; GPU encoding is required for this batch.`,
@@ -627,6 +632,28 @@ export function ffmpegIssues(capabilities: PlannerCapabilities): PlanIssue[]
   return ffmpeg.selfTest === 'failed' ? [planIssue('self-test-failed', 'error', planText.selfTestFailed(ffmpeg.version), 'encoder')] : []
 }
 
+const DOWNMIX_FIX: PlanFix = { kind: 'patch-recipe', label: 'Downmix to stereo', patch: { field: 'downmix', value: 'standard' }, scope: 'jobs' }
+
+/**
+ * The refusal of a Normalize or Gain job that meters more than two channels on any stream it keeps, on a build whose
+ * surround meter failed its self-test. A Normalize downmix meters stereo, so the fix downmixes when every such
+ * stream's layout can be.
+ */
+export function surroundMeterIssues(recipe: Recipe, facts: MediaFacts, container: string, ffmpeg: CapabilitySummary['ffmpeg']): PlanIssue[]
+{
+  if (ffmpeg.selfTest !== 'passed' || ffmpeg.surroundMeter || (recipe.kind !== 'normalize' && recipe.kind !== 'boost'))
+  {
+    return []
+  }
+  const surround = audioToKeep(facts, containerFor(container)).filter((a) => outputShape(a, recipe).channels > 2)
+  if (surround.length === 0)
+  {
+    return []
+  }
+  const downmixable = recipe.kind === 'normalize' && surround.every((a) => a.layout !== null && DOWNMIX_LAYOUTS.includes(a.layout))
+  return [planIssue('surround-meter-failed', 'error', planText.surroundMeter(recipe.kind), 'encoder', downmixable ? DOWNMIX_FIX : null)]
+}
+
 /** A video plan moved to the GPU, or kept on the CPU, with the notes the policy calls for. */
 export interface GpuOutcome
 {
@@ -962,6 +989,7 @@ async function draftJob(job: PlanJob, ctx: PlanContext): Promise<Draft>
   const decision = decideContainer(job.recipe, job.source, facts, capabilities.build, ctx.build)
   draft.decision = decision
   draft.issues.push(...decision.issues, ...encoderSettingIssues(job.recipe))
+  draft.issues.push(...surroundMeterIssues(job.recipe, facts, decision.container, capabilities.summary.ffmpeg))
   intendedPath(draft, decision, ctx)
   const output: OutputPlan = {
     kind: decision.kind,

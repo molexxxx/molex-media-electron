@@ -139,6 +139,39 @@
       "stderr": "meter-dual-mono.stderr.txt"
     },
     {
+      "name": "meter-surround",
+      "tool": "ffmpeg",
+      "argv": [
+        "-hide_banner",
+        "-nostdin",
+        "-nostats",
+        "-progress",
+        "pipe:1",
+        "-stats_period",
+        "0.5",
+        "-loglevel",
+        "level+error",
+        "-nostats",
+        "-loglevel",
+        "level+info",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=997:sample_rate=48000:duration=5",
+        "-filter_complex",
+        "[0:a]asplit=2[m][s];[m]ebur128@mono=peak=none:framelog=verbose[o];[s]pan=5.1(side)|FL=c0|FR=c0|FC=c0|SL=c0|SR=c0,ebur128@surround=peak=none:framelog=verbose,anullsink",
+        "-map",
+        "[o]",
+        "-f",
+        "null",
+        "-"
+      ],
+      "code": 0,
+      "signal": null,
+      "stdout": "meter-surround.stdout.txt",
+      "stderr": "meter-surround.stderr.txt"
+    },
+    {
       "name": "soxr",
       "tool": "ffmpeg",
       "argv": [

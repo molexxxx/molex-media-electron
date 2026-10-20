@@ -44,7 +44,7 @@ const BUILD: BuildCapabilities = { encoders: new Set(ENCODERS), experimental: ne
 const CAPS: CapabilitySummary =
 {
   rev: 1,
-  ffmpeg: { ready: true, version: 'n9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+  ffmpeg: { ready: true, version: 'n9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
   encoders: ENCODERS,
   gpu: { status: 'ready', vendor: null, name: null, encoders: [] },
   cpuCount: 8,

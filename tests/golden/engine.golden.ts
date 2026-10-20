@@ -67,7 +67,7 @@ function capabilities(): CapabilitySummary
 {
   return {
     rev: 1,
-    ffmpeg: { ready: true, version: golden.versionString, source: 'custom', meetsMinimum: true, selfTest: 'passed', soxr: golden.soxr },
+    ffmpeg: { ready: true, version: golden.versionString, source: 'custom', meetsMinimum: true, selfTest: 'passed', soxr: golden.soxr, surroundMeter: golden.selfTest['meter-surround'] },
     encoders: [...golden.encoders],
     gpu: { status: 'ready', vendor: null, name: null, encoders: [] },
     cpuCount: 4,

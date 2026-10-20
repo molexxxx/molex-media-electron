@@ -17,13 +17,16 @@ import
   offersInstall,
   selfTestResult,
   sourceLabel,
+  surroundMeterNote,
   testedWhen
 } from '../../../src/renderer/src/components/settings/tabs/AudioSettings'
 import SetupWizard, { SETUP_WORDS, pinBytes, selfTestLine, setupLine } from '../../../src/renderer/src/components/setup/SetupWizard'
 
 const TESTED_AT = new Date(2026, 9, 20, 11, 2).getTime()
 
-const ALL_PASSED = { 'chain-flac-s16': true, 'chain-opus-51side': true, 'chain-aac-mono': true, 'meter-dual-mono': true, 'soxr': true, 'encoders': true }
+const ALL_PASSED = { 'chain-flac-s16': true, 'chain-opus-51side': true, 'chain-aac-mono': true, 'meter-dual-mono': true, 'meter-surround': true, 'soxr': true, 'encoders': true }
+
+const SURROUND_NOTE = 'This build measures surround loudness incorrectly, so Normalize and Gain do not run on surround files. Stereo and mono files are not affected.'
 
 function info(overrides: Partial<FfmpegInfo> = {}): FfmpegInfo
 {
@@ -121,6 +124,18 @@ describe('FFmpeg section helpers', () =>
     expect(selfTestResult({ ...info().selfTest, status: null }).tone).toBe('not-run')
   })
 
+  it('explains a surround meter that misreads only when the self-test ran', () =>
+  {
+    const misreads = { ...info().selfTest, results: { ...ALL_PASSED, 'meter-surround': false } }
+    expect(SELF_TEST_LABELS['meter-surround']).toBe('Surround loudness meter')
+    expect(surroundMeterNote(info().selfTest)).toBeNull()
+    expect(surroundMeterNote(misreads)).toBe(SURROUND_NOTE)
+    expect(surroundMeterNote({ ...misreads, status: 'failed', failedTest: 'encoders' })).toBe(SURROUND_NOTE)
+    expect(surroundMeterNote({ ...misreads, status: 'not-run' })).toBeNull()
+    expect(surroundMeterNote({ ...misreads, status: null })).toBeNull()
+    expect(surroundMeterNote({ ...misreads, results: null })).toBeNull()
+  })
+
   it('says whether the minimum is met', () =>
   {
     expect(minimumLine(info())).toBe(FFMPEG_WORDS.met)
@@ -165,6 +180,28 @@ describe('FfmpegSettings', () =>
     expect(list).toBeVisible()
     expect(list).toHaveTextContent(`${SELF_TEST_LABELS.soxr}failed`)
     expect(list).toHaveTextContent(`${SELF_TEST_LABELS.encoders}passed`)
+  })
+
+  it('lists the surround meter with the other tests and explains its failure beside a passed self-test', async () =>
+  {
+    await renderSection(info({ selfTest: { ...info().selfTest, results: { ...ALL_PASSED, 'meter-surround': false } } }))
+    expect(screen.getByText('Passed')).toBeInTheDocument()
+    expect(screen.getByText(SURROUND_NOTE)).toBeInTheDocument()
+    expect(screen.queryByText(/FFmpeg is not ready/)).toBeNull()
+    const toggle = screen.getByRole('button', { name: FFMPEG_WORDS.details })
+    fireEvent.click(toggle)
+    const list = document.getElementById(toggle.getAttribute('aria-controls') as string) as HTMLElement
+    expect(list).toHaveTextContent(`${SELF_TEST_LABELS['meter-surround']}failed`)
+    expect(list).toHaveTextContent(`${SELF_TEST_LABELS['meter-dual-mono']}passed`)
+    expect(list.querySelectorAll('li')).toHaveLength(Object.keys(ALL_PASSED).length)
+  })
+
+  it('shows no surround note when the surround meter passed', async () =>
+  {
+    await renderSection()
+    expect(screen.queryByText(SURROUND_NOTE)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: FFMPEG_WORDS.details }))
+    expect(screen.getByText(SELF_TEST_LABELS['meter-surround']).nextSibling).toHaveTextContent('passed')
   })
 
   it('re-runs the self-test through ffmpeg:selfTest and shows the new result', async () =>

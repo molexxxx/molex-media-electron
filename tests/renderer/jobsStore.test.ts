@@ -156,7 +156,7 @@ const SETTINGS: RunSettings =
 const CAPABILITIES: CapabilitySummary =
 {
   rev: 1,
-  ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true },
+  ffmpeg: { ready: true, version: '9.0.2', source: 'bundled', meetsMinimum: true, selfTest: 'passed', soxr: true, surroundMeter: true },
   encoders: ['aac', 'libx264'],
   gpu: { status: 'ready', vendor: null, name: null, encoders: [] },
   cpuCount: 16,

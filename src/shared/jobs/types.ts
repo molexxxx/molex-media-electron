@@ -564,7 +564,7 @@ export const PLAN_ISSUE_CODES = [
   'template-unknown-token', 'template-empty', 'template-escapes', 'template-sanitized', 'path-long',
   'output-exists', 'intra-batch-collision', 'same-as-source', 'overwrites-another-source', 'source-is-pending-output',
   'replace-extension-change', 'extract-never-replaces', 'replace-one-job-per-source', 'no-recycle-bin', 'trash-too-small',
-  'ffmpeg-unavailable', 'ffmpeg-below-minimum', 'self-test-failed', 'encoder-missing', 'gpu-unavailable', 'gpu-downgrade',
+  'ffmpeg-unavailable', 'ffmpeg-below-minimum', 'self-test-failed', 'surround-meter-failed', 'encoder-missing', 'gpu-unavailable', 'gpu-downgrade',
   'lossless-unsupported', 'tune-unsupported', 'container-cannot-hold', 'container-changed',
   'layout-remapped', 'layout-unsupported', 'too-many-channels', 'sample-rate-unsupported', 'odd-dimensions', 'keyframe-trim',
   'streams-dropped', 'chapters-dropped', 'disk-tight', 'disk-insufficient', 'album-mismatch', 'album-incomplete', 'invalid-recipe'
@@ -810,7 +810,17 @@ export interface JobDetail
 export interface CapabilitySummary
 {
   rev: number
-  ffmpeg: { ready: boolean; version: string | null; source: 'bundled' | 'path' | 'custom' | null; meetsMinimum: boolean; selfTest: 'passed' | 'failed' | 'pending' | null; soxr: boolean }
+  ffmpeg:
+  {
+    ready: boolean
+    version: string | null
+    source: 'bundled' | 'path' | 'custom' | null
+    meetsMinimum: boolean
+    selfTest: 'passed' | 'failed' | 'pending' | null
+    soxr: boolean
+    /** False when the build meters more than two channels wrong, so loudness jobs on surround streams are refused. */
+    surroundMeter: boolean
+  }
   encoders: string[]
   gpu: { status: 'detecting' | 'ready'; vendor: 'nvidia' | 'intel' | 'amd' | null; name: string | null; encoders: string[] }
   cpuCount: number

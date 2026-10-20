@@ -318,7 +318,7 @@ describe.skipIf(Boolean(golden.skip))('golden build', () =>
     expect(golden.versionString.length).toBeGreaterThan(0)
     expect(golden.buildId).toBe(buildIdOf(golden.versionString))
     expect(golden.encoders).toContain('flac')
-    expect(Object.keys(golden.selfTest).sort()).toEqual(['chain-aac-mono', 'chain-flac-s16', 'chain-opus-51side', 'encoders', 'meter-dual-mono', 'soxr'])
+    expect(Object.keys(golden.selfTest).sort()).toEqual(['chain-aac-mono', 'chain-flac-s16', 'chain-opus-51side', 'encoders', 'meter-dual-mono', 'meter-surround', 'soxr'])
     if (golden.meetsMinimum)
     {
       expect(golden.minimumMessage).toBeNull()
