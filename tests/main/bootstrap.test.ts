@@ -233,6 +233,24 @@ describe('downloadFFmpeg', () => {
     expect(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('molex-ffmpeg-') && !staged.has(n))).toEqual([])
   })
 
+  it('installs a platform held at another release under its build id and names that release, not the pin version', async () => {
+    const held = 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffmpeg.zip'
+    h.pin.platforms = { [KEY]: { version: '7.1.1', primary: [asset('mriedl-7.1.1', held)], fallback: [] } }
+    h.responses.set(held, { status: 200, body: ARCHIVE })
+    await fs.promises.mkdir(path.join(h.root, 'mriedl-9.0.2'), { recursive: true })
+    const progress: BootstrapProgress[] = []
+
+    const paths = await downloadFFmpeg((p) => progress.push(p))
+
+    expect(paths).toEqual(installed('mriedl-7.1.1'))
+    expect(h.saved[0]).toMatchObject({ source: 'bundled', buildId: 'mriedl-7.1.1' })
+    expect(fs.readdirSync(h.root)).toEqual(['mriedl-7.1.1'])
+    const downloading = progress.filter((p) => p.stage === 'downloading').map((p) => p.message)
+    expect(downloading[0]).toBe('Downloading FFmpeg 7.1.1...')
+    expect(downloading.every((m) => m.startsWith('Downloading FFmpeg 7.1.1...'))).toBe(true)
+    expect(logger.success).toHaveBeenCalledWith(`FFmpeg 7.1.1 installed into ${path.join(h.root, 'mriedl-7.1.1')} and verified`)
+  })
+
   it('removes older pinned builds and interrupted staging folders and keeps everything else', async () => {
     h.responses.set(PRIMARY, { status: 200, body: ARCHIVE })
     for (const name of ['btbn-n8.1.3-9-g1234abcd', 'gyan-8.1.2-full', `${PRIMARY_ID}.part-1a2b3c`, 'custom-tools']) {

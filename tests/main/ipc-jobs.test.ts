@@ -784,7 +784,7 @@ describe('FFmpeg build state', () =>
 
 describe('build information', () =>
 {
-  const pin = { id: 'p', version: '9.0.2', fetched: '2026-10-15', platforms: { 'win32-x64': { primary: [{ build: 'btbn-a', url: 'https://x', bytes: 1, sha256: 'a', kind: 'zip' as const, contains: ['ffmpeg' as const] }], fallback: [{ build: 'gyan-b', url: 'https://y', bytes: 1, sha256: 'b', kind: 'zip' as const, contains: ['ffmpeg' as const] }] } } }
+  const pin = { id: 'p', version: '9.0.2', fetched: '2026-10-15', platforms: { 'win32-x64': { version: '9.0.2', primary: [{ build: 'btbn-a', url: 'https://x', bytes: 1, sha256: 'a', kind: 'zip' as const, contains: ['ffmpeg' as const] }], fallback: [{ build: 'gyan-b', url: 'https://y', bytes: 1, sha256: 'b', kind: 'zip' as const, contains: ['ffmpeg' as const] }] } } }
 
   it('names the pinned builds and the install offer', () =>
   {
@@ -799,11 +799,22 @@ describe('build information', () =>
   {
     const base = { info: null, adopted: false, refusal: null, testedAt: null, testMs: null, rev: 1 }
     const bundled = (buildId: string | null): host.FfmpegBuildState => ({ ...base, candidate: { source: 'bundled', buildId, ffmpegPath: 'f', ffprobePath: 'p' } })
-    expect(host.ffmpegInfoOf(bundled('btbn-a'), pin, ['btbn-a']).pin).toMatchObject({ matches: true, offerInstall: false })
-    expect(host.ffmpegInfoOf(bundled('btbn-old'), pin, ['btbn-a']).pin).toMatchObject({ matches: false, offerInstall: true })
-    expect(host.ffmpegInfoOf(bundled(null), pin, ['btbn-a']).pin.offerInstall).toBe(true)
+    expect(host.ffmpegInfoOf(bundled('btbn-a'), '9.0.2', ['btbn-a']).pin).toMatchObject({ matches: true, offerInstall: false })
+    expect(host.ffmpegInfoOf(bundled('btbn-old'), '9.0.2', ['btbn-a']).pin).toMatchObject({ matches: false, offerInstall: true })
+    expect(host.ffmpegInfoOf(bundled(null), '9.0.2', ['btbn-a']).pin.offerInstall).toBe(true)
     const onPath: host.FfmpegBuildState = { ...base, candidate: { source: 'path', buildId: null, ffmpegPath: 'f', ffprobePath: 'p' } }
-    expect(host.ffmpegInfoOf(onPath, pin, ['btbn-a']).pin.offerInstall).toBe(false)
+    expect(host.ffmpegInfoOf(onPath, '9.0.2', ['btbn-a']).pin.offerInstall).toBe(false)
+  })
+
+  it('names the release pinned for this platform, so a held Mac offers 7.1.x and an old 9.0.2 install is offered the held build', () =>
+  {
+    const base = { info: null, adopted: false, refusal: null, testedAt: null, testMs: null, rev: 1 }
+    const old: host.FfmpegBuildState = { ...base, candidate: { source: 'bundled', buildId: 'mriedl-9.0.2', ffmpegPath: 'f', ffprobePath: 'p' } }
+    expect(host.ffmpegInfoOf(old, '7.1.1', ['mriedl-7.1.1']).pin)
+      .toEqual({ version: '7.1.1', matches: false, offerInstall: true, installLabel: 'Install FFmpeg 7.1.x (tested with this version)' })
+    const shipped = host.pinnedBuilds()
+    expect(host.pinnedBuildIds(shipped, 'darwin', 'arm64')).toEqual(['mriedl-7.1.1'])
+    expect(shipped.platforms['darwin-arm64'].version).toBe('7.1.1')
   })
 
   it('summarizes capabilities with GPU detection', () =>
@@ -825,8 +836,8 @@ describe('build information', () =>
     expect(host.buildCapabilitiesOf(null)).toBe(host.NO_BUILD)
     expect(host.buildIdOf(info)).toBe('path:n9.0.2-17-g2a571b6068-20260930')
     expect(host.buildIdOf(null)).toBe('none')
-    expect(host.ffmpegInfoOf(state, pin, []).selfTest).toMatchObject({ status: 'passed', testedAt: 5, durationMs: 9 })
-    expect(host.ffmpegInfoOf({ ...state, info: { ...info, meetsMinimum: false } }, pin, []).selfTest.status).toBe('not-run')
+    expect(host.ffmpegInfoOf(state, '9.0.2', []).selfTest).toMatchObject({ status: 'passed', testedAt: 5, durationMs: 9 })
+    expect(host.ffmpegInfoOf({ ...state, info: { ...info, meetsMinimum: false } }, '9.0.2', []).selfTest.status).toBe('not-run')
     fs.rmSync(dir, { recursive: true, force: true })
   })
 

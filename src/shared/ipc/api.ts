@@ -72,6 +72,7 @@ export interface FfmpegInfo
   refusal: string | null
   pin:
   {
+    /** The FFmpeg release pinned for this platform, which can differ from other platforms'. */
     version: string
     /** True when the bundled build is one of this app's pinned builds. */
     matches: boolean

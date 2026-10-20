@@ -378,6 +378,8 @@ export interface Asset
 /** The assets of one platform key: every primary asset forms one build, every fallback asset another. */
 export interface PlatformPin
 {
+  /** The FFmpeg release both builds carry: the platform's own version when the pin holds it at another release, else the pin's. */
+  version: string
   primary: Asset[]
   fallback: Asset[]
 }
@@ -386,6 +388,7 @@ export interface PlatformPin
 export interface PinnedBuilds
 {
   id: string
+  /** The FFmpeg release of every platform that names no version of its own. */
   version: string
   fetched: string
   platforms: Readonly<Record<string, PlatformPin>>
@@ -397,7 +400,7 @@ export type InstallPlan =
   | { kind: 'download'; assets: Asset[]; source: 'primary' | 'fallback' }
   | { kind: 'offer-alternatives' }
 
-const PIN_ID = /^(?:btbn-n\d+(?:\.\d+)+-\d+-g[0-9a-f]+|gyan-\d+(?:\.\d+)+-full|mriedl-\d+(?:\.\d+)+)$/
+const PIN_ID = /^(?:btbn-n(\d+(?:\.\d+)+)-\d+-g[0-9a-f]+|gyan-(\d+(?:\.\d+)+)-full|mriedl-(\d+(?:\.\d+)+))$/
 const PARTIAL_SUFFIX = /\.part-[A-Za-z0-9]+$/
 const SHA256 = /^[0-9a-f]{64}$/
 const GONE: ReadonlySet<number> = new Set([404, 410])
@@ -406,6 +409,13 @@ const GONE: ReadonlySet<number> = new Set([404, 410])
 export function isPinId(name: string): boolean
 {
   return PIN_ID.test(name)
+}
+
+/** The FFmpeg release an install folder name carries, such as 9.0.2 for btbn-n9.0.2-17-g2a571b6068, or null for any other name. */
+export function buildVersion(name: string): string | null
+{
+  const m = PIN_ID.exec(name)
+  return m ? m[1] ?? m[2] ?? m[3] : null
 }
 
 /** The pin key of a host, such as win32-x64. */
@@ -441,7 +451,10 @@ function readAssetSet(value: unknown, where: string): Asset[]
   return assets
 }
 
-/** Checks the shape of pinned-builds.json and returns it typed; throws on anything the bootstrap could misuse. */
+/**
+ * Checks the shape of pinned-builds.json and returns it typed; throws on anything the bootstrap could misuse. A
+ * platform may name its own version; every build of a platform must carry that platform's version.
+ */
 export function parsePin(value: unknown): PinnedBuilds
 {
   const pin = (value ?? {}) as Record<string, unknown>
@@ -453,9 +466,26 @@ export function parsePin(value: unknown): PinnedBuilds
   for (const [key, entry] of Object.entries(pin.platforms as Record<string, unknown>))
   {
     const e = (entry ?? {}) as Record<string, unknown>
-    platforms[key] = { primary: readAssetSet(e.primary, `${key}.primary`), fallback: readAssetSet(e.fallback, `${key}.fallback`) }
+    if (e.version !== undefined && typeof e.version !== 'string') throw new Error(`Invalid pinned version at ${key}`)
+    const version = (e.version as string | undefined) ?? pin.version
+    const primary = readAssetSet(e.primary, `${key}.primary`)
+    const fallback = readAssetSet(e.fallback, `${key}.fallback`)
+    for (const assets of [primary, fallback])
+    {
+      if (assets.length > 0 && buildVersion(assets[0].build) !== version)
+      {
+        throw new Error(`Pinned build ${assets[0].build} at ${key} is not FFmpeg ${version}`)
+      }
+    }
+    platforms[key] = { version, primary, fallback }
   }
   return { id: pin.id, version: pin.version, fetched: pin.fetched, platforms }
+}
+
+/** The FFmpeg release the pin installs on a platform key: the platform's own version, or the pin's when it has no entry. */
+export function pinnedVersion(pin: PinnedBuilds, platformKey: string): string
+{
+  return pin.platforms[platformKey]?.version ?? pin.version
 }
 
 /** The primary and fallback assets for a host, or null when the pin has no build for it. */

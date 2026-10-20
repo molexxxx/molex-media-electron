@@ -26,7 +26,7 @@ import type { BuildCapabilities } from '../ffmpeg/audio/encoders'
 import { planAlbum, type AlbumMember } from '../ffmpeg/audio/plan'
 import { downloadFFmpeg, inspectBuild, type BootstrapProgress } from '../ffmpeg/bootstrap'
 import {
-  cachedSelfTest, configBlock, discoveryCandidates, displayVersion, parsePin, pipelineRefusal, selectAssets, selfTestFailure, SELF_TEST_REV,
+  cachedSelfTest, configBlock, discoveryCandidates, displayVersion, parsePin, pinKey, pinnedVersion, pipelineRefusal, selectAssets, selfTestFailure, SELF_TEST_REV,
   type BinaryIdentity, type BuildCandidate, type BuildSource, type FfmpegBuildInfo, type PinnedBuilds, type SelfTestId, type SelfTestRecord
 } from '../ffmpeg/build'
 import { createExec, type Exec } from '../ffmpeg/exec'
@@ -611,8 +611,8 @@ export function installLabel(version: string): string
   return `Install FFmpeg ${major}.${minor ?? '0'}.x (tested with this version)`
 }
 
-/** The `ffmpeg:info` answer for a build state and the pin. */
-export function ffmpegInfoOf(state: FfmpegBuildState, pin: PinnedBuilds, pinnedIds: readonly string[]): FfmpegInfo
+/** The `ffmpeg:info` answer for a build state, the FFmpeg release pinned for this platform, and its build ids. */
+export function ffmpegInfoOf(state: FfmpegBuildState, version: string, pinnedIds: readonly string[]): FfmpegInfo
 {
   const info = state.info
   const bundled = state.candidate?.source === 'bundled'
@@ -637,7 +637,7 @@ export function ffmpegInfoOf(state: FfmpegBuildState, pin: PinnedBuilds, pinnedI
       durationMs: state.testMs
     },
     refusal: state.refusal,
-    pin: { version: pin.version, matches, offerInstall: bundled && !matches, installLabel: installLabel(pin.version) }
+    pin: { version, matches, offerInstall: bundled && !matches, installLabel: installLabel(version) }
   }
 }
 
@@ -837,7 +837,7 @@ async function rerun(): Promise<FfmpegBuildState>
 export function ffmpegInfo(): FfmpegInfo
 {
   const pin = pinnedBuilds()
-  return ffmpegInfoOf(buildState, pin, pinnedBuildIds(pin, process.platform, process.arch))
+  return ffmpegInfoOf(buildState, pinnedVersion(pin, pinKey(process.platform, process.arch)), pinnedBuildIds(pin, process.platform, process.arch))
 }
 
 /** The minimum FFmpeg version as plan messages name it. */

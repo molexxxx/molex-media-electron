@@ -1,7 +1,7 @@
 {
   "id": "9.0.2-2026-09-30",
   "version": "9.0.2",
-  "fetched": "2026-10-17",
+  "fetched": "2026-10-20",
   "platforms": {
     "win32-x64": {
       "primary": [
@@ -99,20 +99,21 @@
       ]
     },
     "darwin-arm64": {
+      "version": "7.1.1",
       "primary": [
         {
-          "build": "mriedl-9.0.2",
-          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
-          "bytes": 28395699,
-          "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+          "build": "mriedl-7.1.1",
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffmpeg.zip",
+          "bytes": 27581782,
+          "sha256": "e18c39a330ad783c33d6d7b47784e82a42f8acdbb497a1f73550f1bc0e830d44",
           "kind": "zip",
           "contains": ["ffmpeg"]
         },
         {
-          "build": "mriedl-9.0.2",
-          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
-          "bytes": 28317701,
-          "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+          "build": "mriedl-7.1.1",
+          "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffprobe.zip",
+          "bytes": 27522338,
+          "sha256": "4eeb4644703bed221eec72107fbe2cc1e1180a3605c53136866cf43886d0499a",
           "kind": "zip",
           "contains": ["ffprobe"]
         }

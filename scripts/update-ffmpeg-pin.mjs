@@ -5,13 +5,17 @@
  *   node scripts/update-ffmpeg-pin.mjs --check [--download]
  *     Verifies every pinned asset against its source without changing the pin: GitHub assets against the release
  *     API's size and sha256 digest, martin-riedl assets against their .sha256 file and Content-Length. --download also
- *     streams each asset and hashes the bytes. A mismatch or a vanished asset is reported and exits 1.
+ *     streams each asset and hashes the bytes. A held platform must still install its held build. A mismatch, a
+ *     vanished asset, or a pin that no longer honors a hold is reported and exits 1.
  *
  *   node scripts/update-ffmpeg-pin.mjs [--branch 9.0] [--dry-run]
  *     Finds the newest month-end BtbN autobuild tag that carries a release-branch asset set for Windows and Linux
  *     (the newest branch, or --branch), the GyanD full build of the same version, and martin-riedl's release builds
  *     through their redirect URLs; downloads every asset, compares it with the published digest, and rewrites the pin
- *     (--dry-run prints it instead). Every source must name the same version.
+ *     (--dry-run prints it instead). Every source must name the same version, except a platform in HOLDS, which pins
+ *     its held martin-riedl release folder and carries that release's version.
+ *
+ * Every run prints each hold and its reason.
  *
  * Set GITHUB_TOKEN to raise the GitHub API rate limit.
  */
@@ -39,6 +43,23 @@ const MRIEDL_TARGETS = [
   ['darwin-x64', 'macos', 'amd64']
 ]
 
+/**
+ * Platforms held at one martin-riedl release folder instead of the newest release. A held platform installs only
+ * that build, with no fallback, and names its own version in the pin. Lift a hold only after the newer release
+ * passes .github/workflows/ffmpeg-candidates.yml.
+ */
+const HOLDS = {
+  'darwin-arm64': {
+    folder: '1741000090_7.1.1',
+    reason: 'the ebur128 meter of martin-riedl 8.0, 8.1.2, 9.0.2 and the N-127654 snapshot (and of osxexperts 9.0) reads '
+      + 'every input with more than two channels 16 to 33 LU too loud on Apple Silicon. On a macos-26 arm64 runner '
+      + '(.github/workflows/ffmpeg-candidates.yml), a 997 Hz tone metered as five equal 5.1(side) channels read 22.8 dB '
+      + 'above the same tone as mono, where BS.1770 expects 7.65 dB; martin-riedl 7.1.1 and Homebrew 9.0.2 read 7.70 dB.'
+  }
+}
+
+const HELD_FOLDER = /^\d+_(\d+(?:\.\d+)+)$/
+
 const BTBN_ASSET = /^ffmpeg-n(\d+\.\d+(?:\.\d+)?)-(\d+)-g([0-9a-f]+)-(win64|winarm64|linux64|linuxarm64)-gpl-(\d+\.\d+)\.(zip|tar\.xz)$/
 const MONTHLY_TAG = /^autobuild-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})$/
 const MRIEDL_PATH = /^\/download\/(linux|macos)\/(amd64|arm64)\/(\d+)_([^/]+)\/(ffmpeg|ffprobe)\.zip$/
@@ -58,6 +79,29 @@ function args()
     return i >= 0 ? argv[i + 1] : undefined
   }
   return { check: argv.includes('--check'), download: argv.includes('--download'), dryRun: argv.includes('--dry-run'), branch: value('--branch') }
+}
+
+/** Every hold with its martin-riedl target and the version its folder names; fails on a hold the rewrite cannot honor. */
+function holds()
+{
+  return Object.entries(HOLDS).map(([key, hold]) =>
+  {
+    const target = MRIEDL_TARGETS.find(([k]) => k === key)
+    const m = HELD_FOLDER.exec(hold.folder)
+    if (!target || !m) fail(`The hold on ${key} must name a martin-riedl platform and a release folder such as 1741000090_7.1.1`)
+    return { key, os: target[1], arch: target[2], folder: hold.folder, version: m[1], reason: hold.reason }
+  })
+}
+
+function announce(held)
+{
+  for (const hold of held) console.log(`HOLD ${hold.key} at martin-riedl ${hold.folder} (FFmpeg ${hold.version}): ${hold.reason}`)
+}
+
+/** The download folder URL of a hold, which every asset of the held platform must live in. */
+function heldBase(hold)
+{
+  return `${MRIEDL}/download/${hold.os}/${hold.arch}/${hold.folder}/`
 }
 
 async function request(url, init = {})
@@ -158,12 +202,20 @@ async function published(asset, releaseCache)
   return { problem: `no known source for ${asset.url}` }
 }
 
-async function check(download)
+async function check(download, held)
 {
   const pin = JSON.parse(await readFile(PIN_PATH, 'utf8'))
   const releaseCache = new Map()
   let problems = 0
   console.log(`Checking ${PIN_PATH} (pin ${pin.id}, fetched ${pin.fetched}) on ${new Date().toISOString().slice(0, 10)}`)
+  for (const hold of held)
+  {
+    const entry = pin.platforms[hold.key]
+    const assets = entry ? [...entry.primary, ...entry.fallback] : []
+    const honored = entry?.version === hold.version && assets.length > 0 && assets.every((a) => a.url.startsWith(heldBase(hold)))
+    if (!honored) problems++
+    console.log(honored ? `${hold.key} installs the held build ${hold.folder}` : `HOLD BROKEN: ${hold.key} must install only ${heldBase(hold)} with version ${hold.version}`)
+  }
   for (const [key, entry] of Object.entries(pin.platforms))
   {
     for (const role of ['primary', 'fallback'])
@@ -185,8 +237,8 @@ async function check(download)
       }
     }
   }
-  if (problems > 0) fail(`${problems} pinned asset(s) failed the check; the pin was not changed`)
-  console.log('Every pinned asset matches its source.')
+  if (problems > 0) fail(`${problems} problem(s) found by the check; the pin was not changed`)
+  console.log('Every pinned asset matches its source, and every hold is honored.')
 }
 
 /** The newest month-end tag (the last build of an earlier month) with all four release-branch assets of one build. */
@@ -232,22 +284,28 @@ function githubAsset(build, a, kind)
   return { build, url: a.browser_download_url, bytes: a.size, sha256, kind, contains: ['ffmpeg', 'ffprobe'] }
 }
 
-async function mriedlAssets(os, arch, version)
+async function mriedlLatest(os, arch, tool, version)
+{
+  const res = await request(`${MRIEDL}/redirect/latest/${os}/${arch}/release/${tool}.zip`, { redirect: 'manual' })
+  await res.body?.cancel()
+  const location = res.headers.get('location')
+  const m = location ? MRIEDL_PATH.exec(new URL(location, MRIEDL).pathname) : null
+  if (!m) fail(`martin-riedl's ${os}/${arch} ${tool} release redirect answered ${res.status} ${location ?? ''}`)
+  if (m[4] !== version) fail(`martin-riedl's latest ${os}/${arch} release is ${m[4]}, not ${version}; pin it by hand or wait for the release`)
+  return new URL(location, MRIEDL).toString()
+}
+
+/** martin-riedl's ffmpeg and ffprobe zips: from the hold's folder when one is given, else the latest release, which must be `version`. */
+async function mriedlAssets(os, arch, version, hold)
 {
   const out = []
   for (const tool of ['ffmpeg', 'ffprobe'])
   {
-    const res = await request(`${MRIEDL}/redirect/latest/${os}/${arch}/release/${tool}.zip`, { redirect: 'manual' })
-    await res.body?.cancel()
-    const location = res.headers.get('location')
-    const m = location ? MRIEDL_PATH.exec(new URL(location, MRIEDL).pathname) : null
-    if (!m) fail(`martin-riedl's ${os}/${arch} ${tool} release redirect answered ${res.status} ${location ?? ''}`)
-    if (m[4] !== version) fail(`martin-riedl's latest ${os}/${arch} release is ${m[4]}, not ${version}; pin it by hand or wait for the release`)
-    const url = new URL(location, MRIEDL).toString()
+    const url = hold ? `${heldBase(hold)}${tool}.zip` : await mriedlLatest(os, arch, tool, version)
     const digest = await mriedlDigest(url)
     if (!digest.sha256) fail(`${url}.sha256 answered ${digest.status}`)
     const size = await contentLength(url)
-    out.push({ build: `mriedl-${version}`, url, bytes: size.bytes, sha256: digest.sha256, kind: 'zip', contains: [tool] })
+    out.push({ build: `mriedl-${hold?.version ?? version}`, url, bytes: size.bytes, sha256: digest.sha256, kind: 'zip', contains: [tool] })
   }
   return out
 }
@@ -257,8 +315,9 @@ function format(pin)
   return `${JSON.stringify(pin, null, 2).replace(/"contains": \[\s*([^\]]*?)\s*\]/g, (_, list) => `"contains": [${list.split(/,\s*/).join(', ')}]`)}\n`
 }
 
-async function update(branch, dryRun)
+async function update(branch, dryRun, held)
 {
+  const holdOf = new Map(held.map((hold) => [hold.key, hold]))
   const picked = pickBtbn(await githubReleases('BtbN/FFmpeg-Builds'), branch)
   if (!picked) fail('No month-end BtbN tag carries a complete release-branch asset set')
   const { release, set } = picked
@@ -273,13 +332,16 @@ async function update(branch, dryRun)
   const platforms = {}
   for (const [key, target, kind] of BTBN_TARGETS)
   {
+    if (holdOf.has(key)) continue
     platforms[key] = { primary: [githubAsset(btbnId, set.assets.get(target), kind)], fallback: [] }
   }
   platforms['win32-x64'].fallback = [githubAsset(`gyan-${version}-full`, gyanAsset, 'zip')]
   for (const [key, os, arch] of MRIEDL_TARGETS)
   {
-    const assets = await mriedlAssets(os, arch, version)
-    if (platforms[key]) platforms[key].fallback = assets
+    const hold = holdOf.get(key)
+    const assets = await mriedlAssets(os, arch, version, hold)
+    if (hold) platforms[key] = { version: hold.version, primary: assets, fallback: [] }
+    else if (platforms[key]) platforms[key].fallback = assets
     else platforms[key] = { primary: assets, fallback: [] }
   }
 
@@ -309,5 +371,7 @@ async function update(branch, dryRun)
 }
 
 const options = args()
-if (options.check) await check(options.download)
-else await update(options.branch, options.dryRun)
+const held = holds()
+announce(held)
+if (options.check) await check(options.download, held)
+else await update(options.branch, options.dryRun, held)

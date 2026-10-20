@@ -25,7 +25,7 @@ import pinJson from './pinned-builds.json'
 import {
   CHECKSUM_MESSAGE, SELF_TESTS, alternativesMessage, assembleBuildInfo, cachedSelfTest, configBlock,
   discoveryCandidates, displayVersion, executableName, foldersToDelete, meetsMinimum, parsePin, parseVersion,
-  pinKey, pipelineRefusal, planInstall, verifyDigest,
+  pinKey, pinnedVersion, pipelineRefusal, planInstall, verifyDigest,
   type Asset, type BinaryIdentity, type BuildCandidate, type FfmpegBuildInfo, type PinnedBuilds,
   type SelfTestId, type SelfTestRecord
 } from './build'
@@ -467,7 +467,7 @@ export async function downloadFFmpeg(onProgress: ProgressCallback): Promise<FFmp
     }
     if (last && last.source === plan.source) throw last.error
     try {
-      return await installAssets(root, pin.version, plan.assets, onProgress)
+      return await installAssets(root, pinnedVersion(pin, key), plan.assets, onProgress)
     } catch (err) {
       if (!(err instanceof HttpStatusError)) throw err
       logger.warn(`FFmpeg ${plan.source} download returned ${err.status}: ${err.url}`)

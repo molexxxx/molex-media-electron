@@ -11,9 +11,9 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import {
   CHECKSUM_MESSAGE, MINIMUM, REQUIRED_ENCODERS, SELF_TESTS, SELF_TEST_IDS, SELF_TEST_REV, SURROUND_GAIN_DB, SURROUND_TOLERANCE_DB,
-  alternativesMessage, assembleBuildInfo, cachedSelfTest, configBlock, discoveryCandidates, displayVersion, executableName, notRun,
+  alternativesMessage, assembleBuildInfo, buildVersion, cachedSelfTest, configBlock, discoveryCandidates, displayVersion, executableName, notRun,
   foldersToDelete, hasRequiredEncoders, isPinId, meetsMinimum, minimumMessage, parseEncoders, parsePin, parseVersion,
-  pinKey, pipelineRefusal, planInstall, searchDirs, selectAssets, selfTestFailure, surroundGainDb, verifyDigest
+  pinKey, pinnedVersion, pipelineRefusal, planInstall, searchDirs, selectAssets, selfTestFailure, surroundGainDb, verifyDigest
 } from '../../src/main/ffmpeg/build'
 import type { BinaryIdentity, LibVersion, PinnedBuilds, SelfTestId, SelfTestRecord } from '../../src/main/ffmpeg/build'
 import { execArgv, normalizeLines, signedExitCode, exitName } from '../../src/main/ffmpeg/exec'
@@ -498,9 +498,48 @@ describe('parsePin', () =>
       for (const asset of [...entry.primary, ...entry.fallback])
       {
         expect(isPinId(asset.build)).toBe(true)
+        expect(buildVersion(asset.build)).toBe(entry.version)
         expect(asset.url.startsWith('https://')).toBe(true)
       }
     }
+  })
+
+  it('holds Apple Silicon at 7.1.1, whose ebur128 meter reads surround correctly, and every other host at the pin version', () =>
+  {
+    expect(Object.entries(PIN.platforms).map(([key, entry]) => [key, entry.version])).toEqual([
+      ['win32-x64', '9.0.2'],
+      ['win32-arm64', '9.0.2'],
+      ['linux-x64', '9.0.2'],
+      ['linux-arm64', '9.0.2'],
+      ['darwin-arm64', '7.1.1'],
+      ['darwin-x64', '9.0.2']
+    ])
+    expect(pinJson.platforms['darwin-arm64']).toHaveProperty('version', '7.1.1')
+    expect(pinJson.platforms['darwin-x64']).not.toHaveProperty('version')
+  })
+
+  it('gives a platform its own version when it names one, and the pin version otherwise', () =>
+  {
+    const held = { ...valid, build: 'mriedl-7.1.1', url: 'https://example.com/held.zip' }
+    const pin = parsePin({
+      id: 'x',
+      version: '9.0.2',
+      fetched: '2026-10-20',
+      platforms: { 'darwin-arm64': { version: '7.1.1', primary: [held], fallback: [] }, 'win32-x64': { primary: [valid], fallback: [] } }
+    })
+    expect(pin.version).toBe('9.0.2')
+    expect(pin.platforms['darwin-arm64'].version).toBe('7.1.1')
+    expect(pin.platforms['win32-x64'].version).toBe('9.0.2')
+  })
+
+  it('refuses a platform version that is not a string, and a build of another release than its platform', () =>
+  {
+    expect(() => parsePin({ id: 'x', version: '9.0.2', fetched: '2026-10-20', platforms: { 'darwin-arm64': { version: 7.1, primary: [], fallback: [] } } }))
+      .toThrow('Invalid pinned version at darwin-arm64')
+    expect(() => parsePin({ id: 'x', version: '9.0.2', fetched: '2026-10-20', platforms: { 'darwin-arm64': { version: '7.1.1', primary: [valid], fallback: [] } } }))
+      .toThrow('Pinned build btbn-n9.0.2-17-g2a571b6068 at darwin-arm64 is not FFmpeg 7.1.1')
+    expect(() => parsePin(pinWith([valid], [{ ...valid, build: 'mriedl-7.1.1' }])))
+      .toThrow('Pinned build mriedl-7.1.1 at win32-x64 is not FFmpeg 9.0.2')
   })
 
   it('accepts a build split across two archives', () =>
@@ -543,6 +582,28 @@ describe('parsePin', () =>
   })
 })
 
+describe('buildVersion and pinnedVersion', () =>
+{
+  it.each([
+    ['btbn-n9.0.2-17-g2a571b6068', '9.0.2'],
+    ['gyan-9.0.2-full', '9.0.2'],
+    ['mriedl-7.1.1', '7.1.1'],
+    ['custom-tools', null],
+    ['mriedl-7.1.1.part-Ab12Cd', null]
+  ])('reads %s as %s', (name, version) =>
+  {
+    expect(buildVersion(name)).toBe(version)
+  })
+
+  it('names the held release on Apple Silicon, the pin version elsewhere, and the pin version for a host the pin lacks', () =>
+  {
+    expect(pinnedVersion(PIN, 'darwin-arm64')).toBe('7.1.1')
+    expect(pinnedVersion(PIN, 'darwin-x64')).toBe('9.0.2')
+    expect(pinnedVersion(PIN, 'win32-x64')).toBe('9.0.2')
+    expect(pinnedVersion(PIN, 'freebsd-x64')).toBe('9.0.2')
+  })
+})
+
 describe('selectAssets', () =>
 {
   it('picks the BtbN zip with the gyan fallback on Windows x64', () =>
@@ -568,11 +629,11 @@ describe('selectAssets', () =>
     expect(picked?.fallback.every((a) => a.url.includes(`/download/linux/${mriedl}/`))).toBe(true)
   })
 
-  it.each([['arm64', 'arm64'], ['x64', 'amd64']])('picks the martin-riedl pair on macOS %s with no download fallback', (arch, folder) =>
+  it.each([['arm64', 'mriedl-7.1.1', 'arm64/1741000090_7.1.1'], ['x64', 'mriedl-9.0.2', 'amd64/']])('picks the martin-riedl pair on macOS %s with no download fallback', (arch, build, folder) =>
   {
     const picked = selectAssets(PIN, 'darwin', arch)
-    expect(picked?.primary.map((a) => [a.build, a.contains[0]])).toEqual([['mriedl-9.0.2', 'ffmpeg'], ['mriedl-9.0.2', 'ffprobe']])
-    expect(picked?.primary.every((a) => a.url.includes(`/download/macos/${folder}/`))).toBe(true)
+    expect(picked?.primary.map((a) => [a.build, a.contains[0]])).toEqual([[build, 'ffmpeg'], [build, 'ffprobe']])
+    expect(picked?.primary.every((a) => a.url.includes(`/download/macos/${folder}`))).toBe(true)
     expect(picked?.fallback).toEqual([])
   })
 
@@ -655,6 +716,17 @@ describe('planInstall', () =>
     expect(planInstall(PIN, 'win32-x64', ['gyan-9.0.2-full'], [{ url: winPrimary, status: 404 }])).toEqual({ kind: 'reuse', folder: 'gyan-9.0.2-full' })
   })
 
+  it('installs Apple Silicon into the held 7.1.1 folder, never reuses a 9.0.2 folder there, and then deletes it', () =>
+  {
+    const plan = planInstall(PIN, 'darwin-arm64', ['mriedl-9.0.2'], [])
+    expect(plan).toMatchObject({ kind: 'download', source: 'primary' })
+    expect(plan.kind === 'download' && plan.assets.map((a) => a.build)).toEqual(['mriedl-7.1.1', 'mriedl-7.1.1'])
+    expect(planInstall(PIN, 'darwin-arm64', ['mriedl-9.0.2', 'mriedl-7.1.1'], [])).toEqual({ kind: 'reuse', folder: 'mriedl-7.1.1' })
+    expect(foldersToDelete('mriedl-7.1.1', ['mriedl-9.0.2', 'mriedl-7.1.1'])).toEqual(['mriedl-9.0.2'])
+    const found = discoveryCandidates({ configured: null, pin: PIN, platform: 'darwin', arch: 'arm64', root: '/u/ffmpeg', installed: ['mriedl-9.0.2', 'mriedl-7.1.1'], legacyDir: '/u/bin', envPath: '' })
+    expect(found.filter((c) => c.buildId !== null).map((c) => [c.buildId, c.ffmpegPath])).toEqual([['mriedl-7.1.1', '/u/ffmpeg/mriedl-7.1.1/ffmpeg']])
+  })
+
   it('downloads the primary build first, and again after an error that is not 404 or 410', () =>
   {
     expect(planInstall(PIN, 'win32-x64', ['btbn-n9.0.1-3-gabcdef0'], [])).toEqual({ kind: 'download', assets: PIN.platforms['win32-x64'].primary, source: 'primary' })
@@ -691,7 +763,7 @@ describe('planInstall', () =>
 
   it('offers alternatives for an empty platform entry', () =>
   {
-    const empty: PinnedBuilds = { ...PIN, platforms: { 'win32-x64': { primary: [], fallback: [] } } }
+    const empty: PinnedBuilds = { ...PIN, platforms: { 'win32-x64': { version: '9.0.2', primary: [], fallback: [] } } }
     expect(planInstall(empty, 'win32-x64', [], [])).toEqual({ kind: 'offer-alternatives' })
   })
 })
