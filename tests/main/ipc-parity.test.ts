@@ -92,8 +92,8 @@ const PRELOAD_FILES = ['src/preload/index.ts']
 const RENDERER_FILES = sourceFiles('src/renderer/src')
 const JOB_CHANNEL_VALUES = Object.values(JOB_CHANNELS)
 
-/** Preload wrappers whose channel has no handler; they go with their editor callers. */
-const CALLERS_WITHOUT_HANDLER = ['editor:merge', 'editor:replaceAudio']
+/** Preload wrappers whose channel has no handler. */
+const CALLERS_WITHOUT_HANDLER: string[] = []
 /** Handlers nothing in the preload calls. */
 const HANDLERS_WITHOUT_CALLER: string[] = []
 /** Channels main sends that no preload function listens to; the per-entry log forward goes with its last listener. */
@@ -163,7 +163,7 @@ describe('invoke and handle parity', () =>
     expect(invoked.has('logs:getBuffer')).toBe(true)
   })
 
-  it('has a handler for every invoked channel, outside the listed dead wrappers', () =>
+  it('has a handler for every invoked channel', () =>
   {
     expect(minus(invoked, handled)).toEqual([...CALLERS_WITHOUT_HANDLER].sort())
   })
@@ -351,7 +351,7 @@ describe('zoom steps', async () =>
 
 const appStore = vi.hoisted(() =>
 {
-  const state = { logs: [] as { id?: number; message: string }[], addLog: vi.fn() }
+  const state = { logs: [] as { id?: number; message: string }[], addLogs: vi.fn() }
   return { state, useAppStore: Object.assign(() => state, { getState: () => state, setState: vi.fn() }) }
 })
 
@@ -510,16 +510,17 @@ describe('log hydration', async () =>
     expect(added).toEqual([1])
   })
 
-  it('reads the newest id from the app store and appends through addLog', () =>
+  it('reads the newest id from the app store and appends a batch in one update', () =>
   {
     const sink = appStoreLogSink()
     appStore.state.logs = []
     expect(sink.newestId()).toBeUndefined()
     appStore.state.logs = [{ id: 4, message: 'a' }, { id: 9, message: 'b' }, { message: 'no id' }]
     expect(sink.newestId()).toBe(9)
-    appStore.state.addLog.mockClear()
+    appStore.state.addLogs.mockClear()
     sink.add([entry(10), entry(11)])
-    expect(appStore.state.addLog.mock.calls.map((call) => call[0].id)).toEqual([10, 11])
+    expect(appStore.state.addLogs).toHaveBeenCalledTimes(1)
+    expect(appStore.state.addLogs.mock.calls[0][0].map((e: { id?: number }) => e.id)).toEqual([10, 11])
   })
 
   it('is what useIPC hydrates the store with, and nothing else reads the buffer at startup', () =>

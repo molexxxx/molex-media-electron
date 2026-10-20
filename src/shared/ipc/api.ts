@@ -85,13 +85,6 @@ export type FfmpegInstallResult =
   | { ok: true; info: FfmpegInfo }
   | { ok: false; error: string; info: FfmpegInfo }
 
-/** A worker count change as the old batch processor reports it. */
-export interface WorkerStatus
-{
-  target: number
-  active: number
-}
-
 /** A browser yt-dlp can read cookies from. */
 export interface CookieBrowser
 {
@@ -105,19 +98,6 @@ export interface CookieInfo
   exists: boolean
   age: number | null
   browser: string
-}
-
-/** One queued file of the old batch processor. */
-export interface LegacyTaskSpec
-{
-  filePath: string
-  operation: string
-  outputDir?: string
-  boostPercent?: number
-  normalizeOptions?: any
-  convertOptions?: any
-  extractOptions?: any
-  compressOptions?: any
 }
 
 /** Options of an editor cut. */
@@ -138,15 +118,6 @@ export interface CutOptions
     boomerang?: boolean
   }
   videoOptions?: { codec?: string; crf?: number; preset?: string; maxHeight?: number; audioBitrate?: string }
-}
-
-/** One segment of an editor merge. */
-export interface MergeSegment
-{
-  path: string
-  inPoint: number
-  outPoint: number
-  audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number }
 }
 
 /** The answer of `editor:thumbnailStrip`. */
@@ -216,8 +187,6 @@ export interface WindowApi
   openDirectory: () => Promise<string | null>
   selectOutputDir: () => Promise<string | null>
   selectSavePath: (defaultName: string, filters: DialogFilter[]) => Promise<string | null>
-  scanDirectory: (dirPath: string) => Promise<{ path: string; name: string; size: number; ext: string }[]>
-  probeFile: (filePath: string) => Promise<any>
 
   getFilePath: (file: File) => string
   registerLocalFile: (filePath: string) => Promise<string>
@@ -238,32 +207,9 @@ export interface WindowApi
   onReceivePlayerState: (cb: (state: any) => void) => () => void
   getPlayerState: () => Promise<any>
 
-  normalize: (filePaths: string[], normalizeOptions?: { I: number; TP: number; LRA: number }, outputDir?: string) => Promise<any>
-  boost: (filePaths: string[], percent: number, outputDir?: string) => Promise<any>
-  convert: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
-  extract: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
-  compress: (filePaths: string[], options: any, outputDir?: string) => Promise<any>
-  startBatchQueue: (taskSpecs: LegacyTaskSpec[], maxWorkers?: number) => Promise<any>
-  cancelBatch: (batchId: string) => Promise<boolean>
-  cancelAll: () => Promise<boolean>
-  getActiveCount: () => Promise<number>
-  pauseProcessing: () => Promise<void>
-  resumeProcessing: () => Promise<void>
-  getIsPaused: () => Promise<boolean>
-  setWorkers: (count: number) => Promise<number>
-  getWorkerStatus: () => Promise<WorkerStatus>
-  onWorkerStatus: (cb: (status: WorkerStatus) => void) => () => void
-  onPaused: (cb: () => void) => () => void
-  onResumed: (cb: () => void) => () => void
-  onBatchStarted: (cb: (data: any) => void) => () => void
-  onTaskProgress: (cb: (task: any) => void) => () => void
-  onBatchComplete: (cb: (data: any) => void) => () => void
-
   cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: CutOptions) => Promise<any>
-  mergeMedia: (segments: MergeSegment[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => Promise<any>
   probeDetailed: (filePath: string) => Promise<any>
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => Promise<{ success: boolean; outputPath?: string; error?: string }>
-  replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => Promise<any>
   createPreview: (filePath: string) => Promise<{ success: boolean; previewUrl?: string; data?: string; error?: string }>
   createAudioPreview: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>
   exportTimeline: (request: any) => Promise<{ success: boolean; outputPath?: string; error?: string }>

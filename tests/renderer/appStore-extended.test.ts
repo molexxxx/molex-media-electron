@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppStore } from '../../src/renderer/src/stores/appStore'
-import type { AppConfig, ProcessingTask, SystemInfo } from '../../src/renderer/src/stores/appStore'
+import type { AppConfig, SystemInfo } from '../../src/renderer/src/stores/appStore'
 
 function resetStore(): void {
   useAppStore.setState(useAppStore.getInitialState())
@@ -17,61 +17,17 @@ describe('appStore - extended coverage', () => {
     })
 
     it('sets config object', () => {
-      const cfg: AppConfig = {
+      const cfg = {
         ffmpegPath: '/usr/bin/ffmpeg',
         ffprobePath: '/usr/bin/ffprobe',
-        defaultOutputDir: '/out',
         audioBitrate: '320k',
         maxWorkers: 4,
-        afterProcessing: 'keep-both',
-        outputDirectory: '/out',
-        preserveMetadata: true,
-        preserveSubtitles: true,
-        tempSuffix: '_temp'
-      }
+        sidebarCollapsed: false,
+        interfaceScale: 100,
+        announceProgress: false
+      } as AppConfig
       useAppStore.getState().setConfig(cfg)
       expect(useAppStore.getState().config).toEqual(cfg)
-    })
-  })
-
-  describe('isProcessing', () => {
-    it('defaults to false', () => {
-      expect(useAppStore.getState().isProcessing).toBe(false)
-    })
-
-    it('toggles processing flag', () => {
-      useAppStore.getState().setIsProcessing(true)
-      expect(useAppStore.getState().isProcessing).toBe(true)
-      useAppStore.getState().setIsProcessing(false)
-      expect(useAppStore.getState().isProcessing).toBe(false)
-    })
-  })
-
-  describe('isPaused', () => {
-    it('defaults to false', () => {
-      expect(useAppStore.getState().isPaused).toBe(false)
-    })
-
-    it('sets paused state', () => {
-      useAppStore.getState().setIsPaused(true)
-      expect(useAppStore.getState().isPaused).toBe(true)
-    })
-  })
-
-  describe('activeBatch', () => {
-    it('defaults to null', () => {
-      expect(useAppStore.getState().activeBatchId).toBeNull()
-    })
-
-    it('sets batch id', () => {
-      useAppStore.getState().setActiveBatch('batch-123')
-      expect(useAppStore.getState().activeBatchId).toBe('batch-123')
-    })
-
-    it('clears batch id', () => {
-      useAppStore.getState().setActiveBatch('batch-123')
-      useAppStore.getState().setActiveBatch(null)
-      expect(useAppStore.getState().activeBatchId).toBeNull()
     })
   })
 
@@ -141,55 +97,6 @@ describe('appStore - extended coverage', () => {
     })
   })
 
-  describe('setTasks', () => {
-    it('replaces all tasks', () => {
-      const t1: ProcessingTask = {
-        id: '1', filePath: '/a.mp3', fileName: 'a.mp3',
-        operation: 'normalize', status: 'queued', progress: 0, message: ''
-      }
-      const t2: ProcessingTask = {
-        id: '2', filePath: '/b.mp3', fileName: 'b.mp3',
-        operation: 'boost', status: 'queued', progress: 0, message: ''
-      }
-      useAppStore.getState().setTasks([t1])
-      expect(useAppStore.getState().tasks).toHaveLength(1)
-      useAppStore.getState().setTasks([t1, t2])
-      expect(useAppStore.getState().tasks).toHaveLength(2)
-    })
-  })
-
-  describe('updateTask with unknown id', () => {
-    it('does not add a new task', () => {
-      useAppStore.getState().setTasks([{
-        id: 't1', filePath: '/a.mp3', fileName: 'a.mp3',
-        operation: 'normalize', status: 'queued', progress: 0, message: ''
-      }])
-      useAppStore.getState().updateTask({
-        id: 'unknown', filePath: '/x.mp3', fileName: 'x.mp3',
-        operation: 'boost', status: 'complete', progress: 100, message: 'done'
-      })
-      expect(useAppStore.getState().tasks).toHaveLength(1)
-      expect(useAppStore.getState().tasks[0].id).toBe('t1')
-    })
-  })
-
-  describe('updateFile with unknown path', () => {
-    it('does not add or crash', () => {
-      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
-      useAppStore.getState().updateFile('/nonexistent.mp3', { probed: true })
-      expect(useAppStore.getState().files).toHaveLength(1)
-      expect(useAppStore.getState().files[0].probed).toBeUndefined()
-    })
-  })
-
-  describe('removeFile with unknown path', () => {
-    it('does not alter list', () => {
-      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
-      useAppStore.getState().removeFile('/nonexistent.mp3')
-      expect(useAppStore.getState().files).toHaveLength(1)
-    })
-  })
-
   describe('sidebar', () => {
     it('setSidebarCollapsed updates state and calls saveConfig', () => {
       useAppStore.getState().setSidebarCollapsed(true)
@@ -206,46 +113,6 @@ describe('appStore - extended coverage', () => {
 
       useAppStore.getState().toggleSidebar()
       expect(useAppStore.getState().sidebarCollapsed).toBe(false)
-    })
-  })
-
-  describe('operation setters', () => {
-    it('setConvertOptions merges partial options', () => {
-      useAppStore.getState().setConvertOptions({ outputFormat: 'webm' })
-      expect(useAppStore.getState().convertOptions.outputFormat).toBe('webm')
-      expect(useAppStore.getState().convertOptions.videoCodec).toBe('libx264')
-    })
-
-    it('setExtractOptions merges partial options', () => {
-      useAppStore.getState().setExtractOptions({ outputFormat: 'flac' })
-      expect(useAppStore.getState().extractOptions.outputFormat).toBe('flac')
-      expect(useAppStore.getState().extractOptions.streamIndex).toBe(0)
-    })
-
-    it('setCompressOptions merges partial options', () => {
-      useAppStore.getState().setCompressOptions({ targetSizeMB: 50 })
-      expect(useAppStore.getState().compressOptions.targetSizeMB).toBe(50)
-      expect(useAppStore.getState().compressOptions.quality).toBe('medium')
-    })
-
-    it('setOperation changes the operation', () => {
-      useAppStore.getState().setOperation('boost')
-      expect(useAppStore.getState().operation).toBe('boost')
-    })
-
-    it('setBoostPercent updates boost value', () => {
-      useAppStore.getState().setBoostPercent(75)
-      expect(useAppStore.getState().boostPercent).toBe(75)
-    })
-
-    it('setSelectedPreset updates preset', () => {
-      useAppStore.getState().setSelectedPreset('custom')
-      expect(useAppStore.getState().selectedPreset).toBe('custom')
-    })
-
-    it('setBatchOutputDir updates batch output dir', () => {
-      useAppStore.getState().setBatchOutputDir('/output')
-      expect(useAppStore.getState().batchOutputDir).toBe('/output')
     })
   })
 })

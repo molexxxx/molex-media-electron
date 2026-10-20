@@ -31,15 +31,23 @@ const BATCH_SCOPES = [
 /** The shell services built on the primitives: the close confirmation, the F6 region registry, and the zoom keys. */
 const SHELL_SCOPES = [
   'components/layout/CloseConfirmModal.tsx',
+  'components/layout/Sidebar.tsx',
+  'components/layout/TitleBar.tsx',
   'hooks/useF6Region.ts',
   'hooks/useAppZoomKeys.ts'
 ]
 
+/** Settings tabs rebuilt on the primitives. */
+const SETTINGS_SCOPES = [
+  'components/settings/tabs/BatchSettings.tsx',
+  'components/settings/tabs/AudioSettings.tsx'
+]
+
 /** Folders and files held to the strict rules; a folder joins once its components are built on the primitives. */
-const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES, ...SHELL_SCOPES]
+const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES, ...SHELL_SCOPES, ...SETTINGS_SCOPES]
 
 /** Legacy sliders that draw a fake track over a native range at opacity 0; the count may only fall. */
-const LEGACY_RANGE_BASELINE = 10
+const LEGACY_RANGE_BASELINE = 6
 
 /** Violet literals left in legacy components; the count may only fall, toward zero. */
 const VIOLET_LEGACY_BASELINE = 8
@@ -101,11 +109,28 @@ interface Exemption
 /** Legacy rules kept on purpose, each with its reason. A stale entry fails the suite. */
 const EXEMPTIONS: Exemption[] = [
   {
-    file: 'styles/globals.css',
-    rule: 'outline',
-    match: /^outline: none$/,
-    context: '.norm-slider',
-    reason: 'Legacy normalize slider: its native range sits at opacity 0 under a drawn track, so an outline on it could never show; the base layer rings the range\'s parent on keyboard focus instead. Removed with the last legacy slider.'
+    file: 'components/layout/Sidebar.tsx',
+    rule: 'radius',
+    match: /^rounded$/,
+    reason: 'The word "rounded" in the doc comment of railPercent ("never rounded up to done"), not a class.'
+  },
+  {
+    file: 'components/layout/Sidebar.tsx',
+    rule: 'radius',
+    match: /^rounded-full$/,
+    reason: 'Round backings: the collapsed rail cuts its attention and update glyphs out of the item with a circle, and the Logs error badge keeps its earlier pill until the Logs view takes its count from the engine.'
+  },
+  {
+    file: 'components/layout/Sidebar.tsx',
+    rule: 'palette',
+    match: /^(?:bg-red-500|text-red-200)$/,
+    reason: 'The Logs error badge keeps its earlier colors until the Logs view takes its count from the engine and draws it with the error tokens.'
+  },
+  {
+    file: 'components/layout/Sidebar.tsx',
+    rule: 'text-2xs',
+    match: /^text-2xs$/,
+    reason: 'The Logs error badge keeps its earlier count size until the Logs view takes its count from the engine and sets it on the type scale.'
   },
   {
     file: 'visualizations/rain.ts',
@@ -633,13 +658,13 @@ describe('style floor', () =>
     expect(rels.filter(isStrict)).toContain('ui/cx.ts')
   })
 
-  it('holds the rebuilt Batch page to the strict rules and leaves the legacy batch files to the ratchets', () =>
+  it('holds the rebuilt Batch page to the strict rules and nothing outside its listed scopes', () =>
   {
     for (const rel of ['components/batch/BatchPage.tsx', 'components/batch/page/Frame.tsx', 'components/batch/table/JobTable.tsx', 'components/batch/toolbar/Toolbar.tsx', 'components/batch/header/RunHeader.tsx', 'components/batch/summary/Summary.tsx', 'components/batch/inspector/Inspector.tsx', 'components/batch/history/History.tsx'])
     {
       expect(isStrict(rel), rel).toBe(true)
     }
-    for (const rel of ['components/batch/FileQueue.tsx', 'components/batch/ProcessingView.tsx', 'components/batch/components/QueueList.tsx', 'components/batch/BatchPage.test.tsx', 'components/batch/pageant/x.tsx'])
+    for (const rel of ['components/batch/Other.tsx', 'components/batch/other/x.tsx', 'components/batch/BatchPage.test.tsx', 'components/batch/pageant/x.tsx'])
     {
       expect(isStrict(rel), rel).toBe(false)
     }
@@ -653,7 +678,20 @@ describe('style floor', () =>
       expect(isStrict(rel), rel).toBe(true)
       expect(SOURCES.map((f) => f.rel), rel).toContain(rel)
     }
-    for (const rel of ['components/layout/Sidebar.tsx', 'components/layout/TitleBar.tsx', 'hooks/useIPC.ts', 'App.tsx', 'hooks/useF6Region.test.ts'])
+    for (const rel of ['hooks/useIPC.ts', 'App.tsx', 'hooks/useF6Region.test.ts', 'components/layout/components/PopoutShell.tsx'])
+    {
+      expect(isStrict(rel), rel).toBe(false)
+    }
+  })
+
+  it('holds the rebuilt Settings tabs to the strict rules', () =>
+  {
+    for (const rel of SETTINGS_SCOPES)
+    {
+      expect(isStrict(rel), rel).toBe(true)
+      expect(SOURCES.map((f) => f.rel), rel).toContain(rel)
+    }
+    for (const rel of ['components/settings/Settings.tsx', 'components/settings/tabs/ApplicationSettings.tsx'])
     {
       expect(isStrict(rel), rel).toBe(false)
     }

@@ -2,8 +2,9 @@
  * @module App
  * @description Root application component with view routing and global IPC setup.
  *
- * Initializes the IPC bridge via {@link useIPC}, handles global drag-and-drop
- * file additions, manages view mounting history for state preservation,
+ * Initializes the IPC bridge via {@link useIPC}, keeps the main window's jobs
+ * store in step with the engine, routes files dropped outside the Batch page
+ * to the engine, manages view mounting history for state preservation,
  * supports popout player mode, and conditionally renders the setup wizard
  * when FFmpeg is not available. Hosts the shell services: the notification
  * region, the F6 region cycle, the close confirmation (above the
@@ -11,21 +12,135 @@
  */
 
 import React, { useState, useEffect } from 'react'
+import type { JobsApi } from '../../shared/jobs/contract'
+import { isMediaPath } from '../../shared/jobs/extensions'
 import { useIPC } from './hooks/useIPC'
-import { useAppStore, View, FileItem } from './stores/appStore'
+import { useJobs, windowJobsApi } from './hooks/useJobs'
+import { useAppStore, View } from './stores/appStore'
+import { useJobsStore, type JobsState } from './stores/jobs'
+import { selectGroupCounts } from './stores/jobsSelectors'
+import { filesAddedToast } from './copy/batch'
 import { TitleBar, Sidebar, CloseConfirmModal } from './components/layout'
 import { PopoutShell } from './components/layout/components/PopoutShell'
 import { Dashboard } from './components/dashboard'
-import { FileQueue } from './components/batch'
+import { BatchPage } from './components/batch/BatchPage'
 import { Settings } from './components/settings'
 import { LogViewer } from './components/logs'
 import { MediaEditor } from './components/editor'
 import { MediaPlayer } from './components/player'
 import { SetupWizard } from './components/setup'
-import { PreviewBatch } from './dev/PreviewBatch'
-import { ToastRegion } from './ui'
+import { ToastRegion, toast, type ToastOptions } from './ui'
 import { focusNextRegion } from './hooks/useF6Region'
 import { listenUnclaimedKeys, useAppZoomKeys } from './hooks/useAppZoomKeys'
+
+/** A file or folder dropped on the window, outside the Batch page. */
+export interface DroppedItem {
+  path: string
+  directory: boolean
+}
+
+/** What {@link addDroppedItems} needs from the shell. */
+export interface DropAddDeps {
+  add: JobsApi['add']
+  /** The run setting "Include subfolders". */
+  includeSubfolders: () => boolean
+  showBatch: () => void
+  notify: (options: ToastOptions) => void
+}
+
+/** Codes of refused paths that are not media at all. */
+const NOT_MEDIA_CODES: ReadonlySet<string> = new Set(['not-media', 'unsupported'])
+
+/**
+ * Adds dropped files and folders as new jobs through one jobs:add with the
+ * "New files get" recipe, then shows Batch. A drop with no media file and no
+ * folder is ignored; main's extension list decides the rest and reports what
+ * it skipped. A folder scan reports itself on the Batch page.
+ */
+export async function addDroppedItems(items: readonly DroppedItem[], deps: DropAddDeps): Promise<void> {
+  if (!items.some((item) => item.directory || isMediaPath(item.path))) return
+  deps.showBatch()
+  const reply = await deps.add({
+    paths: items.map((item) => item.path),
+    recipe: null,
+    origin: 'drop',
+    after: null,
+    recursive: deps.includeSubfolders(),
+    allowSecondJobs: false,
+    force: false
+  })
+  if (!reply.ok) {
+    deps.notify({ tone: 'error', title: reply.error.message })
+    return
+  }
+  const result = reply.value
+  if (result.added.length === 0 && result.scanIds.length > 0) return
+  const words = filesAddedToast(result.added.length, {
+    notMedia: result.refused.filter((entry) => NOT_MEDIA_CODES.has(entry.code)).length,
+    duplicates: result.duplicates.paths.length,
+    outputs: result.previousOutputs.length
+  })
+  const added = result.added.length > 0
+  deps.notify({
+    tone: added ? 'success' : 'warning',
+    title: added ? words.title : 'No files were added.',
+    ...(words.body === null ? {} : { body: words.body })
+  })
+}
+
+/** Whether the engine holds a batch in progress or jobs that wait, so a fresh start opens on Batch. */
+export function opensOnBatch(state: JobsState): boolean {
+  if ((state.run?.status ?? 'idle') !== 'idle') return true
+  return selectGroupCounts(state).waiting > 0
+}
+
+/**
+ * Chooses the first view once, when the first engine snapshot lands: Batch
+ * while a batch runs or jobs wait, otherwise the Dashboard. A view the user
+ * already chose is left alone.
+ */
+function useInitialView(): void {
+  useEffect(() => {
+    const decide = (state: JobsState): boolean => {
+      if (state.hydrations === 0) return false
+      const app = useAppStore.getState()
+      if (opensOnBatch(state) && app.currentView === 'dashboard' && app.viewHistory.length === 0) {
+        useAppStore.setState({ currentView: 'batch' })
+      }
+      return true
+    }
+    if (decide(useJobsStore.getState())) return undefined
+    const stop = useJobsStore.subscribe((state) => {
+      if (decide(state)) stop()
+    })
+    return stop
+  }, [])
+}
+
+/**
+ * The main window's engine link: subscribes the jobs store and picks the
+ * first view. Only the main shell renders it, so the popout player never
+ * subscribes to the batch.
+ */
+function MainWindowJobs(): null {
+  useJobs()
+  useInitialView()
+  return null
+}
+
+/** The paths of a drop's files and whether each is a folder. */
+function droppedItems(transfer: DataTransfer | null): DroppedItem[] {
+  if (!transfer) return []
+  const entries = Array.from(transfer.items ?? []).filter((item) => item.kind === 'file')
+  const items: DroppedItem[] = []
+  Array.from(transfer.files).forEach((file, index) => {
+    const path = window.api.getFilePath(file)
+    if (!path) return
+    const entry = entries[index]?.webkitGetAsEntry?.() ?? null
+    items.push({ path, directory: entry?.isDirectory ?? false })
+  })
+  return items
+}
 
 function App(): React.JSX.Element {
   useIPC()
@@ -59,36 +174,26 @@ function App(): React.JSX.Element {
     return cleanup
   }, [setUpdateStatus, setUpdateVersion, setUpdateError, setUpdateDownloadPercent])
 
-  // Global drop fallback: files dropped anywhere in the window get added to batch
-  const { addFiles, setView } = useAppStore()
+  // A drop the Batch page or another view did not take becomes new jobs; the popout never adds to the batch
+  const setView = useAppStore((s) => s.setView)
   useEffect(() => {
-    const MEDIA_EXTS = new Set([
-      '.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts',
-      '.mp3', '.wav', '.flac', '.ogg', '.m4a', '.wma', '.aac', '.opus'
-    ])
+    if (isPopout) return
     const onDrop = (e: DragEvent): void => {
-      // Don't intercept if a component already handled it
       if (e.defaultPrevented) return
       e.preventDefault()
-      const files = Array.from(e.dataTransfer?.files || [])
-      if (files.length === 0) return
-      const items: FileItem[] = []
-      for (const file of files) {
-        const p = window.api.getFilePath(file)
-        if (!p) continue
-        const ext = (p.match(/\.[^.]+$/) || [''])[0].toLowerCase()
-        if (!MEDIA_EXTS.has(ext)) continue
-        items.push({
-          path: p,
-          name: p.split(/[\\/]/).pop() || p,
-          size: file.size || 0,
-          ext
-        })
-      }
-      if (items.length) {
-        addFiles(items)
-        if (currentView !== 'batch') setView('batch')
-      }
+      const jobs = windowJobsApi() as JobsApi | null
+      const items = droppedItems(e.dataTransfer)
+      if (jobs === null || items.length === 0) return
+      void addDroppedItems(items, {
+        add: (request) => jobs.add(request),
+        includeSubfolders: () => useJobsStore.getState().settings?.includeSubfolders ?? true,
+        showBatch: () => {
+          if (useAppStore.getState().currentView !== 'batch') setView('batch')
+        },
+        notify: (options) => {
+          toast.show(options)
+        }
+      })
     }
     const onDragOver = (e: DragEvent): void => {
       if (!e.defaultPrevented) e.preventDefault()
@@ -99,7 +204,7 @@ function App(): React.JSX.Element {
       document.removeEventListener('drop', onDrop)
       document.removeEventListener('dragover', onDragOver)
     }
-  }, [addFiles, setView, currentView])
+  }, [isPopout, setView])
 
   // Track which views have been visited so they stay mounted (preserving state)
   const [mounted, setMounted] = useState<Set<View>>(() => new Set([currentView]))
@@ -167,6 +272,7 @@ function App(): React.JSX.Element {
 
   const withCloseConfirm = (body: React.JSX.Element): React.JSX.Element => (
     <>
+      <MainWindowJobs />
       {body}
       <CloseConfirmModal />
     </>
@@ -197,7 +303,7 @@ function App(): React.JSX.Element {
 
   const views: { id: View; el: React.JSX.Element }[] = [
     { id: 'dashboard', el: <Dashboard /> },
-    { id: 'batch', el: import.meta.env.DEV ? <PreviewBatch /> : <FileQueue /> },
+    { id: 'batch', el: <BatchPage /> },
     { id: 'editor', el: <MediaEditor /> },
     { id: 'player', el: <MediaPlayer /> },
     { id: 'settings', el: <Settings /> },
@@ -221,13 +327,16 @@ function App(): React.JSX.Element {
               <div
                 key={id}
                 className={`absolute inset-0 ${
-                  id === 'dashboard'
-                    // Dashboard scrolls vertically; pad only the content
-                    // side so the scrollbar sits flush against the right
-                    // window border, with a small visual gap on the
-                    // left provided by the inner content's own pr-*.
-                    ? 'pl-3 sm:pl-4 md:pl-6 py-3 sm:py-4 md:py-6 pr-0'
-                    : 'p-3 sm:p-4 md:p-6'
+                  id === 'batch'
+                    // Batch regions meet the window edges
+                    ? ''
+                    : id === 'dashboard'
+                      // Dashboard scrolls vertically; pad only the content
+                      // side so the scrollbar sits flush against the right
+                      // window border, with a small visual gap on the
+                      // left provided by the inner content's own pr-*.
+                      ? 'pl-3 sm:pl-4 md:pl-6 py-3 sm:py-4 md:py-6 pr-0'
+                      : 'p-3 sm:p-4 md:p-6'
                 } ${
                   fixedLayoutViews.has(id)
                     ? 'flex flex-col overflow-hidden'

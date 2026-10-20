@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useAppStore } from '../../src/renderer/src/stores/appStore'
-import type { FileItem, ProcessingTask, LogEntry } from '../../src/renderer/src/stores/appStore'
+import type { LogEntry } from '../../src/renderer/src/stores/appStore'
 
 function resetStore(): void {
   useAppStore.setState(useAppStore.getInitialState())
@@ -54,120 +54,6 @@ describe('appStore', () => {
     })
   })
 
-  // -- Files --
-
-  describe('addFiles', () => {
-    const file1: FileItem = { path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }
-    const file2: FileItem = { path: '/b.wav', name: 'b.wav', size: 2000, ext: 'wav' }
-
-    it('adds files to the list', () => {
-      useAppStore.getState().addFiles([file1, file2])
-      expect(useAppStore.getState().files).toHaveLength(2)
-    })
-
-    it('deduplicates by path', () => {
-      useAppStore.getState().addFiles([file1])
-      useAppStore.getState().addFiles([file1, file2])
-      expect(useAppStore.getState().files).toHaveLength(2)
-    })
-
-    it('stamps missing convert options even when operation is already set', () => {
-      useAppStore.getState().setOperation('convert')
-      useAppStore.getState().setConvertOptions({ outputFormat: 'mp4', videoCodec: 'libx264' })
-
-      useAppStore.getState().addFiles([
-        { path: '/dropped.mkv', name: 'dropped.mkv', size: 3000, ext: 'mkv', operation: 'convert' }
-      ])
-
-      const added = useAppStore.getState().files.find((f) => f.path === '/dropped.mkv')
-      expect(added?.operation).toBe('convert')
-      expect(added?.convertOptions).toBeTruthy()
-      expect(added?.convertOptions?.outputFormat).toBe('mp4')
-    })
-  })
-
-  describe('updateFile', () => {
-    it('updates a file by path', () => {
-      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
-      useAppStore.getState().updateFile('/a.mp3', { probed: true, duration: '3:45' })
-      expect(useAppStore.getState().files[0].probed).toBe(true)
-      expect(useAppStore.getState().files[0].duration).toBe('3:45')
-    })
-
-    it('does not affect other files', () => {
-      useAppStore.getState().addFiles([
-        { path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' },
-        { path: '/b.mp3', name: 'b.mp3', size: 2000, ext: 'mp3' }
-      ])
-      useAppStore.getState().updateFile('/a.mp3', { probed: true })
-      expect(useAppStore.getState().files[1].probed).toBeUndefined()
-    })
-  })
-
-  describe('removeFile', () => {
-    it('removes a file by path', () => {
-      useAppStore.getState().addFiles([
-        { path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' },
-        { path: '/b.mp3', name: 'b.mp3', size: 2000, ext: 'mp3' }
-      ])
-      useAppStore.getState().removeFile('/a.mp3')
-      expect(useAppStore.getState().files).toHaveLength(1)
-      expect(useAppStore.getState().files[0].path).toBe('/b.mp3')
-    })
-  })
-
-  describe('clearFiles', () => {
-    it('clears all files', () => {
-      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
-      useAppStore.getState().clearFiles()
-      expect(useAppStore.getState().files).toHaveLength(0)
-    })
-  })
-
-  // -- Tasks --
-
-  describe('updateTask', () => {
-    it('replaces a task by id', () => {
-      const task: ProcessingTask = {
-        id: 't1', filePath: '/a.mp3', fileName: 'a.mp3',
-        operation: 'normalize', status: 'queued', progress: 0, message: ''
-      }
-      useAppStore.getState().setTasks([task])
-      useAppStore.getState().updateTask({ ...task, status: 'processing', progress: 50 })
-      expect(useAppStore.getState().tasks[0].status).toBe('processing')
-      expect(useAppStore.getState().tasks[0].progress).toBe(50)
-    })
-
-    it('does not affect other tasks', () => {
-      const t1: ProcessingTask = {
-        id: 't1', filePath: '/a.mp3', fileName: 'a.mp3',
-        operation: 'normalize', status: 'queued', progress: 0, message: ''
-      }
-      const t2: ProcessingTask = {
-        id: 't2', filePath: '/b.mp3', fileName: 'b.mp3',
-        operation: 'boost', status: 'queued', progress: 0, message: ''
-      }
-      useAppStore.getState().setTasks([t1, t2])
-      useAppStore.getState().updateTask({ ...t1, status: 'complete' })
-      expect(useAppStore.getState().tasks[1].status).toBe('queued')
-    })
-  })
-
-  describe('clearTasks', () => {
-    it('clears tasks, batch id, and paused state', () => {
-      useAppStore.getState().setTasks([{
-        id: 't1', filePath: '/a.mp3', fileName: 'a.mp3',
-        operation: 'normalize', status: 'complete', progress: 100, message: 'done'
-      }])
-      useAppStore.getState().setActiveBatch('batch-1')
-      useAppStore.getState().setIsPaused(true)
-      useAppStore.getState().clearTasks()
-      expect(useAppStore.getState().tasks).toHaveLength(0)
-      expect(useAppStore.getState().activeBatchId).toBeNull()
-      expect(useAppStore.getState().isPaused).toBe(false)
-    })
-  })
-
   // -- Logs --
 
   describe('addLog', () => {
@@ -198,64 +84,39 @@ describe('appStore', () => {
     })
   })
 
+  describe('addLogs', () => {
+    it('appends a batch in one update', () => {
+      const updates: number[] = []
+      const stop = useAppStore.subscribe((state) => updates.push(state.logs.length))
+      useAppStore.getState().addLogs([
+        { id: 1, timestamp: '', level: 'info', message: 'a' },
+        { id: 2, timestamp: '', level: 'warn', message: 'b' }
+      ])
+      stop()
+      expect(updates).toEqual([2])
+      expect(useAppStore.getState().logs.map((l) => l.message)).toEqual(['a', 'b'])
+    })
+
+    it('leaves the store alone for an empty batch', () => {
+      const before = useAppStore.getState().logs
+      useAppStore.getState().addLogs([])
+      expect(useAppStore.getState().logs).toBe(before)
+    })
+
+    it('trims beyond 5000 entries to the newest 2500', () => {
+      const entries: LogEntry[] = Array.from({ length: 5001 }, (_, i) => ({ timestamp: '', level: 'info', message: `log-${i}` }))
+      useAppStore.getState().addLogs(entries)
+      const logs = useAppStore.getState().logs
+      expect(logs).toHaveLength(2500)
+      expect(logs[logs.length - 1].message).toBe('log-5000')
+    })
+  })
+
   describe('clearLogs', () => {
     it('clears all logs', () => {
       useAppStore.getState().addLog({ timestamp: '', level: 'info', message: 'x' })
       useAppStore.getState().clearLogs()
       expect(useAppStore.getState().logs).toHaveLength(0)
-    })
-  })
-
-  // -- Stats --
-
-  describe('incrementProcessed / incrementErrors', () => {
-    it('increments processed count', () => {
-      useAppStore.getState().incrementProcessed()
-      useAppStore.getState().incrementProcessed()
-      expect(useAppStore.getState().totalProcessed).toBe(2)
-    })
-
-    it('increments error count', () => {
-      useAppStore.getState().incrementErrors()
-      expect(useAppStore.getState().totalErrors).toBe(1)
-    })
-  })
-
-  // -- Option setters --
-
-  describe('option setters', () => {
-    it('sets operation', () => {
-      useAppStore.getState().setOperation('boost')
-      expect(useAppStore.getState().operation).toBe('boost')
-    })
-
-    it('sets boost percent', () => {
-      useAppStore.getState().setBoostPercent(25)
-      expect(useAppStore.getState().boostPercent).toBe(25)
-    })
-
-    it('sets selected preset', () => {
-      useAppStore.getState().setSelectedPreset('dialogue')
-      expect(useAppStore.getState().selectedPreset).toBe('dialogue')
-    })
-
-    it('merges convert options', () => {
-      useAppStore.getState().setConvertOptions({ outputFormat: 'mkv' })
-      expect(useAppStore.getState().convertOptions.outputFormat).toBe('mkv')
-      // Other fields should be preserved
-      expect(useAppStore.getState().convertOptions.videoCodec).toBe('libx264')
-    })
-
-    it('merges extract options', () => {
-      useAppStore.getState().setExtractOptions({ streamIndex: 2 })
-      expect(useAppStore.getState().extractOptions.streamIndex).toBe(2)
-      expect(useAppStore.getState().extractOptions.outputFormat).toBe('mp3')
-    })
-
-    it('merges compress options', () => {
-      useAppStore.getState().setCompressOptions({ quality: 'low' })
-      expect(useAppStore.getState().compressOptions.quality).toBe('low')
-      expect(useAppStore.getState().compressOptions.targetSizeMB).toBe(0)
     })
   })
 
@@ -324,17 +185,12 @@ describe('appStore', () => {
     })
   })
 
-  describe('resetBatch', () => {
-    it('resets all batch state to defaults', () => {
-      useAppStore.getState().addFiles([{ path: '/a.mp3', name: 'a.mp3', size: 1000, ext: 'mp3' }])
-      useAppStore.getState().setOperation('normalize')
-      useAppStore.getState().setIsProcessing(true)
-      useAppStore.getState().resetBatch()
-      const s = useAppStore.getState()
-      expect(s.files).toEqual([])
-      expect(s.tasks).toEqual([])
-      expect(s.isProcessing).toBe(false)
-      expect(s.operation).toBe('convert')
+  describe('batch state', () => {
+    it('holds none; the jobs store carries every batch fact', () => {
+      const keys = Object.keys(useAppStore.getState())
+      for (const key of ['files', 'addFiles', 'tasks', 'operation', 'isProcessing', 'isPaused', 'activeBatchId', 'batchWorkers', 'normalizeOptions', 'boostPercent', 'resetBatch', 'totalProcessed']) {
+        expect(keys).not.toContain(key)
+      }
     })
   })
 
@@ -364,29 +220,5 @@ describe('appStore', () => {
       expect(useAppStore.getState().systemInfo?.platform).toBe('win32')
     })
 
-    it('setActiveBatch', () => {
-      useAppStore.getState().setActiveBatch('batch-123')
-      expect(useAppStore.getState().activeBatchId).toBe('batch-123')
-    })
-
-    it('setIsPaused', () => {
-      useAppStore.getState().setIsPaused(true)
-      expect(useAppStore.getState().isPaused).toBe(true)
-    })
-
-    it('setTasks', () => {
-      useAppStore.getState().setTasks([{ id: 't1', status: 'queued' } as any])
-      expect(useAppStore.getState().tasks).toHaveLength(1)
-    })
-
-    it('setBatchOutputDir', () => {
-      useAppStore.getState().setBatchOutputDir('/output')
-      expect(useAppStore.getState().batchOutputDir).toBe('/output')
-    })
-
-    it('setNormalizeOptions merges options', () => {
-      useAppStore.getState().setNormalizeOptions({ I: -14 })
-      expect(useAppStore.getState().normalizeOptions.I).toBe(-14)
-    })
   })
 })

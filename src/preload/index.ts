@@ -56,36 +56,11 @@ const api: WindowApi = {
   openDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
   selectOutputDir: () => ipcRenderer.invoke('dialog:selectOutputDir'),
   selectSavePath: (defaultName: string, filters: { name: string; extensions: string[] }[]) => ipcRenderer.invoke('dialog:selectSavePath', defaultName, filters),
-  scanDirectory: (dirPath: string) => ipcRenderer.invoke('files:scanDirectory', dirPath),
-  probeFile: (filePath: string) => ipcRenderer.invoke('files:probe', filePath),
-
-  // Processing
-  normalize: (filePaths: string[], normalizeOptions?: any, outputDir?: string) => ipcRenderer.invoke('process:normalize', filePaths, normalizeOptions, outputDir),
-  boost: (filePaths: string[], percent: number, outputDir?: string) => ipcRenderer.invoke('process:boost', filePaths, percent, outputDir),
-  convert: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:convert', filePaths, options, outputDir),
-  extract: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:extract', filePaths, options, outputDir),
-  compress: (filePaths: string[], options: any, outputDir?: string) => ipcRenderer.invoke('process:compress', filePaths, options, outputDir),
-  startBatchQueue: (taskSpecs: any[], maxWorkers?: number) => ipcRenderer.invoke('process:batch-queue', taskSpecs, maxWorkers),
-  cancelBatch: (batchId: string) => ipcRenderer.invoke('process:cancel', batchId),
-  cancelAll: () => ipcRenderer.invoke('process:cancelAll'),
-  getActiveCount: () => ipcRenderer.invoke('process:activeCount'),
-  pauseProcessing: () => ipcRenderer.invoke('process:pause'),
-  resumeProcessing: () => ipcRenderer.invoke('process:resume'),
-  getIsPaused: () => ipcRenderer.invoke('process:isPaused'),
-  setWorkers: (count: number) => ipcRenderer.invoke('process:setWorkers', count),
-  getWorkerStatus: () => ipcRenderer.invoke('process:getWorkerStatus'),
-  onWorkerStatus: (cb: (status: { target: number; active: number }) => void) => {
-    const listener = (_: any, status: any) => cb(status)
-    ipcRenderer.on('process:workerStatus', listener)
-    return () => ipcRenderer.removeListener('process:workerStatus', listener)
-  },
 
   // Editor
   cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; loopCount?: number; fps?: number; width?: number; dither?: 'sierra2_4a' | 'bayer' | 'floyd_steinberg' | 'none'; bayerScale?: number; highQuality?: boolean; reverse?: boolean; boomerang?: boolean }; videoOptions?: { codec?: string; crf?: number; preset?: string; maxHeight?: number; audioBitrate?: string } }) => ipcRenderer.invoke('editor:cut', filePath, inPoint, outPoint, options),
-  mergeMedia: (segments: { path: string; inPoint: number; outPoint: number; audioReplacement?: { path: string; offset: number; trimIn: number; trimOut: number } }[], options?: { mode?: 'fast' | 'precise'; outputFormat?: string; gifOptions?: { loop?: boolean; fps?: number; width?: number } }) => ipcRenderer.invoke('editor:merge', segments, options),
   probeDetailed: (filePath: string) => ipcRenderer.invoke('editor:probeDetailed', filePath),
   remuxMedia: (filePath: string, options: { keepStreams: number[]; metadata?: Record<string, string>; dispositions?: Record<number, Record<string, number>> }) => ipcRenderer.invoke('editor:remux', filePath, options),
-  replaceAudio: (videoPath: string, audioPath: string, options?: { outputDir?: string; audioOffset?: number; inPoint?: number; outPoint?: number }) => ipcRenderer.invoke('editor:replaceAudio', videoPath, audioPath, options),
   createPreview: (filePath: string) => ipcRenderer.invoke('editor:createPreview', filePath),
   createAudioPreview: (filePath: string) => ipcRenderer.invoke('editor:createAudioPreview', filePath),
   exportTimeline: (request: any) => ipcRenderer.invoke('editor:export', request),
@@ -135,32 +110,6 @@ const api: WindowApi = {
   setCookieBrowser: (browserName: string) => ipcRenderer.invoke('ytdlp:setBrowser', browserName),
   clearCookies: () => ipcRenderer.invoke('ytdlp:clearCookies'),
   getCookieInfo: () => ipcRenderer.invoke('ytdlp:cookieInfo'),
-  onPaused: (cb: () => void) => {
-    const listener = () => cb()
-    ipcRenderer.on('process:paused', listener)
-    return () => ipcRenderer.removeListener('process:paused', listener)
-  },
-  onResumed: (cb: () => void) => {
-    const listener = () => cb()
-    ipcRenderer.on('process:resumed', listener)
-    return () => ipcRenderer.removeListener('process:resumed', listener)
-  },
-
-  onBatchStarted: (cb: (data: any) => void) => {
-    const listener = (_: any, data: any) => cb(data)
-    ipcRenderer.on('process:batch-started', listener)
-    return () => ipcRenderer.removeListener('process:batch-started', listener)
-  },
-  onTaskProgress: (cb: (task: any) => void) => {
-    const listener = (_: any, task: any) => cb(task)
-    ipcRenderer.on('process:task-progress', listener)
-    return () => ipcRenderer.removeListener('process:task-progress', listener)
-  },
-  onBatchComplete: (cb: (data: any) => void) => {
-    const listener = (_: any, data: any) => cb(data)
-    ipcRenderer.on('process:batch-complete', listener)
-    return () => ipcRenderer.removeListener('process:batch-complete', listener)
-  },
 
   // Logs
   getLogBuffer: (query?: LogQuery) => ipcRenderer.invoke('logs:getBuffer', query),

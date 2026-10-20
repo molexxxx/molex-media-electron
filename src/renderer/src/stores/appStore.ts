@@ -2,22 +2,17 @@
  * @module stores/appStore
  * @description Central Zustand store for all application state.
  *
- * State domains: navigation, FFmpeg readiness, configuration, file list,
- * batch processing, statistics, logs, and system information.
+ * State domains: navigation, FFmpeg readiness, configuration, logs, system
+ * information, setup, the sidebar, and the updater. Batch state lives in the
+ * jobs store, fed by the engine.
  *
- * Types, interfaces, and presets are defined in {@link stores/types}.
+ * Types are defined in {@link stores/types}.
  */
 
 import { create } from 'zustand'
-import type {
-  View, Operation, AppConfig, FileItem, ProcessingTask, LogEntry, LogFilter,
-  ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions
-} from './types'
+import type { View, AppConfig, LogEntry, LogFilter, SystemInfo } from './types'
 
-export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, LogFilter, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions, BoostPreset, CompressPreset, ExtractPreset } from './types'
-export { BUILTIN_PRESETS, BUILTIN_BOOST_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from './types'
-export { resolveFileSettings, buildTaskSpec, isCustomized } from './taskSettings'
-export type { GlobalOperationSettings, ResolvedFileSettings, TaskSpec } from './taskSettings'
+export type { View, AppConfig, LogEntry, LogFilter, SystemInfo } from './types'
 
 interface AppState {
   // Navigation
@@ -37,68 +32,11 @@ interface AppState {
   config: AppConfig | null
   setConfig: (config: AppConfig) => void
 
-  // Files
-  files: FileItem[]
-  addFiles: (files: FileItem[]) => void
-  updateFile: (path: string, data: Partial<FileItem>) => void
-  removeFile: (path: string) => void
-  clearFiles: () => void
-  reorderFiles: (fromIndex: number, toIndex: number) => void
-  updateFileOperation: (path: string, operation: Operation, options?: Partial<FileItem>) => void
-
-  // Processing
-  operation: Operation
-  boostPercent: number
-  boostOptions: BoostOptions
-  selectedBoostPreset: string | null
-  selectedConvertPreset: string | null
-  selectedCompressPreset: string | null
-  selectedExtractPreset: string | null
-  selectedPreset: string | null
-  normalizeOptions: NormalizeOptions
-  convertOptions: ConvertOptions
-  extractOptions: ExtractOptions
-  compressOptions: CompressOptions
-  setOperation: (op: Operation) => void
-  setBoostPercent: (pct: number) => void
-  setBoostOptions: (opts: Partial<BoostOptions>) => void
-  setSelectedBoostPreset: (id: string | null) => void
-  setSelectedConvertPreset: (id: string | null) => void
-  setSelectedCompressPreset: (id: string | null) => void
-  setSelectedExtractPreset: (id: string | null) => void
-  setSelectedPreset: (id: string | null) => void
-  setNormalizeOptions: (opts: Partial<NormalizeOptions>) => void
-  setConvertOptions: (opts: Partial<ConvertOptions>) => void
-  setExtractOptions: (opts: Partial<ExtractOptions>) => void
-  setCompressOptions: (opts: Partial<CompressOptions>) => void
-  batchOutputDir: string
-  setBatchOutputDir: (dir: string) => void
-
-  tasks: ProcessingTask[]
-  activeBatchId: string | null
-  isProcessing: boolean
-  setTasks: (tasks: ProcessingTask[]) => void
-  updateTask: (task: ProcessingTask) => void
-  setActiveBatch: (id: string | null) => void
-  setIsProcessing: (processing: boolean) => void
-  isPaused: boolean
-  setIsPaused: (paused: boolean) => void
-  clearTasks: () => void
-  resetBatch: () => void
-  batchWorkers: number
-  setBatchWorkers: (n: number) => void
-  activeWorkerCount: number
-  setActiveWorkerCount: (n: number) => void
-
-  // Stats
-  totalProcessed: number
-  totalErrors: number
-  incrementProcessed: () => void
-  incrementErrors: () => void
-
   // Logs
   logs: LogEntry[]
   addLog: (entry: LogEntry) => void
+  /** Appends a batch of entries in one update, with the same trim as {@link addLog}. */
+  addLogs: (entries: LogEntry[]) => void
   clearLogs: () => void
   lastSeenErrorCount: number
   logFilter: LogFilter | null
@@ -162,178 +100,17 @@ export const useAppStore = create<AppState>((set) => ({
   config: null,
   setConfig: (config) => set({ config }),
 
-  files: [],
-  addFiles: (newFiles) =>
-    set((state) => {
-      const DONE_STATUSES = new Set(['complete', 'error', 'cancelled'])
-      // Any task in a terminal state belongs to a "finished" file. When the
-      // user adds anything new, sweep those out so the queue only shows
-      // pending work - no more orphaned green checkmarks lingering next to
-      // freshly queued items.
-      const finishedPaths = new Set(
-        state.tasks
-          .filter((t) => DONE_STATUSES.has(t.status))
-          .map((t) => t.filePath)
-      )
-      const existingByPath = new Map(
-        state.files
-          .filter((f) => !finishedPaths.has(f.path))
-          .map((f) => [f.path, f])
-      )
-      const readdPaths = new Set<string>()
-      const unique = newFiles.filter((f) => {
-        // Re-added files whose previous run was finished are always allowed.
-        if (finishedPaths.has(f.path)) {
-          readdPaths.add(f.path)
-          return true
-        }
-        const existing = existingByPath.get(f.path)
-        if (!existing) return true
-        // Pending duplicate in the live queue - skip.
-        return false
-      })
-      // Drop finished entries + any re-added duplicates and their stale tasks.
-      const pathsToDrop = new Set<string>([...finishedPaths, ...readdPaths])
-      const files = pathsToDrop.size > 0
-        ? state.files.filter((f) => !pathsToDrop.has(f.path))
-        : state.files
-      const tasks = pathsToDrop.size > 0
-        ? state.tasks.filter((t) => !pathsToDrop.has(t.filePath))
-        : state.tasks
-      // Stamp each new file with operation + missing per-operation defaults.
-      // Some entry points (e.g. drag/drop) may provide an operation but omit options.
-      const stamped = unique.map((f) => {
-        const operation = f.operation || state.operation
-        const next = { ...f, operation }
-
-        if (typeof next.boostPercent !== 'number') {
-          next.boostPercent = state.boostPercent
-        }
-        if (!next.boostOptions) {
-          next.boostOptions = { ...state.boostOptions }
-        }
-        if (next.selectedBoostPreset === undefined) {
-          next.selectedBoostPreset = state.selectedBoostPreset
-        }
-        if (next.selectedConvertPreset === undefined) {
-          next.selectedConvertPreset = state.selectedConvertPreset
-        }
-        if (next.selectedCompressPreset === undefined) {
-          next.selectedCompressPreset = state.selectedCompressPreset
-        }
-        if (next.selectedExtractPreset === undefined) {
-          next.selectedExtractPreset = state.selectedExtractPreset
-        }
-        if (!next.selectedPreset) {
-          next.selectedPreset = state.selectedPreset
-        }
-        if (!next.normalizeOptions) {
-          next.normalizeOptions = { ...state.normalizeOptions }
-        }
-        if (!next.convertOptions) {
-          next.convertOptions = { ...state.convertOptions }
-        }
-        if (!next.extractOptions) {
-          next.extractOptions = { ...state.extractOptions }
-        }
-        if (!next.compressOptions) {
-          next.compressOptions = { ...state.compressOptions }
-        }
-
-        return next
-      })
-      return { files: [...files, ...stamped], tasks }
-    }),
-  updateFile: (filePath, data) =>
-    set((state) => ({
-      files: state.files.map((f) => (f.path === filePath ? { ...f, ...data } : f))
-    })),
-  removeFile: (filePath) =>
-    set((state) => ({ files: state.files.filter((f) => f.path !== filePath) })),
-  clearFiles: () => set({ files: [] }),
-  reorderFiles: (fromIndex, toIndex) =>
-    set((state) => {
-      const files = [...state.files]
-      const [item] = files.splice(fromIndex, 1)
-      files.splice(toIndex, 0, item)
-      return { files }
-    }),
-  updateFileOperation: (filePath, operation, options) =>
-    set((state) => ({
-      files: state.files.map((f) =>
-        // Editing a file pins its settings: from here on the operation
-        // panel no longer overrides them.
-        f.path === filePath ? { ...f, operation, ...options, customized: true } : f
-      )
-    })),
-
-  operation: 'convert',
-  boostPercent: 10,
-  boostOptions: { percent: 10, limiter: true, limiterCeiling: -1, hpfHz: 0 },
-  selectedBoostPreset: 'gentle-lift',
-  selectedConvertPreset: 'mp4-h264',
-  selectedCompressPreset: 'web-1080p',
-  selectedExtractPreset: 'audio-mp3-320',
-  selectedPreset: 'defaults',
-  normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
-  convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
-  extractOptions: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' },
-  compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'medium', customCrf: 23, videoCodec: 'libx264', speed: 'medium', pixelFormat: 'yuv420p', tune: '', maxHeight: 1080, twoPass: false, audioCodec: 'aac', audioBitrate: '192k' },
-  setOperation: (op) => set({ operation: op }),
-  setBoostPercent: (pct) => set((s) => ({ boostPercent: pct, boostOptions: { ...s.boostOptions, percent: pct } })),
-  setBoostOptions: (opts) => set((s) => ({ boostOptions: { ...s.boostOptions, ...opts }, ...(typeof opts.percent === 'number' ? { boostPercent: opts.percent } : {}) })),
-  setSelectedBoostPreset: (id) => set({ selectedBoostPreset: id }),
-  setSelectedConvertPreset: (id) => set({ selectedConvertPreset: id }),
-  setSelectedCompressPreset: (id) => set({ selectedCompressPreset: id }),
-  setSelectedExtractPreset: (id) => set({ selectedExtractPreset: id }),
-  setSelectedPreset: (id) => set({ selectedPreset: id }),
-  setNormalizeOptions: (opts) => set((s) => ({ normalizeOptions: { ...s.normalizeOptions, ...opts } })),
-  setConvertOptions: (opts) => set((s) => ({ convertOptions: { ...s.convertOptions, ...opts } })),
-  setExtractOptions: (opts) => set((s) => ({ extractOptions: { ...s.extractOptions, ...opts } })),
-  setCompressOptions: (opts) => set((s) => ({ compressOptions: { ...s.compressOptions, ...opts } })),
-  batchOutputDir: '',
-  setBatchOutputDir: (dir) => set({ batchOutputDir: dir }),
-
-  tasks: [],
-  activeBatchId: null,
-  isProcessing: false,
-  setTasks: (tasks) => set({ tasks }),
-  updateTask: (task) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === task.id ? task : t))
-    })),
-  setActiveBatch: (id) => set({ activeBatchId: id }),
-  setIsProcessing: (processing) => set({ isProcessing: processing }),
-  isPaused: false,
-  setIsPaused: (paused) => set({ isPaused: paused }),
-  clearTasks: () => set({ tasks: [], activeBatchId: null, isPaused: false }),
-  batchWorkers: 0,
-  setBatchWorkers: (n) => set({ batchWorkers: n }),
-  activeWorkerCount: 0,
-  setActiveWorkerCount: (n) => set({ activeWorkerCount: n }),
-
-  resetBatch: () => set({
-    files: [], tasks: [], activeBatchId: null, isProcessing: false, isPaused: false,
-    batchWorkers: 0, activeWorkerCount: 0,
-    operation: 'convert', boostPercent: 10, selectedPreset: 'defaults', selectedBoostPreset: 'gentle-lift', selectedConvertPreset: 'mp4-h264', selectedCompressPreset: 'web-1080p', selectedExtractPreset: 'audio-mp3-320',
-    boostOptions: { percent: 10, limiter: true, limiterCeiling: -1, hpfHz: 0 },
-    batchOutputDir: '',
-    normalizeOptions: { I: -16, TP: -1.5, LRA: 11 },
-    convertOptions: { outputFormat: 'mp4', videoCodec: 'libx264', audioCodec: 'aac', videoBitrate: '5000k', audioBitrate: '256k', resolution: '', framerate: '' },
-    extractOptions: { mode: 'audio', outputFormat: 'mp3', streamIndex: 0, audioBitrate: '320k', sampleRate: '', channels: '' },
-    compressOptions: { mode: 'crf', targetSizeMB: 0, quality: 'medium', customCrf: 23, videoCodec: 'libx264', speed: 'medium', pixelFormat: 'yuv420p', tune: '', maxHeight: 1080, twoPass: false, audioCodec: 'aac', audioBitrate: '192k' }
-  }),
-
-  totalProcessed: 0,
-  totalErrors: 0,
-  incrementProcessed: () => set((s) => ({ totalProcessed: s.totalProcessed + 1 })),
-  incrementErrors: () => set((s) => ({ totalErrors: s.totalErrors + 1 })),
-
   logs: [],
   lastSeenErrorCount: 0,
   addLog: (entry) =>
     set((state) => {
       const logs = [...state.logs, entry]
+      return { logs: logs.length > 5000 ? logs.slice(-2500) : logs }
+    }),
+  addLogs: (entries) =>
+    set((state) => {
+      if (entries.length === 0) return {}
+      const logs = [...state.logs, ...entries]
       return { logs: logs.length > 5000 ? logs.slice(-2500) : logs }
     }),
   clearLogs: () => set({ logs: [], lastSeenErrorCount: 0 }),

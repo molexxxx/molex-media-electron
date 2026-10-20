@@ -5,7 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import { EncoderBadge } from '../../shared/EncoderBadge'
-import { SelectDropdown } from '../../batch/components/SelectDropdown'
+import { SelectDropdown } from '../../shared/SelectDropdown'
 
 type ExportRange = 'timeline' | 'inout' | 'selected'
 type ExportStatus = 'idle' | 'exporting' | 'done' | 'error'

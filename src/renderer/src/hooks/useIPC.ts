@@ -4,8 +4,9 @@
  *
  * On mount, loads the persisted configuration, system information, FFmpeg
  * status, and the log buffer. Subscribes to IPC event channels (log entries,
- * task progress, batch lifecycle, download progress, and navigation) and
- * pipes them into the Zustand store. Cleans up all listeners on unmount.
+ * download progress, and navigation) and pipes them into the Zustand store.
+ * Batch state arrives through the jobs store instead. Cleans up all
+ * listeners on unmount.
  */
 
 import { useEffect } from 'react'
@@ -88,10 +89,7 @@ export function appStoreLogSink(): LogSink {
       }
       return undefined
     },
-    add: (entries) => {
-      const { addLog } = useAppStore.getState()
-      for (const entry of entries) addLog(entry)
-    }
+    add: (entries) => useAppStore.getState().addLogs(entries)
   }
 }
 
@@ -103,14 +101,7 @@ export function useIPC(): void {
     setShowSetup,
     setSystemInfo,
     setView,
-    updateTask,
-    setTasks,
-    setActiveBatch,
-    setIsProcessing,
-    setIsPaused,
-    setDownloadProgress,
-    incrementProcessed,
-    incrementErrors
+    setDownloadProgress
   } = useAppStore()
 
   useEffect(() => {
@@ -155,32 +146,6 @@ export function useIPC(): void {
     init()
 
     // Subscribe to IPC events
-    const unsubTaskProgress = window.api.onTaskProgress((task: any) => {
-      updateTask(task)
-      if (task.status === 'complete') incrementProcessed()
-      if (task.status === 'error') incrementErrors()
-    })
-
-    const unsubBatchStarted = window.api.onBatchStarted((data: any) => {
-      setTasks(data.tasks)
-      setActiveBatch(data.batchId)
-      setIsProcessing(true)
-    })
-
-    const unsubBatchComplete = window.api.onBatchComplete(() => {
-      setIsProcessing(false)
-      setActiveBatch(null)
-      setIsPaused(false)
-    })
-
-    const unsubPaused = window.api.onPaused(() => {
-      setIsPaused(true)
-    })
-
-    const unsubResumed = window.api.onResumed(() => {
-      setIsPaused(false)
-    })
-
     const unsubDownload = window.api.onDownloadProgress((progress: any) => {
       setDownloadProgress(progress)
     })
@@ -192,11 +157,6 @@ export function useIPC(): void {
     return () => {
       cancelled = true
       stopLogSync()
-      unsubTaskProgress?.()
-      unsubBatchStarted?.()
-      unsubBatchComplete?.()
-      unsubPaused?.()
-      unsubResumed?.()
       unsubDownload?.()
       unsubNavigate?.()
     }
