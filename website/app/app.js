@@ -1,10 +1,6 @@
-// app.js - main entry point
 import { routes } from './routes.js';
-import { fetchGitHubData, API_BASE } from './store.js';
-import { startBgCanvas } from './bg-canvas.js';
-import { initScrollAnimations, refreshReveals } from './scroll-animations.js';
-
-// Import all page components (registers them with $)
+import { API_BASE, loadReleases } from './store.js';
+import './widgets.js';
 import './components/home.js';
 import './components/features.js';
 import './components/batch.js';
@@ -14,79 +10,91 @@ import './components/download.js';
 import './components/changelog.js';
 import './components/not-found.js';
 
-// Configure HTTP client
-$.http.configure({ baseURL: API_BASE });
+$.http.configure({ baseURL: API_BASE, timeout: 15000 });
 
-// Setup router
-$.router({
-  routes,
-  fallback: 'not-found',
-  afterEach() {
-    window.scrollTo(0, 0);
-    setTimeout(refreshReveals, 50);
-  },
-});
+const nav = document.getElementById('nav');
+const toggle = document.getElementById('nav-toggle');
+const description = document.querySelector('meta[name="description"]');
+const defaults = { title: document.title, description: description?.content || '' };
 
-// Fetch initial data
-fetchGitHubData();
+/**
+ * Opens or closes the mobile menu.
+ * @param {boolean} open Desired state.
+ */
+function setMenu(open)
+{
+    nav.dataset.open = String(open);
+    toggle.setAttribute('aria-expanded', String(open));
+}
 
-// Start ambient background
-startBgCanvas();
-
-// DOM ready
-$.ready(() => {
-  initScrollAnimations();
-
-  const burger = $.id('nav-burger');
-  const mobileNav = $.id('nav-mobile');
-  const backdrop = $.id('nav-backdrop');
-
-  function openMobileNav() {
-    if (!mobileNav) return;
-    mobileNav.classList.add('open');
-    if (burger) burger.classList.add('active');
-    if (backdrop) backdrop.classList.add('visible');
-    document.body.classList.add('nav-open');
-  }
-
-  function closeMobileNav() {
-    if (!mobileNav) return;
-    mobileNav.classList.remove('open');
-    if (burger) burger.classList.remove('active');
-    if (backdrop) backdrop.classList.remove('visible');
-    document.body.classList.remove('nav-open');
-  }
-
-  if (burger)
-    burger.addEventListener('click', () => {
-      mobileNav && mobileNav.classList.contains('open')
-        ? closeMobileNav()
-        : openMobileNav();
-    });
-
-  if (backdrop) backdrop.addEventListener('click', closeMobileNav);
-
-  document.addEventListener('click', (e) => {
-    if (
-      e.target.closest('.nav-mobile a') &&
-      !e.target.closest('.nav-dropdown-trigger')
-    ) {
-      closeMobileNav();
+/**
+ * Marks the nav link for the current section and updates the document metadata.
+ * @param {{path: string, route?: object}} to Resolved route.
+ */
+function syncChrome(to)
+{
+    const path = to?.path || location.pathname;
+    for (const a of document.querySelectorAll('[data-route]'))
+    {
+        const base = a.dataset.route;
+        const hit = path === base || path.startsWith(`${base}/`);
+        if (hit)
+        {
+            a.setAttribute('aria-current', 'page');
+        }
+        else
+        {
+            a.removeAttribute('aria-current');
+        }
     }
-  });
+    const route = to?.route && routes.find((r) => r.path === to.route.path);
+    document.title = route?.title || 'Page not found | molexMedia';
+    if (description)
+    {
+        description.content = route?.description || defaults.description;
+    }
+}
 
-  const dropdownTrigger =
-    mobileNav && mobileNav.querySelector('.nav-dropdown-trigger');
-  if (dropdownTrigger) {
-    dropdownTrigger.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const dropdown = dropdownTrigger.closest('.nav-dropdown');
-      if (dropdown) dropdown.classList.toggle('expanded');
-    });
-  }
+const router = $.router({ routes, fallback: 'not-found' });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeMobileNav();
-  });
+let first = true;
+router.onChange((to) =>
+{
+    syncChrome(to);
+    setMenu(false);
+    if (!first)
+    {
+        requestAnimationFrame(() =>
+        {
+            const heading = document.querySelector('main h1');
+            if (heading)
+            {
+                heading.setAttribute('tabindex', '-1');
+                heading.focus({ preventScroll: true });
+            }
+        });
+    }
+    first = false;
 });
+
+toggle.addEventListener('click', () => setMenu(nav.dataset.open !== 'true'));
+
+document.addEventListener('keydown', (e) =>
+{
+    if (e.key === 'Escape' && nav.dataset.open === 'true')
+    {
+        setMenu(false);
+        toggle.focus();
+    }
+});
+
+document.getElementById('skip-link').addEventListener('click', (e) =>
+{
+    e.preventDefault();
+    const main = document.getElementById('main');
+    main.focus();
+    main.scrollIntoView();
+});
+
+syncChrome(router.current);
+loadReleases();

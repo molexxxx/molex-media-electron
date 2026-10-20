@@ -3,113 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Molex Media - Cross-platform Media Processing Toolkit</title>
-  <meta name="description" content="Cross-platform media processing toolkit powered by FFmpeg. Batch processing, NLE editor, media player, and more.">
-  <meta property="og:title" content="Molex Media">
-  <meta property="og:description" content="Cross-platform media processing toolkit powered by FFmpeg">
-  <meta property="og:type" content="website">
-  <!-- Fonts loaded via CSS @font-face or system fallback -->
+  <base href="/">
+  <title>molexMedia: batch, edit, and play media on FFmpeg</title>
   <link rel="stylesheet" href="global.css">
+  <meta name="description" content="molexMedia is a free desktop app for Windows, macOS, and Linux with a batch processor, a multi-track timeline editor, and a media player, built on FFmpeg.">
+  <meta name="theme-color" content="#080b14">
+  <meta property="og:title" content="molexMedia">
+  <meta property="og:description" content="Batch, edit, and play media on FFmpeg, in one window. Free and open source for Windows, macOS, and Linux.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://media.molex.cloud/">
+  <meta property="og:image" content="https://media.molex.cloud/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/big-shoulders-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
   <script src="zquery.min.js"></script>
   <script type="module" src="app/app.js"></script>
 </head>
 <body>
+  <a class="skip" href="#main" id="skip-link">Skip to content</a>
 
-  <!-- Ambient background canvas -->
-  <canvas id="bg-canvas"></canvas>
-
-  <!-- Header -->
-  <header class="site-header" id="site-header">
-    <nav class="nav-inner">
-      <a z-link="/" class="nav-logo" z-to-top>
-        <span class="logo-text">Molex <span class="logo-accent">Media</span></span>
+  <header class="nav" id="nav">
+    <div class="wrap nav-row">
+      <a class="brand" href="/" z-link="/" z-to-top>
+        <img src="assets/mark.svg" alt="" width="28" height="28">
+        <span>molexMedia</span>
       </a>
-      <div class="nav-links-desktop" id="nav-links-desktop">
-        <a z-link="/" z-active-route="/" z-active-exact z-active-class="nav-active" z-to-top>Home</a>
-        <div class="nav-dropdown">
-          <a z-link="/features" z-active-route="/features" z-active-class="nav-active" class="nav-dropdown-trigger" aria-expanded="false" aria-haspopup="true" z-to-top>Features <svg class="nav-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.75L5 6.25L7.5 3.75"/></svg></a>
-          <div class="nav-dropdown-menu">
-            <div class="nav-dropdown-menu-inner">
-              <a z-link="/features" z-active-route="/features" z-active-exact z-active-class="nav-active" z-to-top>All Features</a>
-              <a z-link="/features/batch" z-active-route="/features/batch" z-active-class="nav-active" z-to-top>Batch Processor</a>
-              <a z-link="/features/editor" z-active-route="/features/editor" z-active-class="nav-active" z-to-top>Media Editor</a>
-              <a z-link="/features/player" z-active-route="/features/player" z-active-class="nav-active" z-to-top>Media Player</a>
-            </div>
-          </div>
-        </div>
-        <a z-link="/download" z-active-route="/download" z-active-class="nav-active" z-to-top>Download</a>
-        <a z-link="/changelog" z-active-route="/changelog" z-active-class="nav-active" z-to-top>Changelog</a>
-      </div>
-      <div class="nav-right">
-        <a href="https://github.com/molexxxx/molex-media-electron" target="_blank" rel="noopener" class="nav-gh">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
+        <svg class="ico" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        <span class="sr">Menu</span>
+      </button>
+      <nav class="nav-links" id="nav-links" aria-label="Primary">
+        <a href="/features" z-link="/features" z-to-top data-route="/features">Features</a>
+        <a href="/changelog" z-link="/changelog" z-to-top data-route="/changelog">Changelog</a>
+        <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">
+          <svg class="ico" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+          GitHub
         </a>
-        <button class="nav-burger" id="nav-burger" aria-label="Menu">
-          <span></span><span></span><span></span>
-        </button>
-      </div>
-    </nav>
+        <a class="nav-dl" href="/download" z-link="/download" z-to-top data-route="/download">Download</a>
+      </nav>
+    </div>
   </header>
 
-  <!-- Mobile nav (outside header to escape backdrop-filter containment) -->
-  <div class="nav-backdrop" id="nav-backdrop"></div>
-  <nav class="nav-mobile" id="nav-mobile" role="navigation" aria-label="Mobile navigation">
-    <a z-link="/" z-active-route="/" z-active-exact z-active-class="nav-active" z-to-top>Home</a>
-    <div class="nav-dropdown">
-      <button class="nav-dropdown-trigger" aria-expanded="false">Features <svg class="nav-chevron" width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.75L5 6.25L7.5 3.75"/></svg></button>
-      <div class="nav-dropdown-menu">
-        <div class="nav-dropdown-menu-inner">
-          <a z-link="/features" z-active-route="/features" z-active-exact z-active-class="nav-active" z-to-top>All Features</a>
-          <a z-link="/features/batch" z-active-route="/features/batch" z-active-class="nav-active" z-to-top>Batch Processor</a>
-          <a z-link="/features/editor" z-active-route="/features/editor" z-active-class="nav-active" z-to-top>Media Editor</a>
-          <a z-link="/features/player" z-active-route="/features/player" z-active-class="nav-active" z-to-top>Media Player</a>
-        </div>
-      </div>
-    </div>
-    <a z-link="/download" z-active-route="/download" z-active-class="nav-active" z-to-top>Download</a>
-    <a z-link="/changelog" z-active-route="/changelog" z-active-class="nav-active" z-to-top>Changelog</a>
-  </nav>
+  <main id="main" tabindex="-1"><z-outlet></z-outlet></main>
 
-  <!-- SPA outlet -->
-  <main><z-outlet></z-outlet></main>
-
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-brand">
-          <a z-link="/" class="nav-logo sm" z-to-top>
-            <span class="logo-text sm">Molex <span class="logo-accent">Media</span></span>
+  <footer class="foot">
+    <div class="wrap">
+      <div class="foot-grid">
+        <div class="foot-brand">
+          <a class="brand" href="/" z-link="/" z-to-top>
+            <img src="assets/mark.svg" alt="" width="28" height="28">
+            <span>molexMedia</span>
           </a>
-          <p class="footer-desc">Cross-platform media processing toolkit<br>powered by FFmpeg.</p>
+          <p class="foot-about">A batch processor, timeline editor, and media player built on FFmpeg. Free and open source under the MIT license.</p>
         </div>
-        <div class="footer-col">
-          <h4>Product</h4>
-          <a z-link="/features" z-to-top>Features</a>
-          <a z-link="/features/batch" z-to-top>Batch Processing</a>
-          <a z-link="/features/editor" z-to-top>Media Editor</a>
-          <a z-link="/features/player" z-to-top>Media Player</a>
-          <a z-link="/download" z-to-top>Download</a>
+        <div>
+          <h2>Product</h2>
+          <ul>
+            <li><a href="/features/batch" z-link="/features/batch" z-to-top>Batch Processor</a></li>
+            <li><a href="/features/editor" z-link="/features/editor" z-to-top>Media Editor</a></li>
+            <li><a href="/features/player" z-link="/features/player" z-to-top>Media Player</a></li>
+            <li><a href="/download" z-link="/download" z-to-top>Download</a></li>
+          </ul>
         </div>
-        <div class="footer-col">
-          <h4>Resources</h4>
-          <a z-link="/changelog" z-to-top>Changelog</a>
-          <a href="https://github.com/molexxxx/molex-media-electron" target="_blank">GitHub</a>
-          <a href="https://github.com/molexxxx/molex-media-electron/issues" target="_blank">Issues</a>
-          <a href="https://github.com/molexxxx/molex-media-electron/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
+        <div>
+          <h2>Project</h2>
+          <ul>
+            <li><a href="/changelog" z-link="/changelog" z-to-top>Changelog</a></li>
+            <li><a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">Source code</a></li>
+            <li><a href="https://github.com/molexxxx/molex-media-electron/issues" rel="noopener">Report an issue</a></li>
+            <li><a href="https://github.com/molexxxx/molex-media-electron/blob/main/CONTRIBUTING.md" rel="noopener">Contributing</a></li>
+          </ul>
         </div>
-        <div class="footer-col">
-          <h4>Legal</h4>
-          <a href="https://github.com/molexxxx/molex-media-electron/blob/main/LICENSE" target="_blank">MIT License</a>
+        <div>
+          <h2>License</h2>
+          <ul>
+            <li><a href="https://github.com/molexxxx/molex-media-electron/blob/main/LICENSE" rel="noopener">MIT License</a></li>
+            <li><a href="https://github.com/molexxxx/molex-media-electron/releases" rel="noopener">All releases</a></li>
+          </ul>
         </div>
       </div>
-      <div class="footer-bottom">
-        <span>&copy; 2026 Molex Media</span>
-        <span class="sep">&middot;</span>
-        <span>Built with <a href="https://github.com/molexxxx/zero-query" target="_blank">zQuery</a></span>
+      <div class="foot-base">
+        <span>&copy; 2026 molexMedia</span>
+        <span>This site is built with <a href="https://github.com/molexxxx/zero-query" rel="noopener">zQuery</a>.</span>
       </div>
     </div>
   </footer>
-
 </body>
 </html>

@@ -1,249 +1,152 @@
 import { icon } from '../icons.js';
-import { refreshReveals } from '../scroll-animations.js';
-import { fmt } from '../store.js';
+import { opChip, link, logLine, NORMALIZE_LOG, CONVERT_LOG } from '../parts.js';
 
 $.component('home-page', {
-  state: () => ({ _t: 0 }),
-
-  mounted() {
-    this._unsub = $.getStore('app').subscribe(() => {
-      this.state._t++;
-    });
-    setTimeout(refreshReveals, 80);
-  },
-
-  destroyed() {
-    if (this._unsub) this._unsub();
-  },
-
-  render() {
-    const s = $.getStore('app');
-    const { loading, workflows: rawWf, repoInfo, latestRelease } = s.state;
-    const workflows = Array.isArray(rawWf) ? rawWf : [];
-    const v = s.getters.version;
-    const dl = s.getters.totalDownloads;
-    const win = s.getters.win;
-    const mac = s.getters.mac;
-    const linux = s.getters.linux;
-
-    const ua = navigator.userAgent || '';
-    const plat = /Mac/i.test(ua) ? 'mac' : /Linux/i.test(ua) ? 'linux' : 'win';
-    const platAsset = plat === 'mac' ? mac : plat === 'linux' ? linux : win;
-    const platLabel = plat === 'mac' ? 'macOS' : plat === 'linux' ? 'Linux' : 'Windows';
-    const hrefDl = platAsset
-      ? $.escapeHtml(platAsset.browser_download_url)
-      : 'https://github.com/molexxxx/molex-media-electron/releases/latest';
-
-    const wfStatus = (w) => {
-      const c = w.conclusion || w.status || 'unknown';
-      if (c === 'success') return { cls: 'ok', label: 'Passing' };
-      if (c === 'failure') return { cls: 'fail', label: 'Failing' };
-      if (c === 'in_progress') return { cls: 'run', label: 'Running' };
-      return { cls: 'unk', label: c };
-    };
-
-    setTimeout(refreshReveals, 30);
-
-    return `
-<!-- Hero -->
-<section class="hero">
-  <div class="container hero-split">
-    <div class="hero-left reveal">
-      <span class="badge badge-accent">${loading ? 'Loading...' : v + ' - Latest Release'}</span>
-      <h1>The All-in-One<br><span class="grad">Media Toolkit</span></h1>
-      <p class="sub">Cross-platform media processing powered by FFmpeg.<br>Batch normalize, convert, compress, edit, and play - all from one app.</p>
-      <div class="hero-actions">
-        <a href="${hrefDl}" class="btn btn-primary btn-lg" target="_blank" rel="noopener">${icon('download', 18)} Download for ${platLabel}</a>
-        <a z-link="/features" class="btn btn-secondary btn-lg" z-to-top>Explore Features</a>
-      </div>
+    render()
+    {
+        return `
+<section class="hero" aria-labelledby="home-title">
+    <div class="wrap hero-grid">
+        <div class="hero-copy">
+            <h1 id="home-title">Batch, edit, and play media in one window</h1>
+            <p class="hero-pitch">molexMedia is a desktop app built on FFmpeg, with a batch processor, a multi-track timeline editor, and a media player. It uses the FFmpeg already on your system, or downloads a current build the first time it starts.</p>
+            <get-block></get-block>
+        </div>
+        <div class="hero-demo">
+            <app-window></app-window>
+            <p class="shot-note">An HTML mockup of the app. Click Batch, Editor, Player, or Logs to switch screens. File names are examples.</p>
+        </div>
     </div>
-    <div class="hero-right reveal">
-      <div class="stat-stack">
-        <div class="stat-row">
-          <div class="stat-val">${loading ? '\u2014' : fmt.num(dl)}</div>
-          <div class="stat-label">Downloads</div>
+    <div class="wrap">
+        <div class="steps steps-row">
+            <h2>What happens on first launch</h2>
+            <ol>
+                <li>Run the installer for your system.</li>
+                <li>molexMedia looks for FFmpeg and ffprobe. If they are missing, the setup wizard downloads them, with a retry and a manual fallback.</li>
+                <li>Drop files on the queue, choose an operation, and press Process.</li>
+            </ol>
         </div>
-        <div class="stat-row">
-          <div class="stat-val">35+</div>
-          <div class="stat-label">Formats</div>
-        </div>
-        <div class="stat-row">
-          <div class="stat-val">${loading ? '\u2014' : v}</div>
-          <div class="stat-label">Version</div>
-        </div>
-      </div>
     </div>
-  </div>
 </section>
 
-<!-- Three Pillars -->
-<section class="section section-compact">
-  <div class="container">
-    <div class="section-heading reveal">
-      <h2>Three Tools, One App</h2>
-      <p>Professional media processing, editing, and playback \u2014 unified under one roof.</p>
+<section class="sec band" aria-labelledby="h-batch">
+    <div class="wrap split">
+        <div>
+            <h2 id="h-batch">Batch Processor</h2>
+            <p class="lead">Set an operation in the panel and every queued file uses it. If you change the settings on one file, that file keeps them, so one batch can normalize a podcast and compress a clip for Discord.</p>
+            <ul class="ops">
+                <li>${opChip('normalize')}<span>Two-pass loudness normalization to ITU-R BS.1770-4, with eight presets from <code>-14 LUFS</code> for streaming to <code>-23 LUFS</code> for broadcast.</span></li>
+                <li>${opChip('boost')}<span>Gain from -50% to +200%, an optional high-pass filter, and a true-peak limiter that oversamples 2x.</span></li>
+                <li>${opChip('convert')}<span>29 presets for general use, web and social, devices, production, and audio only, with codec and container conflict checks.</span></li>
+                <li>${opChip('compress')}<span>Quality-based encoding with H.264, H.265, VP9, and two AV1 encoders, or a target file size with optional two-pass.</span></li>
+                <li>${opChip('extract')}<span>Pull out audio, silent video, a GIF, still frames, or subtitles, from 18 presets.</span></li>
+            </ul>
+            <p class="more-link">${link('/features/batch', `Presets, encoders, and formats ${icon('arrow', 16)}`)}</p>
+        </div>
+        <preset-card class="stick"></preset-card>
     </div>
-    <div class="pillar-grid stagger" data-parallax data-parallax-speed="0.06">
-      <a z-link="/features/batch" class="pillar-card card reveal" z-to-top>
-        <div class="pillar-icon purple">${icon('zap', 28)}</div>
-        <div class="pillar-body">
-          <h3>Batch Processor</h3>
-          <p>Normalize, convert, compress, boost, and extract audio across hundreds of files simultaneously with concurrent workers.</p>
-          <ul class="pillar-list">
-            <li>5 operations, 24 format presets</li>
-            <li>CRF + target-size compression</li>
-            <li>ITU-R BS.1770-4 loudness</li>
-          </ul>
-          <span class="pillar-link">Explore Batch ${icon('arrow-right', 14)}</span>
-        </div>
-      </a>
-      <a z-link="/features/editor" class="pillar-card card reveal" z-to-top>
-        <div class="pillar-icon blue">${icon('scissors', 28)}</div>
-        <div class="pillar-body">
-          <h3>Media Editor</h3>
-          <p>Full NLE timeline with multi-track editing, spatial compositing, keyframe animation, and 8 blend modes.</p>
-          <ul class="pillar-list">
-            <li>7 edit types, 4 trim types</li>
-            <li>Per-clip transform + keyframes</li>
-            <li>Two-pass GIF export pipeline</li>
-          </ul>
-          <span class="pillar-link">Explore Editor ${icon('arrow-right', 14)}</span>
-        </div>
-      </a>
-      <a z-link="/features/player" class="pillar-card card reveal" z-to-top>
-        <div class="pillar-icon emerald">${icon('play', 28)}</div>
-        <div class="pillar-body">
-          <h3>Media Player</h3>
-          <p>Play local files or stream from YouTube with 8 real-time audio visualizations driven by multi-band frequency analysis.</p>
-          <ul class="pillar-list">
-            <li>8 vis modes with beat detection</li>
-            <li>Playlists, popout, always-on-top</li>
-            <li>yt-dlp streaming integration</li>
-          </ul>
-          <span class="pillar-link">Explore Player ${icon('arrow-right', 14)}</span>
-        </div>
-      </a>
-    </div>
-  </div>
 </section>
 
-<!-- Highlights -->
-<section class="section section-compact section-alt">
-  <div class="container">
-    <div class="section-heading reveal">
-      <h2>Why Molex Media?</h2>
-      <p>Built for power users who want everything in one place.</p>
+<section class="sec" aria-labelledby="h-editor">
+    <div class="wrap">
+        <div class="sec-head">
+            <h2 id="h-editor">Media Editor</h2>
+            <p class="lead">A multi-track timeline. Cut on V1, layer on V2 with position, scale, rotation, opacity, and blend modes, and put music on A1. Drag across the timeline below or use the arrow keys to move the playhead.</p>
+        </div>
+        <tl-demo></tl-demo>
+        <div class="facts">
+            <div>
+                <h3>Edit and trim</h3>
+                <ul>
+                    <li>Insert, Overwrite, Append, and On Top edits</li>
+                    <li>Ripple, roll, slip, and slide trims</li>
+                    <li>Split at the playhead, snapping, and 100 levels of undo</li>
+                    <li>Export the timeline to MP4, WebM, MOV, or MKV</li>
+                </ul>
+            </div>
+            <div>
+                <h3>Composite</h3>
+                <ul>
+                    <li>Position, scale, rotation, anchor, and opacity per clip</li>
+                    <li>Keyframes on every transform property</li>
+                    <li>Normal, Multiply, Screen, Overlay, Darken, Lighten, Add, and Difference</li>
+                </ul>
+            </div>
+            <div>
+                <h3>Keyboard</h3>
+                <ul>
+                    <li><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> shuttle, doubling up to 8x</li>
+                    <li><kbd>I</kbd> <kbd>O</kbd> mark in and out</li>
+                    <li><kbd>S</kbd> split, <kbd>V</kbd> <kbd>T</kbd> <kbd>B</kbd> switch tools</li>
+                    <li><kbd>?</kbd> lists every shortcut</li>
+                </ul>
+            </div>
+        </div>
+        <p class="more-link">${link('/features/editor', `Trims, export settings, and all shortcuts ${icon('arrow', 16)}`)}</p>
     </div>
-    <div class="highlight-grid stagger" data-parallax data-parallax-speed="0.05">
-      <div class="highlight-item reveal">
-        <div class="feat-icon amber">${icon('layers', 20)}</div>
-        <div class="highlight-text">
-          <h4>24 Conversion Presets</h4>
-          <p>General, Web/Social, Devices, Production, Audio-Only \u2014 with codec conflict detection.</p>
-        </div>
-      </div>
-      <div class="highlight-item reveal">
-        <div class="feat-icon cyan">${icon('flag', 20)}</div>
-        <div class="highlight-text">
-          <h4>Zero Configuration</h4>
-          <p>FFmpeg and yt-dlp download automatically on first launch. No manual setup.</p>
-        </div>
-      </div>
-      <div class="highlight-item reveal">
-        <div class="feat-icon red">${icon('monitor', 20)}</div>
-        <div class="highlight-text">
-          <h4>Cross-Platform</h4>
-          <p>Windows, macOS, and Linux. Native installers with auto-update from GitHub Releases.</p>
-        </div>
-      </div>
-      <div class="highlight-item reveal">
-        <div class="feat-icon purple">${icon('wand', 20)}</div>
-        <div class="highlight-text">
-          <h4>Setup Wizard</h4>
-          <p>Guided first-run with progress tracking, retry on failure, and manual fallback.</p>
-        </div>
-      </div>
-      <div class="highlight-item reveal">
-        <div class="feat-icon blue">${icon('refresh-cw', 20)}</div>
-        <div class="highlight-text">
-          <h4>Auto-Updater</h4>
-          <p>One-click updates directly from GitHub Releases with download progress.</p>
-        </div>
-      </div>
-      <div class="highlight-item reveal">
-        <div class="feat-icon emerald">${icon('folder', 20)}</div>
-        <div class="highlight-text">
-          <h4>File Browser</h4>
-          <p>VLC-style with known-folder shortcuts. Multi-file/folder select. Drag-drop everywhere.</p>
-        </div>
-      </div>
-    </div>
-  </div>
 </section>
 
-<!-- Live Project Stats -->
-<section class="section section-compact">
-  <div class="container">
-    <div class="section-heading reveal">
-      <h2>Open Source</h2>
-      <p>Built in public on GitHub. Track development, report issues, and contribute.</p>
+<section class="sec band" aria-labelledby="h-player">
+    <div class="wrap split split-flip">
+        <div>
+            <h2 id="h-player">Media Player</h2>
+            <p class="lead">Plays local files and streams YouTube videos, YouTube playlists, and direct audio links. The popout player is a small window that stays on top of other windows.</p>
+            <ul class="ops">
+                <li><strong>Visualizations</strong><span>DMT, Space, Milkdrop, Plasma, Bars, Waveform, Horizon, and Rain, drawn on canvas from the Web Audio API.</span></li>
+                <li><strong>Beat detection</strong><span>Six bands aligned to the Bark scale, from sub-bass at 20 Hz to treble at 20 kHz.</span></li>
+                <li><strong>Streaming</strong><span>YouTube links resolve through yt-dlp, which molexMedia downloads the first time you paste a URL.</span></li>
+            </ul>
+            <p class="more-link">${link('/features/player', `Sources, visualizations, and popout sizes ${icon('arrow', 16)}`)}</p>
+        </div>
+        <viz-demo class="stick"></viz-demo>
     </div>
-    <div class="gh-stats-grid reveal" data-parallax data-parallax-speed="0.04">
-      <div class="gh-stat-card card">
-        <div class="gh-stat-number">${loading ? '\u2014' : fmt.num(repoInfo?.forks_count || 0)}</div>
-        <div class="gh-stat-label">Forks</div>
-      </div>
-      <div class="gh-stat-card card">
-        <div class="gh-stat-number">${loading ? '\u2014' : fmt.num(dl)}</div>
-        <div class="gh-stat-label">Total Downloads</div>
-      </div>
-      <div class="gh-stat-card card">
-        <div class="gh-stat-number">${loading ? '\u2014' : (s.state.releases?.length || 0)}</div>
-        <div class="gh-stat-label">Releases</div>
-      </div>
-      <div class="gh-stat-card card">
-        <div class="gh-stat-number">${loading ? '\u2014' : fmt.num(repoInfo?.open_issues_count || 0)}</div>
-        <div class="gh-stat-label">Open Issues</div>
-      </div>
-    </div>
-    ${!loading && workflows.length ? `
-    <div class="wf-section reveal">
-      <h4 class="wf-section-title">CI / CD Pipelines</h4>
-      <div class="wf-badges-row">
-        ${workflows.map(w => {
-          const st = wfStatus(w);
-          return `<div class="wf-badge-item"><span class="wf-dot ${st.cls}"></span><span class="wf-badge-name">${$.escapeHtml(w.name)}</span><span class="wf-badge-status ${st.cls}">${st.label}</span></div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-  </div>
 </section>
 
-<!-- Tech stack -->
-<section class="section section-compact section-alt">
-  <div class="container">
-    <div class="section-heading reveal">
-      <h2>Built With</h2>
-      <p>Modern stack for a professional desktop experience.</p>
+<section class="sec" aria-labelledby="h-proof">
+    <div class="wrap">
+        <div class="split">
+            <div>
+                <h2 id="h-proof">Fixes in 4.6 and 4.7</h2>
+                <p class="lead">Versions 4.6.0 to 4.7.1 fixed a set of audio and encoding bugs, and each fix was measured with a real FFmpeg build before and after the change. The log shows what the app records for a two-pass normalize and for a convert that keeps all three audio tracks.</p>
+            </div>
+            <div class="log">
+                <div class="log-head" aria-hidden="true">
+                    <span class="log-filter">All</span><span class="log-filter">Info</span><span class="log-filter">Success</span><span class="log-filter" aria-current="true">FFmpeg</span>
+                </div>
+                <ol class="log-lines" aria-label="Example log">${[...NORMALIZE_LOG, ...CONVERT_LOG].map((l) => logLine(...l)).join('')}</ol>
+            </div>
+        </div>
+        <ol class="audits" aria-label="Audit results">
+            <li class="audit">
+                <div><h3>True-peak limiter (4.7.0)</h3><p>The limiter now runs on audio oversampled 2x, because FFmpeg's <code>alimiter</code> only detects sample peaks. Output true peak with the ceiling set to -1 dBTP:</p></div>
+                <dl class="audit-read"><div><dt>before</dt><dd><s>-0.3 dBTP</s></dd></div><div><dt>now</dt><dd><b>-1.0 dBTP</b></dd></div></dl>
+            </li>
+            <li class="audit">
+                <div><h3>Multiple audio tracks (4.7.0)</h3><p>Convert and compress used to pass no <code>-map</code>, so FFmpeg kept only the audio track with the most channels. They now map each stream. For a film with a 5.1 mix, a commentary track, and a described-audio track:</p></div>
+                <dl class="audit-read"><div><dt>before</dt><dd><s>1 of 3 tracks</s></dd></div><div><dt>now</dt><dd><b>3 of 3 tracks</b></dd></div></dl>
+            </li>
+            <li class="audit">
+                <div><h3>Lossless encoding (4.7.1)</h3><p>The lossless tier used <code>-crf 0</code> for every encoder, which is only bit-exact for x264 and aom AV1. H.265 and VP9 now use their own lossless options. SVT-AV1 has no lossless mode, so the app encodes at CRF 0 and logs a warning. PSNR against the source, where <code>inf</code> means bit-exact:</p></div>
+                <dl class="audit-read"><div><dt>x265</dt><dd><s>61.99 dB</s> <b>lossless=1</b></dd></div><div><dt>VP9</dt><dd><s>85.56 dB</s> <b>-lossless 1</b></dd></div><div><dt>x264, aom</dt><dd><b>inf</b></dd></div></dl>
+            </li>
+            <li class="audit">
+                <div><h3>Loudness normalization (4.6.0)</h3><p>The analysis pass measured the untouched source while the second pass normalized a downmixed one. Both passes now run the same downmix. The output sample rate is also set explicitly, because <code>loudnorm</code> resamples to 192 kHz in dynamic mode. Output sample rate after a dynamic-mode fallback:</p></div>
+                <dl class="audit-read"><div><dt>before</dt><dd><s>192 kHz</s></dd></div><div><dt>now</dt><dd><b>source rate</b></dd></div></dl>
+            </li>
+        </ol>
+        <p class="more-link">${link('/changelog', `Full notes in the changelog ${icon('arrow', 16)}`)}</p>
     </div>
-    <div class="tech-row reveal" data-parallax data-parallax-speed="0.04">
-      ${['Electron', 'React 19', 'TypeScript', 'Tailwind CSS', 'Vite', 'Zustand', 'Framer Motion', 'FFmpeg', 'yt-dlp', 'Web Audio API'].map(t => `<div class="tech-chip">${t}</div>`).join('')}
-    </div>
-  </div>
 </section>
 
-<!-- CTA -->
-<section class="section cta-section">
-  <div class="container" style="text-align:center">
-    <div class="reveal">
-      <h2 class="cta-title">Ready to Get Started?</h2>
-      <p class="cta-sub">Download Molex Media and start processing your media files in seconds.</p>
-      <div class="hero-actions">
-        <a z-link="/download" class="btn btn-primary btn-lg" z-to-top>${icon('download', 18)} Download Now</a>
-        <a href="https://github.com/molexxxx/molex-media-electron" target="_blank" rel="noopener" class="btn btn-secondary btn-lg">${icon('github', 18)} View on GitHub</a>
-      </div>
+<section class="sec band" aria-labelledby="h-get">
+    <div class="wrap close">
+        <div>
+            <h2 id="h-get">Download molexMedia</h2>
+            <p class="lead">Free and open source under the MIT license, for Windows, macOS, and Linux. The Windows and macOS builds update themselves from GitHub Releases.</p>
+            <p class="lead">The source code, issue tracker, and every past release are on <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">GitHub</a>.</p>
+        </div>
+        <platform-list></platform-list>
     </div>
-  </div>
 </section>`;
-  },
+    },
 });

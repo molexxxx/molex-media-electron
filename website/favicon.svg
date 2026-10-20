@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-64 -64 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset=".5" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="r" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <rect id="p" x="-4" y="-55" width="8" height="6" rx="1.8" fill="url(#b)"/>
+  </defs>
+  <circle r="58" fill="none" stroke="url(#r)" stroke-width="3"/>
+  <circle r="46" fill="none" stroke="url(#r)" stroke-width="3"/>
+  <g>
+    <use href="#p"/><use href="#p" transform="rotate(22.5)"/><use href="#p" transform="rotate(45)"/><use href="#p" transform="rotate(67.5)"/>
+    <use href="#p" transform="rotate(90)"/><use href="#p" transform="rotate(112.5)"/><use href="#p" transform="rotate(135)"/><use href="#p" transform="rotate(157.5)"/>
+    <use href="#p" transform="rotate(180)"/><use href="#p" transform="rotate(202.5)"/><use href="#p" transform="rotate(225)"/><use href="#p" transform="rotate(247.5)"/>
+    <use href="#p" transform="rotate(270)"/><use href="#p" transform="rotate(292.5)"/><use href="#p" transform="rotate(315)"/><use href="#p" transform="rotate(337.5)"/>
+  </g>
+  <g fill="url(#b)">
+    <rect x="-30" y="-14" width="5" height="28" rx="2.5"/>
+    <rect x="-20" y="-18" width="5" height="36" rx="2.5"/>
+    <rect x="-10" y="-21" width="5" height="42" rx="2.5"/>
+    <rect x="0" y="-23" width="5" height="46" rx="2.5"/>
+    <rect x="10" y="-17" width="5" height="34" rx="2.5"/>
+    <rect x="20" y="-12" width="5" height="24" rx="2.5"/>
+  </g>
+</svg>

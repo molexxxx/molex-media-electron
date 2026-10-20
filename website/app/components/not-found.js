@@ -1,15 +1,18 @@
 import { icon } from '../icons.js';
+import { link } from '../parts.js';
 
 $.component('not-found', {
-  render() {
-    return `
-<section class="hero" style="min-height:70vh;display:flex;align-items:center;justify-content:center">
-  <div class="container" style="text-align:center">
-    <div class="nf-icon">${icon('x-circ', 64)}</div>
-    <h1 style="font-size:clamp(3rem,8vw,5rem);font-weight:800;margin:16px 0 8px"><span class="grad">404</span></h1>
-    <p style="color:var(--text3);font-size:1.1rem;margin-bottom:28px">This page doesn't exist or has been moved.</p>
-    <a z-link="/" class="btn btn-primary" z-to-top>${icon('arrow-left', 16)} Back to Home</a>
-  </div>
-</section>`;
-  },
+    render()
+    {
+        return `
+<div class="wrap nf">
+    <h1>This page does not exist.</h1>
+    <p class="lead">The link may be old, or the address may have a typo. These are the pages that do exist:</p>
+    <p class="get-more">
+        ${link('/', 'Home', 'btn btn-ghost')}
+        ${link('/features', 'Features', 'btn btn-ghost')}
+        ${link('/download', `${icon('download', 16)}Download`, 'btn btn-primary')}
+    </p>
+</div>`;
+    },
 });
