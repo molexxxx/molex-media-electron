@@ -1,489 +1,356 @@
 ﻿/**
  * @module components/dashboard/Dashboard
- * @description Home screen with quick stats, workflow actions, tool cards, and system info.
- *
- * Layout:
- *   - Header row: title + inline stat pills.
- *   - Workflow strip: five compact icon-forward batch operation tiles
- *     up top - mirrors the sidebar order (Batch first).
- *   - Hero row: Editor + Player stacked vertically on the left, live
- *     System Pulse on the right spanning the full hero height.
- *   - Recent Activity + System pills footer.
+ * @description The home view: the queue's display window, "Add files with" shortcuts into Batch, the Editor and
+ * Player, a system panel, and the latest settled jobs, all read from the jobs store.
  */
-
 import React from 'react'
+import type { EncoderPolicy } from '../../../../shared/audio/types'
+import type { JobsApi } from '../../../../shared/jobs/contract'
+import { operationLabel } from '../../../../shared/jobs/describe'
+import { applyDefaultPreset, DEFAULT_PRESETS, findPreset } from '../../../../shared/jobs/presets'
+import { OPERATIONS, type Operation } from '../../../../shared/jobs/recipes'
 import { useAppStore } from '../../stores/appStore'
-import { StatBar } from './components/StatCard'
-import { ToolCard } from './components/ToolCard'
+import { Banner, type IconName } from '../../ui'
 import { RecentActivity } from './components/RecentActivity'
-import type { AppConfig } from '../../stores/types'
+import { StatBar } from './components/StatCard'
+import { ToolRow } from './components/ToolCard'
 
+/** The output policy a default preset is applied with: encode as the source is encoded. */
+export const TILE_OUTPUT: EncoderPolicy = { kind: 'same-as-source' }
 
-/** Vendor → badge palette for the GPU acceleration chip. */
-const GPU_VENDOR_STYLES: Record<string, { dot: string; text: string; bg: string; border: string }> = {
-  nvidia: { dot: 'bg-emerald-400', text: 'text-emerald-300', bg: 'bg-emerald-500/10', border: 'border-emerald-500/25' },
-  intel:  { dot: 'bg-sky-400',     text: 'text-sky-300',     bg: 'bg-sky-500/10',     border: 'border-sky-500/25' },
-  amd:    { dot: 'bg-red-400',     text: 'text-red-300',     bg: 'bg-red-500/10',     border: 'border-red-500/25' },
-  cpu:    { dot: 'bg-surface-500', text: 'text-surface-400', bg: 'bg-surface-700/30', border: 'border-surface-600/30' },
+/** What an operation tile needs: the file picker, the engine's add command, and the switch to Batch. */
+export interface OperationAddDeps
+{
+  openFiles(): Promise<string[]>
+  add: JobsApi['add']
+  showBatch(): void
 }
 
+/** An operation tile's outcome: files added, the picker closed with nothing, or the engine's refusal. */
+export type OperationAddOutcome =
+  | { status: 'added'; added: number }
+  | { status: 'canceled' }
+  | { status: 'refused'; message: string }
+
 /**
- * Rolling sparkline chart with hover tooltip. Renders a filled area
- * line chart across a 100x{height} viewBox so the path stretches to
- * the container width regardless of sample count. Hovering reveals a
- * vertical guide, a dot at the nearest sample, and a floating value
- * label so the user can read recorded percentages from history.
+ * Opens the file picker and adds the picked files as new jobs with the operation's default preset, then shows Batch.
+ * It only adds: jobs already in the queue keep their operation and preset.
  */
-function Sparkline({
-  data,
-  stroke,
-  unit = '%',
-  height = 30,
-  gradientId,
-}: {
-  data: number[]
-  stroke: string
-  unit?: string
-  height?: number
-  gradientId: string
-}): React.JSX.Element {
-  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null)
-  const w = 100
-  const h = height
-
-  if (data.length < 2) {
-    return <div className="-mx-1" style={{ height }} />
+export async function addFilesWithOperation(op: Operation, deps: OperationAddDeps): Promise<OperationAddOutcome>
+{
+  const paths = await deps.openFiles()
+  if (paths.length === 0)
+  {
+    return { status: 'canceled' }
   }
-
-  const step = w / (data.length - 1)
-  const path = data
-    .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(2)},${(h - (v / 100) * h).toFixed(2)}`)
-    .join(' ')
-  const fill = `${path} L${w.toFixed(2)},${h.toFixed(2)} L0,${h.toFixed(2)} Z`
-
-  const handleMove = (e: React.MouseEvent<SVGSVGElement>): void => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    if (rect.width <= 0) return
-    const ratio = (e.clientX - rect.left) / rect.width
-    const idx = Math.max(0, Math.min(data.length - 1, Math.round(ratio * (data.length - 1))))
-    setHoverIdx(idx)
+  const reply = await deps.add({
+    paths: [...paths],
+    recipe: applyDefaultPreset(op, TILE_OUTPUT),
+    origin: 'files',
+    after: null,
+    recursive: false,
+    allowSecondJobs: false,
+    force: false
+  })
+  if (!reply.ok)
+  {
+    return { status: 'refused', message: reply.error.message }
   }
+  deps.showBatch()
+  return { status: 'added', added: reply.value.added.length }
+}
 
-  const hv = hoverIdx != null ? data[hoverIdx] : null
-  const hx = hoverIdx != null ? hoverIdx * step : 0
-  const hy = hv != null ? h - (hv / 100) * h : 0
-  const hoverRatio = hoverIdx != null && data.length > 1 ? hoverIdx / (data.length - 1) : 0
+const OPERATION_ICONS: Readonly<Record<Operation, IconName>> =
+{
+  normalize: 'op.normalize',
+  boost: 'op.boost',
+  convert: 'op.convert',
+  compress: 'op.compress',
+  extract: 'op.extract'
+}
+
+/** The tile's secondary line: the preset new files from this tile start with. */
+export function tileDetail(op: Operation): string
+{
+  const preset = findPreset(DEFAULT_PRESETS[op])
+  return preset === null ? 'Starts with the default preset' : `Starts with ${preset.label}`
+}
+
+function windowDeps(showBatch: () => void): OperationAddDeps
+{
+  return {
+    openFiles: () => window.api.openFiles(),
+    add: (request) => window.api.jobs.add(request),
+    showBatch
+  }
+}
+
+/** Props for {@link Dashboard}; tests replace the window's picker and engine. */
+export interface DashboardProps
+{
+  deps?: OperationAddDeps
+}
+
+function OperationList({ deps }: { deps: OperationAddDeps }): React.JSX.Element
+{
+  const [picking, setPicking] = React.useState(false)
+  const [refusal, setRefusal] = React.useState<string | null>(null)
+
+  const run = async (op: Operation): Promise<void> =>
+  {
+    setPicking(true)
+    setRefusal(null)
+    try
+    {
+      const outcome = await addFilesWithOperation(op, deps)
+      if (outcome.status === 'refused')
+      {
+        setRefusal(outcome.message)
+      }
+    }
+    finally
+    {
+      setPicking(false)
+    }
+  }
 
   return (
-    <div className="relative -mx-1" style={{ height }}>
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className="w-full h-full cursor-crosshair"
-        onMouseMove={handleMove}
-        onMouseLeave={() => setHoverIdx(null)}
-      >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={stroke} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={stroke} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={fill} fill={`url(#${gradientId})`} />
-        <path
-          d={path}
-          fill="none"
-          stroke={stroke}
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-        />
-        {hoverIdx != null && (
-          <>
-            <line
-              x1={hx}
-              y1={0}
-              x2={hx}
-              y2={h}
-              stroke={stroke}
-              strokeOpacity="0.4"
-              strokeWidth="0.6"
-              vectorEffect="non-scaling-stroke"
-            />
-            <circle cx={hx} cy={hy} r="2" fill={stroke} vectorEffect="non-scaling-stroke" />
-          </>
-        )}
-      </svg>
-      {hv != null && (
-        <div
-          className="pointer-events-none absolute -top-1 px-1.5 py-0.5 rounded bg-surface-900/95 border border-white/10 text-2xs font-mono text-surface-200 tabular-nums whitespace-nowrap shadow-lg"
-          style={{
-            left: `${hoverRatio * 100}%`,
-            transform: `translate(${hoverRatio > 0.7 ? 'calc(-100% - 4px)' : '4px'}, -100%)`,
-          }}
-        >
-          {hv.toFixed(1)}{unit}
-        </div>
+    <section aria-labelledby="dashboard-add" className="flex min-w-0 flex-col gap-2">
+      <h2 id="dashboard-add" className="type-legend text-brass">Start a batch</h2>
+      {refusal !== null && (
+        <Banner tone="error" title="The files were not added." onDismiss={() => setRefusal(null)}>{refusal}</Banner>
       )}
-    </div>
+      <ul className="rounded-sm border border-line bg-panel">
+        {OPERATIONS.map((op) => (
+          <ToolRow
+            key={op}
+            icon={OPERATION_ICONS[op]}
+            title={`Add files with ${operationLabel(op)}…`}
+            detail={tileDetail(op)}
+            busy={picking}
+            onActivate={() => void run(op)}
+          />
+        ))}
+      </ul>
+    </section>
   )
 }
 
-/**
- * Live "System Pulse" side panel. Polls the main process every 2 seconds
- * for fresh memory + CPU usage data, keeps rolling sparklines of recent
- * samples, and shows the detected GPU acceleration backend (with NVIDIA
- * GPU utilization when available) alongside FFmpeg status.
- */
-function ConfigRow({ label, value }: { label: string; value: string }): React.JSX.Element {
+function ToolList({ open }: { open: (view: 'editor' | 'player') => void }): React.JSX.Element
+{
   return (
-    <div className="flex items-baseline justify-between gap-2 min-w-0">
-      <span className="text-2xs text-surface-500 uppercase tracking-wider shrink-0">{label}</span>
-      <span className="text-2xs font-mono text-surface-200 truncate" title={value}>{value}</span>
+    <section aria-labelledby="dashboard-tools" className="flex min-w-0 flex-col gap-2">
+      <h2 id="dashboard-tools" className="type-legend text-brass">Tools</h2>
+      <ul className="rounded-sm border border-line bg-panel">
+        <ToolRow icon="nav.editor" title="Media Editor" detail="Timeline, transforms, keyframes, and preview" onActivate={() => open('editor')} />
+        <ToolRow icon="nav.player" title="Media Player" detail="Local files and streams with visualizations" onActivate={() => open('player')} />
+      </ul>
+    </section>
+  )
+}
+
+/** How often the system panel asks main for memory, CPU, and GPU load. */
+export const SYSTEM_POLL_MS = 2000
+
+const GPU_POLL_MS = 3000
+
+const VENDOR_NAMES: Readonly<Record<string, string>> = { nvidia: 'NVIDIA', intel: 'Intel', amd: 'AMD', cpu: 'CPU' }
+
+const PLATFORM_NAMES: Readonly<Record<string, string>> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }
+
+interface SystemSample
+{
+  cpus: number
+  cpuModel?: string
+  cpuUsage?: number
+  totalMemory: number
+  freeMemory: number
+  platform?: string
+  arch?: string
+}
+
+interface GpuSample
+{
+  mode: string
+  label: string
+  vendor: string
+  pending: boolean
+  gpuModel?: string | null
+}
+
+const GB = 1024 ** 3
+
+/** Memory in use as "9.2 of 31.9 GB" with its share, or null before the first sample. */
+export function memoryWords(sample: Pick<SystemSample, 'totalMemory' | 'freeMemory'> | null): { value: string; detail: string } | null
+{
+  if (sample === null || sample.totalMemory <= 0)
+  {
+    return null
+  }
+  const used = Math.max(0, sample.totalMemory - sample.freeMemory)
+  const share = Math.min(100, (used / sample.totalMemory) * 100)
+  return { value: `${(used / GB).toFixed(1)} of ${(sample.totalMemory / GB).toFixed(1)} GB`, detail: `${share.toFixed(0)}% used` }
+}
+
+/** The FFmpeg version without the banner, "7.1.1" from "ffmpeg version 7.1.1 Copyright…". */
+export function ffmpegShortVersion(version: string | null): string | null
+{
+  if (version === null || version.trim() === '')
+  {
+    return null
+  }
+  return version.replace(/^ffmpeg version /i, '').split(/\s+/)[0]
+}
+
+function SystemRow({ label, value, detail, children }: { label: string; value: string; detail?: string | null; children?: React.ReactNode }): React.JSX.Element
+{
+  return (
+    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 border-b border-line px-3 py-2 last:border-b-0">
+      <dt className="text-label text-ink-3">{label}</dt>
+      <dd className="flex min-w-0 flex-col">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-body text-ink tabular-nums" title={value}>{value}</span>
+          {children}
+        </span>
+        {detail != null && detail !== '' && <span className="truncate text-label text-ink-3 tabular-nums" title={detail}>{detail}</span>}
+      </dd>
     </div>
   )
 }
 
-function SystemPulse({
-  ffmpegVersion,
-  config,
-}: {
-  ffmpegVersion: string | null
-  config: AppConfig | null
-}): React.JSX.Element {  const setSystemInfo = useAppStore((s) => s.setSystemInfo)
-  const [info, setInfo] = React.useState<{ cpus: number; cpuModel?: string; cpuUsage?: number; totalMemory: number; freeMemory: number; platform?: string; arch?: string } | null>(null)
-  const [gpu, setGpu] = React.useState<{ mode: string; label: string; vendor: string; pending: boolean; gpuModel?: string | null } | null>(null)
-  const [memHistory, setMemHistory] = React.useState<number[]>([])
-  const [cpuHistory, setCpuHistory] = React.useState<number[]>([])
-  const [gpuHistory, setGpuHistory] = React.useState<number[]>([])
+/** Memory, CPU, GPU acceleration, FFmpeg, and platform, polled from main while the Dashboard shows. */
+function SystemPanel({ ffmpegVersion }: { ffmpegVersion: string | null }): React.JSX.Element
+{
+  const setSystemInfo = useAppStore((s) => s.setSystemInfo)
+  const [info, setInfo] = React.useState<SystemSample | null>(null)
+  const [gpu, setGpu] = React.useState<GpuSample | null>(null)
+  const [gpuLoad, setGpuLoad] = React.useState<number | null>(null)
 
-  React.useEffect(() => {
-    let cancelled = false
-    const SAMPLES = 32
-
-    const tick = async () => {
-      try {
+  React.useEffect(() =>
+  {
+    let stopped = false
+    let gpuTimer: number | undefined
+    const sample = async (): Promise<void> =>
+    {
+      try
+      {
         const next = await window.api.getSystemInfo()
-        if (cancelled || !next) return
-        setInfo(next)
-        setSystemInfo(next)
-        const memPct = next.totalMemory > 0
-          ? Math.min(100, ((next.totalMemory - next.freeMemory) / next.totalMemory) * 100)
-          : 0
-        setMemHistory((h) => {
-          const out = [...h, memPct]
-          return out.length > SAMPLES ? out.slice(out.length - SAMPLES) : out
-        })
-        const cpuPct = typeof next.cpuUsage === 'number' ? next.cpuUsage : 0
-        setCpuHistory((h) => {
-          const out = [...h, cpuPct]
-          return out.length > SAMPLES ? out.slice(out.length - SAMPLES) : out
-        })
-      } catch { /* ignore transient IPC failures */ }
-    }
-
-    tick()
-    const id = window.setInterval(tick, 2000)
-
-    // GPU detection. Re-poll while pending (ffmpeg still bootstrapping)
-    // so the chip eventually settles on the detected backend instead of
-    // getting stuck at "detecting…" / "CPU only" from an early call.
-    let gpuId: number | undefined
-    const pollGpu = async () => {
-      try {
-        const g = await window.api.getGpuInfo?.()
-        if (cancelled || !g) return
-        setGpu(g)
-        if (!g.pending && gpuId !== undefined) {
-          window.clearInterval(gpuId)
-          gpuId = undefined
+        if (!stopped && next)
+        {
+          setInfo(next)
+          setSystemInfo(next)
         }
-      } catch { /* ignore */ }
+      }
+      catch
+      {
+        return
+      }
     }
-    pollGpu()
-    gpuId = window.setInterval(pollGpu, 3000)
-
-    // GPU utilization poll (NVIDIA only - nvidia-smi). Returns null on
-    // non-NVIDIA systems; we simply stop appending in that case and the
-    // sparkline tile hides itself.
-    const pollGpuUsage = async () => {
-      try {
-        const r = await window.api.getGpuUsage?.()
-        if (cancelled || !r || typeof r.usage !== 'number') return
-        setGpuHistory((h) => {
-          const out = [...h, r.usage as number]
-          return out.length > SAMPLES ? out.slice(out.length - SAMPLES) : out
-        })
-      } catch { /* ignore */ }
+    const sampleGpu = async (): Promise<void> =>
+    {
+      try
+      {
+        const next = await window.api.getGpuInfo()
+        if (stopped || !next)
+        {
+          return
+        }
+        setGpu(next)
+        if (!next.pending && gpuTimer !== undefined)
+        {
+          window.clearInterval(gpuTimer)
+          gpuTimer = undefined
+        }
+      }
+      catch
+      {
+        return
+      }
     }
-    pollGpuUsage()
-    const gpuUsageId = window.setInterval(pollGpuUsage, 2000)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(id)
-      window.clearInterval(gpuUsageId)
-      if (gpuId !== undefined) window.clearInterval(gpuId)
+    const sampleGpuLoad = async (): Promise<void> =>
+    {
+      try
+      {
+        const next = await window.api.getGpuUsage()
+        if (!stopped && next && typeof next.usage === 'number')
+        {
+          setGpuLoad(next.usage)
+        }
+      }
+      catch
+      {
+        return
+      }
+    }
+    void sample()
+    void sampleGpu()
+    void sampleGpuLoad()
+    const timer = window.setInterval(() => void sample(), SYSTEM_POLL_MS)
+    const loadTimer = window.setInterval(() => void sampleGpuLoad(), SYSTEM_POLL_MS)
+    gpuTimer = window.setInterval(() => void sampleGpu(), GPU_POLL_MS)
+    return () =>
+    {
+      stopped = true
+      window.clearInterval(timer)
+      window.clearInterval(loadTimer)
+      if (gpuTimer !== undefined)
+      {
+        window.clearInterval(gpuTimer)
+      }
     }
   }, [setSystemInfo])
 
-  const totalGB = info ? info.totalMemory / (1024 ** 3) : 0
-  const freeGB = info ? info.freeMemory / (1024 ** 3) : 0
-  const usedGB = Math.max(0, totalGB - freeGB)
-  const usedPct = totalGB > 0 ? Math.min(100, (usedGB / totalGB) * 100) : 0
-  const memColor = usedPct > 85 ? 'bg-red-400' : usedPct > 65 ? 'bg-amber-400' : 'bg-emerald-400'
-  const memStroke = usedPct > 85 ? 'var(--color-error)' : usedPct > 65 ? 'var(--color-warning)' : 'var(--color-verified)'
-
-  const cpuPct = info?.cpuUsage ?? 0
-  const cpuStroke = cpuPct > 85 ? 'var(--color-error)' : cpuPct > 60 ? 'var(--color-warning)' : 'var(--color-running)'
-  const gpuPct = gpuHistory.length > 0 ? gpuHistory[gpuHistory.length - 1] : null
-  const gpuStroke = gpuPct != null && gpuPct > 85 ? 'var(--color-error)' : gpuPct != null && gpuPct > 60 ? 'var(--color-warning)' : 'var(--color-verified)'
-
-  const gpuStyle = GPU_VENDOR_STYLES[gpu?.vendor || 'cpu']
-  const ffmpegShort = ffmpegVersion ? ffmpegVersion.replace(/^ffmpeg version /i, '').split(/\s+/)[0] : null
-  const platformLabel = (() => {
-    const names: Record<string, string> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }
-    const p = info?.platform || ''
-    const a = info?.arch || ''
-    return `${names[p] || p || '-'}${a ? ' ' + a : ''}`
-  })()
+  const memory = memoryWords(info)
+  const ffmpeg = ffmpegShortVersion(ffmpegVersion)
+  const cpuDetail = info === null
+    ? null
+    : [`${info.cpus} cores`, typeof info.cpuUsage === 'number' ? `${info.cpuUsage.toFixed(0)}% load` : null].filter(Boolean).join(' · ')
+  const gpuDetail = gpu === null
+    ? null
+    : [gpu.gpuModel ?? null, gpuLoad === null ? null : `${gpuLoad.toFixed(0)}% load`].filter(Boolean).join(' · ')
+  const platform = info?.platform ? `${PLATFORM_NAMES[info.platform] ?? info.platform}${info.arch ? ` ${info.arch}` : ''}` : 'Detecting…'
 
   return (
-    <div className="min-w-0 min-h-[180px] rounded-2xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm p-4 flex flex-col gap-3 overflow-hidden">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-surface-300 tracking-wider uppercase">System Pulse</h3>
-        <span className="flex items-center gap-1.5 text-2xs text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          live
-        </span>
-      </div>
-
-      {/* Memory: header + capacity bar + rolling sparkline */}
-      <div className="rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">Memory</div>
-            <div className="text-2xs font-mono text-surface-300 truncate">{usedGB.toFixed(1)} / {totalGB.toFixed(1)} GB</div>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">{usedPct.toFixed(0)}%</div>
-            <div className="text-2xs font-mono text-surface-400 leading-tight">used</div>
-          </div>
-        </div>
-        <div className="h-1.5 rounded-full bg-surface-800/70 overflow-hidden">
-          <div className={`h-full ${memColor} transition-all duration-700 ease-out`} style={{ width: `${usedPct}%` }} />
-        </div>
-        <Sparkline data={memHistory} stroke={memStroke} gradientId="spark-mem" height={24} />
-      </div>
-
-      {/* CPU: model + cores + usage sparkline */}
-      <div className="rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">CPU</div>
-            <div className="text-2xs font-mono text-surface-300 truncate" title={info?.cpuModel || ''}>{info?.cpuModel || 'detecting…'}</div>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">{cpuPct.toFixed(0)}% · {info?.cpus ?? '-'}c</div>
-            <div className="text-2xs font-mono text-surface-400 leading-tight">load · cores</div>
-          </div>
-        </div>
-        <Sparkline data={cpuHistory} stroke={cpuStroke} gradientId="spark-cpu" height={24} />
-      </div>
-
-      {/* GPU acceleration: detected backend + adapter model + utilization */}
-      <div className="rounded-lg bg-surface-900/40 border border-white/[0.04] px-2.5 py-2 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-2xs text-surface-500 uppercase tracking-wider">
-              GPU Accel{gpuPct != null && <span className="ml-1 text-surface-400 normal-case">· {gpuPct.toFixed(0)}%</span>}
-            </div>
-            <div className={`text-sm font-semibold ${gpuStyle.text} truncate`}>{gpu ? gpu.label : 'detecting…'}</div>
-          </div>
-          {gpu && !gpu.pending && gpu.vendor !== 'cpu' ? (
-            <span className="shrink-0 px-1 py-px rounded text-label font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-wider leading-tight">
-              Enabled
+    <section aria-labelledby="dashboard-system" className="flex min-w-0 flex-col gap-2">
+      <h2 id="dashboard-system" className="type-legend text-brass">System</h2>
+      <dl className="rounded-sm border border-line bg-panel">
+        <SystemRow label="Memory" value={memory?.value ?? 'Detecting…'} detail={memory?.detail} />
+        <SystemRow label="CPU" value={info?.cpuModel || 'Detecting…'} detail={cpuDetail} />
+        <SystemRow label="GPU" value={gpu === null || gpu.pending ? 'Detecting…' : gpu.label} detail={gpuDetail}>
+          {gpu !== null && !gpu.pending && (
+            <span data-part="vendor" className="shrink-0 rounded-xs border border-line-strong px-1 text-label text-ink-2">
+              {VENDOR_NAMES[gpu.vendor] ?? gpu.vendor}
             </span>
-          ) : (
-            <span className={`shrink-0 w-2 h-2 rounded-full ${gpuStyle.dot} ${gpu ? '' : 'animate-pulse'}`} />
           )}
-        </div>
-        {gpu?.gpuModel && (
-          <div className="text-2xs font-mono text-surface-400 truncate" title={gpu.gpuModel}>{gpu.gpuModel}</div>
-        )}
-        {gpuHistory.length >= 2 && (
-          <Sparkline data={gpuHistory} stroke={gpuStroke} gradientId="spark-gpu" height={24} />
-        )}
-      </div>
-
-      {/* Config: platform, workers, codec, bitrate */}
-      <div className="rounded-lg bg-surface-900/40 border border-white/4 px-2.5 py-2 flex flex-col gap-1.5 mt-auto">
-        <div className="text-2xs text-surface-500 uppercase tracking-wider">Config</div>
-        <div className="flex flex-col gap-0.5">
-          <ConfigRow label="Platform" value={platformLabel} />
-          <ConfigRow label="Workers" value={config?.maxWorkers != null ? String(config.maxWorkers) : '-'} />
-          <ConfigRow label="Codec" value={config?.audioCodec || '-'} />
-          <ConfigRow label="Bitrate" value={config?.audioBitrate || '-'} />
-        </div>
-      </div>
-
-      {/* FFmpeg footer */}
-      <div className="flex items-center justify-between gap-2 rounded-lg bg-surface-900/40 border border-white/4 px-2.5 py-2">
-        <div className="min-w-0">
-          <div className="text-2xs text-surface-500 uppercase tracking-wider">FFmpeg</div>
-          <div className="text-2xs font-mono text-surface-300 truncate">{ffmpegShort ?? 'detecting…'}</div>
-        </div>
-        {ffmpegShort ? (
-          <span className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300" title="FFmpeg ready">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </span>
-        ) : (
-          <span className="shrink-0 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-        )}
-      </div>
-    </div>
+        </SystemRow>
+        <SystemRow label="FFmpeg" value={ffmpeg ?? 'Detecting…'} />
+        <SystemRow label="Platform" value={platform} />
+      </dl>
+    </section>
   )
 }
 
-export default function Dashboard(): React.JSX.Element {
-  const { ffmpegVersion, config, totalProcessed, totalErrors, files, isProcessing, setView, setOperation, tasks } = useAppStore()
-
-  const activeTasks = tasks.filter((t) => t.status === 'processing' || t.status === 'analyzing')
-
-  const quickActions = [
-    { label: 'Convert', desc: 'Transcode formats', op: 'convert' as const, accent: 'blue', icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <polyline points="16,3 21,3 21,8" /><line x1="4" y1="20" x2="21" y2="3" />
-        <polyline points="21,16 21,21 16,21" /><line x1="15" y1="15" x2="21" y2="21" />
-      </svg>
-    )},
-    { label: 'Normalize', desc: 'BS.1770 loudness', op: 'normalize' as const, accent: 'accent', icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-      </svg>
-    )},
-    { label: 'Boost', desc: 'Gain & limiter', op: 'boost' as const, accent: 'emerald', icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-      </svg>
-    )},
-    { label: 'Compress', desc: 'Reduce size', op: 'compress' as const, accent: 'amber', icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" />
-      </svg>
-    )},
-    { label: 'Extract', desc: 'Rip audio', op: 'extract' as const, accent: 'purple', icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <circle cx="12" cy="12" r="10" /><polygon points="10,8 16,12 10,16" />
-      </svg>
-    )},
-  ]
-
-  // Per-accent classes for the workflow tiles. Kept inline so Tailwind's
-  // JIT picks them up at build time (no dynamic class names).
-  const tileAccent: Record<string, { icon: string; iconBg: string; hoverBorder: string; hoverGlow: string }> = {
-    blue:    { icon: 'text-blue-400',    iconBg: 'bg-blue-500/10 border-blue-500/20',       hoverBorder: 'hover:border-blue-500/40',    hoverGlow: 'hover:shadow-blue-500/10' },
-    accent:  { icon: 'text-accent-400',  iconBg: 'bg-accent-500/10 border-accent-500/20',   hoverBorder: 'hover:border-accent-500/40',  hoverGlow: 'hover:shadow-accent-500/10' },
-    emerald: { icon: 'text-emerald-400', iconBg: 'bg-emerald-500/10 border-emerald-500/20', hoverBorder: 'hover:border-emerald-500/40', hoverGlow: 'hover:shadow-emerald-500/10' },
-    amber:   { icon: 'text-amber-400',   iconBg: 'bg-amber-500/10 border-amber-500/20',     hoverBorder: 'hover:border-amber-500/40',   hoverGlow: 'hover:shadow-amber-500/10' },
-    purple:  { icon: 'text-purple-400',  iconBg: 'bg-purple-500/10 border-purple-500/20',   hoverBorder: 'hover:border-purple-500/40',  hoverGlow: 'hover:shadow-purple-500/10' },
-  }
+/** The home view: no field of it reads the old batch state; queue numbers and recent jobs come from the jobs store. */
+export default function Dashboard({ deps }: DashboardProps = {}): React.JSX.Element
+{
+  const setView = useAppStore((s) => s.setView)
+  const ffmpegVersion = useAppStore((s) => s.ffmpegVersion)
+  const [addDeps] = React.useState<OperationAddDeps>(() => deps ?? windowDeps(() => setView('batch')))
 
   return (
-    <div className="flex flex-col min-h-full animate-fade-in gap-3 pr-2 sm:pr-3 md:pr-4">
-      {/* Header + Stats */}
-      <div className="flex items-center justify-between gap-4 flex-wrap shrink-0">
-        <div>
-          <h1 className="text-xl font-medium text-surface-200 tracking-tight">Dashboard</h1>
-          <p className="text-xs text-surface-500 mt-0.5">Media processing toolkit</p>
+    <div className="flex min-h-full flex-col gap-6 pr-2 sm:pr-3 md:pr-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-title font-semibold text-ink">Dashboard</h1>
+        <StatBar />
+      </header>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <OperationList deps={addDeps} />
+          <ToolList open={setView} />
         </div>
-        <StatBar stats={[
-          { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
-          { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-blue-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-blue-400 animate-pulse' : 'bg-surface-600' },
-          { label: 'Done', value: totalProcessed, color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
-          { label: 'Errors', value: totalErrors, color: totalErrors > 0 ? 'text-red-400' : 'text-surface-400', dotColor: totalErrors > 0 ? 'bg-red-400' : 'bg-surface-600' },
-        ]} />
+        <SystemPanel ffmpegVersion={ffmpegVersion} />
       </div>
-
-      {/* Workflow strip - batch operations come first to match the sidebar
-          ordering (Batch sits above Editor/Player). Compact horizontal
-          tiles; responsive: 2 cols on mobile, 3 on tablet, 5 on desktop. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 shrink-0">
-        {quickActions.map((action) => {
-          const a = tileAccent[action.accent] || tileAccent.blue
-          return (
-            <button
-              key={action.op}
-              onClick={() => { setOperation(action.op); setView('batch') }}
-              className={`group relative overflow-hidden rounded-xl bg-white/[0.03] border border-white/[0.06] ${a.hoverBorder} transition-all duration-300 hover:bg-white/[0.05] backdrop-blur-sm hover:-translate-y-0.5 shadow-sm ${a.hoverGlow} hover:shadow-lg px-3 py-3 text-left`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-10 h-10 shrink-0 rounded-lg border flex items-center justify-center transition-transform duration-300 group-hover:scale-105 ${a.iconBg} ${a.icon}`}>
-                  {action.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-semibold text-surface-200 group-hover:text-white transition-colors leading-tight truncate">{action.label}</h4>
-                  <p className="text-2xs text-surface-500 group-hover:text-surface-400 transition-colors mt-0.5 truncate">{action.desc}</p>
-                </div>
-                <svg className={`w-3.5 h-3.5 shrink-0 ${a.icon} opacity-0 group-hover:opacity-80 group-hover:translate-x-0.5 -translate-x-1 transition-all duration-300`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Hero: Editor + Player stacked vertically on the left, live System
-          Pulse on the right spanning both rows. On large screens the hero
-          claims remaining vertical space (flex-1); when stacked on small
-          screens we let it size naturally so the page can scroll. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3 lg:flex-1 lg:min-h-[320px]">
-        <div className="grid grid-rows-1 lg:grid-rows-2 gap-3 min-w-0 min-h-0">
-          <div className="min-w-0 min-h-[140px]">
-            <ToolCard
-              onClick={() => setView('editor')}
-              accentClass="blue"
-              title="Media Editor"
-              desc="Multi-track timeline, spatial transforms, keyframes, real-time preview"
-              icon={
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3" />
-                  <line x1="14.5" y1="7.5" x2="18.5" y2="11.5" />
-                  <line x1="2" y1="22" x2="22" y2="22" />
-                </svg>
-              }
-            />
-          </div>
-          <div className="min-w-0 min-h-[140px]">
-            <ToolCard
-              onClick={() => setView('player')}
-              accentClass="accent"
-              title="Media Player"
-              desc="Play local files or stream from URLs with audio visualizations"
-              icon={
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              }
-            />
-          </div>
-        </div>
-        <SystemPulse ffmpegVersion={ffmpegVersion} config={config} />
-      </div>
-
-      {/* Recent Activity (only when there are tasks) */}
-      {tasks.length > 0 && (
-        <div className="shrink-0">
-          <RecentActivity tasks={tasks} />
-        </div>
-      )}
+      <RecentActivity />
     </div>
   )
 }
-

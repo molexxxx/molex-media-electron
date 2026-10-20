@@ -1,38 +1,55 @@
 /**
  * @module components/dashboard/RecentActivity
- * @description Scrollable list of recent processing tasks with status indicators.
+ * @description The last six settled jobs, newest first, with their catalog number and status.
  */
-
 import React from 'react'
-import type { ProcessingTask } from '../../../stores/types'
+import { operationLabel } from '../../../../../shared/jobs/describe'
+import type { JobView } from '../../../../../shared/jobs/types'
+import { statusWords } from '../../../copy/batch'
+import { selectRecentSettled } from '../../../stores/jobsSelectors'
+import { useJobsStore } from '../../../stores/jobs'
+import { CatalogNumber, StatusLabel, usePlatform, type StatusKey } from '../../../ui'
 
-function StatusDot({ status }: { status: string }): React.JSX.Element {
-  const colors: Record<string, string> = {
-    complete: 'bg-emerald-400',
-    error: 'bg-red-400',
-    processing: 'bg-blue-400 animate-pulse',
-    analyzing: 'bg-blue-400 animate-pulse',
-    queued: 'bg-surface-500',
-    cancelled: 'bg-surface-500',
-    finalizing: 'bg-blue-400 animate-pulse'
-  }
-  return <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors[status] || 'bg-surface-500'}`} />
+/** How many settled jobs the Dashboard lists. */
+export const RECENT_LIMIT = 6
+
+const selectRecent = selectRecentSettled(RECENT_LIMIT)
+
+function RecentRow({ job }: { job: JobView }): React.JSX.Element
+{
+  const platform = usePlatform()
+  const words = statusWords(job, { platform })
+  const status: StatusKey = words.status === 'canceled' ? 'cancelled' : words.status
+  return (
+    <li
+      data-job={job.id}
+      className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,14rem)_9rem] items-center gap-3 border-b border-line px-3 py-2 last:border-b-0"
+    >
+      <CatalogNumber value={job.id} />
+      <span className="truncate text-body text-ink" title={`${job.source.dir}\\${job.source.name}`}>{job.source.name}</span>
+      <span className="truncate text-label text-ink-3">
+        {operationLabel(job.recipe.kind)}
+        {job.recipeLabel !== '' && <span className="text-ink-3"> · {job.recipeLabel}</span>}
+      </span>
+      <StatusLabel status={status} label={words.label} held={words.held} />
+    </li>
+  )
 }
 
-export function RecentActivity({ tasks }: { tasks: ProcessingTask[] }): React.JSX.Element {
-  const recent = tasks.slice(-6).reverse()
+/** The latest settled jobs from the jobs store, or a quiet line when none has ended yet. */
+export function RecentActivity(): React.JSX.Element
+{
+  const recent = useJobsStore(selectRecent)
   return (
-    <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-4 py-3">
-      <h3 className="text-2xs font-semibold uppercase tracking-wider text-surface-500 mb-2">Recent Activity</h3>
-      <div className="flex items-center gap-3 overflow-x-auto">
-        {recent.map((task) => (
-          <div key={task.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.04] shrink-0">
-            <StatusDot status={task.status} />
-            <span className="text-2xs text-surface-500 font-mono uppercase">{task.operation}</span>
-            <span className="text-xs text-surface-300 truncate max-w-[180px]">{task.fileName}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <section aria-labelledby="dashboard-recent" className="flex min-w-0 flex-col gap-2">
+      <h2 id="dashboard-recent" className="type-legend text-brass">Recent jobs</h2>
+      {recent.length === 0
+        ? <p className="text-body text-ink-3">Finished jobs appear here.</p>
+        : (
+          <ol className="rounded-sm border border-line bg-panel">
+            {recent.map((job) => <RecentRow key={job.id} job={job} />)}
+          </ol>
+        )}
+    </section>
   )
 }
