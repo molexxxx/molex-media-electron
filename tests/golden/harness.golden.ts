@@ -1,12 +1,13 @@
 import { describe, it, expect, inject } from 'vitest'
 import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, readdir, rm, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, relative, resolve, isAbsolute } from 'node:path'
+import { basename, dirname, join, relative, resolve, isAbsolute } from 'node:path'
 import { CORPUS, NON_ASCII_NAME } from './corpus'
 import { annex3Combine, annex3Weight, createOracle, LAYOUT_CHANNELS, parseAstatsOverall, parseEbur128Summaries, parseMetadataPrints, readLoudness, runTool, sampleStatsOf, summarizeProbe } from './oracle'
 import { channelTruePeak, deinterleave, phaseFilters, toDb, truePeakDb, TRUE_PEAK_TAPS } from './truepeak'
 import { band, decodeAnalysis, fft, imd, smpteSource, spectrum, thd } from './distortion'
-import { buildIdOf, goldenRoot, resolveBinaries, SKIP_MESSAGE } from './global-setup'
+import { buildIdOf, goldenRoot, resolveBinaries, runFolderName, SKIP_MESSAGE, STALE_RUN_MS, sweepStaleRuns } from './global-setup'
 
 const golden = inject('golden')
 
@@ -238,6 +239,27 @@ describe('golden setup', () =>
     expect(goldenRoot({})).toBe(resolve(join(tmpdir(), 'molex-golden')))
     expect(buildIdOf('n9.0.2-17-g2a571b6068-20260930')).toBe('n9.0.2-17-g2a571b6068-20260930')
     expect(buildIdOf('4.4.2-0ubuntu0.22.04.1 (x)')).toBe('4.4.2-0ubuntu0.22.04.1_x_')
+  })
+
+  it('gives each run its own short output folder and sweeps only stale ones', async () =>
+  {
+    expect(runFolderName(4120)).toBe('run-4120')
+    expect(golden.skip !== null || (basename(golden.outDir).startsWith('run-') && basename(dirname(golden.outDir)) === 'out')).toBe(true)
+    const root = await mkdtemp(join(tmpdir(), 'molex-sweep-'))
+    try
+    {
+      await mkdir(join(root, 'run-1'))
+      await mkdir(join(root, 'run-2'))
+      const old = new Date(Date.now() - STALE_RUN_MS - 60_000)
+      await utimes(join(root, 'run-1'), old, old)
+      expect(await sweepStaleRuns(root, Date.now() - STALE_RUN_MS)).toEqual(['run-1'])
+      expect(await readdir(root)).toEqual(['run-2'])
+      expect(await sweepStaleRuns(join(root, 'missing'), Date.now())).toEqual([])
+    }
+    finally
+    {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })
 

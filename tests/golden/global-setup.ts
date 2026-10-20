@@ -4,7 +4,7 @@
  * provides the result to every test file as `golden`.
  */
 import { existsSync } from 'node:fs'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -103,6 +103,36 @@ export function buildIdOf(versionString: string): string
   return versionString.replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 80) || 'unknown'
 }
 
+/** A run folder untouched this long belongs to a run that ended without its teardown. */
+export const STALE_RUN_MS = 24 * 60 * 60 * 1000
+
+/**
+ * The output folder of one run, named by its process, so two runs on one build and root never clear each other's
+ * outputs. It stays short because several cases measure path-length limits under it.
+ */
+export function runFolderName(pid: number): string
+{
+  return `run-${pid}`
+}
+
+/** Removes the run folders under `outRoot` last modified before `before`; a missing root is fine. */
+export async function sweepStaleRuns(outRoot: string, before: number): Promise<string[]>
+{
+  const names = await readdir(outRoot).catch(() => [] as string[])
+  const removed: string[] = []
+  for (const name of names)
+  {
+    const path = join(outRoot, name)
+    const info = await stat(path).catch(() => null)
+    if (info !== null && info.mtimeMs < before)
+    {
+      await rm(path, { recursive: true, force: true })
+      removed.push(name)
+    }
+  }
+  return removed
+}
+
 /** The golden root; refuses a folder inside the repository, which packaging would sweep up. */
 export function goldenRoot(env: NodeJS.ProcessEnv, repo = REPO): string
 {
@@ -145,9 +175,10 @@ export async function prepareGolden(env: NodeJS.ProcessEnv, log: (message: strin
   const root = goldenRoot(env)
   const dir = join(root, buildId)
   const corpusDir = join(dir, 'corpus')
-  const outDir = join(dir, 'out')
+  const outDir = join(dir, 'out', runFolderName(process.pid))
   const reportDir = join(root, 'report')
   log(`FFmpeg ${parsed.versionString} at ${bins.ffmpeg}`)
+  await sweepStaleRuns(join(dir, 'out'), Date.now() - STALE_RUN_MS)
   await rm(outDir, { recursive: true, force: true })
   await mkdir(outDir, { recursive: true })
   await mkdir(reportDir, { recursive: true })
