@@ -28,8 +28,15 @@ const BATCH_SCOPES = [
   'components/batch/history/'
 ]
 
+/** The shell services built on the primitives: the close confirmation, the F6 region registry, and the zoom keys. */
+const SHELL_SCOPES = [
+  'components/layout/CloseConfirmModal.tsx',
+  'hooks/useF6Region.ts',
+  'hooks/useAppZoomKeys.ts'
+]
+
 /** Folders and files held to the strict rules; a folder joins once its components are built on the primitives. */
-const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES]
+const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES, ...SHELL_SCOPES]
 
 /** Legacy sliders that draw a fake track over a native range at opacity 0; the count may only fall. */
 const LEGACY_RANGE_BASELINE = 10
@@ -637,6 +644,19 @@ describe('style floor', () =>
       expect(isStrict(rel), rel).toBe(false)
     }
     expect(SOURCES.map((f) => f.rel).filter(isStrict)).toContain('components/batch/table/cells.tsx')
+  })
+
+  it('holds the shell services to the strict rules and leaves the legacy shell files to the ratchets', () =>
+  {
+    for (const rel of SHELL_SCOPES)
+    {
+      expect(isStrict(rel), rel).toBe(true)
+      expect(SOURCES.map((f) => f.rel), rel).toContain(rel)
+    }
+    for (const rel of ['components/layout/Sidebar.tsx', 'components/layout/TitleBar.tsx', 'hooks/useIPC.ts', 'App.tsx', 'hooks/useF6Region.test.ts'])
+    {
+      expect(isStrict(rel), rel).toBe(false)
+    }
   })
 
   it('finds no violation outside the listed exemptions', () =>

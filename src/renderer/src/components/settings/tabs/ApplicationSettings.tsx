@@ -1,12 +1,79 @@
 /**
  * @module components/settings/tabs/ApplicationSettings
- * @description Application tab - updates, notifications, window behavior, paths, and reset.
+ * @description Application tab - updates, window behavior, accessibility,
+ * notifications, paths, and reset.
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useId } from 'react'
 import type { AppConfig } from '../../../stores/appStore'
 import { useAppStore } from '../../../stores/appStore'
 import { SettingGroup, SettingRow, Toggle, Select } from '../../shared/ui'
+import { Select as SizeSelect, Switch } from '../../../ui'
+import type { SelectOption } from '../../../ui'
+
+/** The Interface size choices in percent; main clamps the stored value to 90 to 200. */
+export const INTERFACE_SIZES = [90, 100, 110, 125, 150, 175, 200] as const
+
+/** The Interface size options, with a stored size outside the list kept as its own choice. */
+export function interfaceSizeOptions(current: number): SelectOption[] {
+  const sizes: number[] = [...INTERFACE_SIZES]
+  if (Number.isFinite(current) && !sizes.includes(current)) {
+    sizes.push(current)
+    sizes.sort((a, b) => a - b)
+  }
+  return sizes.map((size) => ({ value: String(size), label: `${size}%` }))
+}
+
+interface AccessibilityGroupProps {
+  interfaceScale: number
+  announceProgress: boolean
+  onUpdate: ApplicationSettingsProps['onUpdate']
+}
+
+/** Interface size for every window and the opt-in spoken batch progress. */
+export function AccessibilityGroup({ interfaceScale, announceProgress, onUpdate }: AccessibilityGroupProps): React.JSX.Element {
+  const id = useId()
+  const sizeId = `${id}-size`
+  const sizeHint = `${id}-size-hint`
+  const announceId = `${id}-announce`
+  const announceHint = `${id}-announce-hint`
+  return (
+    <section aria-labelledby={`${id}-title`} className="rounded-md border border-line bg-panel p-3 sm:p-5 space-y-4">
+      <h3 id={`${id}-title`} className="type-legend text-brass">Accessibility</h3>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <label htmlFor={sizeId} className="text-body font-semibold text-ink">Interface size</label>
+          <p id={sizeHint} className="text-label text-ink-2 mt-0.5">
+            Scales text and controls in every window. Ctrl+Plus and Ctrl+Minus change it for this session; Ctrl+0 returns to this size.
+          </p>
+        </div>
+        <SizeSelect
+          id={sizeId}
+          describedBy={sizeHint}
+          value={String(interfaceScale)}
+          options={interfaceSizeOptions(interfaceScale)}
+          onChange={(value) => onUpdate('interfaceScale', Number(value))}
+          className="w-28 shrink-0"
+        />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <label htmlFor={announceId} className="text-body font-semibold text-ink">Announce batch progress every 30 seconds</label>
+          <p id={announceHint} className="text-label text-ink-2 mt-0.5">
+            While a batch runs and focus is in Batch, a screen reader hears how many jobs finished and the time left, when the counts change.
+          </p>
+        </div>
+        <Switch
+          id={announceId}
+          describedBy={announceHint}
+          checked={announceProgress}
+          onChange={(next) => onUpdate('announceProgress', next)}
+          className="shrink-0"
+        />
+      </div>
+    </section>
+  )
+}
 
 interface BrowserOption { name: string; label: string }
 type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
@@ -185,6 +252,11 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
           }} />
         </SettingRow>
       </SettingGroup>
+      <AccessibilityGroup
+        interfaceScale={config.interfaceScale ?? 100}
+        announceProgress={config.announceProgress ?? false}
+        onUpdate={onUpdate}
+      />
       <SettingGroup title="Notifications">
         <SettingRow label="Desktop Notifications" description="Show a system notification when batch processing completes">
           <Toggle checked={config.showNotifications} onChange={(v) => onUpdate('showNotifications', v)} />

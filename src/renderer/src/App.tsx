@@ -5,7 +5,9 @@
  * Initializes the IPC bridge via {@link useIPC}, handles global drag-and-drop
  * file additions, manages view mounting history for state preservation,
  * supports popout player mode, and conditionally renders the setup wizard
- * when FFmpeg is not available.
+ * when FFmpeg is not available. Hosts the shell services: the notification
+ * region, the F6 region cycle, the close confirmation (above the
+ * initializing and setup screens), and the zoom keys in both windows.
  */
 
 import React, { useState, useEffect } from 'react'
@@ -21,9 +23,13 @@ import { MediaEditor } from './components/editor'
 import { MediaPlayer } from './components/player'
 import { SetupWizard } from './components/setup'
 import { PreviewBatch } from './dev/PreviewBatch'
+import { ToastRegion } from './ui'
+import { focusNextRegion } from './hooks/useF6Region'
+import { listenUnclaimedKeys, useAppZoomKeys } from './hooks/useAppZoomKeys'
 
 function App(): React.JSX.Element {
   useIPC()
+  useAppZoomKeys()
 
   const isPopout = window.location.hash === '#popout'
 
@@ -143,13 +149,31 @@ function App(): React.JSX.Element {
     }
   }, [goBack])
 
+  // A view that cycles its own regions claims F6 first; a modal dialog keeps focus inside itself
+  useEffect(() => {
+    if (isPopout) return
+    return listenUnclaimedKeys((e) => {
+      if (e.key !== 'F6' || e.ctrlKey || e.altKey || e.metaKey) return
+      if (document.querySelector('dialog[open]')) return
+      e.preventDefault()
+      focusNextRegion(e.shiftKey ? 'previous' : 'next')
+    })
+  }, [isPopout])
+
   // -- Popout player mode --
   if (isPopout) {
     return <PopoutShell />
   }
 
+  const withCloseConfirm = (body: React.JSX.Element): React.JSX.Element => (
+    <>
+      {body}
+      <CloseConfirmModal />
+    </>
+  )
+
   if (ffmpegChecking) {
-    return (
+    return withCloseConfirm(
       <div className="h-full flex flex-col">
         <TitleBar />
         <div className="flex-1 flex items-center justify-center">
@@ -163,7 +187,7 @@ function App(): React.JSX.Element {
   }
 
   if (showSetup) {
-    return (
+    return withCloseConfirm(
       <div className="h-full flex flex-col">
         <TitleBar />
         <SetupWizard />
@@ -182,7 +206,7 @@ function App(): React.JSX.Element {
 
   const fixedLayoutViews = new Set<View>(['batch', 'logs', 'editor'])
 
-  return (
+  return withCloseConfirm(
     <div className="h-full flex relative">
       {/* Sidebar - full height of window */}
       <div className="shrink-0 h-full">
@@ -215,9 +239,9 @@ function App(): React.JSX.Element {
               </div>
             ) : null
           )}
+          <ToastRegion onShowMore={() => setView('logs')} />
         </main>
       </div>
-      <CloseConfirmModal />
     </div>
   )
 }

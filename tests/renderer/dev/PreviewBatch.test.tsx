@@ -168,7 +168,7 @@ describe('PreviewBatch', () =>
     const api = previewApi()
     render(<PreviewBatch api={api} storage={memoryStorage()} />)
     expect(document.getElementById(BATCH_VIEW_ID)).not.toBeNull()
-    expect(screen.getByRole('region', { name: 'Notifications' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Notifications' })).toBeNull()
     expect(screen.getByRole('radio', { name: 'New page' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText(/no file is read or written/)).toBeInTheDocument()
     await waitFor(() => expect(useJobsStore.getState().order).toHaveLength(PREVIEW_SAMPLES.length))

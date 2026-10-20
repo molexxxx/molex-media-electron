@@ -9,7 +9,6 @@ import { FileQueue } from '../components/batch'
 import { useJobs } from '../hooks/useJobs'
 import { CapsText } from '../ui/CapsText'
 import { SegmentedControl, type SegmentOption } from '../ui/SegmentedControl'
-import { ToastRegion } from '../ui/Toast'
 import { createPreviewJobsApi } from './previewJobs'
 
 /** Which Batch view the development build shows: the new page or the previous queue. */
@@ -106,7 +105,6 @@ export function PreviewBatch({ api, storage }: PreviewBatchProps): React.JSX.Ele
       {mode === 'page' ? (
         <div className="relative flex min-h-0 flex-1 flex-col">
           <BatchPage api={engine} />
-          <ToastRegion />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4 md:p-6">
