@@ -38,7 +38,7 @@ function Readout({ label, value, lit = false, tone }: { label: string; value: nu
         data-stat={label}
         className={cx(
           'text-section tabular-nums',
-          lit ? 'type-readout' : tone === 'warning' ? 'text-warning' : 'text-ink'
+          lit ? 'type-readout' : tone === 'warning' ? 'text-warning' : value === 0 ? 'text-ink-3' : 'text-ink'
         )}
       >
         {COUNT.format(value)}
