@@ -37,7 +37,7 @@ export interface StandardFact
 /** A loudness preset's technical details: what it follows, its labeled facts in reading order, and its sources. */
 export interface StandardDetails
 {
-  /** The document the preset follows, or "Not a standard". */
+  /** The document the preset follows, the standard an app preset is built on, or "Not a standard". */
   basis: string
   facts: StandardFact[]
   sources: readonly StandardRef[]
@@ -126,7 +126,9 @@ export function standardDetails(presetId: string, targetLufs: number | null = nu
   {
     return null
   }
-  const basis = preset.id === 'custom' ? 'Custom' : preset.standardName ?? 'Not a standard'
+  const basis = preset.id === 'custom'
+    ? 'Custom'
+    : preset.standardName ?? (preset.builtOn === undefined ? 'Not a standard' : `App preset built on ${preset.builtOn}`)
   if (preset.id === 'custom')
   {
     return { basis, facts: customFacts(preset), sources: preset.sources }

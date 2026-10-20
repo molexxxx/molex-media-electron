@@ -413,7 +413,7 @@ describe.skipIf(!runnable)('loudness through the audio job functions', () =>
     expect(plan.refusals.map((r) => r.code)).toEqual(['layout-unsupported'])
   })
 
-  it.each(ids('G12'))('%s: G12 Night listening lowers the loudness range', (id) =>
+  it.each(ids('G12'))('%s: G12 Clear dialogue lowers the loudness range', (id) =>
   {
     const x = get(id)
     for (const { i, o, verdict } of streamsOf(x))

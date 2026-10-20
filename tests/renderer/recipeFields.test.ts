@@ -636,7 +636,7 @@ describe('preset choice', () =>
     const context = ctx({ presets: { user: [voice], pins: { ...DEFAULT_PINS }, recent: [edited, preset('web-1080p'), normalize('ebu-r128')] } })
     const state = presetField([job(normalize())], 'normalize', context) as PresetField
     expect(state).toMatchObject({ label: 'Preset', value: 'streaming-r128s2', mixed: false, text: 'Streaming (EBU R 128 s2)', edited: 0, reset: null, disabled: false, count: 1 })
-    expect([...new Set(state.options.map((option) => option.group))]).toEqual(['Pinned', 'Recently used', 'Standards', 'Not a standard', 'Custom', 'Your presets'])
+    expect([...new Set(state.options.map((option) => option.group))]).toEqual(['Pinned', 'Recently used', 'Standards', 'App presets', 'Custom', 'Your presets'])
     expect(state.options.filter((option) => option.group === 'Pinned').map((option) => [option.label, option.description, option.value])).toEqual([
       [`EBU R 128 (${MINUS}23 LUFS)`, 'Alt+1', 'ebu-r128'],
       [`Podcast (Apple Podcasts), ${MINUS}16 LKFS`, 'Alt+2', 'apple-podcasts'],
@@ -645,7 +645,7 @@ describe('preset choice', () =>
     expect(state.options.filter((option) => option.group === 'Recently used').map((option) => [option.key, option.label]))
       .toEqual([['recent:0', 'Streaming (EBU R 128 s2), edited'], ['recent:2', 'EBU R 128']])
     expect(state.options.find((option) => option.key === 'streaming-r128s2')).toMatchObject({ label: `Streaming (EBU R 128 s2), ${MINUS}18 LUFS`, group: 'Standards', note: null })
-    expect(state.options.find((option) => option.key === 'night')?.group).toBe('Not a standard')
+    expect(state.options.find((option) => option.key === 'night')?.group).toBe('App presets')
     expect(state.options.find((option) => option.key === 'custom')).toMatchObject({ label: 'Custom', group: 'Custom', disabled: false })
     expect(state.options.find((option) => option.group === 'Your presets')).toMatchObject({ key: 'user-voice', value: 'user-voice', label: 'Voice' })
     expect(new Set(state.options.map((option) => option.key)).size).toBe(state.options.length)

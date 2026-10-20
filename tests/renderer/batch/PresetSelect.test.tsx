@@ -173,7 +173,7 @@ describe('standardDetails', () =>
       'spotify': 'Spotify',
       'streaming-r128s2': 'EBU R 128 s2',
       'aes-streaming': 'AES TD1004',
-      'night': 'Not a standard',
+      'night': 'App preset built on EBU R 128 s2',
       'custom': 'Custom'
     })
     expect(facts('ebu-r128')).toEqual({
@@ -248,12 +248,12 @@ describe('standardDetails', () =>
 
 describe('PresetSelect', () =>
 {
-  it('groups Normalize choices as Pinned, Recently used, Standards, Not a standard, Custom, and Your presets', () =>
+  it('groups Normalize choices as Pinned, Recently used, Standards, App presets, Custom, and Your presets', () =>
   {
     const late = userPreset('user-late', 'Late podcasts', edited('streaming-r128s2', -17))
     const context = ctx({ presets: presets({ user: [late], recent: [loudness('spotify'), edited('streaming-r128s2', -19)] }) })
     renderSelect([job(loudness('ebu-r128'))], context)
-    expect(groups()).toEqual(['Pinned', 'Recently used', 'Standards', 'Not a standard', 'Custom', 'Your presets'])
+    expect(groups()).toEqual(['Pinned', 'Recently used', 'Standards', 'App presets', 'Custom', 'Your presets'])
     expect(select().value).toBe('ebu-r128')
     const pinned = select().querySelector('optgroup[label="Pinned"]') as HTMLElement
     expect(pinned.textContent).toContain(`EBU R 128 (${M}23 LUFS) \u00b7 Alt+1`)
@@ -299,7 +299,7 @@ describe('PresetSelect', () =>
     expect(guide).toHaveTextContent('Delivering a finished film or series')
     await act(async () =>
     {
-      fireEvent.click(within(guide).getByRole('button', { name: 'Use Night listening (not a standard)' }))
+      fireEvent.click(within(guide).getByRole('button', { name: 'Use Clear dialogue (movies and shows)' }))
     })
     expect(actions.assignRecipes.mock.calls[0][0][0].recipe.presetId).toBe('night')
   })
@@ -325,7 +325,7 @@ describe('PresetSelect', () =>
     expect(within(goals).getByRole('button', { name: /European broadcaster/ })).toHaveAttribute('aria-current', 'true')
     await act(async () =>
     {
-      fireEvent.click(within(goals).getByRole('button', { name: /quiet dialogue/ }))
+      fireEvent.click(within(goals).getByRole('button', { name: /Dialogue too quiet/ }))
     })
     expect(actions.assignRecipes.mock.calls[0][0][0].recipe.presetId).toBe('night')
     expect(toggle).toHaveAttribute('aria-expanded', 'false')

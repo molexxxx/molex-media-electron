@@ -9,7 +9,7 @@ import type { DynamicsSpec } from '../../../shared/audio/types'
 
 export type { DynamicsSpec }
 
-/** Night listening (not a standard). */
+/** Clear dialogue, an app preset built on EBU R 128 s2. */
 export const NIGHT: DynamicsSpec = NIGHT_DYNAMICS
 
 /** acompressor's option ranges (`ffmpeg -h filter=acompressor`, 2022 and 9.0.2); the threshold 0.000976563 to 1 in dB. */

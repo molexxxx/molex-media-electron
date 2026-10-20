@@ -220,7 +220,7 @@ export const MEDIA_CATALOGS =
 /** The groups of each operation's presets, in the order the picker and the preset select show them. */
 export const PRESET_GROUPS: Readonly<Record<Operation, readonly string[]>> =
 {
-  normalize: ['Standards', 'Not a standard', 'Custom'],
+  normalize: ['Standards', 'App presets', 'Custom'],
   boost: ['App presets', 'Custom'],
   convert: ['General', 'Web', 'Devices', 'Production', 'Audio only'],
   compress: ['Archive', 'Web', 'Mobile', 'Special', 'Modern'],
@@ -295,7 +295,7 @@ export interface PresetInfo
 export const BUILTIN_PRESETS: readonly PresetInfo[] =
 [
   ...LOUDNESS_PRESETS.filter((entry) => entry.id !== 'custom')
-    .map((entry): PresetInfo => ({ id: entry.id, op: 'normalize', label: entry.label, group: entry.standard ? 'Standards' : 'Not a standard', user: false })),
+    .map((entry): PresetInfo => ({ id: entry.id, op: 'normalize', label: entry.label, group: entry.standard ? 'Standards' : 'App presets', user: false })),
   ...GAIN_PRESETS.map((entry): PresetInfo => ({ id: entry.id, op: 'boost', label: entry.label, group: 'App presets', user: false })),
   ...(['convert', 'compress', 'extract'] as const).flatMap((op) =>
     MEDIA_CATALOGS[op].map((entry): PresetInfo => ({ id: entry.id, op, label: entry.label, group: entry.group, user: false })))

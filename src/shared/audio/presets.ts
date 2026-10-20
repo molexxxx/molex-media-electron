@@ -42,6 +42,8 @@ export interface LoudnessPreset
   album: 'track' | 'track-or-album'
   /** False labels the preset as not a standard. */
   standard: boolean
+  /** The standard an app preset takes its level from, named in its details; absent for a standard. */
+  builtOn?: string
   supersededBy: string | null
   measurementNote: string | null
   sources: readonly StandardRef[]
@@ -61,7 +63,7 @@ export interface GainPreset
 /** The preset a new install normalizes with. */
 export const DEFAULT_LOUDNESS_PRESET: PresetId = 'streaming-r128s2'
 
-/** The Night listening compressor, also used by the 'reduce-dynamics' policy. */
+/** The Clear dialogue compressor, also used by the 'reduce-dynamics' policy. */
 export const NIGHT_DYNAMICS: DynamicsSpec = { thresholdOffsetDb: 0, ratio: 3, attackMs: 25, releaseMs: 300 }
 
 const FETCHED = '2026-10-15'
@@ -264,7 +266,7 @@ export const LOUDNESS_PRESETS: readonly LoudnessPreset[] =
   },
   {
     id: 'night',
-    label: 'Night listening (not a standard)',
+    label: 'Clear dialogue (movies and shows)',
     standardName: null,
     target: target(-18, -1, null, 'LUFS'),
     targetDecimals: 0,
@@ -281,6 +283,7 @@ export const LOUDNESS_PRESETS: readonly LoudnessPreset[] =
     shortForm: null,
     album: 'track',
     standard: false,
+    builtOn: 'EBU R 128 s2',
     supersededBy: null,
     measurementNote: null,
     sources: [cite(R128_S2, '(g)')]

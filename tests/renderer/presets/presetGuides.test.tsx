@@ -46,9 +46,13 @@ describe('preset guides', () =>
     }
   })
 
-  it('send a movie with quiet dialogue to Night listening, and Night to dialog emphasis for 5.1', () =>
+  it('send home movies to Streaming and quiet dialogue to Clear dialogue, with dialog emphasis for 5.1', () =>
   {
-    expect(PRESET_GOALS.normalize[0]).toEqual({ goal: 'A movie or show: quiet dialogue, loud action or music', presetId: 'night' })
+    expect(PRESET_GOALS.normalize.slice(0, 2)).toEqual([
+      { goal: 'Movies and shows for home playback or a media server', presetId: 'streaming-r128s2' },
+      { goal: 'Dialogue too quiet, action too loud', presetId: 'night' }
+    ])
+    expect(presetGuide('normalize', 'streaming-r128s2')?.instead?.presetId).toBe('night')
     expect(presetGuide('normalize', 'night')?.tip?.action?.patch).toEqual({ field: 'downmix', value: 'dialog' })
     expect(presetGuide('normalize', 'film-r128s4')?.instead?.presetId).toBe('night')
   })

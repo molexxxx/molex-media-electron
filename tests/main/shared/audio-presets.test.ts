@@ -92,7 +92,7 @@ const ROWS: Array<[PresetId, Partial<LoudnessPreset>]> =
     shortForm: TD1004_SHORT_FORM, album: 'track-or-album', standard: true, supersededBy: 'AES TD1008 (2021) and AES77-2023', measurementNote: null
   }],
   ['night', {
-    label: 'Night listening (not a standard)', standardName: null,
+    label: 'Clear dialogue (movies and shows)', standardName: null,
     target: { integratedLufs: -18, maxTruePeakDbtp: -1, louderMax: null, toleranceLu: null, unit: 'LUFS' }, targetDecimals: 0,
     targetRange: [-24, -14], truePeakRange: null, toleranceText: null, deviationUnit: 'LU',
     policy: 'reduce-dynamics', maxLimitingDb: 1, mono: 'two-speakers', monoToStereo: false, minSampleRate: null,
@@ -237,7 +237,7 @@ describe('LOUDNESS_PRESETS', () =>
     }
   })
 
-  it('uses the Night listening compressor for the night preset', () =>
+  it('uses the Clear dialogue compressor for the night preset', () =>
   {
     expect(NIGHT_DYNAMICS).toEqual({ thresholdOffsetDb: 0, ratio: 3, attackMs: 25, releaseMs: 300 })
     expect(preset('night').dynamics).toEqual(NIGHT_DYNAMICS)
@@ -258,7 +258,7 @@ describe('lookups', () =>
   {
     expect(presetName('apple-podcasts')).toBe('Apple Podcasts')
     expect(presetName('aes-streaming')).toBe('AES TD1004')
-    expect(presetName('night')).toBe('Night listening (not a standard)')
+    expect(presetName('night')).toBe('Clear dialogue (movies and shows)')
     expect(presetName('custom')).toBe('Custom')
     expect(presetName('quiet-recording')).toBe('Quiet recording')
     expect(presetName('My podcast preset')).toBe('My podcast preset')

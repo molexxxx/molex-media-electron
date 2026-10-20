@@ -379,7 +379,7 @@ describe('PresetSettings, built-in presets', () =>
     {
       Element.prototype.scrollIntoView = original
     })
-    fireEvent.click(within(screen.getByRole('list', { name: 'Normalize goals' })).getByRole('button', { name: /quiet dialogue/ }))
+    fireEvent.click(within(screen.getByRole('list', { name: 'Normalize goals' })).getByRole('button', { name: /Dialogue too quiet/ }))
     const night = document.getElementById(builtinRowId('normalize', 'night')) as HTMLElement
     expect(night).toHaveAttribute('data-highlighted')
     expect(document.activeElement).toBe(night)

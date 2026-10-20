@@ -202,7 +202,7 @@ export interface NormalizeRecipe
   /** Duplicate mono into two identical channels (Apple Podcasts); the duplicate is what is measured. */
   monoToStereo: boolean
   downmix: DownmixMode | null
-  /** Night listening and the 'reduce-dynamics' policy. */
+  /** Clear dialogue and the 'reduce-dynamics' policy. */
   dynamics: DynamicsSpec | null
   /** 'auto' applies the rule at or under rule.autoMaxDurationSec. */
   shortForm: { rule: ShortFormRule; mode: 'auto' | 'on' | 'off' } | null

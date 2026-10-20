@@ -45,8 +45,9 @@ const LOUDNESS: Readonly<Record<string, PresetGuide>> =
 {
   'streaming-r128s2':
   {
-    bestFor: 'Videos and audio for the web, video sites, and streaming, or evening out a folder of mixed clips.',
-    how: 'Brings every file to the same average loudness, the online level EBU R 128 s2 recommends, and holds peaks below the ceiling so they survive conversion to AAC or MP3. The mix and its dynamics stay as they are.'
+    bestFor: 'A home movie library or media server, videos for the web, or evening out a folder of mixed clips.',
+    how: 'Brings every file to the same average loudness, the level EBU R 128 s2 recommends for streaming, so one film is not louder than the next. It holds peaks below the ceiling so they survive conversion to AAC or MP3. The mix inside each file stays as it is, so quiet dialogue stays quiet next to loud action.',
+    instead: { when: 'Dialogue too quiet next to the action?', presetId: 'night' }
   },
   'ebu-r128':
   {
@@ -63,7 +64,7 @@ const LOUDNESS: Readonly<Record<string, PresetGuide>> =
   {
     bestFor: 'Delivering a finished film or series to a broadcaster or platform whose spec names EBU R 128 s4.',
     how: 'Sets the whole mix to the broadcast level without changing its dynamics, so quiet dialogue stays quiet. For 5.1 sources it also reports how loud the center channel is next to the mix, the loudness-to-dialogue ratio the spec limits.',
-    instead: { when: 'Dialogue too quiet next to action and music?', presetId: 'night' }
+    instead: { when: 'Dialogue too quiet next to the action?', presetId: 'night' }
   },
   'apple-podcasts':
   {
@@ -84,11 +85,11 @@ const LOUDNESS: Readonly<Record<string, PresetGuide>> =
   'night':
   {
     bestFor: 'Movies and shows where dialogue is too quiet and action or music is too loud.',
-    how: 'A gentle 3:1 compressor turns down everything louder than the program\'s own average, then the whole file is raised to the target. Dialogue comes up and explosions come down, so you stop riding the volume. It changes the mix, so it is not a delivery standard.',
+    how: 'Ends at the same level as Streaming (EBU R 128 s2), so it is no quieter, and first evens out the mix. A gentle 3:1 compressor turns down everything louder than the film\'s own average, so dialogue sits closer to the explosions and the score and you stop riding the volume. No loudness standard does this, because standards keep the mix as delivered.',
     instead: { when: 'Delivering the film to a broadcaster?', presetId: 'film-r128s4' },
     tip:
     {
-      text: 'For a 5.1 film played on two speakers, also emphasize dialog in the downmix: the center channel, where dialogue sits, stays at full level and the surrounds drop.',
+      text: 'For a 5.1 film you play on two speakers, also emphasize dialog: the center channel, where dialogue sits, stays at full level and the surrounds drop. The output becomes stereo, so skip this for a surround system.',
       action: { label: 'Emphasize dialog', field: 'Downmix', patch: { field: 'downmix', value: 'dialog' } }
     }
   },
@@ -228,7 +229,8 @@ export const PRESET_GOALS: Readonly<Record<Operation, readonly PresetGoal[]>> =
 {
   normalize:
   [
-    { goal: 'A movie or show: quiet dialogue, loud action or music', presetId: 'night' },
+    { goal: 'Movies and shows for home playback or a media server', presetId: 'streaming-r128s2' },
+    { goal: 'Dialogue too quiet, action too loud', presetId: 'night' },
     { goal: 'Videos for the web or a mixed folder of clips', presetId: 'streaming-r128s2' },
     { goal: 'Music tracks or albums', presetId: 'spotify' },
     { goal: 'Podcast episodes', presetId: 'apple-podcasts' },

@@ -107,7 +107,7 @@ const CORPUS: Array<[MessageKey, MessageRef['params'], string]> =
   ['mono-fold', { from: 'stereo' },
     'Mono output: stereo folded to one channel at equal weight, an app rule, not a standard. Matching channels keep their level; different ' +
     'channels sum about 3 dB lower.'],
-  ['night', { LRA_in: 15.6, LRA_out: 9.3 }, 'Night listening (not a standard): loudness range 15.6 LU before, 9.3 LU after.'],
+  ['night', { LRA_in: 15.6, LRA_out: 9.3 }, 'Clear dialogue, built on EBU R 128 s2: loudness range 15.6 LU before, 9.3 LU after.'],
   ['dropped', { n: 1, kind: 'subtitle', ext: 'ts', codecs: 'subrip' }, 'Not kept: 1 subtitle stream that .ts cannot hold (subrip).'],
   ['chapters-dropped', { ext: 'wav', n: 3 }, '.wav cannot hold chapters; 3 chapters not kept.'],
   ['meter-swr', {},
@@ -187,7 +187,7 @@ describe('the loudness check clause', () =>
   it('names only the app check for a preset that is not a standard', () =>
   {
     expect(hyphen('verified', { I: -18.1, unit: 'LUFS', preset: 'night', T: -18, tol: 1, class: 'lossy-high', TP: -2, gate: -1 })).toBe(
-      'Verified -18.1 LUFS (Night listening (not a standard): -18 LUFS). Within this app\'s ±1.0 LU check for lossy outputs. ' +
+      'Verified -18.1 LUFS (Clear dialogue (movies and shows): -18 LUFS). Within this app\'s ±1.0 LU check for lossy outputs. ' +
       'True peak -2.0 dBTP before encoding, limit -1.0 dBTP.')
     expect(hyphen('off-loudness', { I: -13.2, preset: 'custom', dev: 0.8, ref: -14, reference: 'target', tol: 0.5, class: 'lossless' }))
       .toBe('Measured -13.2 LUFS after encoding, +0.8 LU from the target of -14.0 LUFS. Outside this app\'s ±0.5 LU check for lossless outputs.')
@@ -224,7 +224,7 @@ describe('{preset} and the values a sentence looks up', () =>
     const offPeak = (preset: string): string => hyphen('off-peak', { TP: -0.5, over: 0.5, gate: -1, preset })
     expect(offPeak('aes-streaming')).toBe('True peak before encoding -0.5 dBTP is 0.5 dB over the -1.0 dBTP limit of AES TD1004.')
     expect(offPeak('film-r128s4')).toContain('limit of EBU R 128 s4.')
-    expect(offPeak('night')).toContain('limit of Night listening (not a standard).')
+    expect(offPeak('night')).toContain('limit of Clear dialogue (movies and shows).')
     expect(offPeak('custom')).toContain('limit of Custom.')
     expect(offPeak('louder')).toContain('limit of Louder.')
     expect(offPeak('Weekly show')).toContain('limit of Weekly show.')

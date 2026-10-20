@@ -355,9 +355,9 @@ describe('pins and defaults', () =>
   it('groups loudness presets as standards or not, gain presets as app presets', () =>
   {
     expect(findPreset('ebu-r128')?.group).toBe('Standards')
-    expect(findPreset('night')?.group).toBe('Not a standard')
+    expect(findPreset('night')?.group).toBe('App presets')
     expect(findPreset('louder')?.group).toBe('App presets')
-    expect(PRESET_GROUPS.normalize).toEqual(['Standards', 'Not a standard', 'Custom'])
+    expect(PRESET_GROUPS.normalize).toEqual(['Standards', 'App presets', 'Custom'])
     expect(PRESET_GROUPS.boost).toEqual(['App presets', 'Custom'])
   })
 })

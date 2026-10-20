@@ -400,7 +400,7 @@ const TEMPLATES: Readonly<Record<MessageKey, Template>> =
   'mono-fold': (r) =>
     `Mono output: ${r.text('from')} folded to one channel at equal weight, an app rule, not a standard. Matching channels keep ` +
     'their level; different channels sum about 3 dB lower.',
-  'night': (r) => `Night listening (not a standard): loudness range ${r.amount('LRA_in')} LU before, ${r.amount('LRA_out')} LU after.`,
+  'night': (r) => `Clear dialogue, built on EBU R 128 s2: loudness range ${r.amount('LRA_in')} LU before, ${r.amount('LRA_out')} LU after.`,
   'dropped': (r, params) =>
     `Not kept: ${r.number('n', 'count')} ${lookup(STREAM_KIND_WORDS, String(params.kind)) ?? r.text('kind')} ` +
     `${params.n === 1 ? 'stream' : 'streams'} that .${r.text('ext')} cannot hold (${r.text('codecs')}).`,
