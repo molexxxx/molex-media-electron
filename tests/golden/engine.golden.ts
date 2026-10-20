@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, inject, it } from 'vi
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { copyFile, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import type { CommandResult, JobCommandName, JobCommandRequest, JobCommandResponse } from '../../src/shared/jobs/contract'
 import type { JobId } from '../../src/shared/jobs/ids'
@@ -19,7 +20,7 @@ import { displacedPath, isWorkDirName, PART_SUFFIX, partOutputName } from '../..
 import { createNodePersistenceIO } from '../../src/main/jobs/persistence'
 import { createPlannerIO, createVolumeQueries } from '../../src/main/jobs/planner-io'
 import { createProbeQueue } from '../../src/main/jobs/probe-queue'
-import { createCompressRunner } from '../../src/main/jobs/runners/compress'
+import { createCompressRunner, PASSLOG_SHORT_DIR, passLogPrefix } from '../../src/main/jobs/runners/compress'
 import { createConvertRunner, pathExists } from '../../src/main/jobs/runners/convert'
 import { createExtractRunner, makeFrameFolder } from '../../src/main/jobs/runners/extract'
 import { createBoostRunner, createNormalizeRunner } from '../../src/main/jobs/runners/audio'
@@ -548,7 +549,7 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
     expect(await sha256(source)).toBe(before)
   })
 
-  it('cancels a two-pass encode in its second pass and removes the pass logs with the work folder', async () =>
+  it('cancels a two-pass encode in its second pass and removes the pass logs, beside the work folder or in the short folder', async () =>
   {
     const h = await harness()
     const source = join(h.media, 'long.mkv')
@@ -564,15 +565,16 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
     expect(h.view(id).state).toBe('encoding')
     const [work] = await workDirsIn(h.media)
     expect(work).toBeDefined()
-    const logs = (await readdir(join(h.media, work))).filter((name) => name.startsWith('pass'))
-    expect(logs.length).toBeGreaterThan(0)
     const passArgs = h.calls.find((args) => args.some((a) => a.startsWith('-passlogfile')))
     const passLog = passArgs?.[(passArgs?.findIndex((a) => a.startsWith('-passlogfile')) ?? 0) + 1] ?? ''
-    expect(dirname(passLog)).toBe(join(h.media, work))
+    expect(passLog).toBe(passLogPrefix(join(h.media, work), id, join(tmpdir(), PASSLOG_SHORT_DIR)))
+    const logsOf = async (): Promise<string[]> => (await readdir(dirname(passLog)).catch(() => [] as string[])).filter((name) => name.startsWith(basename(passLog)))
+    expect((await logsOf()).length).toBeGreaterThan(0)
     await h.value('cancel', { ids: [id] })
     expect((await h.waitFor(id, TERMINAL_STATES)).state).toBe('canceled')
     await until('the work folder to go', async () => (await workDirsIn(h.media)).length === 0, 20_000)
     expect(await readdir(h.media)).toEqual(['long.mkv'])
+    expect(await logsOf()).toEqual([])
     expect((await readdir(process.cwd())).filter((name) => name.startsWith('ffmpeg2pass'))).toEqual([])
     expect(await sha256(source)).toBe(before)
   })

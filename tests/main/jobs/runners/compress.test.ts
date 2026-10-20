@@ -37,7 +37,9 @@ import
   losslessArgs,
   outputSize,
   passLogFiles,
+  passLogLeftovers,
   passLogPrefix,
+  PASSLOG_PREFIX_MAX,
   pictureNotes,
   planCompress,
   qualityArgs,
@@ -269,6 +271,23 @@ describe('passLogPrefix', () =>
     expect(one.startsWith(join('/media/.molex-A'))).toBe(true)
     expect(two).not.toBe(one)
     expect(passLogPrefix('/w', 'a:b/c')).toBe(join('/w', 'passlog-a_b_c'))
+  })
+
+  it('moves into the short folder only when the work folder is too deep for the encoders', () =>
+  {
+    const deep = join('/media', 'd'.repeat(PASSLOG_PREFIX_MAX))
+    expect(passLogPrefix(deep, 'J1', '/tmp/molex-pass')).toBe(join('/tmp/molex-pass', 'passlog-J1'))
+    expect(passLogPrefix(deep, 'J1')).toBe(join(deep, 'passlog-J1'))
+    expect(passLogPrefix('/media/.molex-A', 'J1', '/tmp/molex-pass')).toBe(join('/media/.molex-A', 'passlog-J1'))
+  })
+
+  it('lists every log and tree of both pass indices, finished or in progress, once', () =>
+  {
+    expect(passLogLeftovers('/p', [{ pass1: 0, encode: 1 }])).toEqual([
+      '/p-0.log', '/p-0.log.temp', '/p-0.log.mbtree', '/p-0.log.mbtree.temp', '/p-0.log.cutree', '/p-0.log.cutree.temp',
+      '/p-1.log', '/p-1.log.temp', '/p-1.log.mbtree', '/p-1.log.mbtree.temp', '/p-1.log.cutree', '/p-1.log.cutree.temp'
+    ])
+    expect(passLogLeftovers('/p', [{ pass1: 0, encode: 0 }])).toHaveLength(6)
   })
 })
 
@@ -936,6 +955,51 @@ describe('runCompress', () =>
     })
     expect(prefixes[0]).not.toBe(prefixes[1])
     expect(prefixes[0]).toBe(passLogPrefix('/media/.molex-MM-0001-a1-x1.partial', 'J1'))
+  })
+
+  it('writes the statistics of a deep work folder into the short folder and deletes them after the run', async () =>
+  {
+    const deep = join('/media', 'd'.repeat(PASSLOG_PREFIX_MAX))
+    const r = recipe({ target: SIZE(100_000_000, true) })
+    const removed: string[] = []
+    const deps: CompressRunnerDeps = { ...absent, passLogDir: async () => '/tmp/molex-pass', remove: async (file) => { removed.push(file) } }
+    const ok = harness({ workDir: deep })
+    await runCompress(job(r, { id: 'J1' }), ok.ctx, deps)
+    const prefix = argAfter(ok.exec.calls[0].args, '-passlogfile:v:0') as string
+    expect(prefix).toBe(join('/tmp/molex-pass', 'passlog-J1'))
+    expect(argAfter(ok.exec.calls[1].args, '-passlogfile:v:0')).toBe(prefix)
+    expect(removed).toContain(`${prefix}-0.log.mbtree`)
+    expect(removed).toContain(`${prefix}-0.log.mbtree.temp`)
+
+    removed.length = 0
+    const failed = harness({ workDir: deep, steps: { pass1: { code: 1, lines: ['ratecontrol_init: can\'t open stats file'] } } })
+    const outcome = await runCompress(job(r, { id: 'J2' }), failed.ctx, deps)
+    expect(outcome.kind).toBe('failed')
+    expect(removed.length).toBeGreaterThan(0)
+    expect(removed.every((file) => file.startsWith(join('/tmp/molex-pass', 'passlog-J2')))).toBe(true)
+  })
+
+  it('keeps a deep work folder\'s statistics beside it when the short folder cannot be made, and still runs', async () =>
+  {
+    const deep = join('/media', 'd'.repeat(PASSLOG_PREFIX_MAX))
+    const removed: string[] = []
+    const h = harness({ workDir: deep })
+    const deps: CompressRunnerDeps = { ...absent, passLogDir: async () => { throw new Error('EACCES') }, remove: async (file) => { removed.push(file) } }
+    const outcome = await runCompress(job(recipe({ target: SIZE(100_000_000, true) }), { id: 'J1' }), h.ctx, deps)
+    expect(outcome.kind).toBe('output')
+    expect(argAfter(h.exec.calls[0].args, '-passlogfile:v:0')).toBe(join(deep, 'passlog-J1'))
+    expect(h.logs.some((line) => line.includes('short statistics folder could not be created'))).toBe(true)
+    expect(removed).toEqual([])
+  })
+
+  it('logs a statistics file it could not delete and still returns the outcome', async () =>
+  {
+    const deep = join('/media', 'd'.repeat(PASSLOG_PREFIX_MAX))
+    const h = harness({ workDir: deep })
+    const deps: CompressRunnerDeps = { ...absent, passLogDir: async () => '/tmp/molex-pass', remove: async () => { throw new Error('EBUSY') } }
+    const outcome = await runCompress(job(recipe({ target: SIZE(100_000_000, true) }), { id: 'J1' }), h.ctx, deps)
+    expect(outcome.kind).toBe('output')
+    expect(h.logs.some((line) => line.includes('could not be deleted') && line.includes('EBUSY'))).toBe(true)
   })
 
   it('reports bytes only for the pass that writes the output', async () =>

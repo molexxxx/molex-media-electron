@@ -5,6 +5,7 @@
  */
 
 import { promises as fsp } from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import type { MediaFacts } from '../../../shared/audio/types'
 import { videoCodecName, videoEncoderFit } from '../../../shared/jobs/muxing'
@@ -199,12 +200,44 @@ export function bitrateArgs(videoBps: number, k: number): string[]
 }
 
 /**
- * The two-pass statistics prefix of one execution: inside its work folder and named by the job, so two jobs on one
- * source, and two passes of one job, never share or miss a log.
+ * The longest statistics prefix the encoders can open on Windows. x264 and x265 open `<prefix>-<n>.log.mbtree.temp`
+ * themselves, without the extended-path form FFmpeg uses for its own files, so the whole path must stay under 260
+ * characters: 241 opened and 242 failed on the 2022, 5.1.2, and 9.0.2 builds; 240 leaves room for a two-digit index.
  */
-export function passLogPrefix(workDir: string, jobId: string): string
+export const PASSLOG_PREFIX_MAX = 240
+
+/** The short folder outside any work folder that takes the statistics of a work folder too deep for the encoders. */
+export const PASSLOG_SHORT_DIR = 'molex-pass'
+
+/**
+ * The two-pass statistics prefix of one execution: inside its work folder and named by the job, so two jobs on one
+ * source, and two passes of one job, never share or miss a log. When that prefix is longer than the encoders can open
+ * and `shortDir` is given, the prefix moves into `shortDir` under the same name.
+ */
+export function passLogPrefix(workDir: string, jobId: string, shortDir: string | null = null): string
 {
-  return path.join(workDir, `passlog-${jobId.replace(/[^A-Za-z0-9_-]/g, '_')}`)
+  const name = `passlog-${jobId.replace(/[^A-Za-z0-9_-]/g, '_')}`
+  const inWork = path.join(workDir, name)
+  return inWork.length <= PASSLOG_PREFIX_MAX || shortDir === null ? inWork : path.join(shortDir, name)
+}
+
+/** Every statistics file one execution can leave at `prefix`: each stream's log and trees, finished or in progress. */
+export function passLogLeftovers(prefix: string, indices: CompressCommand['passIndices']): string[]
+{
+  const streams = [...new Set(indices.flatMap((entry) => [entry.pass1, entry.encode]))]
+  return streams.flatMap((index) => passLogFiles(prefix, index)).flatMap((file) => [file, `${file}.temp`])
+}
+
+async function defaultPassLogDir(): Promise<string>
+{
+  const dir = path.join(os.tmpdir(), PASSLOG_SHORT_DIR)
+  await fsp.mkdir(dir, { recursive: true })
+  return dir
+}
+
+async function defaultRemove(file: string): Promise<void>
+{
+  await fsp.rm(file, { force: true })
 }
 
 /** Appends the stream specifier of video output stream `k` to every option of an option and value list. */
@@ -601,6 +634,10 @@ export interface CompressRunnerDeps
   picture?(source: SourceRef): PictureFacts | null
   /** Renames a statistics file inside the work folder; defaults to fs.promises.rename. */
   rename?(from: string, to: string): Promise<void>
+  /** Creates and returns the short statistics folder for a work folder too deep for the encoders; defaults to one in the system temp folder. */
+  passLogDir?(): Promise<string>
+  /** Deletes a statistics file the run left outside its work folder; a missing file is not an error. */
+  remove?(file: string): Promise<void>
   files?: VerifyFiles
 }
 
@@ -846,11 +883,57 @@ export async function runCompress(job: RunnableJob<CompressRecipe>, ctx: RunCont
   const gpuEncoder = ctx.gpu?.encoder ?? null
   const twoPass = runsTwoPass(recipe, facts, container) && gpuEncoder === null
   const output = ctx.output(job.plan.output.container, 1)
-  const passLog = twoPass ? passLogPrefix(ctx.workDir, job.id) : null
+  const inWork = twoPass ? passLogPrefix(ctx.workDir, job.id) : null
+  let passLog = inWork
+  if (inWork !== null && inWork.length > PASSLOG_PREFIX_MAX)
+  {
+    try
+    {
+      passLog = passLogPrefix(ctx.workDir, job.id, await (deps.passLogDir ?? defaultPassLogDir)())
+    }
+    catch (error)
+    {
+      ctx.log.warn(`The short statistics folder could not be created, so pass 1 writes beside the work folder: ${messageOf(error)}`)
+    }
+  }
   const command = buildCompressArgs({
     source: job.source.path, facts, recipe, container, muxer: job.plan.output.muxer, audio: audio.streams, gpuEncoder,
     videoBps: plannedVideoBps(recipe, facts, audio.streams), passLog, output
   })
+  if (passLog === null || passLog === inWork)
+  {
+    return encodeAndVerify(job, ctx, deps, { command, output, passLog, audio: audio.streams, facts })
+  }
+  try
+  {
+    return await encodeAndVerify(job, ctx, deps, { command, output, passLog, audio: audio.streams, facts })
+  }
+  finally
+  {
+    const remove = deps.remove ?? defaultRemove
+    for (const file of passLogLeftovers(passLog, command.passIndices))
+    {
+      await remove(file).catch((error: unknown) => ctx.log.warn(`A statistics file could not be deleted: ${file}: ${messageOf(error)}`))
+    }
+  }
+}
+
+interface EncodePlan
+{
+  command: CompressCommand
+  output: string
+  passLog: string | null
+  audio: readonly ConvertAudio[]
+  facts: MediaFacts
+}
+
+/** Runs the passes of a planned Compress and verifies the output. */
+async function encodeAndVerify(job: RunnableJob<CompressRecipe>, ctx: RunContext, deps: CompressRunnerDeps, plan: EncodePlan): Promise<RunOutcome>
+{
+  const { signal } = ctx
+  const { recipe } = job
+  const { command, output, passLog, facts } = plan
+  const audio = { streams: plan.audio }
   let present: boolean
   try
   {
