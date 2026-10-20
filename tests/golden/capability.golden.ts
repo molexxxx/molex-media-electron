@@ -85,9 +85,7 @@ interface MuxerLimit
   error: RegExp
 }
 
-const MUXER_LIMITS: readonly MuxerLimit[] = [
-  { key: 'mp4 with flac', refusedAtOrBelow: [59, 27, 100], acceptedFrom: [59, 34, 101], error: /flac in MP4 support is experimental/ }
-]
+const MUXER_LIMITS: readonly MuxerLimit[] = []
 
 function compare(a: readonly number[], b: readonly number[]): number
 {

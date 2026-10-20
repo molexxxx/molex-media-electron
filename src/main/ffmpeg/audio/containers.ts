@@ -54,7 +54,8 @@ const MATROSKA_AUDIO: readonly string[] = [
   ...PCM_LE_ENCODERS, 'pcm_s16be', 'pcm_s24be', 'pcm_s32be',
   'flac', 'alac', 'wavpack', 'tta', 'aac', 'libmp3lame', 'mp2', 'libopus', 'libvorbis', 'ac3', 'eac3', 'wmav2'
 ]
-const MP4_AUDIO: readonly string[] = ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus', 'flac']
+/** FLAC is left out: the MP4 muxer of FFmpeg 5.1.x refuses it without -strict, which the app never writes. */
+const MP4_AUDIO: readonly string[] = ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus']
 const TS_AUDIO: readonly string[] = ['aac', 'libmp3lame', 'mp2', 'ac3', 'eac3']
 const OGG_AUDIO: readonly string[] = ['libvorbis', 'libopus', 'flac']
 

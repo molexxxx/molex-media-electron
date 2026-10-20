@@ -38,12 +38,12 @@ const MATRIX: Readonly<Record<string, Case>> =
   mka: { muxer: 'matroska', encoders: MATROSKA, multiAudio: true, video: false, subtitles: 'none', attachments: true, coverArt: false, chapters: true },
   mp4:
   {
-    muxer: 'mp4', encoders: ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus', 'flac'], multiAudio: true, video: true,
+    muxer: 'mp4', encoders: ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus'], multiAudio: true, video: true,
     subtitles: 'mov_text', attachments: false, coverArt: true, chapters: true
   },
   m4v:
   {
-    muxer: 'mp4', encoders: ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus', 'flac'], multiAudio: true, video: true,
+    muxer: 'mp4', encoders: ['aac', 'alac', 'libmp3lame', 'ac3', 'eac3', 'libopus'], multiAudio: true, video: true,
     subtitles: 'mov_text', attachments: false, coverArt: true, chapters: true
   },
   mov:
