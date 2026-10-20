@@ -849,7 +849,8 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
   /**
    * Places a menu's anchor at the pointer, or under `from` on the given edge, and opens the menu. A menu still open,
    * or light-dismissed by this very press, closes first and the new one opens on the next frame, so moving from one
-   * row's menu to another's takes one press.
+   * row's menu to another's takes one press. `from` takes focus before the menu shows, because a popover returns
+   * focus on hide to whatever held it when it showed, which after a move would be the previous row.
    */
   const openMenu = (kind: 'row' | 'column', from: HTMLElement, point: { x: number, y: number } | null, edge: 'start' | 'end', prepare?: () => void): void =>
   {
@@ -874,6 +875,10 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
     anchor.style.left = `${at.x - box.left}px`
     anchor.style.top = `${at.y - box.top}px`
     menuReturn.current = from
+    if (from.ownerDocument.activeElement !== from)
+    {
+      from.focus({ preventScroll: true })
+    }
     handle.open()
   }
 

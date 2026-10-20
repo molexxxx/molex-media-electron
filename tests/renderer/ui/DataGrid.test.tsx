@@ -1050,6 +1050,26 @@ describe('DataGrid row menu', () =>
     expect(within(menuNamed('Actions for MM-0004')).getByRole('menuitem', { hidden: true, name: 'Move up' })).toBeInTheDocument()
   })
 
+  it('focuses the new opener before a moved menu shows, so closing it returns there', async () =>
+  {
+    setup({ grid: { renderCell: moreButtonCell } })
+    const order: string[] = []
+    const stop = new AbortController()
+    document.addEventListener('focusin', (event) =>
+    {
+      const target = event.target as HTMLElement
+      order.push(target.getAttribute('aria-label') ?? target.getAttribute('role') ?? target.tagName)
+    }, { signal: stop.signal })
+    pressButton(moreButton('MM-0002'))
+    order.length = 0
+    pressButton(moreButton('MM-0004'))
+    await act(async () => await new Promise((resolve) => requestAnimationFrame(resolve)))
+    stop.abort()
+    const opener = order.indexOf('More actions for MM-0004')
+    expect(opener).toBeGreaterThanOrEqual(0)
+    expect(order.slice(opener + 1)).toContain('menuitem')
+  })
+
   it('keeps a selection the pressed row belongs to, and toggles from the keyboard', () =>
   {
     setup({ grid: { renderCell: moreButtonCell } })
