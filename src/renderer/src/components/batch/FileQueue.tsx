@@ -267,7 +267,7 @@ export default function FileQueue(): React.JSX.Element {
                 ? config.outputDirectory
                 : 'Same as source (global setting)'
           }
-          className="flex-1 bg-transparent text-surface-300 text-xs outline-none truncate min-w-0 placeholder:text-surface-600"
+          className="flex-1 bg-transparent text-surface-300 text-xs truncate min-w-0 placeholder:text-surface-600"
         />
         <button
           onClick={async () => {

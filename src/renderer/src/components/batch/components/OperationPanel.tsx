@@ -264,7 +264,7 @@ function PresetHeader({ name, description, icon }: { name: string; description: 
               </svg>}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-2xs uppercase tracking-wider text-accent-400/80 font-semibold leading-tight">{name}</div>
+          <div className="text-2xs uppercase tracking-wider text-accent-400 font-semibold leading-tight">{name}</div>
           <p className="text-xs text-surface-300 leading-snug truncate">{description}</p>
         </div>
       </div>
@@ -347,12 +347,12 @@ export function NormalizeConfig({ selectedPreset, onApplyPreset }: {
           </FixedTip>
           {compression !== 'off' && (
             <FixedTip label="Dynamic range compression applied after loudness normalization." wide inline>
-              <span className="font-mono text-accent-400/80 cursor-help">DRC:{compression}</span>
+              <span className="font-mono text-accent-400 cursor-help">DRC:{compression}</span>
             </FixedTip>
           )}
           {downmix !== 'keep' && (
             <FixedTip label="Channel layout strategy. Dialog stereo boosts the center channel." wide inline>
-              <span className="font-mono text-accent-400/80 cursor-help">{downmix}</span>
+              <span className="font-mono text-accent-400 cursor-help">{downmix}</span>
             </FixedTip>
           )}
           {selectedPreset && (() => {
@@ -435,7 +435,7 @@ export function NormalizeConfig({ selectedPreset, onApplyPreset }: {
               </div>
               {tpClipRisk && (
                 <FixedTip label="At ceilings above -1 dBTP, lossy re-encoding may produce inter-sample peaks that clip on consumer hardware." wide inline>
-                  <span className="inline-flex items-center gap-1 text-2xs text-amber-300/90 cursor-help">
+                  <span className="inline-flex items-center gap-1 text-2xs text-amber-300 cursor-help">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                       <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
@@ -610,17 +610,17 @@ export function BoostConfig({
           </FixedTip>
           {opts.limiter && (
             <FixedTip label="Brick-wall true-peak limiter applied after the gain stage. Prevents clipping when boost exceeds available headroom." wide inline>
-              <span className="font-mono text-accent-400/80 cursor-help">Lim:{opts.limiterCeiling} dBTP</span>
+              <span className="font-mono text-accent-400 cursor-help">Lim:{opts.limiterCeiling} dBTP</span>
             </FixedTip>
           )}
           {opts.hpfHz > 0 && (
             <FixedTip label="High-pass filter applied before the gain stage. Removes inaudible low-frequency energy that would otherwise consume headroom." wide inline>
-              <span className="font-mono text-accent-400/80 cursor-help">HPF:{opts.hpfHz}Hz</span>
+              <span className="font-mono text-accent-400 cursor-help">HPF:{opts.hpfHz}Hz</span>
             </FixedTip>
           )}
           {clipRisk && (
             <FixedTip label="Positive boost without a limiter can clip on loud peaks. Enable the limiter in Advanced for safety." wide inline>
-              <span className="inline-flex items-center gap-1 cursor-help text-amber-400/90">
+              <span className="inline-flex items-center gap-1 cursor-help text-amber-400">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
@@ -909,11 +909,11 @@ export function ConvertConfig({
               wide
               inline
             >
-              <span className="font-mono text-accent-400/80 cursor-help">V:{codecLabel(vc)}</span>
+              <span className="font-mono text-accent-400 cursor-help">V:{codecLabel(vc)}</span>
             </FixedTip>
           )}
           <FixedTip label={`Audio codec.${losslessA ? ' Lossless / pass-through - bitrate is ignored.' : ''}`} wide inline>
-            <span className="font-mono text-accent-400/80 cursor-help">A:{codecLabel(ac)}</span>
+            <span className="font-mono text-accent-400 cursor-help">A:{codecLabel(ac)}</span>
           </FixedTip>
           {!audioOnly && options.videoBitrate && !losslessV && (
             <FixedTip label="Target video bitrate. Higher = better quality + larger file. Ignored when codec is Copy or a lossless codec." wide inline>
@@ -927,7 +927,7 @@ export function ConvertConfig({
           )}
           {(losslessV || losslessA) && (
             <FixedTip label="At least one stream is lossless - output is bit-exact for that stream. Bitrate dropdowns are ignored." wide inline>
-              <span className="inline-flex items-center gap-1 cursor-help text-emerald-400/90">
+              <span className="inline-flex items-center gap-1 cursor-help text-emerald-400">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -937,12 +937,12 @@ export function ConvertConfig({
           )}
           {gpuEligible && !losslessV && (
             <FixedTip label="This codec can be hardware-accelerated (NVENC / QSV / AMF) when GPU acceleration is enabled in settings. Encodes much faster, sometimes at slightly lower quality per bit." wide inline>
-              <span className="font-mono text-accent-400/70 cursor-help">GPU</span>
+              <span className="font-mono text-accent-400 cursor-help">GPU</span>
             </FixedTip>
           )}
           {slowEncode && (
             <FixedTip label="This codec is known to be slow on CPU (often 5–10× slower than H.264). The app isn't hung - give it time, or pick H.264 / H.265 for faster encodes." wide inline>
-              <span className="inline-flex items-center gap-1 cursor-help text-amber-400/80">
+              <span className="inline-flex items-center gap-1 cursor-help text-amber-400">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                 </svg>
@@ -952,7 +952,7 @@ export function ConvertConfig({
           )}
           {errorCount > 0 && (
             <FixedTip label="One or more codec/container combinations are invalid for this format. FFmpeg will refuse to mux. Fix the conflicts below." wide inline>
-              <span className="inline-flex items-center gap-1 cursor-help text-red-400/90">
+              <span className="inline-flex items-center gap-1 cursor-help text-red-400">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
                 </svg>
@@ -1330,15 +1330,15 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
         <div className="flex items-center gap-1.5 flex-wrap text-2xs">
           {videoCopyTip && (
             <FixedTip label="Stream copy is instant and lossless. Container must accept the source codec." wide inline>
-              <span className="text-2xs text-emerald-300/90 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5 cursor-help">⚡ Lossless copy</span>
+              <span className="text-2xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5 cursor-help">⚡ Lossless copy</span>
             </FixedTip>
           )}
           {mode === 'video' && options.videoReencode && (
-            <span className="text-2xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Re-encoding (slower)</span>
+            <span className="text-2xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">Re-encoding (slower)</span>
           )}
           {gifSizeWarn && (
             <FixedTip label="At these settings GIFs over ~5–10 MB are likely. Reduce width or fps for smaller files." wide inline>
-              <span className="text-2xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5 cursor-help">~{gifEstimate} MB/s est.</span>
+              <span className="text-2xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5 cursor-help">~{gifEstimate} MB/s est.</span>
             </FixedTip>
           )}
           {mode === 'frames' && options.framesMode === 'count' && !trimActive && (
@@ -1369,7 +1369,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
             <label className={lblWide}>Stream</label>
             <input type="number" min="0" max="10" value={options.streamIndex}
               onChange={(e) => patch({ streamIndex: parseInt(e.target.value, 10) || 0 })}
-              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50 hover:border-white/[0.12] transition-colors" />
+              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50 hover:border-white/[0.12] transition-colors" />
           </div>
           <div>
             <label className={lblWide}>Bitrate</label>
@@ -1422,7 +1422,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="number" min="0" max="51"
                 value={options.videoCrf ?? 20}
                 onChange={(e) => patch({ videoCrf: parseInt(e.target.value, 10) || 20 })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50 hover:border-white/[0.12] transition-colors" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50 hover:border-white/[0.12] transition-colors" />
             </div>
           )}
         </div>
@@ -1435,14 +1435,14 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
             <input type="number" min="0" max="3840"
               value={options.gifWidth ?? 480}
               onChange={(e) => patch({ gifWidth: parseInt(e.target.value, 10) || 0 })}
-              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
           </div>
           <div>
             <label className={lblWide}>FPS</label>
             <input type="number" min="1" max="60"
               value={options.gifFps ?? 12}
               onChange={(e) => patch({ gifFps: parseInt(e.target.value, 10) || 12 })}
-              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
           </div>
           <div>
             <label className={lblWide}>Dither</label>
@@ -1489,7 +1489,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="number" min="0.1" step="0.1"
                 value={options.frameInterval ?? 1}
                 onChange={(e) => patch({ frameInterval: parseFloat(e.target.value) || 1 })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
             </div>
           )}
           {options.framesMode === 'fps' && (
@@ -1498,7 +1498,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="number" min="0.1" step="0.1"
                 value={options.framesFps ?? 1}
                 onChange={(e) => patch({ framesFps: parseFloat(e.target.value) || 1 })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
             </div>
           )}
           {options.framesMode === 'count' && (
@@ -1507,7 +1507,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="number" min="1" max="1000"
                 value={options.frameCount ?? 25}
                 onChange={(e) => patch({ frameCount: parseInt(e.target.value, 10) || 25 })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
             </div>
           )}
           <div>
@@ -1528,7 +1528,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="number" min="2" max="31"
                 value={options.jpgQuality ?? 3}
                 onChange={(e) => patch({ jpgQuality: parseInt(e.target.value, 10) || 3 })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
             </div>
           )}
         </div>
@@ -1548,7 +1548,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
             <label className={lblWide}>Stream</label>
             <input type="number" min="0" max="10" value={options.streamIndex}
               onChange={(e) => patch({ streamIndex: parseInt(e.target.value, 10) || 0 })}
-              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+              className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
           </div>
         </div>
       )}
@@ -1562,7 +1562,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="text" placeholder="00:00:00"
                 value={options.startTime || ''}
                 onChange={(e) => patch({ startTime: e.target.value })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono focus:border-accent-500/50" />
             </div>
           </FixedTip>
           <FixedTip label="Clip duration after start. hh:mm:ss(.ms) or seconds. Empty = run to end of source." wide inline>
@@ -1571,7 +1571,7 @@ export function ExtractConfig({ options, setOptions, selectedExtractPreset, onAp
               <input type="text" placeholder="00:00:10"
                 value={options.duration || ''}
                 onChange={(e) => patch({ duration: e.target.value })}
-                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono focus:outline-none focus:border-accent-500/50" />
+                className="w-full bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1.5 text-xs text-surface-200 font-mono focus:border-accent-500/50" />
             </div>
           </FixedTip>
           {trimActive && (
@@ -1797,7 +1797,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
               <span className="text-2xs text-surface-500 w-14">Size</span>
               <input type="number" min={1} value={options.targetSizeMB || ''}
                 onChange={(e) => patch({ targetSizeMB: parseFloat(e.target.value) || 0 })}
-                className="w-20 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-surface-200 font-mono text-center focus:outline-none focus:border-accent-500/50" />
+                className="w-20 bg-surface-900/80 border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-surface-200 font-mono text-center focus:border-accent-500/50" />
               <span className="text-2xs text-surface-500">MB</span>
               <FixedTip label="Two-pass roughly doubles encoding time but hits the target size very accurately." wide inline>
                 <label className="flex items-center gap-1.5 cursor-pointer">
@@ -1809,7 +1809,7 @@ export function CompressConfig({ options, setOptions, selectedCompressPreset, on
               </FixedTip>
               {estimatedKbps && estimatedKbps.video < 800 && (
                 <FixedTip label="Very low video bitrate. Quality will suffer noticeably - consider a larger target or lower resolution." wide inline>
-                  <span className="inline-flex items-center gap-1 text-2xs text-amber-300/90 cursor-help">
+                  <span className="inline-flex items-center gap-1 text-2xs text-amber-300 cursor-help">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                     Low bitrate
                   </span>

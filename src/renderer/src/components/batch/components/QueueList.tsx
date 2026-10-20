@@ -177,7 +177,7 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
         <div
           draggable
           onDragStart={(e) => onDragStart(e, index)}
-          className="cursor-grab active:cursor-grabbing text-surface-700 hover:text-surface-400 transition-colors shrink-0"
+          className="cursor-grab active:cursor-grabbing text-surface-500 hover:text-surface-400 transition-colors shrink-0"
           title="Drag to reorder"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -279,7 +279,7 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
       {!locked && (
         <button
           onClick={() => onRemove(file.path)}
-          className="opacity-0 group-hover:opacity-100 text-surface-600 hover:text-red-400 transition-all shrink-0"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-surface-600 hover:text-red-400 transition-all shrink-0"
           title="Remove from queue"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -290,7 +290,7 @@ function QueueRow({ file, index, task, isDragging, onDragStart, onDragOver, onDr
 
       {/* Inline error message */}
       {failed && task?.error && (
-        <div className="w-full text-2xs text-red-400/80 truncate pl-7 -mt-0.5 pb-0.5">{task.error}</div>
+        <div className="w-full text-2xs text-red-400 truncate pl-7 -mt-0.5 pb-0.5">{task.error}</div>
       )}
 
       {/* Settings dropdown card */}
@@ -454,7 +454,7 @@ export function QueueList({ files, onAddFiles }: {
           </div>
           <p className="text-surface-400 text-sm font-medium">Drop files here to queue</p>
           <p className="text-surface-600 text-2xs mt-1.5">Files inherit the selected operation above</p>
-          <p className="text-surface-700 text-2xs mt-3 font-mono">MP4 MKV AVI MOV MP3 WAV FLAC OGG M4A AAC +more</p>
+          <p className="text-surface-500 text-2xs mt-3 font-mono">MP4 MKV AVI MOV MP3 WAV FLAC OGG M4A AAC +more</p>
         </div>
       ) : (
         <div className="flex-1 overflow-auto py-1 px-1" onDragEnd={handleDragEnd}>

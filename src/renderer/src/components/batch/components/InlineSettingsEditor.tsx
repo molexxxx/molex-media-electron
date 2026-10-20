@@ -143,7 +143,7 @@ function InlineNormalizeConfig({ normalizeOptions, setNormalizeOptions, selected
         if (!p) return null
         return (
           <div className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-accent-500/[0.04] border-l-2 border-accent-500/40">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent-400/80 mt-[1px] shrink-0">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent-400 mt-[1px] shrink-0">
               <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><circle cx="12" cy="8" r="0.5" fill="currentColor" />
             </svg>
             <p className="text-2xs text-surface-300 leading-relaxed italic">{p.description}</p>
@@ -156,8 +156,8 @@ function InlineNormalizeConfig({ normalizeOptions, setNormalizeOptions, selected
         <span className="font-mono">I={normalizeOptions.I} LUFS</span>
         <span className="font-mono">TP={normalizeOptions.TP} dBTP</span>
         <span className="font-mono">LRA={normalizeOptions.LRA} LU</span>
-        {compression !== 'off' && <span className="font-mono text-accent-400/80">DRC:{compression}</span>}
-        {downmix !== 'keep' && <span className="font-mono text-accent-400/80">{downmix}</span>}
+        {compression !== 'off' && <span className="font-mono text-accent-400">DRC:{compression}</span>}
+        {downmix !== 'keep' && <span className="font-mono text-accent-400">{downmix}</span>}
       </div>
 
       {/* Loudness + LRA sliders */}
@@ -215,7 +215,7 @@ function InlineNormalizeConfig({ normalizeOptions, setNormalizeOptions, selected
         </div>
         {tpClipRisk && (
           <FixedTip label="At ceilings above -1 dBTP, lossy re-encoding (AAC, MP3, AC3) may produce inter-sample peaks that clip on consumer hardware." wide inline>
-            <span className="inline-flex items-center gap-1 text-2xs text-amber-300/90 cursor-help">
+            <span className="inline-flex items-center gap-1 text-2xs text-amber-300 cursor-help">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>

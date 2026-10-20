@@ -2,7 +2,7 @@
  * @module App
  * @description Root application component with view routing and global IPC setup.
  *
- * Initialises the IPC bridge via {@link useIPC}, handles global drag-and-drop
+ * Initializes the IPC bridge via {@link useIPC}, handles global drag-and-drop
  * file additions, manages view mounting history for state preservation,
  * supports popout player mode, and conditionally renders the setup wizard
  * when FFmpeg is not available.
@@ -20,7 +20,7 @@ import { LogViewer } from './components/logs'
 import { MediaEditor } from './components/editor'
 import { MediaPlayer } from './components/player'
 import { SetupWizard } from './components/setup'
-import { AmbientBackground } from './components/dashboard/components/DashboardBackground'
+import { PreviewBatch } from './dev/PreviewBatch'
 
 function App(): React.JSX.Element {
   useIPC()
@@ -173,7 +173,7 @@ function App(): React.JSX.Element {
 
   const views: { id: View; el: React.JSX.Element }[] = [
     { id: 'dashboard', el: <Dashboard /> },
-    { id: 'batch', el: <FileQueue /> },
+    { id: 'batch', el: import.meta.env.DEV ? <PreviewBatch /> : <FileQueue /> },
     { id: 'editor', el: <MediaEditor /> },
     { id: 'player', el: <MediaPlayer /> },
     { id: 'settings', el: <Settings /> },
@@ -184,7 +184,6 @@ function App(): React.JSX.Element {
 
   return (
     <div className="h-full flex relative">
-      <AmbientBackground />
       {/* Sidebar - full height of window */}
       <div className="shrink-0 h-full">
         <Sidebar />

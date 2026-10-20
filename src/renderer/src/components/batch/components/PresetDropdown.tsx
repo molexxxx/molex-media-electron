@@ -85,7 +85,7 @@ export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, c
       {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 bg-surface-900/80 border border-white/[0.06] rounded-lg text-xs text-surface-200 hover:border-white/[0.12] focus:outline-none focus:border-accent-500/50 transition-colors ${
+        className={`flex items-center gap-2 bg-surface-900/80 border border-white/[0.06] rounded-lg text-xs text-surface-200 hover:border-white/[0.12] focus:border-accent-500/50 transition-colors ${
           compact ? 'px-2.5 py-1' : 'px-2.5 py-1.5 w-full sm:min-w-[220px]'
         }`}
       >
@@ -150,11 +150,11 @@ export function PresetDropdown({ categories, activeId, onSelect, triggerLabel, c
                     <PresetIcon
                       name={p.icon}
                       size={14}
-                      className={isActive ? 'text-accent-400' : 'text-surface-500 group-hover:text-accent-400/70'}
+                      className={isActive ? 'text-accent-400' : 'text-surface-500 group-hover:text-accent-400'}
                     />
                     <span className="font-medium truncate">{p.label}</span>
                     <span className={`ml-auto text-2xs truncate max-w-[140px] ${
-                      isActive ? 'text-accent-400/60' : 'text-surface-600 group-hover:text-surface-500'
+                      isActive ? 'text-accent-400' : 'text-surface-600 group-hover:text-surface-500'
                     }`}>
                       {p.description}
                     </span>
