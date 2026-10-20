@@ -36,8 +36,10 @@ import
   jobNotes,
   loudnessBlocks,
   measuredRef,
+  originalDoneText,
   originalsText,
   originalText,
+  outputDoneText,
   outputNowText,
   PLAN_CAPTIONS,
   PLAN_WORDS,
@@ -54,7 +56,7 @@ import
 import { screenMessage } from '../../../src/renderer/src/copy/batch'
 import type { StreamMeasurement } from '../../../src/shared/audio/events'
 import type { GainPlan, MediaFacts } from '../../../src/shared/audio/types'
-import type { BatchPolicy, JobMeasurement, JobPlan, JobView, PlanIssue } from '../../../src/shared/jobs/types'
+import type { BatchPolicy, JobMeasurement, JobPlan, JobResult, JobView, PlanIssue } from '../../../src/shared/jobs/types'
 
 afterEach(() =>
 {
@@ -529,6 +531,29 @@ describe('plan sentences', () =>
     expect(outputNowText({ ...output, resolution: 'replace-original' }, POLICY, 'win32')).toBeNull()
   })
 
+  it('says what a finished job wrote at its output path instead of what was there before the run', () =>
+  {
+    expect(outputDoneText({ placement: { kind: 'new' } }, 'win32')).toBe(PLAN_WORDS.written)
+    expect(outputDoneText({ placement: { kind: 'renamed', planned: 'D:\\Exports\\film.mp4' } }, 'win32'))
+      .toBe('Written by this job; film.mp4 was taken, so it got this name.')
+    expect(outputDoneText({ placement: { kind: 'overwrote', previous: { status: 'trashed' } } }, 'darwin'))
+      .toBe('Written by this job; the file it replaced went to the Trash.')
+    expect(outputDoneText({ placement: { kind: 'overwrote', previous: { status: 'kept', path: 'D:\\Exports\\film (previous).mp4', reason: 'bin refused' } } }, 'win32'))
+      .toBe('Written by this job; the file it replaced stays as film (previous).mp4.')
+    expect(outputDoneText({ placement: { kind: 'replaced-original', original: { status: 'trashed' } } }, 'win32'))
+      .toBe('Written by this job in place of the original.')
+  })
+
+  it('says what happened to a finished job original only when the output replaced it', () =>
+  {
+    expect(originalDoneText({ placement: { kind: 'new' } }, 'win32')).toBeNull()
+    expect(originalDoneText({ placement: { kind: 'overwrote', previous: { status: 'trashed' } } }, 'win32')).toBeNull()
+    expect(originalDoneText({ placement: { kind: 'replaced-original', original: { status: 'trashed' } } }, 'win32'))
+      .toBe('Went to the Recycle Bin after the output verified.')
+    expect(originalDoneText({ placement: { kind: 'replaced-original', original: { status: 'kept', path: 'D:\\Live\\set (original).flac', reason: 'keep' } } }, 'win32'))
+      .toBe('Kept as set (original).flac.')
+  })
+
   it('states what happens to the original', () =>
   {
     const replace = jobPlan({ source: { path: 'D:\\Live\\concert-set-02.flac', size: 1, mtimeMs: 1 }, output: { ...jobPlan().output, resolution: 'replace-original' } })
@@ -770,6 +795,50 @@ describe('PlanTab, one job', () =>
     expect(section(PLAN_CAPTIONS.issues)).toHaveTextContent(PLAN_WORDS.noIssues)
     fireEvent.click(screen.getByRole('button', { name: PLAN_WORDS.measureNow }))
     expect(onMeasureNow).toHaveBeenCalledWith('MM-0001')
+  })
+
+  it('states the placed path and what the placement did for a finished job, not the report from before its run', () =>
+  {
+    const view = jobView('MM-0001', { state: 'done' })
+    const placed = (placement: JobResult['placement'], outputPath: string): JobResult =>
+      ({ outputPath, outputKind: 'file', container: 'mp4', placement } as JobResult)
+    const { rerender } = render(
+      <PlanTab
+        jobs={[view]}
+        detail={{ view, plan: jobPlan(), media: null, measurement: null, result: placed({ kind: 'new' }, 'D:\\Exports\\film.mp4') }}
+        entries={[entry('MM-0001', { plan: jobPlan() })]}
+        policy={POLICY}
+        platform='win32'
+      />
+    )
+    expect(section(PLAN_CAPTIONS.output)).toHaveTextContent('D:\\Exports\\film.mp4')
+    expect(section(PLAN_CAPTIONS.output)).toHaveTextContent(PLAN_WORDS.written)
+    expect(section(PLAN_CAPTIONS.output)).not.toHaveTextContent(PLAN_WORDS.noFile)
+    expect(section(PLAN_CAPTIONS.original)).toHaveTextContent(PLAN_WORDS.notTouched)
+
+    rerender(
+      <PlanTab
+        jobs={[view]}
+        detail={{ view, plan: jobPlan(), media: null, measurement: null, result: placed({ kind: 'renamed', planned: 'D:\\Exports\\film.mp4' }, 'D:\\Exports\\film (2).mp4') }}
+        entries={[entry('MM-0001', { plan: jobPlan() })]}
+        policy={POLICY}
+        platform='win32'
+      />
+    )
+    expect(section(PLAN_CAPTIONS.output)).toHaveTextContent('D:\\Exports\\film (2).mp4')
+    expect(section(PLAN_CAPTIONS.output)).toHaveTextContent('film.mp4 was taken')
+
+    const replace = jobPlan({ output: { ...jobPlan().output, resolution: 'replace-original' } })
+    rerender(
+      <PlanTab
+        jobs={[view]}
+        detail={{ view, plan: replace, media: null, measurement: null, result: placed({ kind: 'replaced-original', original: { status: 'trashed' } }, 'D:\\Rips\\film.mkv') }}
+        policy={POLICY}
+        platform='win32'
+      />
+    )
+    expect(section(PLAN_CAPTIONS.output)).toHaveTextContent('Written by this job in place of the original.')
+    expect(section(PLAN_CAPTIONS.original)).toHaveTextContent('Went to the Recycle Bin after the output verified.')
   })
 
   it('discloses the planned command with placeholders until measured, quoted for the shell', () =>

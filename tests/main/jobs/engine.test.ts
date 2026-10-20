@@ -4,8 +4,9 @@
  * `assertWireSafe`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { basename, dirname, join } from 'node:path'
-import { albumGroupsOf, buildJobResult, createJobEngine, gpuVendor, persistenceRunAlert, type EngineDeps, type JobEngine } from '../../../src/main/jobs/engine'
+import { basename, dirname, join, win32 } from 'node:path'
+import { albumGroupsOf, audioStampFields, buildJobResult, createJobEngine, gpuVendor, persistenceRunAlert, type EngineDeps, type JobEngine } from '../../../src/main/jobs/engine'
+import { recipeOutcomes } from '../../../src/main/jobs/history'
 import { engineError } from '../../../src/main/jobs/scheduler'
 import type { EventSender, FileIdentity, FileStat, FsOps, JobLogger, PersistenceIO, PlannerIO, VolumeInfo } from '../../../src/main/jobs/deps'
 import type { JobProbeQueue, ProbedSource } from '../../../src/main/jobs/probe-queue'
@@ -17,14 +18,20 @@ import type { BuildCapabilities } from '../../../src/main/ffmpeg/audio/encoders'
 import type { Exec, ExecOptions, ExecResult } from '../../../src/main/ffmpeg/exec'
 import type { JobsConfig } from '../../../src/main/config'
 import type { CommandResult, JobCommandName, JobCommandRequest, JobCommandResponse, JobEvent, JobEventBatch } from '../../../src/shared/jobs/contract'
-import type { AudioFacts, MediaFacts } from '../../../src/shared/audio/types'
-import { applyDefaultPreset, findPreset } from '../../../src/shared/jobs/presets'
+import type { AudioFacts, MediaFacts, StreamVerdict, VerifiedStream } from '../../../src/shared/audio/types'
+import { applyDefaultPreset, applyPreset, findPreset } from '../../../src/shared/jobs/presets'
 import { firstDefaultRecipe } from '../../../src/main/config'
 import type { Recipe } from '../../../src/shared/jobs/recipes'
 import type { BatchPolicy, CapabilitySummary, JobMeasurement, JobView, RunSettings, Verification } from '../../../src/shared/jobs/types'
 import type { JobId } from '../../../src/shared/jobs/ids'
 import { assertWireSafe } from '../../../src/shared/jobs/wire'
 import { createManualTimers, type ManualTimers } from '../helpers/manual-timers'
+
+/** A volume root as the engine sees it on Windows, recognized on every host so the fake disk agrees on Linux CI. */
+function isRoot(path: string): boolean
+{
+  return dirname(path) === path || win32.parse(path).root === path
+}
 
 const USER_DATA = 'C:\\app'
 const MEDIA = 'C:\\media'
@@ -352,7 +359,7 @@ function plannerIO(disk: Disk, free: Map<string, number>, unreachable: Set<strin
       {
         return { size: file.size, mtimeMs: 1000, isFile: true, isDirectory: false, dev: '1', ino: String(file.ino) }
       }
-      return disk.dirs.has(path) || dirname(path) === path ? { size: 0, mtimeMs: 1000, isFile: false, isDirectory: true, dev: '1', ino: '1' } : null
+      return disk.dirs.has(path) || isRoot(path) ? { size: 0, mtimeMs: 1000, isFile: false, isDirectory: true, dev: '1', ino: '1' } : null
     },
     statfs: async (path) => ({ freeBytes: free.get(path.slice(0, 3).toLowerCase()) ?? 500_000_000_000, totalBytes: 1_000_000_000_000 }),
     probeWrite: async () => true,
@@ -674,7 +681,7 @@ function harness(options: HarnessOptions = {})
     appVersion: '5.0.0',
     stat: (path) => (options.offline !== undefined && options.offline.roots.has(path.slice(0, 3))
       ? new Promise((resolve) => options.offline?.waiters.push(() => resolve({})))
-      : disk.dirs.has(path) || disk.files.has(path) || dirname(path) === path ? Promise.resolve({}) : Promise.reject(codeError('ENOENT'))),
+      : disk.dirs.has(path) || disk.files.has(path) || isRoot(path) ? Promise.resolve({}) : Promise.reject(codeError('ENOENT'))),
     storeLimits: options.storeLimits
   }
   const engine = createJobEngine(deps)
@@ -1279,6 +1286,136 @@ describe('pure helpers', () =>
     })
     expect(result.stamp).toMatchObject({ outputName: 'clip.mp4', decode: 'sampled', size: { targetBytes: 200, status: 'within' }, frames: 120, warnings: 1 })
     expect(result.warnings.map((w) => w.code)).toEqual(['larger-than-source'])
+  })
+})
+
+describe('audio result stamps', () =>
+{
+  function verified(lufs: number | null, peak: number | null, preEncode: number | null = peak): VerifiedStream
+  {
+    return { outIndex: 0, integratedLufs: lufs, loudnessRangeLu: null, maxShortTermLufs: null, preEncodeTruePeakDbtp: preEncode, truePeakDbtp: peak, samplePeakDbfs: null, meter: 'soxr-8x' }
+  }
+
+  function verdict(audioIndex: number, outcome: StreamVerdict['outcome'], extra: { status?: StreamVerdict['loudness']['status']; deviation?: number; tolerance?: number; reference?: 'target' | 'reachable'; peak?: 'within' | 'over' } = {}): StreamVerdict
+  {
+    return {
+      audioIndex,
+      outcome,
+      loudness: { status: extra.status ?? 'within', reference: extra.reference ?? 'target', referenceLufs: -16, deviationLu: extra.deviation ?? -0.2, toleranceLu: extra.tolerance ?? 1, standardTolerance: { value: 1, unit: 'dB' } },
+      shortTerm: { status: 'not-checked', limitLufs: null, maxLufs: null, toleranceLu: 0 },
+      truePeak: { status: extra.peak ?? 'within', basis: 'pre-encode', gateDbtp: -1, overDb: null },
+      decoded: { status: 'within', limitDbtp: -1, overDb: null },
+      samplePeakOver: false,
+      warnings: [],
+      meterMarginDb: 0,
+      encodePasses: 1
+    }
+  }
+
+  function measured(classes: ReadonlyArray<'lossless' | 'lossy-high'>): JobMeasurement
+  {
+    return {
+      pass: 'source',
+      measuredAt: 1,
+      streams: classes.map((outputClass, audioIndex) => ({ measurement: { audioIndex } as never, plan: { audioIndex, ceiling: { outputClass } } as never })),
+      album: null,
+      messages: []
+    }
+  }
+
+  function audioVerification(verdictOf: Verification['verdict'], streams: NonNullable<Verification['audio']>): Verification
+  {
+    return { verdict: verdictOf, encodePasses: 1, audio: streams, media: null, messages: [] }
+  }
+
+  it('stamps a Normalize job with its worst stream: loudness, reference, check, class, and true peak', () =>
+  {
+    const recipe = applyPreset('apple-podcasts', { kind: 'same-as-source' }) as Recipe
+    const verification = audioVerification('outside-tolerance', [
+      { verified: verified(-16.2, -1.8), verdict: verdict(0, 'verified') },
+      { verified: verified(-19.4, -3.1, -3.3), verdict: verdict(1, 'outside-tolerance', { status: 'below', deviation: -3.4, peak: 'over' }) }
+    ])
+    const stamp = audioStampFields({ recipe, measurement: measured(['lossless', 'lossy-high']), plan: null }, verification)
+    expect(stamp.verdictStream).toBe(1)
+    expect(stamp.loudness).toEqual({
+      lufs: -19.4,
+      unit: 'LKFS',
+      reference: 'target',
+      referenceLufs: -16,
+      deviation: -3.4,
+      deviationUnit: 'dB',
+      check: 1,
+      checkClass: 'lossy',
+      status: 'below'
+    })
+    expect(stamp.truePeak).toEqual({ dbtp: -3.1, preEncodeDbtp: -3.3, limitDbtp: -1, status: 'over' })
+  })
+
+  it('takes the class from the static plan without a measurement and keeps a reachable reference', () =>
+  {
+    const recipe = applyDefaultPreset('normalize', { kind: 'same-as-source' })
+    const verification = audioVerification('verified-below-target', [
+      { verified: verified(-18.9, -1.2), verdict: verdict(0, 'passthrough', { status: 'not-checked' }) },
+      { verified: verified(-19.1, -1.4), verdict: verdict(1, 'verified-below-target', { reference: 'reachable', tolerance: 0.5 }) }
+    ])
+    const plan = { audio: [{ audioIndex: 0, ceiling: { outputClass: 'lossy-low' } }, { audioIndex: 1, ceiling: { outputClass: 'lossless' } }] } as never
+    const stamp = audioStampFields({ recipe, measurement: null, plan }, verification)
+    expect(stamp.verdictStream).toBe(1)
+    expect(stamp.loudness).toMatchObject({ lufs: -19.1, reference: 'reachable', check: 0.5, checkClass: 'lossless', status: 'within', deviationUnit: 'LU' })
+  })
+
+  it('stamps a Gain job in LUFS and LU, and the first stream when every stream verified', () =>
+  {
+    const recipe = applyDefaultPreset('boost', { kind: 'same-as-source' })
+    const verification = audioVerification('verified', [
+      { verified: verified(-14.1, -1.5), verdict: verdict(0, 'verified') },
+      { verified: verified(-14.3, -1.7), verdict: verdict(1, 'verified') }
+    ])
+    const stamp = audioStampFields({ recipe, measurement: measured(['lossy-high', 'lossy-high']), plan: null }, verification)
+    expect(stamp.verdictStream).toBe(0)
+    expect(stamp.loudness).toMatchObject({ lufs: -14.1, unit: 'LUFS', deviationUnit: 'LU', checkClass: 'lossy' })
+    expect(stamp.truePeak?.status).toBe('within')
+  })
+
+  it('leaves loudness and true peak out when nothing measured them, and every audio field out for other operations', () =>
+  {
+    const recipe = applyDefaultPreset('normalize', { kind: 'same-as-source' })
+    const unmeasured = audioVerification('failed', [{ verified: verified(null, null), verdict: verdict(0, 'failed', { status: 'not-checked' }) }])
+    expect(audioStampFields({ recipe, measurement: null, plan: null }, unmeasured)).toEqual({ verdictStream: 0, loudness: null, truePeak: null })
+    expect(audioStampFields({ recipe, measurement: null, plan: null }, { ...unmeasured, audio: [{ verified: null, verdict: verdict(0, 'failed') }] }))
+      .toEqual({ verdictStream: 0, loudness: null, truePeak: null })
+    const none = { verdictStream: null, loudness: null, truePeak: null }
+    expect(audioStampFields({ recipe, measurement: null, plan: null }, null)).toEqual(none)
+    expect(audioStampFields({ recipe, measurement: null, plan: null }, { ...unmeasured, audio: null })).toEqual(none)
+    expect(audioStampFields({ recipe: applyDefaultPreset('convert', { kind: 'same-as-source' }), measurement: null, plan: null }, unmeasured)).toEqual(none)
+  })
+
+  it('gives the summary the checks its verified count was judged by, so every surface agrees', () =>
+  {
+    const recipe = applyDefaultPreset('normalize', { kind: 'same-as-source' })
+    const levels = [-18.4, -18.2, -18]
+    const records = levels.map((lufs, n) =>
+    {
+      const verification = audioVerification('verified', [{ verified: verified(lufs, -3.5), verdict: verdict(0, 'verified', { deviation: lufs + 18 }) }])
+      const job = { recipe, source: { size: 100 }, verification, measurement: measured([n === 0 ? 'lossless' : 'lossy-high']), plan: null } as never
+      const result = buildJobResult({
+        job,
+        artifact: { kind: 'file', path: `C:\\w\\${n}.part`, container: n === 0 ? 'flac' : 'mp3', bytes: 90, durationSec: 30, encoder: { video: null, audio: ['flac'] } },
+        placed: { status: 'done', finalPath: `C:\\out\\${n}-normalize.mp3`, placement: { kind: 'new' }, warnings: [], previous: null, copied: false, workDirRemoved: true },
+        warnings: [],
+        notes: [],
+        elapsedMs: 10
+      })
+      expect(result.stamp).toMatchObject({ verdict: 'verified', decode: 'full', verdictStream: 0 })
+      return { jobId: `MM-000${n + 1}`, attempt: 1, state: 'done', op: 'normalize', recipe, verification, measurement: measured(['lossy-high']), result } as never
+    })
+    const [outcome] = recipeOutcomes(records)
+    expect(outcome.verified).toBe(3)
+    expect(outcome.loudness?.checks).toEqual([
+      { checkClass: 'lossless', check: 1, jobs: 1, within: 1 },
+      { checkClass: 'lossy', check: 1, jobs: 2, within: 2 }
+    ])
+    expect(outcome.loudness).toMatchObject({ minLufs: -18.4, maxLufs: -18, streams: 3, maxTruePeakDbtp: -3.5 })
   })
 })
 

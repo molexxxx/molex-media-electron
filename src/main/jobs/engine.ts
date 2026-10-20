@@ -5,6 +5,7 @@
  */
 
 import { join } from 'node:path'
+import { findLoudnessPreset } from '../../shared/audio/presets'
 import type { CommandError, CommandResult, JobCommandName, JobCommandRequest, JobCommandResponse } from '../../shared/jobs/contract'
 import { describeRecipe } from '../../shared/jobs/describe'
 import { formatRunId, parseRunId, type JobId, type RunId } from '../../shared/jobs/ids'
@@ -33,6 +34,7 @@ import {
   type WorkersState
 } from '../../shared/jobs/types'
 import type { JobsConfig } from '../config'
+import { worstOutcome } from '../ffmpeg/audio/job'
 import type { TimerHandle } from '../timers'
 import { AlbumTasks, type AlbumTaskDeps } from './album'
 import { AnalysisTasks, type AnalysisTaskDeps } from './analysis'
@@ -195,6 +197,58 @@ export function outcomeWarnings(job: Pick<Job, 'recipe' | 'source'>, input: Pick
   return warnings
 }
 
+/** The stamp fields a Normalize or Gain job takes from its verdict stream. */
+export type AudioStampFields = Pick<ResultStamp, 'verdictStream' | 'loudness' | 'truePeak'>
+
+const NO_AUDIO_STAMP: AudioStampFields = { verdictStream: null, loudness: null, truePeak: null }
+
+/**
+ * The verdict stream's loudness and true peak, the worst stream as `worstOutcome` ranks them, so the row stamp, the
+ * summary's checks, and the strip plot read the values Verify judged. The check class comes from the stream's
+ * ceiling, and the deviation unit from the preset as the Verify messages word it. All null for other operations.
+ */
+export function audioStampFields(job: Pick<Job, 'recipe' | 'measurement' | 'plan'>, verification: Job['verification']): AudioStampFields
+{
+  const recipe = job.recipe
+  const audio = verification?.audio ?? []
+  if ((recipe.kind !== 'normalize' && recipe.kind !== 'boost') || audio.length === 0)
+  {
+    return NO_AUDIO_STAMP
+  }
+  const worst = worstOutcome(audio.map((stream) => stream.verdict))
+  const { verdict, verified } = audio.find((stream) => stream.verdict.outcome === worst) ?? audio[0]
+  const index = verdict.audioIndex
+  const ceiling = job.measurement?.streams.find((stream) => stream.plan?.audioIndex === index)?.plan?.ceiling ??
+    job.plan?.audio.find((stream) => stream.audioIndex === index)?.ceiling ?? null
+  const lufs = verified?.integratedLufs ?? null
+  const dbtp = verified?.truePeakDbtp ?? null
+  const normalize = recipe.kind === 'normalize'
+  return {
+    verdictStream: index,
+    loudness: lufs === null
+      ? null
+      : {
+        lufs,
+        unit: normalize ? recipe.target.unit : 'LUFS',
+        reference: verdict.loudness.reference,
+        referenceLufs: verdict.loudness.referenceLufs,
+        deviation: verdict.loudness.deviationLu,
+        deviationUnit: normalize ? findLoudnessPreset(recipe.presetId)?.deviationUnit ?? 'LU' : 'LU',
+        check: verdict.loudness.toleranceLu,
+        checkClass: ceiling?.outputClass === 'lossless' ? 'lossless' : 'lossy',
+        status: verdict.loudness.status
+      },
+    truePeak: dbtp === null
+      ? null
+      : {
+        dbtp,
+        preEncodeDbtp: verified?.preEncodeTruePeakDbtp ?? null,
+        limitDbtp: verdict.truePeak.gateDbtp,
+        status: verdict.truePeak.status === 'over' ? 'over' : 'within'
+      }
+  }
+}
+
 /** A done job's result and row stamp from its artifact, verification, and placement. */
 export function buildJobResult(input: ResultInput): JobResult
 {
@@ -210,11 +264,9 @@ export function buildJobResult(input: ResultInput): JobResult
     inputBytes: job.source.size,
     outputBytes: artifact.bytes,
     durationSec: artifact.durationSec,
-    decode: media?.decode ?? null,
+    decode: media?.decode ?? (verification?.audio ? 'full' : null),
     audioStreams: verification?.audio?.length ?? artifact.encoder.audio.length,
-    verdictStream: null,
-    loudness: null,
-    truePeak: null,
+    ...audioStampFields(job, verification),
     size: media !== null && media.size.targetBytes !== null && media.size.status !== 'not-checked'
       ? { targetBytes: media.size.targetBytes, status: media.size.status }
       : null,

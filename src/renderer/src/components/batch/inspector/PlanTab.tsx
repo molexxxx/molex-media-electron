@@ -9,6 +9,7 @@ import type
   BatchPolicy,
   JobDetail,
   JobPlan,
+  JobResult,
   JobView,
   PlanFix,
   PlanIssue,
@@ -29,6 +30,7 @@ export const PLAN_WORDS =
 {
   probing: 'Probing. The output preview appears when ffprobe finishes.',
   noFile: 'No file there now.',
+  written: 'Written by this job.',
   notTouched: 'Not touched.',
   extractStays: 'Stays. Extract jobs never replace originals; this one writes beside it.',
   measuredAtRun: 'Measured when the job runs.',
@@ -100,6 +102,41 @@ export function outputNowText(output: JobPlan['output'], policy: BatchPolicy, pl
     default:
       return PLAN_WORDS.noFile
   }
+}
+
+/**
+ * What a finished job left at its output path, from the placement its result records. The plan's words describe the
+ * path before the run, so once the job placed its output they no longer hold.
+ */
+export function outputDoneText(result: Pick<JobResult, 'placement'>, platform: Platform): string
+{
+  const placement = result.placement
+  switch (placement.kind)
+  {
+    case 'renamed':
+      return `Written by this job; ${baseName(placement.planned)} was taken, so it got this name.`
+    case 'overwrote':
+      return placement.previous.status === 'trashed'
+        ? `Written by this job; the file it replaced went to ${binPhrase(platform)}.`
+        : `Written by this job; the file it replaced stays as ${baseName(placement.previous.path)}.`
+    case 'replaced-original':
+      return 'Written by this job in place of the original.'
+    default:
+      return PLAN_WORDS.written
+  }
+}
+
+/** What happened to a finished job's original when its output replaced it; null when the output went beside it. */
+export function originalDoneText(result: Pick<JobResult, 'placement'>, platform: Platform): string | null
+{
+  const placement = result.placement
+  if (placement.kind !== 'replaced-original')
+  {
+    return null
+  }
+  return placement.original.status === 'trashed'
+    ? `Went to ${binPhrase(platform)} after the output verified.`
+    : `Kept as ${baseName(placement.original.path)}.`
 }
 
 /** What happens to the job's original. */
@@ -807,7 +844,7 @@ export interface PlanTabHandlers extends PlanIssueHandlers
   onCopied?: (text: string) => void
 }
 
-type PlanDetail = Pick<JobDetail, 'view' | 'plan' | 'media' | 'measurement'>
+type PlanDetail = Pick<JobDetail, 'view' | 'plan' | 'media' | 'measurement'> & { result?: JobDetail['result'] }
 
 interface JobPlanViewProps extends PlanTabHandlers
 {
@@ -899,17 +936,18 @@ function JobPlanView({ detail, entry, policy, platform, onMeasureNow, onCopied, 
   const loudness = isLoudnessJob(view)
   const gains = detail.measurement?.streams.map((stream) => stream.plan) ?? []
   const sourceContainer = detail.media?.container ?? view.media?.container ?? view.source.ext
-  const now = plan === null ? null : outputNowText(plan.output, policy, platform)
+  const result = detail.result ?? null
+  const now = result !== null ? outputDoneText(result, platform) : plan === null ? null : outputNowText(plan.output, policy, platform)
   return (
     <>
       {plan !== null && (
         <>
           <PlanSection caption={PLAN_CAPTIONS.output}>
-            <p className='text-label text-ink wrap-anywhere select-text'>{plan.output.finalPath}</p>
+            <p className='text-label text-ink wrap-anywhere select-text'>{result?.outputPath ?? plan.output.finalPath}</p>
             {now !== null && <p className='text-label text-ink-2'>{now}</p>}
           </PlanSection>
           <PlanSection caption={PLAN_CAPTIONS.original}>
-            <p className='text-label text-ink'>{originalText(plan, issues, policy, platform)}</p>
+            <p className='text-label text-ink'>{(result === null ? null : originalDoneText(result, platform)) ?? originalText(plan, issues, policy, platform)}</p>
           </PlanSection>
           <PlanSection caption={PLAN_CAPTIONS.container}>
             <p className='text-label text-ink'>{containerText(plan, sourceContainer)}</p>
@@ -978,7 +1016,8 @@ export interface PlanTabProps extends PlanTabHandlers
 /**
  * The inspector's Plan tab. For one job: the output path and what is there now, the original's fate, the container,
  * the streams kept and not kept, the encoder, the ceiling, the loudness plan with "Measure now", the issues with their
- * fixes, and the planned FFmpeg command. For several: counts, the selection's issue groups, the destination, and the
+ * fixes, and the planned FFmpeg command. A finished job states its placed path and what its placement did instead of
+ * the plan's view before the run. For several: counts, the selection's issue groups, the destination, and the
  * originals affected. Its text opts in to selection.
  */
 export function PlanTab({ jobs, detail = null, entries = [], policy, platform, className, ...handlers }: PlanTabProps): React.JSX.Element | null
