@@ -6,7 +6,9 @@
     "src/main/**/*",
     "src/main/**/*.json",
     "src/preload/**/*",
-    "src/shared/**/*"
+    "src/shared/**/*",
+    "tests/golden/**/*.ts",
+    "vitest.golden.config.ts"
   ],
   "exclude": ["out", "dist", "node_modules"],
   "compilerOptions": {

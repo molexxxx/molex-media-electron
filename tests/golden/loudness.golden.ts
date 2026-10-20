@@ -473,7 +473,7 @@ describe.skipIf(!runnable)('loudness through the audio job functions', () =>
     const verified = after as VerifiedStream
     const specs: VerifySpec[] = [{
       outIndex: 0, sampleRate: planEvent.streams[0].outputRate, dualMono: false, weights: null, shortTerm: verified.maxShortTermLufs !== null,
-      passthrough: false, preEncodeTruePeakDbtp: null
+      passthrough: false, preEncodeTruePeakDbtp: null, durationSec: null
     }]
     const soxrArgs = buildVerifyArgs(path, specs, 'soxr')
     expect(x.run.runs.filter((r) => r.join('\u0000') === soxrArgs.join('\u0000')).length).toBeGreaterThan(0)
