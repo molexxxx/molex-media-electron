@@ -15,7 +15,8 @@ import type { RecipeContext } from '../../../src/renderer/src/stores/recipeField
 import { TestBatchActionsProvider } from '../../../src/renderer/src/components/batch/BatchActionsContext'
 import type { BatchActions } from '../../../src/renderer/src/stores/batchActions'
 import { toast } from '../../../src/renderer/src/ui'
-import { STANDARD_TOGGLE, StandardLine, standardLineText } from '../../../src/renderer/src/components/batch/inspector/StandardLine'
+import { FACT_TERMS, STANDARD_TOGGLE, StandardLine, standardDetails } from '../../../src/renderer/src/components/batch/inspector/StandardLine'
+import { GOAL_WORDS } from '../../../src/renderer/src/components/presets/PresetGuide'
 import
 {
   appliedNote,
@@ -155,40 +156,67 @@ function groups(): string[]
   return Array.from(select().querySelectorAll('optgroup')).map((group) => group.label)
 }
 
-describe('standardLineText', () =>
+function facts(id: string, target: number | null = null): Record<string, string>
 {
-  it('words every built-in loudness preset from its data', () =>
+  return Object.fromEntries((standardDetails(id, target)?.facts ?? []).map((fact) => [fact.term, fact.detail]))
+}
+
+describe('standardDetails', () =>
+{
+  it('lists every built-in loudness preset as labeled facts from its data', () =>
   {
-    const sentences = Object.fromEntries(LOUDNESS_PRESETS.map((preset) => [preset.id, standardLineText(preset.id)?.sentence]))
-    expect(sentences['ebu-r128']).toBe(`EBU R 128: ${M}23.0 LUFS, true peak at most ${M}1.0 dBTP. Files are normalized to the target and checked within \u00b10.2 LU.`)
-    expect(sentences['atsc-a85']).toBe(`ATSC A/85: ${M}24 LKFS, true peak at most ${M}2.0 dBTP. A/85 anticipates \u00b12 dB; this app checks within \u00b10.5 dB for lossless and \u00b11.0 dB for lossy outputs.`)
-    expect(sentences['film-r128s4']).toBe(`EBU R 128 s4: ${M}23.0 LUFS program loudness, true peak at most ${M}1.0 dBTP. Checked within \u00b10.2 LU.`)
-    expect(sentences['apple-podcasts']).toBe(`Apple Podcasts: ${M}16 LKFS, true peak at most ${M}1.0 dBTP. Apple states \u00b11 dB; this app checks within \u00b10.5 dB for lossless and \u00b11.0 dB for lossy outputs.`)
-    expect(sentences['spotify']).toBe(`Spotify reference: ${M}14 LUFS, true peak at most ${M}1.0 dBTP. No tolerance stated; this app checks within \u00b10.5 LU for lossless and \u00b11.0 LU for lossy outputs.`)
-    expect(sentences['streaming-r128s2']).toBe(`EBU R 128 s2: ${M}18 LUFS (s2 allows ${M}20 to ${M}16), true peak at most ${M}1.0 dBTP. No tolerance stated; this app checks within \u00b10.5 LU for lossless and \u00b11.0 LU for lossy outputs.`)
-    expect(sentences['aes-streaming']).toBe(`AES TD1004 (2015): ${M}18 LUFS, true peak at most ${M}1.0 dBTP. Checked within \u00b10.5 LU.`)
-    expect(sentences['night']).toBe(`Not a standard: ${M}18 LUFS after reducing dynamics, true peak at most ${M}1.0 dBTP.`)
-    expect(sentences['custom']).toBe(`Custom: integrated ${M}60 to ${M}5 LUFS, true peak ${M}9 to 0 dBTP.`)
+    expect(Object.fromEntries(LOUDNESS_PRESETS.map((preset) => [preset.id, standardDetails(preset.id)?.basis]))).toEqual({
+      'ebu-r128': 'EBU R 128',
+      'atsc-a85': 'ATSC A/85',
+      'film-r128s4': 'EBU R 128 s4',
+      'apple-podcasts': 'Apple Podcasts',
+      'spotify': 'Spotify',
+      'streaming-r128s2': 'EBU R 128 s2',
+      'aes-streaming': 'AES TD1004',
+      'night': 'Not a standard',
+      'custom': 'Custom'
+    })
+    expect(facts('ebu-r128')).toEqual({
+      [FACT_TERMS.loudness]: `${M}23.0 LUFS`,
+      [FACT_TERMS.peak]: `At most ${M}1.0 dBTP`,
+      [FACT_TERMS.check]: '±0.2 LU',
+      [FACT_TERMS.short]: '120 s or less: short-term loudness at most 5 LU above the target'
+    })
+    expect(facts('atsc-a85')[FACT_TERMS.check]).toBe('A/85 anticipates ±2 dB; this app checks ±0.5 dB for lossless and ±1.0 dB for lossy outputs')
+    expect(facts('film-r128s4')[FACT_TERMS.loudness]).toBe(`${M}23.0 LUFS program loudness`)
+    expect(facts('apple-podcasts')[FACT_TERMS.check]).toBe('Apple states ±1 dB; this app checks ±0.5 dB for lossless and ±1.0 dB for lossy outputs')
+    expect(facts('spotify')[FACT_TERMS.peak]).toBe(`At most ${M}1.0 dBTP, or ${M}2.0 dBTP for masters louder than ${M}14 LUFS`)
+    expect(facts('spotify')[FACT_TERMS.check]).toBe('No tolerance stated; this app checks ±0.5 LU for lossless and ±1.0 LU for lossy outputs')
+    expect(facts('streaming-r128s2')[FACT_TERMS.loudness]).toBe(`${M}18 LUFS (s2 allows ${M}20 to ${M}16)`)
+    expect(facts('aes-streaming')[FACT_TERMS.short]).toBe('60 s or less: short-term loudness at most 5 LU above the target')
+    expect(facts('night')).toEqual({
+      [FACT_TERMS.loudness]: `${M}18 LUFS`,
+      [FACT_TERMS.peak]: `At most ${M}1.0 dBTP`,
+      [FACT_TERMS.dynamics]: '3:1 above the program\'s own loudness, 25 ms attack, 300 ms release'
+    })
+    expect(facts('custom')).toEqual({
+      [FACT_TERMS.loudness]: `Your choice, ${M}60 to ${M}5 LUFS`,
+      [FACT_TERMS.peak]: `Your choice, ${M}9 to 0 dBTP`
+    })
   })
 
-  it('adds the supersession line, the measurement note, and the cited clauses', () =>
+  it('adds the status of a superseded preset, the measurement note, and the cited clauses', () =>
   {
-    const aes = standardLineText('aes-streaming')
-    expect(aes?.superseded).toBe('Superseded by AES TD1008 (2021) and AES77-2023; these values are not verified against AES77-2023.')
-    expect(standardLineText('ebu-r128')?.superseded).toBeNull()
-    expect(standardLineText('film-r128s4')?.note).toBe('Measured on the full mix with a BS.1770 meter, as s4 (g) specifies for Programme Loudness.')
-    expect(standardLineText('atsc-a85')?.note).toMatch(/^A\/85's method for short-form content \(section 5\.2\.6\)/)
-    expect(standardLineText('spotify')?.note).toBeNull()
-    expect(standardLineText('ebu-r128')?.sources.map((source) => source.clause)).toEqual(['(h), (i), (m), (q)', '(d)', '', 'sections 3.1 and 3.3'])
+    expect(facts('aes-streaming')[FACT_TERMS.status]).toBe('Superseded by AES TD1008 (2021) and AES77-2023; these values are not verified against AES77-2023.')
+    expect(facts('ebu-r128')[FACT_TERMS.status]).toBeUndefined()
+    expect(facts('film-r128s4')[FACT_TERMS.measured]).toBe('Measured on the full mix with a BS.1770 meter, as s4 (g) specifies for Programme Loudness.')
+    expect(facts('atsc-a85')[FACT_TERMS.measured]).toMatch(/^A\/85's method for short-form content \(section 5\.2\.6\)/)
+    expect(facts('spotify')[FACT_TERMS.measured]).toBeUndefined()
+    expect(standardDetails('ebu-r128')?.sources.map((source) => source.clause)).toEqual(['(h), (i), (m), (q)', '(d)', '', 'sections 3.1 and 3.3'])
   })
 
-  it('takes an edited target inside the range, and names nothing for an unknown preset', () =>
+  it('takes an edited target inside the range, words an offset threshold, and names nothing for an unknown preset', () =>
   {
-    expect(standardLineText('streaming-r128s2', -17)?.sentence).toMatch(new RegExp(`^EBU R 128 s2: ${M}17\\.0 LUFS \\(s2 allows`))
-    expect(standardLineText('mp4-h264')).toBeNull()
+    expect(facts('streaming-r128s2', -17)[FACT_TERMS.loudness]).toBe(`${M}17.0 LUFS (s2 allows ${M}20 to ${M}16)`)
+    expect(standardDetails('mp4-h264')).toBeNull()
   })
 
-  it('renders the sentences and opens each source in the browser with its clause', () =>
+  it('renders the facts as a list and opens each source in the browser with its clause', () =>
   {
     render(<StandardLine presetId='ebu-r128' id='line' />)
     const toggle = screen.getByRole('button', { name: STANDARD_TOGGLE })
@@ -196,7 +224,9 @@ describe('standardLineText', () =>
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     const line = document.getElementById('line') as HTMLElement
-    expect(line.textContent).toContain('Files are normalized to the target')
+    const terms = Array.from(line.querySelectorAll('dt')).map((term) => term.textContent)
+    expect(terms).toEqual([FACT_TERMS.loudness, FACT_TERMS.peak, FACT_TERMS.check, FACT_TERMS.short])
+    expect(line.querySelector('dd')?.textContent).toBe(`${M}23.0 LUFS`)
     const sources = within(screen.getByRole('list', { name: 'Sources' })).getAllByRole('listitem')
     expect(sources).toHaveLength(4)
     const link = within(sources[0]).getByRole('link')
@@ -207,6 +237,9 @@ describe('standardLineText', () =>
     cleanup()
     const { container } = render(<StandardLine presetId='aes-streaming' />)
     expect(container.textContent).toContain('Superseded by AES TD1008 (2021)')
+    cleanup()
+    const custom = render(<StandardLine presetId='custom' />)
+    expect(custom.queryByRole('list', { name: 'Sources' })).toBeNull()
     cleanup()
     const empty = render(<StandardLine presetId='web-1080p' />)
     expect(empty.container.innerHTML).toBe('')
@@ -253,10 +286,61 @@ describe('PresetSelect', () =>
     expect(select().selectedOptions[0].textContent).toBe('Custom (from deleted preset Late podcasts)')
   })
 
-  it('shows the standard line of the shared preset with the shared target', () =>
+  it('shows the technical details of the shared preset with the shared target', () =>
   {
     renderSelect([job(edited('streaming-r128s2', -17)), job(edited('streaming-r128s2', -17))], ctx())
-    expect(document.body.textContent).toContain(`EBU R 128 s2: ${M}17.0 LUFS`)
+    expect(document.body.textContent).toContain(`${M}17.0 LUFS (s2 allows`)
+  })
+
+  it('guides the shared built-in preset in plain words, and a pointer applies the better preset', async () =>
+  {
+    const actions = renderSelect([job(loudness('film-r128s4'))], ctx())
+    const guide = document.querySelector('[data-preset-guide="film-r128s4"]') as HTMLElement
+    expect(guide).toHaveTextContent('Delivering a finished film or series')
+    await act(async () =>
+    {
+      fireEvent.click(within(guide).getByRole('button', { name: 'Use Night listening (not a standard)' }))
+    })
+    expect(actions.assignRecipes.mock.calls[0][0][0].recipe.presetId).toBe('night')
+  })
+
+  it('applies a tip setting to the selected jobs under its field name', async () =>
+  {
+    const actions = renderSelect([job(loudness('night'))], ctx())
+    await act(async () =>
+    {
+      fireEvent.click(screen.getByRole('button', { name: 'Emphasize dialog' }))
+    })
+    const [assignments, options] = actions.assignRecipes.mock.calls[0]
+    expect(assignments[0].recipe.downmix).toBe('dialog')
+    expect(options).toEqual({ field: 'Downmix' })
+  })
+
+  it('chooses a preset by goal, closes the goals, and marks the goal in use', async () =>
+  {
+    const actions = renderSelect([job(loudness('ebu-r128'))], ctx())
+    const toggle = screen.getByRole('button', { name: GOAL_WORDS.heading })
+    fireEvent.click(toggle)
+    const goals = screen.getByRole('list', { name: 'Normalize goals' })
+    expect(within(goals).getByRole('button', { name: /European broadcaster/ })).toHaveAttribute('aria-current', 'true')
+    await act(async () =>
+    {
+      fireEvent.click(within(goals).getByRole('button', { name: /quiet dialogue/ }))
+    })
+    expect(actions.assignRecipes.mock.calls[0][0][0].recipe.presetId).toBe('night')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.activeElement).toBe(toggle)
+  })
+
+  it('shows the guide without actions or goals while the selection is locked, and none for mixed presets', () =>
+  {
+    renderSelect([job(loudness('night'), { state: 'queued', runId: 4 as JobView['runId'] })], ctx())
+    expect(document.querySelector('[data-preset-guide="night"]')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Emphasize dialog' })).toBeNull()
+    expect(screen.queryByRole('button', { name: GOAL_WORDS.heading })).toBeNull()
+    cleanup()
+    renderSelect([job(loudness('night')), job(loudness('ebu-r128'))], ctx())
+    expect(document.querySelector('[data-preset-guide]')).toBeNull()
   })
 
   it('applies a chosen preset with the applied toast', async () =>

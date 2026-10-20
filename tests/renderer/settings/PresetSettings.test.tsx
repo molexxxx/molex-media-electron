@@ -4,7 +4,7 @@
  * read-only, with their standard and sources.
  */
 import React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, onTestFinished } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { LOUDNESS_PRESETS, applyGainPreset, applyLoudnessPreset, type LoudnessPreset } from '../../../src/shared/audio/presets'
 import type { JobsApi } from '../../../src/shared/jobs/contract'
@@ -20,6 +20,7 @@ import
   PresetSettings,
   commandFailure,
   deleteQuestion,
+  builtinRowId,
   loudnessValues,
   pinChoices,
   pinsIntro,
@@ -351,17 +352,41 @@ describe('PresetSettings, built-in presets', () =>
     useJobsStore.setState({ presets: state([]) })
     renderTab()
     const list = screen.getByRole('list', { name: 'Built-in Normalize presets' })
-    const r128 = within(list).getByText('EBU R 128', { selector: 'span.text-body' }).closest('li') as HTMLElement
+    const r128 = document.getElementById(builtinRowId('normalize', 'ebu-r128')) as HTMLElement
     const ebu = LOUDNESS_PRESETS.find((preset) => preset.id === 'ebu-r128') as LoudnessPreset
     expect(r128).toHaveTextContent(loudnessValues(ebu))
-    expect(within(list).getByText('Night listening (not a standard)').closest('li')).toHaveTextContent(PRESET_WORDS.notStandard)
+    expect(r128).toHaveTextContent(PRESET_WORDS.standard)
+    expect(r128).toHaveTextContent('Delivering to a European TV or radio broadcaster')
+    expect(document.getElementById(builtinRowId('normalize', 'night'))).toHaveTextContent(PRESET_WORDS.notStandard)
+    expect(document.getElementById(builtinRowId('normalize', 'aes-streaming'))).toHaveTextContent(PRESET_WORDS.superseded)
     expect(within(list).queryByText('Custom')).toBeNull()
-    const toggle = within(r128).getByRole('button', { name: 'About this standard' })
+    expect(within(r128).queryByRole('button', { name: 'Emphasize dialog' })).toBeNull()
+    const toggle = within(r128).getByRole('button', { name: 'Technical details' })
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     const link = within(r128).getByRole('link', { name: ebu.sources[0].name })
     expect(link).toHaveAttribute('href', ebu.sources[0].url)
     expect(within(r128).queryByRole('button', { name: /Rename|Delete/ })).toBeNull()
+  })
+
+  it('brings the preset of a chosen goal into view and marks it, per operation', () =>
+  {
+    renderTab()
+    const scroll = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scroll
+    onTestFinished(() =>
+    {
+      Element.prototype.scrollIntoView = original
+    })
+    fireEvent.click(within(screen.getByRole('list', { name: 'Normalize goals' })).getByRole('button', { name: /quiet dialogue/ }))
+    const night = document.getElementById(builtinRowId('normalize', 'night')) as HTMLElement
+    expect(night).toHaveAttribute('data-highlighted')
+    expect(document.activeElement).toBe(night)
+    expect(scroll).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('radio', { name: 'Compress' }))
+    expect(screen.getByRole('list', { name: 'Compress goals' })).toBeInTheDocument()
+    expect(document.querySelector('[data-highlighted]')).toBeNull()
   })
 
   it('switches to the gain presets and the media catalogs by group', () =>

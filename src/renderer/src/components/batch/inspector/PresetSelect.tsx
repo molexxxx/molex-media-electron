@@ -9,12 +9,14 @@ import
 {
   choosePreset,
   distinctText,
+  editField,
   presetField,
   resetToPreset,
   splitSelection,
   valueKey,
   type ConsequenceNote,
   type FieldOption,
+  type FieldPatch,
   type PresetField,
   type RecipeContext
 } from '../../../stores/recipeFields'
@@ -35,6 +37,7 @@ import
   type SelectOption
 } from '../../../ui'
 import { useBatchActions } from '../BatchActionsContext'
+import { GOAL_WORDS, GoalFinder, PresetGuideText } from '../../presets/PresetGuide'
 import { PIN_KEYS, pinLabel, pinOf, SavePresetRow, type PinKey } from './SavePresetRow'
 import { StandardLine } from './StandardLine'
 
@@ -186,6 +189,8 @@ export function PresetSelect({ jobs, op, ctx, className }: PresetSelectProps): R
   const [row, setRow] = useState<Row | null>(null)
   const [opener, setOpener] = useState<Opener>('button')
   const [focusBack, setFocusBack] = useState<Opener | null>(null)
+  const [goalsOpen, setGoalsOpen] = useState(false)
+  const goalsId = `${base}-goals`
 
   useEffect(() =>
   {
@@ -246,6 +251,24 @@ export function PresetSelect({ jobs, op, ctx, className }: PresetSelectProps): R
     setStatus(null)
     const preset = `${presetLabel(recipe, lookup)}${isEdited(recipe, lookup) ? ', edited' : ''}`
     await actions.assignRecipes(edit.assignments, { toast: { kind: 'applied', preset, note: appliedNote(edit.notes) } })
+  }
+
+  async function applyTip(patch: FieldPatch, label: string): Promise<void>
+  {
+    const edit = editField(jobs, patch, ctx)
+    if (edit.assignments.length === 0)
+    {
+      return
+    }
+    setStatus(null)
+    await actions.assignRecipes(edit.assignments, { field: label })
+  }
+
+  function chooseGoal(presetId: string): void
+  {
+    setGoalsOpen(false)
+    document.getElementById(`${goalsId}-toggle`)?.focus()
+    void choose(presetId)
   }
 
   async function reset(): Promise<void>
@@ -417,6 +440,33 @@ export function PresetSelect({ jobs, op, ctx, className }: PresetSelectProps): R
           </span>
         )}
       </div>
+      {!field.mixed && (
+        <PresetGuideText
+          op={op}
+          presetId={field.value}
+          onUsePreset={field.disabled ? undefined : (id) => void choose(id)}
+          onTip={field.disabled ? undefined : (patch, label) => void applyTip(patch, label)}
+        />
+      )}
+      {!field.disabled && (
+        <div className='flex flex-col items-start gap-1'>
+          <Button
+            id={`${goalsId}-toggle`}
+            variant='ghost'
+            size='sm'
+            icon={goalsOpen ? 'action.collapse' : 'action.expand'}
+            aria-expanded={goalsOpen}
+            aria-controls={goalsId}
+            onClick={() => setGoalsOpen(!goalsOpen)}
+            className='-ms-2'
+          >
+            {GOAL_WORDS.heading}
+          </Button>
+          <div id={goalsId} hidden={!goalsOpen} className='w-full'>
+            {goalsOpen && <GoalFinder op={op} current={field.mixed ? null : field.value} onChoose={chooseGoal} className='-mx-2' />}
+          </div>
+        </div>
+      )}
       {standard !== null && <StandardLine presetId={standard.presetId} targetLufs={standard.targetLufs} />}
       {row === 'save' && (
         <SavePresetRow

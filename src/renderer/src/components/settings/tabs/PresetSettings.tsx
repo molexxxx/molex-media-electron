@@ -21,6 +21,7 @@ import type { PresetState, UserPreset } from '../../../../../shared/jobs/types'
 import { PART_SEPARATOR, formatTarget, formatTruePeak, keys } from '../../../copy/batch'
 import { useJobsStore } from '../../../stores/jobs'
 import { Button } from '../../../ui/Button'
+import { cx } from '../../../ui/cx'
 import { InlineConfirm } from '../../../ui/InlineConfirm'
 import { Kbd, usePlatform } from '../../../ui/Kbd'
 import { FieldMessage } from '../../../ui/NumberField'
@@ -28,6 +29,7 @@ import type { Platform } from '../../../../../shared/text/platform'
 import { SegmentedControl } from '../../../ui/SegmentedControl'
 import { Select, type SelectGroup, type SelectOption } from '../../../ui/Select'
 import { StandardLine } from '../../batch/inspector/StandardLine'
+import { GOAL_WORDS, GoalFinder, PresetGuideText } from '../../presets/PresetGuide'
 import { NO_PIN, PIN_KEYS, pinOf, presetNameError, type PinKey } from '../../batch/inspector/SavePresetRow'
 
 /** The words of the Presets section. */
@@ -49,7 +51,9 @@ export const PRESET_WORDS = {
   builtIn: 'Built-in presets',
   builtInIntro: 'Built-in presets are read-only. To start from one, apply it in Batch, change its settings in the inspector, and save it as a preset of your own.',
   operation: 'Operation',
-  notStandard: 'Not a standard'
+  standard: 'Standard',
+  notStandard: 'App preset',
+  superseded: 'Superseded'
 } as const
 
 /** The engine's jobs surface from the preload, or null while there is none. */
@@ -332,23 +336,58 @@ export function loudnessValues(preset: LoudnessPreset): string
   return `${target}, true peak at most ${formatTruePeak(preset.target.maxTruePeakDbtp)}`
 }
 
-/** A built-in preset row: its label, a metadata line, and its values in plain words. */
-function BuiltinRow({ label, meta, values, children }: { label: string; meta: string | null; values: string; children?: ReactElement | null }): ReactElement
+/** What kind of preset a built-in loudness preset is: a standard, an app preset, or a superseded standard. */
+export function loudnessTag(preset: LoudnessPreset): { text: string, tone: 'standard' | 'app' | 'superseded' }
+{
+  if (preset.supersededBy !== null)
+  {
+    return { text: PRESET_WORDS.superseded, tone: 'superseded' }
+  }
+  return preset.standard ? { text: PRESET_WORDS.standard, tone: 'standard' } : { text: PRESET_WORDS.notStandard, tone: 'app' }
+}
+
+const TAG_TONES = { standard: 'text-brass', app: 'text-ink-3', superseded: 'text-warning' } as const
+
+/** The DOM id of a built-in preset's row, so the goal finder can bring it into view. */
+export function builtinRowId(op: Operation, presetId: string): string
+{
+  return `builtin-${op}-${presetId}`
+}
+
+interface BuiltinRowProps
+{
+  op: Operation
+  presetId: string
+  label: string
+  tag: { text: string, tone: keyof typeof TAG_TONES } | null
+  values: string
+  highlighted: boolean
+  children?: ReactElement | null
+}
+
+/** A built-in preset row: its name and kind, its guidance, its values, and any technical details. */
+function BuiltinRow({ op, presetId, label, tag, values, highlighted, children }: BuiltinRowProps): ReactElement
 {
   return (
-    <li className='flex flex-col gap-0.5 border-b border-line py-2 last:border-b-0'>
-      <span className='flex flex-wrap items-baseline gap-x-2'>
-        <span className='text-body text-ink'>{label}</span>
-        {meta !== null && <span className='text-label text-ink-3'>{meta}</span>}
+    <li
+      id={builtinRowId(op, presetId)}
+      tabIndex={-1}
+      data-highlighted={highlighted || undefined}
+      className='flex scroll-mt-4 flex-col gap-2 border-b border-line px-3 py-4 transition-colors duration-base ease-out last:border-b-0 data-highlighted:bg-wash-selected'
+    >
+      <span className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
+        <span className='text-section font-semibold text-ink'>{label}</span>
+        {tag !== null && <span className={cx('type-legend', TAG_TONES[tag.tone])}>{tag.text}</span>}
       </span>
-      <span className='text-label text-ink-2'>{values}</span>
+      <PresetGuideText op={op} presetId={presetId} />
+      <p className='text-label tabular-nums text-ink-3'>{values}</p>
       {children}
     </li>
   )
 }
 
-/** One operation's built-in presets: loudness presets with their standard, gain presets, or a media catalog by group. */
-function BuiltinList({ op }: { op: Operation }): ReactElement
+/** One operation's built-in presets: loudness presets with their technical details, gain presets, or a media catalog by group. */
+function BuiltinList({ op, highlighted }: { op: Operation, highlighted: string | null }): ReactElement
 {
   const name = `Built-in ${operationLabel(op)} presets`
   if (op === 'normalize')
@@ -356,8 +395,8 @@ function BuiltinList({ op }: { op: Operation }): ReactElement
     return (
       <ul aria-label={name} className='flex flex-col'>
         {LOUDNESS_PRESETS.filter((preset) => preset.id !== 'custom').map((preset) => (
-          <BuiltinRow key={preset.id} label={preset.label} meta={preset.standardName ?? PRESET_WORDS.notStandard} values={loudnessValues(preset)}>
-            <StandardLine presetId={preset.id} className='pt-1' />
+          <BuiltinRow key={preset.id} op={op} presetId={preset.id} label={preset.label} tag={loudnessTag(preset)} values={loudnessValues(preset)} highlighted={highlighted === preset.id}>
+            <StandardLine presetId={preset.id} />
           </BuiltinRow>
         ))}
       </ul>
@@ -368,20 +407,36 @@ function BuiltinList({ op }: { op: Operation }): ReactElement
     return (
       <ul aria-label={name} className='flex flex-col'>
         {GAIN_PRESETS.filter((preset) => preset.id !== 'custom').map((preset) => (
-          <BuiltinRow key={preset.id} label={preset.label} meta={null} values={describeRecipe({ ...preset.recipe, userPreset: null } as Recipe)} />
+          <BuiltinRow
+            key={preset.id}
+            op={op}
+            presetId={preset.id}
+            label={preset.label}
+            tag={null}
+            values={describeRecipe({ ...preset.recipe, userPreset: null } as Recipe)}
+            highlighted={highlighted === preset.id}
+          />
         ))}
       </ul>
     )
   }
   const catalog: readonly BuiltinPreset[] = MEDIA_CATALOGS[op]
   return (
-    <div aria-label={name} role='group' className='flex flex-col gap-3'>
+    <div aria-label={name} role='group' className='flex flex-col gap-5'>
       {PRESET_GROUPS[op].filter((group) => catalog.some((preset) => preset.group === group)).map((group) => (
-        <div key={group} className='flex flex-col'>
-          <h3 className='text-label font-semibold text-ink-2'>{group}</h3>
+        <div key={group} className='flex flex-col gap-1'>
+          <h3 className='type-caption text-ink-2'>{group}</h3>
           <ul aria-label={`${group} presets`} className='flex flex-col'>
             {catalog.filter((preset) => preset.group === group).map((preset) => (
-              <BuiltinRow key={preset.id} label={preset.label} meta={null} values={preset.description} />
+              <BuiltinRow
+                key={preset.id}
+                op={op}
+                presetId={preset.id}
+                label={preset.label}
+                tag={null}
+                values={preset.description}
+                highlighted={highlighted === preset.id}
+              />
             ))}
           </ul>
         </div>
@@ -390,13 +445,23 @@ function BuiltinList({ op }: { op: Operation }): ReactElement
   )
 }
 
-/** The built-in presets of the operation chosen above the list, read-only. */
+/** The built-in presets of the operation chosen above the list, read-only, with a goal finder that points into it. */
 function BuiltinPresets(): ReactElement
 {
   const headingId = useId()
   const [op, setOp] = useState<Operation>('normalize')
+  const [highlighted, setHighlighted] = useState<string | null>(null)
+
+  function show(presetId: string): void
+  {
+    setHighlighted(presetId)
+    const row = document.getElementById(builtinRowId(op, presetId))
+    row?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+    row?.focus({ preventScroll: true })
+  }
+
   return (
-    <section aria-labelledby={headingId} className='flex flex-col gap-3'>
+    <section aria-labelledby={headingId} className='flex flex-col gap-4'>
       <div className='flex flex-col gap-1'>
         <h2 id={headingId} className={LEGEND}>{PRESET_WORDS.builtIn}</h2>
         <p className='text-body text-ink-2'>{PRESET_WORDS.builtInIntro}</p>
@@ -404,12 +469,20 @@ function BuiltinPresets(): ReactElement
       <SegmentedControl
         size='sm'
         value={op}
-        onChange={(value) => setOp(value as Operation)}
+        onChange={(value) =>
+        {
+          setOp(value as Operation)
+          setHighlighted(null)
+        }}
         label={PRESET_WORDS.operation}
         options={OPERATIONS.map((value) => ({ value, label: operationLabel(value) }))}
         className='self-start'
       />
-      <BuiltinList op={op} />
+      <div className='flex flex-col gap-2 rounded-sm bg-sunken px-3 py-3 shadow-well'>
+        <h3 className='type-caption text-ink-2'>{GOAL_WORDS.heading}</h3>
+        <GoalFinder op={op} current={highlighted} onChoose={show} layout='columns' />
+      </div>
+      <BuiltinList op={op} highlighted={highlighted} />
     </section>
   )
 }
