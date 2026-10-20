@@ -5,7 +5,7 @@
  * real planner, fake runners scripted per stage, and manual timers.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, win32 } from 'node:path'
 import { createJobEngine, type EngineDeps, type JobEngine } from '../../../src/main/jobs/engine'
 import type { EventSender, FileIdentity, FileStat, FsOps, JobLogger, PersistenceIO, PlannerIO, VolumeInfo } from '../../../src/main/jobs/deps'
 import type { JobProbeQueue, ProbedSource } from '../../../src/main/jobs/probe-queue'
@@ -127,16 +127,16 @@ class Disk
   put(path: string, size: number, text: string | null = null): void
   {
     this.files.set(path, { size, ino: ++this.ino, text })
-    this.mkdirs(dirname(path))
+    this.mkdirs(win32.dirname(path))
   }
 
   mkdirs(path: string): void
   {
     let at = path
-    while (!this.dirs.has(at) && dirname(at) !== at)
+    while (!this.dirs.has(at) && win32.dirname(at) !== at)
     {
       this.dirs.add(at)
-      at = dirname(at)
+      at = win32.dirname(at)
     }
   }
 
@@ -298,7 +298,7 @@ function workDirFiles(disk: Disk): WorkDirFiles
       disk.put(path, text.length, text)
     },
     kind: async (path) => (disk.dirs.has(path) ? 'dir' : disk.files.has(path) ? 'other' : 'missing'),
-    list: async (dir) => [...disk.files.keys(), ...disk.dirs].filter((p) => dirname(p) === dir).map((p) => basename(p)),
+    list: async (dir) => [...disk.files.keys(), ...disk.dirs].filter((p) => win32.dirname(p) === dir).map((p) => win32.basename(p)),
     async removeEmpty(dir)
     {
       if (disk.under(dir).length === 0)
@@ -319,12 +319,12 @@ function scanFs(disk: Disk): NonNullable<EngineDeps['scanFs']>
       {
         throw codeError('ENOENT')
       }
-      const names = [...disk.files.keys(), ...disk.dirs].filter((p) => dirname(p) === path)
+      const names = [...disk.files.keys(), ...disk.dirs].filter((p) => win32.dirname(p) === path)
       return (async function* entries()
       {
         for (const name of names)
         {
-          yield { name: basename(name), isFile: () => kind(name) === 'file', isDirectory: () => kind(name) === 'dir', isSymbolicLink: () => false }
+          yield { name: win32.basename(name), isFile: () => kind(name) === 'file', isDirectory: () => kind(name) === 'dir', isSymbolicLink: () => false }
         }
       })()
     },
@@ -351,7 +351,7 @@ function plannerIO(disk: Disk, free: Map<string, number>, unreachable: Set<strin
       {
         return { size: file.size, mtimeMs: 1000, isFile: true, isDirectory: false, dev: '1', ino: String(file.ino) }
       }
-      return disk.dirs.has(path) || dirname(path) === path ? { size: 0, mtimeMs: 1000, isFile: false, isDirectory: true, dev: '1', ino: '1' } : null
+      return disk.dirs.has(path) || win32.dirname(path) === path ? { size: 0, mtimeMs: 1000, isFile: false, isDirectory: true, dev: '1', ino: '1' } : null
     },
     statfs: async (path) => ({ freeBytes: free.get(path.slice(0, 3).toLowerCase()) ?? 500_000_000_000, totalBytes: 1_000_000_000_000 }),
     probeWrite: async () => true,
@@ -670,7 +670,7 @@ function harness(options: HarnessOptions = {})
     cores: 8,
     pid: 4242,
     appVersion: '5.0.0',
-    stat: async (path) => (disk.dirs.has(path) || disk.files.has(path) || dirname(path) === path ? {} : Promise.reject(codeError('ENOENT'))),
+    stat: async (path) => (disk.dirs.has(path) || disk.files.has(path) || win32.dirname(path) === path ? {} : Promise.reject(codeError('ENOENT'))),
     storeLimits: options.storeLimits
   }
   const engine = createJobEngine(deps)
@@ -696,12 +696,12 @@ function harness(options: HarnessOptions = {})
   {
     for (const name of names)
     {
-      if (!disk.files.has(join(MEDIA, name)))
+      if (!disk.files.has(win32.join(MEDIA, name)))
       {
-        disk.put(join(MEDIA, name), 1000)
+        disk.put(win32.join(MEDIA, name), 1000)
       }
     }
-    const added = await value('add', { paths: names.map((name) => join(MEDIA, name)), recipe, origin: 'files', after: null, recursive: false, allowSecondJobs: false, force: false })
+    const added = await value('add', { paths: names.map((name) => win32.join(MEDIA, name)), recipe, origin: 'files', after: null, recursive: false, allowSecondJobs: false, force: false })
     await settle()
     return added.added
   }
@@ -857,13 +857,13 @@ describe('jobs:locate and jobs:relink', () =>
     await h.value('preflight', { ids: 'pending' })
     for (const name of ['a.wav', 'b.wav', 'c.wav'])
     {
-      h.disk.files.delete(join(MEDIA, name))
-      h.disk.put(join('C:\\moved', name), 1000)
+      h.disk.files.delete(win32.join(MEDIA, name))
+      h.disk.put(win32.join('C:\\moved', name), 1000)
     }
-    const located = await h.value('locate', { jobId: a, path: join('C:\\moved', 'a.wav') })
+    const located = await h.value('locate', { jobId: a, path: win32.join('C:\\moved', 'a.wav') })
     expect(located.applied).toEqual([a])
     await h.settle()
-    expect(h.view(a).source.path).toBe(join('C:\\moved', 'a.wav'))
+    expect(h.view(a).source.path).toBe(win32.join('C:\\moved', 'a.wav'))
     expect(located.relinkable?.ids.sort()).toEqual([b, c].sort())
     const relinked = await h.value('relink', { fromDir: MEDIA, toDir: 'C:\\moved', ids: [b, c] })
     expect(relinked.applied.sort()).toEqual([b, c].sort())
@@ -937,8 +937,8 @@ describe('presets and folders', () =>
     const last = presets[presets.length - 1] as Extract<JobEvent, { type: 'presets.changed' }>
     expect(last.presets.user.map((p) => p.id)).toContain(saved.preset.id)
     expect(h.engine.snapshot().presets.pins['3']).toBe(saved.preset.id)
-    h.disk.put(join('C:\\album', 'one.wav'), 1000)
-    h.disk.put(join('C:\\album', 'two.wav'), 1000)
+    h.disk.put(win32.join('C:\\album', 'one.wav'), 1000)
+    h.disk.put(win32.join('C:\\album', 'two.wav'), 1000)
     const added = await h.value('add', { paths: ['C:\\album'], recipe: null, origin: 'folder', after: null, recursive: true, allowSecondJobs: false, force: false })
     await h.settle()
     expect(added.scanIds.length).toBe(1)
@@ -958,17 +958,17 @@ describe('duplicates', () =>
     const h = track(harness())
     await h.boot()
     const [a] = await h.addFiles(['a.wav'])
-    const again = await h.value('add', { paths: [join(MEDIA, 'a.wav')], recipe: convert(), origin: 'files', after: null, recursive: false, allowSecondJobs: false, force: false })
+    const again = await h.value('add', { paths: [win32.join(MEDIA, 'a.wav')], recipe: convert(), origin: 'files', after: null, recursive: false, allowSecondJobs: false, force: false })
     expect(again.added).toEqual([])
     expect(again.duplicates.jobIds).toEqual([a])
-    const second = await h.value('add', { paths: [join(MEDIA, 'a.wav')], recipe: convert(), origin: 'files', after: null, recursive: false, allowSecondJobs: true, force: false })
+    const second = await h.value('add', { paths: [win32.join(MEDIA, 'a.wav')], recipe: convert(), origin: 'files', after: null, recursive: false, allowSecondJobs: true, force: false })
     expect(second.added).toHaveLength(1)
     await h.value('remove', { ids: second.added })
     await h.startRun([a])
     await runThrough(h, a)
     expect(h.view(a).state).toBe('done')
     const output = h.engine.snapshot().jobs.find((job) => job.id === a)?.stamp?.outputName as string
-    const outputPath = join(MEDIA, output)
+    const outputPath = win32.join(MEDIA, output)
     expect(h.disk.files.has(outputPath)).toBe(true)
     const previous = await h.value('add', { paths: [outputPath], recipe: null, origin: 'files', after: null, recursive: false, allowSecondJobs: false, force: false })
     expect(previous.added).toEqual([])
@@ -997,13 +997,13 @@ describe('history', () =>
     await runThrough(h, b)
     expect(h.view(a).state).toBe('done')
     expect(h.view(b).state).toBe('done')
-    expect(h.disk.files.get(join(MEDIA, 'a.wav'))?.size).toBe(900)
+    expect(h.disk.files.get(win32.join(MEDIA, 'a.wav'))?.size).toBe(900)
     await h.settle()
-    h.disk.files.delete(join(MEDIA, 'b.wav'))
+    h.disk.files.delete(win32.join(MEDIA, 'b.wav'))
     const rerun = await h.value('rerun', { runId: started.runId, jobIds: 'all', force: false })
     expect(rerun.added).toEqual([])
     expect(rerun.holdsOutput.map((entry) => entry.jobId)).toEqual([a])
-    expect(rerun.missing).toEqual([{ jobId: b, path: join(MEDIA, 'b.wav') }])
+    expect(rerun.missing).toEqual([{ jobId: b, path: win32.join(MEDIA, 'b.wav') }])
     wireCheck(h)
   })
 
