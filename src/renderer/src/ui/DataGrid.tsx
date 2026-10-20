@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { cx } from './cx'
 import { Icon } from './Icon'
 import { useAnnounce } from './LiveRegion'
-import { Menu, type MenuActionItem, type MenuCheckboxItem, type MenuEntry } from './Menu'
+import { Menu, type MenuActionItem, type MenuCheckboxItem, type MenuEntry, type MenuHandle } from './Menu'
+import { OverlayScrollbar } from './OverlayScrollbar'
 import { GRID_FOCUS_DELAY_MS, Tooltip } from './Tooltip'
 import { GRID_PAGE_ROWS, gridSelectionReducer, type GridMove, type GridSelectionAction, type GridSelectionState } from './useGridSelection'
 import { VisuallyHidden } from './VisuallyHidden'
@@ -69,8 +70,20 @@ export interface GridCellContext
   index: number
   selected: boolean
   focused: boolean
-  /** The row menu's move items, for a view that builds its own row menu; empty when the grid cannot reorder. */
-  moveItems: () => MenuEntry[]
+  /** Wires a row's More actions button to the grid's row menu. */
+  menuButton: GridMenuButton
+}
+
+/**
+ * The props a row's More actions button spreads: it opens the grid's own row menu under itself, the same menu a
+ * right click and Shift+F10 open, so there is one menu per grid and it lives outside the rows.
+ */
+export interface GridMenuButton
+{
+  'aria-haspopup': 'menu'
+  'aria-expanded': boolean
+  onPointerDown: () => void
+  onClick: (event: MouseEvent<HTMLElement>) => void
 }
 
 /** Props for {@link DataGrid}. */
@@ -114,6 +127,8 @@ export interface DataGridProps<T extends GridRowBase>
   renderCell: (row: T, column: GridColumn<T>, context: GridCellContext) => ReactNode
   /** The view's row menu entries, ahead of the move items. */
   rowMenu?: (row: T) => MenuEntry[]
+  /** The view's row menu brings its own move items, so the grid adds none. */
+  ownMoveItems?: boolean
   /** The row's tooltip, such as a truncated file name; an empty string shows none. */
   rowTooltip?: (row: T) => string
   /** Shows skeleton rows and marks the grid busy. */
@@ -136,7 +151,7 @@ export const GRID_VIRTUALIZE_FROM = 100
 export const GRID_OVERSCAN_ROWS = 8
 
 /** The track size of an actions column. */
-export const GRID_ACTIONS_WIDTH = '24px'
+export const GRID_ACTIONS_WIDTH = '48px'
 
 const ROW_HEIGHTS: Readonly<Record<GridDensity, number>> = { default: 36, compact: 30 }
 
@@ -357,10 +372,16 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
   const typed = useRef<{ buffer: string, timer: number | undefined }>({ buffer: '', timer: undefined })
   const rowAnchor = useRef<HTMLSpanElement>(null)
   const columnAnchor = useRef<HTMLSpanElement>(null)
+  const rowMenu = useRef<MenuHandle>(null)
+  const columnMenu = useRef<MenuHandle>(null)
   const menuOpen = useRef<'row' | 'column' | null>(null)
   const menuReturn = useRef<HTMLElement | null>(null)
   const [menuClosed, setMenuClosed] = useState(0)
   const [menuFor, setMenuFor] = useState<{ id: string, targets: string[] } | null>(null)
+  const [menuEdge, setMenuEdge] = useState<'start' | 'end'>('start')
+  const [rowMenuShownFor, setRowMenuShownFor] = useState<string | null>(null)
+  const rowMenuId = useRef<string | null>(null)
+  const pressedOpen = useRef(false)
   const announce = useAnnounce()
 
   if (propState.current !== selected)
@@ -574,7 +595,7 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
       if (hasRowMenu)
       {
         event.preventDefault()
-        openRowMenu(id, element, null)
+        openRowMenu(id, element, null, 'key')
       }
       return
     }
@@ -825,50 +846,98 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
     }]
   }
 
-  /** Places a menu's anchor at the pointer, or under the start of `from`, and opens the menu through it. */
-  const openMenu = (anchor: HTMLSpanElement | null, from: HTMLElement, point: { x: number, y: number } | null): void =>
+  /**
+   * Places a menu's anchor at the pointer, or under `from` on the given edge, and opens the menu. A menu still open,
+   * or light-dismissed by this very press, closes first and the new one opens on the next frame, so moving from one
+   * row's menu to another's takes one press.
+   */
+  const openMenu = (kind: 'row' | 'column', from: HTMLElement, point: { x: number, y: number } | null, edge: 'start' | 'end', prepare?: () => void): void =>
   {
+    const open = [rowMenu.current, columnMenu.current].filter((handle) => handle?.isOpen())
+    if (open.length > 0)
+    {
+      open.forEach((handle) => handle?.close(false))
+      requestAnimationFrame(() => openMenu(kind, from, point, edge, prepare))
+      return
+    }
+    const anchor = (kind === 'row' ? rowAnchor : columnAnchor).current
+    const handle = (kind === 'row' ? rowMenu : columnMenu).current
     const frame = anchor?.parentElement
-    if (!anchor || !frame || menuOpen.current !== null)
+    if (!anchor || !frame || !handle || !from.isConnected)
     {
       return
     }
+    prepare?.()
     const box = frame.getBoundingClientRect()
     const rect = from.getBoundingClientRect()
-    const at = point ?? { x: rect.left, y: rect.bottom }
+    const at = point ?? { x: edge === 'end' ? rect.right : rect.left, y: rect.bottom }
     anchor.style.left = `${at.x - box.left}px`
     anchor.style.top = `${at.y - box.top}px`
     menuReturn.current = from
-    anchor.click()
+    handle.open()
   }
 
-  const openRowMenu = (id: string, element: HTMLElement, point: { x: number, y: number } | null): void =>
+  /**
+   * Opens the row menu for `id`. A press on a row outside the selection selects it first, as a right click does in
+   * a file manager, so the menu, the selection, and the inspector always name the same jobs; the keyboard keeps the
+   * selection it has.
+   */
+  const openRowMenu = (id: string, from: HTMLElement, point: { x: number, y: number } | null, source: 'pointer' | 'button' | 'key'): void =>
   {
-    if (!hasRowMenu || menuOpen.current !== null)
+    if (!hasRowMenu)
     {
       return
     }
-    if (point && !state.current.selected.has(id))
+    openMenu('row', from, point, source === 'button' ? 'end' : 'start', () =>
     {
-      dispatch({ type: 'click', id })
-    }
-    setMenuFor({ id, targets: menuRowsFor(id) })
-    openMenu(rowAnchor.current, element, point)
+      if (source !== 'key' && !state.current.selected.has(id))
+      {
+        dispatch({ type: 'click', id })
+      }
+      rowMenuId.current = id
+      setMenuFor({ id, targets: menuRowsFor(id) })
+      setMenuEdge(source === 'button' ? 'end' : 'start')
+    })
   }
 
   const openColumnMenu = (from: HTMLElement, point: { x: number, y: number } | null): void =>
   {
-    openMenu(columnAnchor.current, from, point)
+    openMenu('column', from, point, 'start')
   }
 
   const onMenuOpenChange = (kind: 'row' | 'column') => (open: boolean): void =>
   {
     menuOpen.current = open ? kind : null
+    if (kind === 'row')
+    {
+      setRowMenuShownFor(open ? rowMenuId.current : null)
+    }
     if (!open)
     {
       setMenuClosed((count) => count + 1)
     }
   }
+
+  /** A row's More actions button: a press on the row whose menu is open closes it, any other press opens it there. */
+  const menuButtonFor = (id: string): GridMenuButton => ({
+    'aria-haspopup': 'menu',
+    'aria-expanded': rowMenuShownFor === id,
+    onPointerDown: () =>
+    {
+      pressedOpen.current = rowMenu.current?.isOpen() === true && rowMenuId.current === id
+    },
+    onClick: (event) =>
+    {
+      const wasOpen = event.detail === 0 ? rowMenu.current?.isOpen() === true && rowMenuId.current === id : pressedOpen.current
+      pressedOpen.current = false
+      if (wasOpen)
+      {
+        rowMenu.current?.close(false)
+        return
+      }
+      openRowMenu(id, event.currentTarget, null, 'button')
+    }
+  })
 
   useLayoutEffect(() =>
   {
@@ -894,7 +963,8 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
       return
     }
     event.preventDefault()
-    openRowMenu(id, event.currentTarget, pointOf(event))
+    const point = pointOf(event)
+    openRowMenu(id, event.currentTarget, point, point ? 'pointer' : 'key')
   }
 
   const onHeaderContextMenu = (event: MouseEvent<HTMLDivElement>): void =>
@@ -974,7 +1044,7 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
       return []
     }
     const own = props.rowMenu?.(row) ?? []
-    const moves = moveItemsFor(menuFor.targets)
+    const moves = props.ownMoveItems ? [] : moveItemsFor(menuFor.targets)
     return own.length > 0 && moves.length > 0 ? [...own, 'separator', ...moves] : [...own, ...moves]
   }
 
@@ -1143,7 +1213,7 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
     index,
     selected: isSelected,
     focused: row.id === selected.focus,
-    moveItems: () => moveItemsFor(menuRowsFor(row.id))
+    menuButton: menuButtonFor(row.id)
   })
 
   const renderRow = (row: T, index: number): ReactElement =>
@@ -1290,6 +1360,7 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
             : body}
         </div>
       </div>
+      <OverlayScrollbar target={gridRef} insetStart={HEADER_HEIGHT} />
       {drag !== null && (
         <div aria-hidden="true" className="ui-grid-drag-chip" style={{ left: drag.x + 14, top: drag.y + 14 }}>
           {`Move ${countText(drag.ids.length)}`}
@@ -1297,13 +1368,16 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
       )}
       {hasRowMenu && (
         <Menu
+          handle={rowMenu}
           trigger={<span ref={rowAnchor} aria-hidden="true" className="ui-grid-menu-anchor" />}
           items={rowMenuEntries()}
           label={rowMenuLabel}
+          align={menuEdge}
           onOpenChange={onMenuOpenChange('row')}
         />
       )}
       <Menu
+        handle={columnMenu}
         trigger={<span ref={columnAnchor} aria-hidden="true" className="ui-grid-menu-anchor" />}
         items={columnEntries()}
         label="Column options"

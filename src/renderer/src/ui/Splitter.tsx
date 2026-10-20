@@ -34,9 +34,10 @@ interface Drag
 }
 
 /**
- * A vertical window splitter: a 1 px line with a 24 px hit area centered on it, focusable with an inset
- * ring. Drag it, press Left and Right to step, Home and End to reach the limits, or double-click to
- * reset. Its layout slot stays 1 px wide; the hit area overhangs both neighbors above their content.
+ * A vertical window splitter: a 1 px line with a 24 px hit area, focusable with an inset ring. Drag it, press
+ * Left and Right to step, Home and End to reach the limits, or double-click to reset. Its layout slot stays 1 px
+ * wide; the hit area reaches 2 px over the other pane and the rest over the pane it sizes, whose padding takes
+ * it, so the scrollbar and edge controls of the other pane stay reachable.
  * Dragging needs a single-pointer alternative in the view, such as a menu of fixed sizes.
  */
 export function Splitter({
@@ -152,8 +153,9 @@ export function Splitter({
       data-focus="inset"
       data-dragging={dragging || undefined}
       className={cx(
-        'relative z-(--z-index-splitter) -mx-[11.5px] w-(--size-target-min) shrink-0 cursor-col-resize touch-none self-stretch select-none',
-        'before:pointer-events-none before:absolute before:inset-y-0 before:start-[calc(50%-0.5px)] before:border-s before:border-line-strong before:transition-colors before:duration-fast before:ease-out',
+        'relative z-(--z-index-splitter) w-(--size-target-min) shrink-0 cursor-col-resize touch-none self-stretch select-none',
+        pane === 'after' ? '-ms-[2px] -me-[21px] before:start-[2px]' : '-ms-[21px] -me-[2px] before:start-[21px]',
+        'before:pointer-events-none before:absolute before:inset-y-0 before:border-s before:border-line-strong before:transition-colors before:duration-fast before:ease-out',
         'hover:before:border-line-control-hover data-dragging:before:border-line-control-hover',
         className
       )}

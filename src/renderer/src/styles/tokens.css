@@ -45,6 +45,8 @@
   --color-text-selection: color-mix(in oklab, var(--color-amber) 30%, transparent);
   --color-scrim: rgb(6 5 4 / 0.62);
   --color-scrollbar: #766e64;
+  --color-scrollbar-hover: var(--color-line-control-hover);
+  --color-scrollbar-active: var(--color-brass);
 
   --color-running: #7fa9d6;
   --color-verified: #9bce90;

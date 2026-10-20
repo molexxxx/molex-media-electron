@@ -321,7 +321,7 @@ export function InspectorPanel({
         </div>
       )}
       {mode === 'history'
-        ? <HistoryInspector view={view} onShowLog={handlers.onShowRunLog} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" />
+        ? <HistoryInspector view={view} onShowLog={handlers.onShowRunLog} className="min-h-0 flex-1 overflow-y-auto ps-4 pe-1 py-3" />
         : (
           <InspectorBody
             key={key}
@@ -440,7 +440,7 @@ function InspectorBody({ mode, listKey, jobs, selectionSize, detailId, order, pl
   {
     const lookup = presetLookup(presets?.user ?? [])
     return (
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto ps-5 pe-2 py-4">
         <div className="flex items-start justify-between gap-2">
           <IdentityHeader jobs={[]} users={presets?.user ?? []} />
           {closeButton}
@@ -468,7 +468,7 @@ function InspectorBody({ mode, listKey, jobs, selectionSize, detailId, order, pl
 
   return (
     <>
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-4">
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto ps-5 pe-2 py-4">
         <div className="flex items-start justify-between gap-2">
           <IdentityHeader
             jobs={jobs}

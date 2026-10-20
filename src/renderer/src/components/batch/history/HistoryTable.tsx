@@ -13,7 +13,7 @@ import { activeViewKey, BATCH_COLUMNS, columnSetFor, useBatchView, type BatchVie
 import type { BatchActions } from '../../../stores/batchActions'
 import { Button } from '../../../ui/Button'
 import { CatalogNumber } from '../../../ui/CatalogNumber'
-import { DataGrid, sortGridRows, type GridCellContext, type GridColumn, type GridSortValue } from '../../../ui/DataGrid'
+import { DataGrid, sortGridRows, type GridCellContext, type GridColumn, type GridMenuButton, type GridSortValue } from '../../../ui/DataGrid'
 import { cx } from '../../../ui/cx'
 import { InlineConfirm } from '../../../ui/InlineConfirm'
 import { usePlatform } from '../../../ui/Kbd'
@@ -429,7 +429,7 @@ function MatchResult({ match }: { match: MatchRow }): ReactElement
   return <StatusLabel status={status} label={label} />
 }
 
-function BatchCell({ row, column, selected, menu }: { row: BatchRow, column: string, selected: boolean, menu: () => MenuEntry[] }): ReactNode
+function BatchCell({ row, column, selected, button }: { row: BatchRow, column: string, selected: boolean, button: GridMenuButton }): ReactNode
 {
   switch (column)
   {
@@ -452,13 +452,13 @@ function BatchCell({ row, column, selected, menu }: { row: BatchRow, column: str
     case 'out':
       return <ValueText text={formatBytes(row.bytes.output)} selected={selected} />
     case 'actions':
-      return <ActionsCell id={batchName(row.runId)} items={menu()} />
+      return <ActionsCell id={batchName(row.runId)} button={button} />
     default:
       return null
   }
 }
 
-function MatchCell({ row, column, selected, menu }: { row: MatchRow, column: string, selected: boolean, menu: () => MenuEntry[] }): ReactNode
+function MatchCell({ row, column, selected, button }: { row: MatchRow, column: string, selected: boolean, button: GridMenuButton }): ReactNode
 {
   switch (column)
   {
@@ -473,7 +473,7 @@ function MatchCell({ row, column, selected, menu }: { row: MatchRow, column: str
     case 'finished':
       return <ValueText text={finishedText({ endedAt: row.endedAt })} selected={selected} />
     case 'actions':
-      return <ActionsCell id={row.jobId} items={menu()} />
+      return <ActionsCell id={row.jobId} button={button} />
     default:
       return null
   }
@@ -865,7 +865,7 @@ function BatchList(props: ListProps): ReactElement
         rowLabel={(row) => batchName(row.runId)}
         countLabel={countBatches}
         onKeyCommand={onKeyCommand}
-        renderCell={(row, column, context: GridCellContext) => <BatchCell row={row} column={column.id} selected={context.selected} menu={() => menu(row)} />}
+        renderCell={(row, column, context: GridCellContext) => <BatchCell row={row} column={column.id} selected={context.selected} button={context.menuButton} />}
         rowMenu={menu}
         loading={status === 'loading' && rows.length === 0}
         className="min-h-0 flex-1"
@@ -962,7 +962,7 @@ function SearchResults(props: ListProps & { query: string }): ReactElement
         countLabel={countJobs}
         typeahead={{ columnId: 'file', text: (row) => row.sourceName }}
         onKeyCommand={readOnlyKeys(props, 'historyResults')}
-        renderCell={(row, column, context: GridCellContext) => <MatchCell row={row} column={column.id} selected={context.selected} menu={() => menu(row)} />}
+        renderCell={(row, column, context: GridCellContext) => <MatchCell row={row} column={column.id} selected={context.selected} button={context.menuButton} />}
         rowMenu={menu}
         rowTooltip={(row) => row.sourcePath}
         loading={result === null && failure === null}
@@ -1060,7 +1060,7 @@ function OpenedBatch(props: ListProps & { runId: string }): ReactElement
           const job = jobs.get(row.id)
           return job === undefined
             ? null
-            : <JobCell job={job} column={column.id} selected={context.selected} platform={platform} inRunMode menuItems={() => menu(row.id)} />
+            : <JobCell job={job} column={column.id} selected={context.selected} platform={platform} inRunMode menuButton={context.menuButton} />
         }}
         rowMenu={(row) => menu(row.id)}
         rowTooltip={(row) => jobs.get(row.id)?.source.path ?? ''}

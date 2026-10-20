@@ -140,6 +140,8 @@ export const BOUNDARIES: Array<{ fg: string; surfaces: SurfaceSelector; role: st
   { fg: 'line-control', surfaces: ['sunken'], role: 'progress frame around its sunken track' },
   { fg: 'ink-2', surfaces: ['sunken'], role: 'progress fill on its track' },
   { fg: 'scrollbar', surfaces: ['ground', 'panel', 'raised', 'overlay', 'rail', 'sunken'], role: 'scrollbar thumb' },
+  { fg: 'scrollbar-hover', surfaces: ['ground', 'panel', 'raised', 'overlay', 'rail', 'sunken'], role: 'scrollbar thumb under the pointer' },
+  { fg: 'scrollbar-active', surfaces: ['ground', 'panel', 'raised', 'overlay', 'rail', 'sunken'], role: 'scrollbar thumb while dragged' },
   { fg: 'mark', surfaces: ['ground', 'panel'], role: 'checked box, on switch track, slider thumb, tab underline' },
   { fg: 'mark', surfaces: ['line-control'], role: 'slider fill against its track' },
   { fg: 'brass', surfaces: ['sunken'], role: 'selected catalog number frame in its well' },

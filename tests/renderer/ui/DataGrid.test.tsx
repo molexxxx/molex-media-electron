@@ -321,8 +321,8 @@ describe('DataGrid structure', () =>
   it('shares one column template through a custom property, with actions columns at 24 px', () =>
   {
     const { grid } = setup()
-    expect(grid.style.getPropertyValue('--ui-grid-columns')).toBe('24px 88px minmax(160px, 1fr) 96px 160px 24px')
-    expect(gridTemplate([{ width: '200px', kind: 'actions' }, { width: '1fr' }])).toBe('24px 1fr')
+    expect(grid.style.getPropertyValue('--ui-grid-columns')).toBe('24px 88px minmax(160px, 1fr) 96px 160px 48px')
+    expect(gridTemplate([{ width: '200px', kind: 'actions' }, { width: '1fr' }])).toBe('48px 1fr')
   })
 
   it('hides the grip column from assistive technology and shows the grip only while reorderable', () =>
@@ -1021,29 +1021,76 @@ describe('DataGrid row menu', () =>
     expect(click.defaultPrevented).toBe(false)
   })
 
-  it('hands the move items to a view that builds its own row menu', () =>
+  it('opens the row menu under a row button, selecting a row outside the selection, and closes on a second press', () =>
   {
-    const contexts = new Map<string, GridCellContext>()
-    const { move } = setup({
-      grid: {
-        renderCell: (job, column, context) =>
-        {
-          if (column.kind === 'actions')
-          {
-            contexts.set(job.id, context)
-          }
-          return null
-        }
-      }
-    })
-    const items = (id: string): MenuActionItem[] => (contexts.get(id)?.moveItems()[0] as MenuGroup<MenuActionItem>).items
-    expect(items('j1').map((item) => item.disabled)).toEqual([true, false, true, false])
-    expect(items('j3').map((item) => item.disabled)).toEqual([false, false, false, false])
-    act(() => items('j3')[0].onSelect())
-    expect(move).toHaveBeenCalledWith(['j3'], 'up')
-    expect(contexts.get('j3')?.index).toBe(1)
+    setup({ grid: { renderCell: moreButtonCell } })
+    fireEvent.click(row('j1'))
+    const more = moreButton('MM-0003')
+    expect(more).toHaveAttribute('aria-haspopup', 'menu')
+    pressButton(more)
+    expect(selectedIds()).toEqual(['j3'])
+    const menu = menuNamed('Actions for MM-0003')
+    expect(within(menu).getByRole('menuitem', { hidden: true, name: 'Move up' })).toBeInTheDocument()
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    pressButton(more)
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    expect(within(menu).queryAllByRole('menuitem', { hidden: true })).toHaveLength(0)
+  })
+
+  it('moves an open row menu to another row in one press', async () =>
+  {
+    setup({ grid: { renderCell: moreButtonCell } })
+    pressButton(moreButton('MM-0002'))
+    expect(moreButton('MM-0002')).toHaveAttribute('aria-expanded', 'true')
+    pressButton(moreButton('MM-0004'))
+    await act(async () => await new Promise((resolve) => requestAnimationFrame(resolve)))
+    expect(moreButton('MM-0002')).toHaveAttribute('aria-expanded', 'false')
+    expect(moreButton('MM-0004')).toHaveAttribute('aria-expanded', 'true')
+    expect(selectedIds()).toEqual(['j4'])
+    expect(within(menuNamed('Actions for MM-0004')).getByRole('menuitem', { hidden: true, name: 'Move up' })).toBeInTheDocument()
+  })
+
+  it('keeps a selection the pressed row belongs to, and toggles from the keyboard', () =>
+  {
+    setup({ grid: { renderCell: moreButtonCell } })
+    fireEvent.click(row('j1'))
+    fireEvent.click(row('j3'), { shiftKey: true })
+    const more = moreButton('MM-0002')
+    fireEvent.click(more)
+    expect(selectedIds()).toEqual(['j1', 'j2', 'j3'])
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(within(menuNamed('Actions for 3 jobs')).getByRole('menuitem', { hidden: true, name: 'Move up' })).toBeInTheDocument()
+    fireEvent.click(more)
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('leaves the move items to a view whose row menu brings its own', () =>
+  {
+    setup({ grid: { ownMoveItems: true, rowMenu: (job) => [{ id: 'up', label: `Move ${job.number} up`, onSelect: () => undefined }] } })
+    fireEvent.click(row('j2'))
+    press(row('j2'), 'F10', { shiftKey: true })
+    const menu = menuNamed('Actions for MM-0002')
+    expect(within(menu).getAllByRole('menuitem', { hidden: true }).map((item) => item.textContent)).toEqual(['Move MM-0002 up'])
+    expect(within(menu).queryByRole('group', { hidden: true, name: 'Move' })).toBeNull()
   })
 })
+
+function moreButtonCell(job: Job, column: GridColumn<Job>, context: GridCellContext): ReactElement | null
+{
+  return column.kind === 'actions' ? <button type="button" {...context.menuButton} aria-label={`More actions for ${job.number}`} /> : null
+}
+
+function moreButton(number: string): HTMLElement
+{
+  return screen.getByRole('button', { name: `More actions for ${number}` })
+}
+
+/** A pointer press: pointerdown, then a click with a pointer's detail. */
+function pressButton(button: HTMLElement): void
+{
+  fireEvent.pointerDown(button)
+  fireEvent.click(button, { detail: 1 })
+}
 
 function headerButton(name: string): HTMLElement
 {
@@ -1203,18 +1250,18 @@ describe('DataGrid columns', () =>
     const resize = observeWidths()
     setup()
     resize(679)
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 48px')
     expect(screen.queryByRole('columnheader', { name: 'Size' })).toBeNull()
     expect(within(bodyRows()[0]).getAllByRole('gridcell', { hidden: true })).toHaveLength(4)
     resize(680)
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 48px')
     expect(screen.getByRole('columnheader', { name: 'Size' })).toBeInTheDocument()
     resize(959)
     expect(screen.queryByRole('columnheader', { name: 'Output' })).toBeNull()
     resize(960)
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 48px')
     resize(0)
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 48px')
   })
 
   it('reads the content box when the observer reports no border box', () =>
@@ -1232,8 +1279,8 @@ describe('DataGrid columns', () =>
       disconnect(): void {}
     })
     setup()
-    act(() => callbacks[0]([{ contentRect: { width: 700, height: 300 } } as unknown as ResizeObserverEntry], {} as ResizeObserver))
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 24px')
+    act(() => callbacks.forEach((callback) => callback([{ contentRect: { width: 700, height: 300 } } as unknown as ResizeObserverEntry], {} as ResizeObserver)))
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 48px')
   })
 
   it('opens the column menu from a header cell and hides, compacts, and resets columns', () =>
@@ -1248,7 +1295,7 @@ describe('DataGrid columns', () =>
     expect(document.activeElement).toBe(size)
     fireEvent.click(size)
     expect(hidden).toHaveBeenLastCalledWith(['size'])
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 160px 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 160px 48px')
     expect(document.activeElement).toBe(file)
     fireEvent.contextMenu(file, { button: 2, clientX: 12, clientY: 8 })
     menu = menuNamed('Column options')
@@ -1261,7 +1308,7 @@ describe('DataGrid columns', () =>
     expect(within(menu).getByRole('menuitemcheckbox', { hidden: true, name: 'Compact rows' })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(within(menu).getByRole('menuitem', { hidden: true, name: 'Reset columns' }))
     expect(hidden).toHaveBeenLastCalledWith([])
-    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 24px')
+    expect(template()).toBe('24px 88px minmax(160px, 1fr) 96px 160px 48px')
     press(file, 'ContextMenu')
     fireEvent.click(within(menuNamed('Column options')).getByRole('menuitemcheckbox', { hidden: true, name: 'Compact rows' }))
     expect(density).toHaveBeenLastCalledWith('default')

@@ -37,7 +37,7 @@ import { cx } from '../../../ui/cx'
 import { Icon } from '../../../ui/Icon'
 import { IconButton } from '../../../ui/IconButton'
 import type { IconName } from '../../../ui/icons'
-import { Menu, type MenuEntry } from '../../../ui/Menu'
+import type { GridMenuButton } from '../../../ui/DataGrid'
 import { ProgressBar } from '../../../ui/ProgressBar'
 import { Stamp, useStampLanding } from '../../../ui/Stamp'
 import { StatusLabel, type StatusKey } from '../../../ui/StatusLabel'
@@ -539,20 +539,16 @@ export function ResultCell({ job }: { job: JobView }): ReactElement | null
   return <StampFor job={job} landing={false} />
 }
 
-/** The More actions button, so the row menu is one pointer action away on every row. */
-export function ActionsCell({ id, items }: { id: string, items: MenuEntry[] }): ReactElement | null
+/**
+ * The More actions button, so the row menu is one pointer action away on every row. It opens the grid's own row
+ * menu under itself, the menu a right click opens, and carries no tooltip so nothing covers that menu.
+ */
+export function ActionsCell({ id, button }: { id: string, button: GridMenuButton }): ReactElement
 {
-  if (items.length === 0)
-  {
-    return null
-  }
   return (
-    <Menu
-      label={`Actions for ${id}`}
-      align="end"
-      items={items}
-      trigger={<IconButton label={`More actions for ${id}`} icon="action.more" size="sm" />}
-    />
+    <button type="button" {...button} aria-label={`More actions for ${id}`} className="ui-icon-button ui-row-actions">
+      <Icon name="action.more" size="md" />
+    </button>
   )
 }
 
@@ -595,8 +591,8 @@ export interface JobCellProps
   replaceMode?: boolean
   /** The letter of the job's album group. */
   album?: string | null
-  /** The row menu's entries, for the More actions button. */
-  menuItems?: () => MenuEntry[]
+  /** The grid's row menu wiring, for the More actions button. */
+  menuButton?: GridMenuButton
   onQuickAction?: (action: QuickAction, job: JobView) => void
 }
 
@@ -642,7 +638,7 @@ export function JobCell(props: JobCellProps): ReactNode
     case 'finished':
       return <ValueText text={finishedText(job)} selected={selected} />
     case 'actions':
-      return <ActionsCell id={job.id} items={props.menuItems?.() ?? []} />
+      return props.menuButton === undefined ? null : <ActionsCell id={job.id} button={props.menuButton} />
     case 'quick':
       return props.onQuickAction === undefined ? null : <QuickActionCell job={job} onAction={props.onQuickAction} />
     default:

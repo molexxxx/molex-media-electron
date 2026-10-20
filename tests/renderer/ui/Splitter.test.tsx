@@ -202,13 +202,18 @@ describe('Splitter', () =>
     expect(line).not.toHaveAttribute('data-dragging')
   })
 
-  it('owns a 24 px hit area centered on a 1 px line that lights on hover and drag', () =>
+  it('owns a 24 px hit area that leans into the pane it sizes, around a 1 px line that lights on hover and drag', () =>
   {
+    const { unmount } = render(<Controlled pane="after" />)
+    expect(classesOf(separator())).toEqual(expect.arrayContaining(['-ms-[2px]', '-me-[21px]', 'before:start-[2px]']))
+    unmount()
     render(<Controlled className="order-2" />)
     const classes = classesOf(separator())
     expect(classes).toEqual(expect.arrayContaining([
       'w-(--size-target-min)',
-      '-mx-[11.5px]',
+      '-ms-[21px]',
+      '-me-[2px]',
+      'before:start-[21px]',
       'z-(--z-index-splitter)',
       'cursor-col-resize',
       'touch-none',

@@ -14,7 +14,7 @@ import { modeRows, useBatchView, visibleIds } from '../../../stores/batchView'
 import { useJobsStore, type JobsState } from '../../../stores/jobs'
 import { selectHydrated, selectJob, selectRunStatus } from '../../../stores/jobsSelectors'
 import { cx } from '../../../ui/cx'
-import { DataGrid, type GridCellContext, type GridColumn, type GridDensity, type GridMoveTo, type GridSort } from '../../../ui/DataGrid'
+import { DataGrid, type GridCellContext, type GridColumn, type GridDensity, type GridMenuButton, type GridMoveTo, type GridSort } from '../../../ui/DataGrid'
 import { usePlatform } from '../../../ui/Kbd'
 import type { MenuEntry } from '../../../ui/Menu'
 import type { GridSelectionAction, GridSelectionState } from '../../../ui/useGridSelection'
@@ -182,26 +182,17 @@ function useRows(ids: readonly string[], sortValues: string): JobRow[]
   }, [ids, sortValues])
 }
 
-function menuEntries(own: MenuEntry[], moves: MenuEntry[]): MenuEntry[]
-{
-  if (own.length === 0 || moves.length === 0)
-  {
-    return [...own, ...moves]
-  }
-  return [...own, 'separator', ...moves]
-}
-
 interface RowCellProps
 {
   id: string
   column: string
   selected: boolean
-  /** Only the actions cell takes the grid's move items, so every other cell keeps equal props between renders. */
-  moveItems?: () => MenuEntry[]
+  /** Only the actions cell takes the grid's menu button, so every other cell keeps equal props between renders. */
+  menuButton?: GridMenuButton
 }
 
 /** One cell subscribed to its own job, so a change to one job re-renders only that job's cells. */
-const JobRowCell = memo(function JobRowCell({ id, column, selected, moveItems }: RowCellProps): ReactNode
+const JobRowCell = memo(function JobRowCell({ id, column, selected, menuButton }: RowCellProps): ReactNode
 {
   const table = useContext(TableContext)
   const select = useMemo(() => selectJob(id as JobId), [id])
@@ -211,7 +202,6 @@ const JobRowCell = memo(function JobRowCell({ id, column, selected, moveItems }:
   {
     return null
   }
-  const menuItems = column === 'actions' ? () => menuEntries(table.rowMenu?.(job) ?? [], moveItems?.() ?? []) : undefined
   return (
     <JobCell
       job={job}
@@ -223,7 +213,7 @@ const JobRowCell = memo(function JobRowCell({ id, column, selected, moveItems }:
       stopping={table.stopping.has(id)}
       replaceMode={table.replaceMode}
       album={job.albumGroupId === null ? null : table.albums.get(job.albumGroupId) ?? null}
-      menuItems={menuItems}
+      menuButton={table.rowMenu === undefined ? undefined : menuButton}
       onQuickAction={table.onQuickAction}
     />
   )
@@ -231,7 +221,7 @@ const JobRowCell = memo(function JobRowCell({ id, column, selected, moveItems }:
 
 function renderCell(row: JobRow, column: GridColumn<JobRow>, context: GridCellContext): ReactNode
 {
-  return <JobRowCell id={row.id} column={column.id} selected={context.selected} moveItems={column.id === 'actions' ? context.moveItems : undefined} />
+  return <JobRowCell id={row.id} column={column.id} selected={context.selected} menuButton={column.id === 'actions' ? context.menuButton : undefined} />
 }
 
 function rowLabel(row: JobRow): string
@@ -342,6 +332,7 @@ export function JobTable(props: JobTableProps): ReactElement
           onDensityChange={onDensityChange}
           renderCell={renderCell}
           rowMenu={gridRowMenu}
+          ownMoveItems={gridRowMenu !== undefined}
           loading={!hydrated}
           className="min-h-0 flex-1"
         />

@@ -24,6 +24,7 @@ export {
   visibleGridColumns,
   type DataGridProps,
   type GridCellContext,
+  type GridMenuButton,
   type GridColumn,
   type GridColumnKind,
   type GridColumnPriority,

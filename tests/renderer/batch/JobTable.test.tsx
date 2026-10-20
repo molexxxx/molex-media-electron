@@ -695,16 +695,15 @@ describe('JobTable', () =>
     const a = job({ state: 'encoding', runId: R31, progress: progress({ percent: 10 }) })
     const b = job({ state: 'encoding', runId: R31, progress: progress({ percent: 20 }) })
     load([a, b], { run: RUNNING })
-    const rendered: string[] = []
-    renderTable({ list: 'run', rowMenu: (entry) =>
-    {
-      rendered.push(entry.id)
-      return []
-    } })
-    expect(rendered).toEqual([a.id, b.id])
-    rendered.length = 0
+    renderTable({ list: 'run', rowMenu: () => [] })
+    const observer = new MutationObserver(() => undefined)
+    observer.observe(screen.getByRole('grid'), { subtree: true, childList: true, attributes: true, characterData: true })
     update(a.id, { progress: progress({ percent: 30 }) })
-    expect(rendered).toEqual([a.id])
+    const touched = new Set(observer.takeRecords()
+      .map((record) => (record.target instanceof Element ? record.target : record.target.parentElement)?.closest('[role="row"]')?.getAttribute('data-row-id'))
+      .filter((id) => id !== undefined && id !== null))
+    observer.disconnect()
+    expect([...touched]).toEqual([a.id])
     expect(within(row(a.id)).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '30')
   })
 
@@ -823,7 +822,7 @@ describe('JobTable', () =>
     expect(bodyRows()).toEqual([])
   })
 
-  it('opens the row menu from a right click and from More actions, the page entries first and the moves after them', async () =>
+  it('opens one row menu from a right click and from More actions, with the page entries alone', () =>
   {
     const [a, b, c] = [job(), job(), job()]
     load([a, b, c])
@@ -832,18 +831,20 @@ describe('JobTable', () =>
     renderTable({ rowMenu: (entry) => [{ id: 'log', label: `Show log of ${entry.id}`, onSelect }], onMoveRows })
     fireEvent.contextMenu(row(b.id), { button: 2, clientX: 4, clientY: 4 })
     let menu = openMenu(`Actions for ${b.id}`)
-    expect(within(menu).getAllByRole('menuitem', { hidden: true })[0]).toHaveTextContent(`Show log of ${b.id}`)
-    expect(within(menu).getByRole('separator', { hidden: true })).toBeInTheDocument()
+    expect(within(menu).getAllByRole('menuitem', { hidden: true }).map((item) => item.textContent)).toEqual([`Show log of ${b.id}`])
+    expect(within(menu).queryByRole('separator', { hidden: true })).toBeNull()
     fireEvent.click(within(menu).getByRole('menuitem', { hidden: true, name: `Show log of ${b.id}` }))
     expect(onSelect).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: `More actions for ${a.id}` }))
+    const more = screen.getByRole('button', { name: `More actions for ${a.id}` })
+    fireEvent.click(more)
     menu = openMenu(`Actions for ${a.id}`)
-    expect(within(menu).getAllByRole('menuitem', { hidden: true })[0]).toHaveTextContent(`Show log of ${a.id}`)
-    expect(within(menu).getByRole('separator', { hidden: true })).toBeInTheDocument()
-    fireEvent.click(within(menu).getByRole('menuitem', { hidden: true, name: /^Move down/ }))
-    expect(onMoveRows).toHaveBeenCalledWith([a.id], 'down')
-    await announced(`${a.id} moved to position 2 of 3.`)
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(row(a.id)).toHaveAttribute('aria-selected', 'true')
+    expect(within(menu).getAllByRole('menuitem', { hidden: true }).map((item) => item.textContent)).toEqual([`Show log of ${a.id}`])
+    fireEvent.click(within(menu).getByRole('menuitem', { hidden: true, name: `Show log of ${a.id}` }))
+    expect(onSelect).toHaveBeenCalledTimes(2)
+    expect(more).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(row(a.id))
     fireEvent.click(row(c.id), { ctrlKey: true })

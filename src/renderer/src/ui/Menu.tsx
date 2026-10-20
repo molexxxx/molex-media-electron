@@ -1,4 +1,4 @@
-import { cloneElement, useEffect, useId, useLayoutEffect, useRef, useState, type AriaAttributes, type CSSProperties, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode, type Ref } from 'react'
+import { cloneElement, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type AriaAttributes, type CSSProperties, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode, type Ref } from 'react'
 import { formatKeys } from '../../../shared/text/platform'
 import { cx } from './cx'
 import { Icon } from './Icon'
@@ -85,6 +85,17 @@ export interface MenuTriggerProps
   onPointerDown?: (event: PointerEvent<HTMLElement>) => void
 }
 
+/** Opens and closes a menu from code, for a menu whose trigger is an anchor rather than a button the user presses. */
+export interface MenuHandle
+{
+  /** Shows the menu and focuses its first or last item; a no-op while it is open. */
+  open(on?: 'first' | 'last'): void
+  /** Hides the menu, returning focus to the trigger when asked. */
+  close(restoreFocus?: boolean): void
+  /** True from open until the menu hides, including a light dismiss whose toggle event has not arrived yet. */
+  isOpen(): boolean
+}
+
 /** Props for {@link Menu}. */
 export interface MenuProps
 {
@@ -98,6 +109,8 @@ export interface MenuProps
   /** Checkbox and radio items toggle and keep the menu open, as in a filter list. */
   filterList?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Receives the {@link MenuHandle}. */
+  handle?: Ref<MenuHandle>
   className?: string
 }
 
@@ -325,7 +338,7 @@ function Submenu({ id, label, anchor, request, onDismiss, children }: SubmenuPro
  * items stay open in a `filterList`. Escape closes and returns focus; Tab closes and moves on. Disabled items
  * stay reachable, carry `aria-disabled`, and show their reason as text and as a tooltip.
  */
-export function Menu({ trigger, items, label, align = 'start', filterList = false, onOpenChange, className }: MenuProps): ReactElement
+export function Menu({ trigger, items, label, align = 'start', filterList = false, onOpenChange, handle, className }: MenuProps): ReactElement
 {
   const baseId = useId()
   const menuId = `${baseId}menu`
@@ -383,6 +396,12 @@ export function Menu({ trigger, items, label, align = 'start', filterList = fals
       triggerRef.current?.focus()
     }
   }
+
+  useImperativeHandle(handle, () => ({
+    open: (on = 'first') => show(on),
+    close: (restoreFocus = false) => close(restoreFocus),
+    isOpen: () => openRef.current
+  }))
 
   useLayoutEffect(() =>
   {

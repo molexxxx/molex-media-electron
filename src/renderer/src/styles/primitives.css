@@ -4,9 +4,9 @@
 
 @layer components
 {
-  .ui-overlay-scroll
+  .ui-overlay-scroll::-webkit-scrollbar
   {
-    scrollbar-width: thin;
+    width: 10px;
   }
 
   select.ui-select,
@@ -96,7 +96,6 @@
     background-color: var(--color-overlay);
     color: var(--color-ink);
     box-shadow: var(--shadow-overlay);
-    scrollbar-width: thin;
     transition:
       opacity var(--transition-duration-base) var(--ease-out),
       translate var(--transition-duration-base) var(--ease-out),
@@ -800,6 +799,87 @@
     min-block-size: 0;
   }
 
+  .ui-grid::-webkit-scrollbar
+  {
+    width: 0;
+  }
+
+  /* The overlay bar: only the thumb takes the pointer, a 4 px rule at rest that widens to 6 px under the pointer
+     and lights brass while dragged. It sits 3 px off the edge, clear of a neighboring splitter's 2 px reach, and
+     the 48 px actions column keeps a row's More actions button clear of it. */
+  .ui-overlay-bar
+  {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    z-index: 2;
+    inline-size: 10px;
+    pointer-events: none;
+  }
+
+  .ui-overlay-thumb
+  {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 3px;
+    inline-size: 4px;
+    border-radius: 999px;
+    background-color: var(--color-scrollbar);
+    pointer-events: auto;
+    touch-action: none;
+    transition:
+      inline-size var(--transition-duration-fast) var(--ease-out),
+      background-color var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-overlay-thumb:hover,
+  .ui-overlay-bar[data-dragging] .ui-overlay-thumb
+  {
+    inline-size: 6px;
+    background-color: var(--color-scrollbar-hover);
+  }
+
+  .ui-overlay-bar[data-dragging] .ui-overlay-thumb
+  {
+    background-color: var(--color-scrollbar-active);
+  }
+
+  /* A row's More actions button: quiet at rest, a wash under the pointer, and lit while its menu is open. */
+  .ui-row-actions
+  {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 28px;
+    block-size: 22px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--color-ink-2);
+    transition:
+      background-color var(--transition-duration-fast) var(--ease-out),
+      border-color var(--transition-duration-fast) var(--ease-out),
+      color var(--transition-duration-fast) var(--ease-out),
+      opacity var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-row-actions:hover
+  {
+    background-color: var(--color-wash-hover);
+    color: var(--color-ink);
+  }
+
+  .ui-row-actions:active
+  {
+    background-color: var(--color-wash-pressed);
+  }
+
+  .ui-row-actions[aria-expanded='true']
+  {
+    border-color: var(--color-line-control);
+    background-color: var(--color-raised);
+    color: var(--color-brass);
+  }
+
   .ui-grid-menu-anchor
   {
     position: absolute;
@@ -810,14 +890,13 @@
     pointer-events: none;
   }
 
-  /* The scroller keeps the full browser scrollbar, and its scroll padding keeps a focused row clear of the
-     sticky header and the toast stack. */
+  /* The scroller hides its own vertical bar for the frame's overlay bar, so rows run to the edge and columns hold
+     still as rows arrive; its scroll padding keeps a focused row clear of the sticky header and the toast stack. */
   .ui-grid
   {
     flex: 1 1 auto;
     min-block-size: 0;
     overflow: auto;
-    scrollbar-width: auto;
     scroll-padding-block-start: var(--size-grid-header);
     scroll-padding-block-end: calc(var(--toast-stack-size, 0px) + 8px);
     background-color: var(--color-ground);
