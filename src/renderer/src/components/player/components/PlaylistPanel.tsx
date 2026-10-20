@@ -259,7 +259,7 @@ export function PlaylistPanel({
             </button>
             <button
               onClick={() => handleConfirm('append')}
-              className="flex-1 px-2 py-1.5 text-2xs font-medium rounded-lg bg-surface-700 hover:bg-surface-600 text-surface-200 transition-colors"
+              className="flex-1 px-2 py-1.5 text-2xs font-medium rounded-lg bg-white/5 hover:bg-white/10 text-surface-200 transition-colors"
             >
               Append
             </button>
@@ -349,10 +349,10 @@ export function PlaylistPanel({
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs truncate">{t.name}</p>
-                  {t.videoUrl && <p className="text-2xs text-red-400/60 truncate">YouTube</p>}
+                  {t.videoUrl && <p className="text-2xs text-red-400 truncate">YouTube</p>}
                   {!t.isBlob && !t.videoUrl && t.src && <p className="text-2xs text-surface-600 truncate">{t.src}</p>}
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 transition-all">
+                <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 shrink-0 transition-all">
                   <button
                     onClick={(e) => { e.stopPropagation(); if (idx > 0) onMoveTrack(idx, idx - 1) }}
                     className={`text-surface-500 hover:text-white transition-colors ${idx === 0 ? 'invisible' : ''}`}

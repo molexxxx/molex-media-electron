@@ -40,7 +40,7 @@ export function UrlInputBar({
           onChange={(e) => onUrlChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') onAddUrl(); if (e.key === 'Escape' && onDismiss) onDismiss() }}
           placeholder="Paste YouTube playlist, video URL, or direct audio link..."
-          className="flex-1 h-9 px-3 text-sm rounded-lg bg-surface-900/80 border border-white/[0.06] text-surface-200 placeholder-surface-600 focus:border-accent-500/50 hover:border-white/[0.12] focus:outline-none transition-colors"
+          className="flex-1 h-9 px-3 text-sm rounded-lg bg-surface-900/80 border border-white/[0.06] text-surface-200 placeholder-surface-600 focus:border-accent-500/50 hover:border-white/[0.12] transition-colors"
           autoFocus
         />
         <button
@@ -87,7 +87,7 @@ export function UrlInputBar({
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); onRemoveFromHistory(h.url) }}
-                className="opacity-0 group-hover:opacity-100 text-surface-500 hover:text-red-400 transition-all shrink-0"
+                className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-surface-500 hover:text-red-400 transition-all shrink-0"
                 title="Remove from history"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

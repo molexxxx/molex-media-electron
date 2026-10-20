@@ -1,0 +1,115 @@
+/* Transitional theme for screens still on the legacy classes: the legacy type scale and fade-in, then the old
+   ramps and default hue steps pointed at the tokens. Accent maps to walnut, never brass, so brass stays reserved.
+   Delete this file once the last legacy class is migrated. */
+
+@theme
+{
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.5rem;
+  --text-3xl--line-height: 2rem;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 2.25rem;
+
+  --animate-fade-in: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn
+  {
+    0%
+    {
+      opacity: 0;
+    }
+    100%
+    {
+      opacity: 1;
+    }
+  }
+
+  --color-surface-50: #f6f1e7;
+  --color-surface-100: var(--color-ink);
+  --color-surface-200: #ddd4c2;
+  --color-surface-300: var(--color-ink-2);
+  --color-surface-400: #b6ab97;
+  --color-surface-500: var(--color-ink-3);
+  --color-surface-600: #9d917e;
+  --color-surface-700: #3a332c;
+  --color-surface-800: var(--color-raised);
+  --color-surface-900: var(--color-panel);
+  --color-surface-950: var(--color-ground);
+
+  --color-accent-50: #f6ebe2;
+  --color-accent-100: #efdccd;
+  --color-accent-200: #e3c3a6;
+  --color-accent-300: #d6a985;
+  --color-accent-400: var(--color-walnut-ink);
+  --color-accent-500: var(--color-walnut-400);
+  --color-accent-600: var(--color-walnut-500);
+  --color-accent-700: #6b4a33;
+  --color-accent-800: #553a28;
+  --color-accent-900: #3f2a1c;
+  --color-accent-950: var(--color-walnut-900);
+
+  --color-white: var(--color-ink);
+
+  --color-red-200: #f8b4b6;
+  --color-red-300: var(--color-error);
+  --color-red-400: var(--color-error);
+  --color-red-500: var(--color-error-fill);
+  --color-red-600: var(--color-error-fill);
+  --color-rose-200: #f8b4b6;
+  --color-rose-400: var(--color-error);
+  --color-rose-500: var(--color-error-fill);
+  --color-emerald-100: #d3e8cf;
+  --color-emerald-200: #b5d8ae;
+  --color-emerald-300: var(--color-verified);
+  --color-emerald-400: var(--color-verified);
+  --color-emerald-500: #6fa868;
+  --color-green-300: var(--color-verified);
+  --color-green-400: var(--color-verified);
+  --color-green-500: #6fa868;
+  --color-amber-300: var(--color-warning);
+  --color-amber-400: var(--color-warning);
+  --color-amber-500: #d9692f;
+  --color-amber-600: #d9692f;
+  --color-yellow-400: var(--color-warning);
+  --color-orange-400: var(--color-warning);
+  --color-orange-500: #d9692f;
+  --color-blue-300: var(--color-running);
+  --color-blue-400: var(--color-running);
+  --color-blue-500: #5f8fc4;
+  --color-sky-100: #d5e3f2;
+  --color-sky-200: #b3cbe6;
+  --color-sky-300: var(--color-running);
+  --color-sky-400: var(--color-running);
+  --color-sky-500: #5f8fc4;
+  --color-violet-100: #efdccd;
+  --color-violet-200: #e3c3a6;
+  --color-violet-300: #d6a985;
+  --color-violet-400: var(--color-walnut-ink);
+  --color-violet-500: var(--color-walnut-400);
+  --color-purple-300: #d6a985;
+  --color-purple-400: var(--color-walnut-ink);
+  --color-purple-500: var(--color-walnut-400);
+
+  --text-2xs: 0.75rem;
+  --text-2xs--line-height: 1rem;
+
+  --radius-lg: var(--radius-md);
+  --radius-xl: var(--radius-md);
+  --radius-2xl: var(--radius-md);
+  --radius-3xl: var(--radius-md);
+
+  --shadow-glow: 0 0 #0000;
+  --shadow-glow-lg: 0 0 #0000;
+  --shadow-inner-glow: 0 0 #0000;
+}

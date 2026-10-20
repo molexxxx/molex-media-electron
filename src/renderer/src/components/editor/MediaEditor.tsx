@@ -1,5 +1,6 @@
 /** @module editor/MediaEditor - Top-level NLE editor shell with mode tabs. */
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useAppStore } from '../../stores/appStore'
 import { useEditorStore } from '../../stores/editorStore'
 import type { EditorMode, MediaSource } from './types'
 import { ClipEditor } from './clip/ClipEditor'
@@ -224,7 +225,7 @@ function RecentsRow({
                   setRecents((rs) => rs.filter((x) => x.filePath !== r.filePath))
                 }}
                 title="Forget"
-                className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-surface-600 opacity-0 group-hover:opacity-100 hover:text-surface-200 hover:bg-white/6 transition-all"
+                className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-surface-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-surface-200 hover:bg-white/6 transition-all"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -453,7 +454,7 @@ function MenuItem({
           ? 'text-surface-300 hover:text-rose-200 hover:bg-rose-500/10'
           : 'text-surface-200 hover:text-surface-50 hover:bg-white/6'}`}
     >
-      <span className={`shrink-0 ${danger ? 'text-rose-400/70' : 'text-surface-500'}`}>{icon}</span>
+      <span className={`shrink-0 ${danger ? 'text-rose-400' : 'text-surface-500'}`}>{icon}</span>
       <span className="flex-1 text-xs">{label}</span>
       {hint && <span className="text-2xs text-surface-600 tabular-nums">{hint}</span>}
     </button>
@@ -649,10 +650,11 @@ export default function MediaEditor(): React.JSX.Element {
 
   // Intercept global back-navigation (mouse button 3 / Alt+Left) while inside
   // a tool: pop to launcher first, then let App handle the next press.
-  // Uses capture phase so we beat App.tsx's listeners.
+  // Uses capture phase so we beat App.tsx's listeners, and stands aside while another view is visible.
   useEffect(() => {
     if (showLauncher) return
     const onMouseUp = (e: MouseEvent): void => {
+      if (useAppStore.getState().currentView !== 'editor') return
       if (e.button === 3) {
         e.preventDefault()
         e.stopPropagation()
@@ -660,6 +662,7 @@ export default function MediaEditor(): React.JSX.Element {
       }
     }
     const onKeyDown = (e: KeyboardEvent): void => {
+      if (useAppStore.getState().currentView !== 'editor') return
       if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault()
         e.stopPropagation()

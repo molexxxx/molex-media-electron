@@ -56,7 +56,7 @@ export function TrackHeader({ track, isSelected, onSelect }: TrackHeaderProps): 
       style={{ height: track.height }}
       onClick={onSelect}
     >
-      <span className="text-[11px] font-semibold text-surface-300 shrink-0">
+      <span className="text-label font-semibold text-surface-300 shrink-0">
         {track.name}
       </span>
 
@@ -88,7 +88,7 @@ export function TrackHeader({ track, isSelected, onSelect }: TrackHeaderProps): 
         {/* Mute */}
         <button
           onClick={(e) => { e.stopPropagation(); toggleMute() }}
-          className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${
+          className={`w-5 h-5 flex items-center justify-center rounded text-label font-bold ${
             track.muted ? 'text-yellow-400 bg-yellow-400/10' : 'text-surface-500 hover:text-surface-300'
           }`}
           title={track.muted ? 'Unmute' : 'Mute'}
@@ -123,8 +123,8 @@ export function TrackHeader({ track, isSelected, onSelect }: TrackHeaderProps): 
           disabled={track.locked}
           className={`w-5 h-5 flex items-center justify-center rounded transition-all ${
             track.locked
-              ? 'text-surface-700 cursor-not-allowed opacity-50'
-              : isSelected ? 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10' : 'text-surface-600 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-400/10'
+              ? 'text-surface-500 cursor-not-allowed opacity-50'
+              : isSelected ? 'text-red-400 hover:bg-red-400/10' : 'text-surface-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-400 hover:bg-red-400/10'
           }`}
           title={track.locked ? 'Unlock track to delete' : 'Remove track'}
         >

@@ -308,14 +308,14 @@ export function Timeline(): React.JSX.Element {
               <div className="flex gap-1 px-2 py-1.5">
                 <button
                   onClick={() => addTrack('video')}
-                  className="text-[10px] text-surface-500 hover:text-surface-300 px-1"
+                  className="text-label text-surface-500 hover:text-surface-300 px-1"
                   title="Add video track"
                 >
                   +V
                 </button>
                 <button
                   onClick={() => addTrack('audio')}
-                  className="text-[10px] text-surface-500 hover:text-surface-300 px-1"
+                  className="text-label text-surface-500 hover:text-surface-300 px-1"
                   title="Add audio track"
                 >
                   +A

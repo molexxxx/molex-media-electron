@@ -11,17 +11,6 @@ import { useTimelineDrag, type TrimCursor } from '../hooks/useTimelineDrag'
 import { Waveform } from '../shared/Waveform'
 import { ThumbnailStrip } from '../shared/ThumbnailStrip'
 
-// Auto-assigned clip colours keyed by sourceId (hue rotation)
-const SOURCE_COLORS: Record<string, string> = {}
-let _hue = 210
-function colorForSource(sourceId: string): string {
-  if (!SOURCE_COLORS[sourceId]) {
-    SOURCE_COLORS[sourceId] = `hsl(${_hue}, 55%, 50%)`
-    _hue = (_hue + 47) % 360
-  }
-  return SOURCE_COLORS[sourceId]
-}
-
 /** Map trim cursor type to CSS cursor value. */
 function cursorForTrim(trimType: TrimCursor, altHeld: boolean, shiftHeld: boolean): string {
   if (trimType === 'default') {
@@ -56,7 +45,7 @@ export function TimelineClipComponent({ clip, coords, source, trackType, onDragS
   const duration = (clip.sourceOut - clip.sourceIn) / clip.speed
   const left = coords.frameToPixel(clip.timelineStart)
   const width = Math.max(4, (duration / coords.frameRate) * coords.zoom)
-  const bg = clip.color || colorForSource(clip.sourceId)
+  const bg = trackType === 'audio' ? 'var(--color-clip-audio)' : 'var(--color-clip-video)'
 
   // Track rendered clip size for waveform/thumbnail
   const measuredRef = useCallback((node: HTMLDivElement | null) => {
@@ -183,7 +172,7 @@ export function TimelineClipComponent({ clip, coords, source, trackType, onDragS
     <div
       ref={measuredRef}
       className={`group rounded-sm overflow-hidden cursor-pointer transition-shadow ${
-        isSelected ? 'ring-2 ring-accent-400 shadow-lg shadow-accent-500/20 z-10' : 'hover:ring-1 hover:ring-white/20'
+        isSelected ? 'ring-2 ring-brass shadow-lg shadow-accent-500/20 z-10' : 'hover:ring-1 hover:ring-white/20'
       } ${clip.locked ? 'pointer-events-none opacity-70' : ''}`}
       style={style}
       onMouseDown={handleMouseDown}
@@ -191,7 +180,7 @@ export function TimelineClipComponent({ clip, coords, source, trackType, onDragS
       onContextMenu={handleContextMenu}
     >
       {/* Clip name */}
-      <div className="relative z-10 px-1.5 py-0.5 text-[10px] font-medium text-white/90 truncate select-none leading-tight drop-shadow-sm">
+      <div className="relative z-10 px-1.5 py-0.5 text-label font-medium text-ink truncate select-none leading-tight drop-shadow-sm">
         {clip.name || source?.fileName || 'Clip'}
       </div>
 

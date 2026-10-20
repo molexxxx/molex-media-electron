@@ -125,7 +125,7 @@ function StreamCard({
         )}
         {icon}
         <span className="text-xs font-semibold text-surface-300 uppercase tracking-wide">{title}</span>
-        {excluded && <span className="text-2xs text-red-400/70 ml-auto">excluded</span>}
+        {excluded && <span className="text-2xs text-red-400 ml-auto">excluded</span>}
       </div>
       <div className="text-xs font-mono">{children}</div>
     </div>

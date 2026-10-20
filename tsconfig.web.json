@@ -2,7 +2,8 @@
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
   "include": [
     "src/renderer/src/**/*",
-    "src/renderer/src/**/*.tsx"
+    "src/renderer/src/**/*.tsx",
+    "src/shared/**/*"
   ],
   "exclude": ["out", "dist", "node_modules"],
   "compilerOptions": {

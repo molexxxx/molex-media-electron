@@ -11,6 +11,7 @@
 
 import React, { useState } from 'react'
 import { useAppStore } from '../../stores/appStore'
+import { Button } from '../../ui/Button'
 
 export default function SetupWizard(): React.JSX.Element {
   const { setFFmpegReady, setShowSetup, setConfig, downloadProgress, setDownloadProgress } = useAppStore()
@@ -104,18 +105,12 @@ export default function SetupWizard(): React.JSX.Element {
               </div>
 
               <div className="flex gap-3">
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150"
-                >
+                <Button variant="primary" onClick={handleDownload} className="flex-1">
                   Download FFmpeg
-                </button>
-                <button
-                  onClick={handleSkip}
-                  className="px-4 py-2.5 text-surface-400 hover:text-surface-200 text-sm font-medium rounded-xl hover:bg-surface-700/50 transition-all"
-                >
+                </Button>
+                <Button variant="ghost" onClick={handleSkip}>
                   I have it
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -157,12 +152,9 @@ export default function SetupWizard(): React.JSX.Element {
                 <h2 className="text-lg font-semibold text-white mb-1">All Set!</h2>
                 <p className="text-surface-400 text-sm">FFmpeg is installed and ready. Let&apos;s process some media.</p>
               </div>
-              <button
-                onClick={handleDone}
-                className="w-full py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all duration-150"
-              >
+              <Button variant="primary" onClick={handleDone} className="w-full">
                 Get Started
-              </button>
+              </Button>
             </div>
           )}
 
@@ -183,18 +175,12 @@ export default function SetupWizard(): React.JSX.Element {
                 </p>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 py-2.5 px-4 bg-accent-600 hover:bg-accent-500 text-white text-sm font-semibold rounded-xl transition-all"
-                >
+                <Button variant="primary" onClick={handleDownload} className="flex-1">
                   Retry
-                </button>
-                <button
-                  onClick={handleSkip}
-                  className="px-4 py-2.5 text-surface-400 hover:text-surface-200 text-sm font-medium rounded-xl hover:bg-surface-700/50 transition-all"
-                >
+                </Button>
+                <Button variant="ghost" onClick={handleSkip}>
                   I have it
-                </button>
+                </Button>
               </div>
             </div>
           )}

@@ -125,7 +125,7 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
       sourceIn: inPoint,
       sourceOut: outPoint,
       name: source.fileName,
-      color: '#7c3aed',
+      color: '',
       muted: false,
       locked: false,
       volume: 1,

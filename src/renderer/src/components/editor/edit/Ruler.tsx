@@ -3,7 +3,7 @@
  * Canvas-based time ruler with adaptive tick spacing based on zoom level.
  * Click to move playhead.
  */
-import React, { useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect, useCallback, useState } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
 import type { TimelineCoords } from '../hooks/useTimelineZoom'
 import { formatTimecode } from '../shared/TimeDisplay'
@@ -17,9 +17,12 @@ interface RulerProps {
 // Preferred interval steps (seconds): try to keep labels readable
 const STEP_CANDIDATES = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
 
+const LABEL_FONT = '12px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif'
+const MARK_FONT = '600 12px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif'
+
 function chooseStep(zoom: number): { major: number; minor: number } {
-  // Roughly >=80px between major labels
-  const minPxBetween = 80
+  // A 12 px mono timecode (HH:MM:SS:FF) is 79.2 px wide plus its 3 px offset, so labels need 96 px
+  const minPxBetween = 96
   for (const s of STEP_CANDIDATES) {
     if (s * zoom >= minPxBetween) {
       return { major: s, minor: s / 5 || s }
@@ -34,6 +37,24 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
   const seek = useEditorStore((s) => s.seek)
   const inPoint = useEditorStore((s) => s.playback.inPoint)
   const outPoint = useEditorStore((s) => s.playback.outPoint)
+  const [fontsLoaded, setFontsLoaded] = useState(false)
+
+  // Canvas text does not wait for web fonts, so draw once more after the mono face has loaded
+  useEffect(() => {
+    let alive = true
+    const settle = (): void => {
+      if (alive) setFontsLoaded(true)
+    }
+    const fonts = document.fonts
+    if (!fonts) {
+      settle()
+      return
+    }
+    fonts.load(LABEL_FONT).then(() => fonts.ready).then(settle, settle)
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -76,11 +97,11 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
     // Major ticks + labels
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'
     ctx.fillStyle = 'rgba(255,255,255,0.55)'
-    ctx.font = '10px ui-monospace, monospace'
+    ctx.font = LABEL_FONT
     ctx.textBaseline = 'top'
     for (let t = firstMajor; t <= endSec + major; t += major) {
       const px = (t - startSec) * zoom
-      if (px < -60) continue
+      if (px < -84) continue
       ctx.beginPath()
       ctx.moveTo(px, 12)
       ctx.lineTo(px, 28)
@@ -98,7 +119,7 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
         ctx.fillStyle = 'rgba(124, 58, 237, 0.9)'
         ctx.fillRect(inPx, 0, 2, 28)
         // Small "I" label
-        ctx.font = 'bold 8px ui-monospace, monospace'
+        ctx.font = MARK_FONT
         ctx.fillText('I', inPx + 4, 2)
       }
     }
@@ -108,11 +129,11 @@ export function Ruler({ coords, width, headerWidth }: RulerProps): React.JSX.Ele
         ctx.fillStyle = 'rgba(124, 58, 237, 0.9)'
         ctx.fillRect(outPx - 1, 0, 2, 28)
         // Small "O" label
-        ctx.font = 'bold 8px ui-monospace, monospace'
+        ctx.font = MARK_FONT
         ctx.fillText('O', outPx - 12, 2)
       }
     }
-  }, [width, zoom, scrollX, frameRate, inPoint, outPoint])
+  }, [width, zoom, scrollX, frameRate, inPoint, outPoint, fontsLoaded])
 
   useEffect(() => {
     draw()

@@ -2,51 +2,65 @@
  * @module components/layout/TitleBar
  * @description Custom Electron window title bar.
  *
- * Renders the drag-region header with the app logo, version badge,
- * a processing-status indicator dot, and frameless window controls
- * (minimize / maximize / close) that call into the Electron main process.
+ * Renders the walnut drag-region header with the wordmark, version, a status lamp with its word while
+ * processing, and Windows-style caption buttons (minimize / maximize / close) that call into the Electron
+ * main process.
  */
 
 import React from 'react'
 import { useAppStore } from '../../stores/appStore'
 
+const CAPTION_BUTTON = 'w-11.5 h-10 flex items-center justify-center text-ink-2 hover:bg-wash-hover hover:text-ink active:bg-wash-pressed'
+
 export default function TitleBar(): React.JSX.Element {
-  const { isProcessing } = useAppStore()
+  const { isProcessing, isPaused } = useAppStore()
+  const status = isProcessing ? (isPaused ? 'Paused' : 'Processing') : null
+  const lamp = isProcessing
+    ? isPaused
+      ? 'bg-ink-3'
+      : 'bg-amber shadow-[0_0_6px_var(--color-amber)]'
+    : 'bg-walnut-500'
 
   return (
-    <div className="drag-region h-10 flex items-center justify-between bg-surface-950/80 border-b border-white/5 px-4 shrink-0">
+    <div className="drag-region h-10 flex items-center justify-between bg-rail border-b border-rail-edge ps-4 shrink-0">
       <div className="flex items-center gap-2.5">
-        <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-amber-400 pulse-ring' : 'bg-accent-500'}`} />
-        <span className="text-xs font-semibold tracking-widest uppercase text-surface-300">
-          molex<span className="text-accent-400">Media</span>
+        <div aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${lamp}`} />
+        <span className="text-label font-semibold text-ink">
+          molex<span className="text-walnut-ink">Media</span>
         </span>
-        <span className="text-2xs text-surface-500 font-mono">v{__APP_VERSION__}</span>
+        <span className="text-label text-ink-3 tabular-nums">{__APP_VERSION__}</span>
+        {status && (
+          <span className={`text-label ${isPaused ? 'text-ink-3' : 'text-amber'}`}>{status}</span>
+        )}
       </div>
 
-      <div className="flex items-center gap-1 no-drag">
+      <div className="flex items-stretch self-stretch no-drag">
         <button
           onClick={() => window.api.windowMinimize?.()}
-          className="w-8 h-6 flex items-center justify-center rounded hover:bg-surface-700/50 transition-colors"
+          aria-label="Minimize"
+          className={CAPTION_BUTTON}
         >
-          <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor" className="text-surface-400">
+          <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor">
             <rect width="10" height="1" />
           </svg>
         </button>
         <button
           onClick={() => window.api.windowMaximize?.()}
-          className="w-8 h-6 flex items-center justify-center rounded hover:bg-surface-700/50 transition-colors"
+          aria-label="Maximize"
+          className={CAPTION_BUTTON}
         >
-          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" className="text-surface-400" strokeWidth="1.2">
-            <rect x="0.5" y="0.5" width="8" height="8" rx="1" />
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1">
+            <rect x="0.5" y="0.5" width="9" height="9" rx="1" />
           </svg>
         </button>
         <button
           onClick={() => window.api.windowClose?.()}
-          className="w-8 h-6 flex items-center justify-center rounded hover:bg-red-500/80 transition-colors group"
+          aria-label="Close"
+          className="w-11.5 h-10 flex items-center justify-center text-ink-2 hover:bg-error-fill hover:text-ink active:bg-danger-pressed"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" className="text-surface-400 group-hover:text-white" strokeWidth="1.3">
-            <line x1="1" y1="1" x2="9" y2="9" />
-            <line x1="9" y1="1" x2="1" y2="9" />
+          <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1">
+            <line x1="0.5" y1="0.5" x2="9.5" y2="9.5" />
+            <line x1="9.5" y1="0.5" x2="0.5" y2="9.5" />
           </svg>
         </button>
       </div>

@@ -1,0 +1,1442 @@
+/* Primitive rules that utilities cannot express: native control parts (select picker, range track and thumb),
+   glyph masks, per-property transitions, overlay entry and exit, the Stamp keyframes, and the forced-colors
+   rules. Forced-colors declarations are important because state utilities sit in a later layer. */
+
+@layer components
+{
+  .ui-overlay-scroll
+  {
+    scrollbar-width: thin;
+  }
+
+  select.ui-select,
+  select.ui-select::picker(select)
+  {
+    appearance: base-select;
+  }
+
+  select.ui-select
+  {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    block-size: var(--size-control-md);
+    padding-block: 0;
+    padding-inline: 8px 6px;
+    border: 1px solid var(--color-line-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-sunken);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    transition: border-color var(--transition-duration-fast) var(--ease-out);
+  }
+
+  select.ui-select[data-size='sm']
+  {
+    block-size: var(--size-control-sm);
+  }
+
+  select.ui-select:hover:not(:disabled, [aria-invalid='true']),
+  select.ui-select:open:not([aria-invalid='true'])
+  {
+    border-color: var(--color-line-control-hover);
+  }
+
+  select.ui-select:not(:disabled):has(option:disabled:checked)
+  {
+    color: var(--color-ink-3);
+  }
+
+  select.ui-select[aria-invalid='true']
+  {
+    border-color: var(--color-error-fill);
+  }
+
+  select.ui-select:disabled
+  {
+    border-color: var(--color-line);
+    color: var(--color-ink-disabled);
+  }
+
+  /* The browser forces overflow: visible on the select, so a long label can only end in an ellipsis inside an
+     author selectedcontent; the select's built-in label wraps past its box instead. */
+  select.ui-select selectedcontent
+  {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  select.ui-select::picker-icon
+  {
+    content: '';
+    display: block;
+    flex: none;
+    inline-size: var(--size-icon-md);
+    block-size: var(--size-icon-md);
+    margin-inline-start: auto;
+    background-color: var(--color-ink-2);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  select.ui-select:disabled::picker-icon
+  {
+    background-color: var(--color-ink-disabled);
+  }
+
+  select.ui-select::picker(select)
+  {
+    margin-block: 4px;
+    padding: 4px;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-overlay);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-overlay);
+    scrollbar-width: thin;
+    transition:
+      opacity var(--transition-duration-base) var(--ease-out),
+      translate var(--transition-duration-base) var(--ease-out),
+      display var(--transition-duration-base) allow-discrete,
+      overlay var(--transition-duration-base) allow-discrete;
+  }
+
+  select.ui-select:not(:open)::picker(select)
+  {
+    opacity: 0;
+    translate: 0 4px;
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-in),
+      translate var(--transition-duration-move) var(--ease-in),
+      display var(--transition-duration-move) allow-discrete,
+      overlay var(--transition-duration-move) allow-discrete;
+  }
+
+  @starting-style
+  {
+    select.ui-select:open::picker(select)
+    {
+      opacity: 0;
+      translate: 0 4px;
+    }
+  }
+
+  select.ui-select optgroup
+  {
+    color: var(--color-ink-3);
+    font-family: var(--font-sans);
+    font-size: var(--text-label);
+    font-weight: 600;
+    line-height: var(--text-label--line-height);
+  }
+
+  select.ui-select option
+  {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-block-size: 28px;
+    padding-block: 4px;
+    padding-inline: 8px;
+    border-radius: var(--radius-sm);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    font-weight: normal;
+    line-height: var(--text-body--line-height);
+    letter-spacing: normal;
+    text-transform: none;
+  }
+
+  select.ui-select option:not(:disabled):is(:hover, :focus-visible)
+  {
+    background-color: var(--color-wash-hover);
+  }
+
+  select.ui-select option:disabled
+  {
+    color: var(--color-ink-disabled);
+  }
+
+  select.ui-select option::checkmark
+  {
+    content: '';
+    display: block;
+    flex: none;
+    inline-size: var(--size-icon-sm);
+    block-size: var(--size-icon-sm);
+    background-color: var(--color-ink);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.57' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .ui-slider
+  {
+    --ui-slider-fill: var(--color-mark);
+    --ui-slider-rest: var(--color-line-control);
+    --ui-slider-thumb: var(--color-mark);
+    --ui-slider-ring: var(--ui-slider-ground, var(--color-panel));
+    appearance: none;
+    display: block;
+    inline-size: 100%;
+    block-size: var(--size-target-min);
+    margin: 0;
+    background: transparent;
+  }
+
+  .ui-slider:focus-visible
+  {
+    outline-color: transparent;
+  }
+
+  .ui-slider::-webkit-slider-runnable-track
+  {
+    block-size: 4px;
+    border-radius: var(--radius-xs);
+    background: linear-gradient(to right, var(--ui-slider-fill) var(--fill, 0%), var(--ui-slider-rest) var(--fill, 0%));
+  }
+
+  .ui-slider::-webkit-slider-thumb
+  {
+    appearance: none;
+    inline-size: 10px;
+    block-size: 18px;
+    margin-block-start: -7px;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: var(--ui-slider-thumb);
+    box-shadow: 0 0 0 2px var(--ui-slider-ring);
+    transition: box-shadow var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-slider:not(:disabled):is(:hover, :active)
+  {
+    --ui-slider-ring: var(--color-line-control-hover);
+  }
+
+  .ui-slider:focus-visible::-webkit-slider-thumb
+  {
+    box-shadow: 0 0 0 2px var(--ui-slider-ground, var(--color-panel)), 0 0 0 4px var(--color-focus);
+  }
+
+  .ui-slider[aria-invalid='true']
+  {
+    --ui-slider-rest: var(--color-error-fill);
+  }
+
+  .ui-slider:disabled
+  {
+    --ui-slider-fill: var(--color-ink-disabled);
+    --ui-slider-rest: var(--color-line);
+    --ui-slider-thumb: var(--color-ink-disabled);
+  }
+
+  /* After the disabled rule: a mixed slider never draws a fill, locked or not. */
+  .ui-slider[data-mixed]
+  {
+    --ui-slider-fill: var(--ui-slider-rest);
+  }
+
+  .ui-slider[data-mixed]::-webkit-slider-thumb
+  {
+    background: var(--color-sunken);
+    box-shadow: inset 0 0 0 1px var(--color-line-control), 0 0 0 2px var(--ui-slider-ring);
+  }
+
+  .ui-slider[data-mixed]:disabled::-webkit-slider-thumb
+  {
+    box-shadow: inset 0 0 0 1px var(--color-ink-disabled), 0 0 0 2px var(--ui-slider-ring);
+  }
+
+  .ui-checkbox,
+  .ui-radio
+  {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex: none;
+    inline-size: 16px;
+    block-size: 16px;
+    margin: 0;
+    border: 1px solid var(--color-line-control);
+    background-color: var(--color-sunken);
+    color: var(--color-on-mark);
+    transition:
+      background-color var(--transition-duration-fast) var(--ease-out),
+      border-color var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-checkbox
+  {
+    border-radius: var(--radius-xs);
+  }
+
+  .ui-radio
+  {
+    border-radius: var(--radius-md);
+  }
+
+  .ui-checkbox::before
+  {
+    content: '';
+    inline-size: 12px;
+    block-size: 12px;
+    background-color: currentColor;
+    mask-position: center;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    visibility: hidden;
+  }
+
+  .ui-checkbox:checked::before
+  {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    visibility: visible;
+  }
+
+  .ui-checkbox:indeterminate::before
+  {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+    visibility: visible;
+  }
+
+  .ui-checkbox:is(:checked, :indeterminate)
+  {
+    border-color: var(--color-mark);
+    background-color: var(--color-mark);
+  }
+
+  .ui-radio::before
+  {
+    content: '';
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-mark);
+    visibility: hidden;
+  }
+
+  .ui-radio:checked::before
+  {
+    visibility: visible;
+  }
+
+  :is(.ui-checkbox:not(:checked, :indeterminate), .ui-radio:not(:checked)):not(:disabled, [aria-disabled='true'], [aria-invalid='true']):is(:hover, :where(label:hover) *)
+  {
+    border-color: var(--color-line-control-hover);
+  }
+
+  :is(.ui-checkbox, .ui-radio)[aria-invalid='true']
+  {
+    border-color: var(--color-error-fill);
+  }
+
+  :is(.ui-checkbox, .ui-radio):is(:disabled, [aria-disabled='true'])
+  {
+    border-color: var(--color-line);
+    background-color: transparent;
+    color: var(--color-ink-disabled);
+  }
+
+  .ui-radio:is(:disabled, [aria-disabled='true'])::before
+  {
+    background-color: var(--color-ink-disabled);
+  }
+
+  .ui-switch
+  {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    inline-size: 32px;
+    block-size: var(--size-target-min);
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .ui-switch-track
+  {
+    display: flex;
+    align-items: center;
+    inline-size: 32px;
+    block-size: 18px;
+    border: 1px solid var(--color-line-control);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-sunken);
+    transition:
+      background-color var(--transition-duration-fast) var(--ease-out),
+      border-color var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-switch-knob
+  {
+    inline-size: 14px;
+    block-size: 14px;
+    margin-inline-start: 1px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-ink-3);
+    transition:
+      translate var(--transition-duration-move) var(--ease-out),
+      background-color var(--transition-duration-fast) var(--ease-out);
+  }
+
+  .ui-switch[aria-checked='true'] .ui-switch-track
+  {
+    border-color: var(--color-mark);
+    background-color: var(--color-mark);
+  }
+
+  .ui-switch[aria-checked='true'] .ui-switch-knob
+  {
+    translate: 14px 0;
+    background-color: var(--color-ground);
+  }
+
+  .ui-switch[aria-checked='false']:not(:disabled, [aria-disabled='true']):hover .ui-switch-track
+  {
+    border-color: var(--color-line-control-hover);
+  }
+
+  .ui-switch:disabled .ui-switch-track
+  {
+    border-color: var(--color-line);
+  }
+
+  .ui-switch:disabled .ui-switch-knob
+  {
+    background-color: var(--color-ink-disabled);
+  }
+
+  .ui-switch[aria-checked='true']:disabled .ui-switch-track
+  {
+    background-color: var(--color-ink-disabled);
+  }
+
+  .ui-switch[aria-checked='true']:disabled .ui-switch-knob
+  {
+    background-color: var(--color-sunken);
+  }
+
+  .ui-status
+  {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    border-radius: var(--radius-xs);
+    white-space: nowrap;
+  }
+
+  .ui-status:is([data-status='pending'], [data-status='probing'], [data-status='queued'], [data-status='will-skip'], [data-status='canceled'], [data-status='skipped'], [data-status='locked'])
+  {
+    color: var(--color-ink-3);
+  }
+
+  .ui-status:is([data-status='ready'], [data-status='waiting'], [data-status='stopping'], [data-status='paused'])
+  {
+    color: var(--color-ink-2);
+  }
+
+  .ui-status:is([data-status='analyzing'], [data-status='encoding'], [data-status='verifying'], [data-status='finalizing'])
+  {
+    color: var(--color-running);
+  }
+
+  .ui-status:is([data-status='done'], [data-status='verified'])
+  {
+    color: var(--color-verified);
+  }
+
+  .ui-status:is([data-status='wait-lock'], [data-status='decision'], [data-status='warning'])
+  {
+    color: var(--color-warning);
+  }
+
+  .ui-status:is([data-status='blocked'], [data-status='failed'], [data-status='returned'], [data-status='missing'])
+  {
+    color: var(--color-error);
+  }
+
+  .ui-status[data-held]
+  {
+    padding-block: 2px;
+    padding-inline: 6px;
+    outline: 1px solid currentColor;
+    outline-offset: -1px;
+    background-color: var(--color-held-error);
+  }
+
+  .ui-status[data-held]:is([data-status='wait-lock'], [data-status='decision'], [data-status='warning'])
+  {
+    background-color: var(--color-held-warning);
+  }
+
+  .ui-status [data-label='compact']
+  {
+    display: none;
+  }
+
+  @container (width < 96px)
+  {
+    .ui-status [data-label='full']
+    {
+      display: none;
+    }
+
+    .ui-status [data-label='compact']
+    {
+      display: inline;
+    }
+  }
+
+  @keyframes stamp-land
+  {
+    from
+    {
+      transform: scale(1.12) rotate(-1.5deg);
+      opacity: 0;
+    }
+    to
+    {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes stamp-impression
+  {
+    from
+    {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    to
+    {
+      transform: scale(1.18);
+      opacity: 0;
+    }
+  }
+
+  .ui-stamp
+  {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    block-size: 22px;
+    padding-block: 0;
+    padding-inline: 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+
+  .ui-stamp[data-size='md']
+  {
+    block-size: 28px;
+  }
+
+  .ui-stamp[data-outcome='verified']
+  {
+    background-color: var(--color-stamp-verified);
+    color: var(--color-verified);
+  }
+
+  .ui-stamp[data-outcome='returned']
+  {
+    background-color: var(--color-stamp-returned);
+    color: var(--color-error);
+  }
+
+  .ui-stamp [data-part='values']
+  {
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-stamp [data-failing]
+  {
+    color: var(--color-error);
+  }
+
+  .ui-stamp[data-landing]
+  {
+    animation: stamp-land var(--transition-duration-base) var(--ease-out);
+  }
+
+  .ui-stamp[data-landing]::after
+  {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    animation: stamp-impression var(--transition-duration-fast) var(--ease-out) 100ms both;
+  }
+
+  @keyframes ui-progress-travel
+  {
+    from
+    {
+      translate: -100% 0;
+    }
+    to
+    {
+      translate: 334% 0;
+    }
+  }
+
+  .ui-progress[data-indeterminate] .ui-progress-fill
+  {
+    inline-size: 30%;
+    animation: ui-progress-travel 1.2s linear infinite;
+  }
+
+  /* The run meter in the display window: an amber bar in lit segments, like a receiver's signal meter. */
+  .ui-progress[data-tone='meter']
+  {
+    border-color: transparent;
+    background-color: color-mix(in oklab, var(--color-amber) 10%, var(--color-sunken));
+    mask: repeating-linear-gradient(90deg, black 0 4px, transparent 4px 6px);
+  }
+
+  .ui-progress[data-tone='meter'] .ui-progress-fill
+  {
+    box-shadow: 0 0 8px var(--color-amber);
+  }
+
+  .ui-progress[data-static] .ui-progress-fill
+  {
+    inline-size: 100%;
+    animation: none;
+    background-image: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--color-ink-3) 30%, transparent) 0 2px, transparent 2px 6px);
+  }
+
+  /* Overlays drop the centered popover insets so position-area places them beside the anchor named on the
+     trigger; the gap sits on the anchor side and flips with the fallback. */
+  .ui-tooltip,
+  .ui-popover
+  {
+    inset: auto;
+    margin: 0;
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
+  :is(.ui-tooltip, .ui-popover)[data-placement='top']
+  {
+    position-area: block-start;
+    margin-block-end: 4px;
+  }
+
+  :is(.ui-tooltip, .ui-popover)[data-placement='bottom']
+  {
+    position-area: block-end;
+    margin-block-start: 4px;
+  }
+
+  :is(.ui-tooltip, .ui-popover)[data-placement='start']
+  {
+    position-area: inline-start;
+    margin-inline-end: 4px;
+    position-try-fallbacks: flip-inline, flip-block;
+  }
+
+  :is(.ui-tooltip, .ui-popover)[data-placement='end']
+  {
+    position-area: inline-end;
+    margin-inline-start: 4px;
+    position-try-fallbacks: flip-inline, flip-block;
+  }
+
+  .ui-popover
+  {
+    min-inline-size: anchor-size(width);
+  }
+
+  .ui-popover
+  {
+    transition:
+      opacity var(--transition-duration-base) var(--ease-out),
+      translate var(--transition-duration-base) var(--ease-out),
+      display var(--transition-duration-base) allow-discrete,
+      overlay var(--transition-duration-base) allow-discrete;
+  }
+
+  .ui-popover:not(:popover-open)
+  {
+    opacity: 0;
+    translate: 0 4px;
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-in),
+      translate var(--transition-duration-move) var(--ease-in),
+      display var(--transition-duration-move) allow-discrete,
+      overlay var(--transition-duration-move) allow-discrete;
+  }
+
+  @starting-style
+  {
+    .ui-popover:popover-open
+    {
+      opacity: 0;
+      translate: 0 4px;
+    }
+  }
+
+  .ui-tooltip
+  {
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-out),
+      display var(--transition-duration-fast) allow-discrete,
+      overlay var(--transition-duration-fast) allow-discrete;
+  }
+
+  .ui-tooltip:not(:popover-open)
+  {
+    opacity: 0;
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-in),
+      display var(--transition-duration-fast) allow-discrete,
+      overlay var(--transition-duration-fast) allow-discrete;
+  }
+
+  @starting-style
+  {
+    .ui-tooltip:popover-open
+    {
+      opacity: 0;
+    }
+  }
+
+  .ui-dialog
+  {
+    transition:
+      opacity var(--transition-duration-base) var(--ease-out),
+      translate var(--transition-duration-base) var(--ease-out),
+      display var(--transition-duration-base) allow-discrete,
+      overlay var(--transition-duration-base) allow-discrete;
+  }
+
+  .ui-dialog:not([open])
+  {
+    opacity: 0;
+    translate: 0 4px;
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-in),
+      translate var(--transition-duration-move) var(--ease-in),
+      display var(--transition-duration-move) allow-discrete,
+      overlay var(--transition-duration-move) allow-discrete;
+  }
+
+  @starting-style
+  {
+    .ui-dialog[open]
+    {
+      opacity: 0;
+      translate: 0 4px;
+    }
+  }
+
+  .ui-dialog::backdrop
+  {
+    background-color: var(--color-scrim);
+    transition:
+      background-color var(--transition-duration-base) var(--ease-out),
+      display var(--transition-duration-base) allow-discrete,
+      overlay var(--transition-duration-base) allow-discrete;
+  }
+
+  .ui-dialog:not([open])::backdrop
+  {
+    background-color: transparent;
+    transition:
+      background-color var(--transition-duration-fast) var(--ease-in),
+      display var(--transition-duration-move) allow-discrete,
+      overlay var(--transition-duration-move) allow-discrete;
+  }
+
+  @starting-style
+  {
+    .ui-dialog[open]::backdrop
+    {
+      background-color: transparent;
+    }
+  }
+
+  .ui-toast
+  {
+    transition:
+      opacity var(--transition-duration-base) var(--ease-out),
+      translate var(--transition-duration-base) var(--ease-out);
+  }
+
+  .ui-toast[data-leaving]
+  {
+    opacity: 0;
+    translate: 0 8px;
+    transition:
+      opacity var(--transition-duration-fast) var(--ease-in),
+      translate var(--transition-duration-move) var(--ease-in);
+  }
+
+  @starting-style
+  {
+    .ui-toast
+    {
+      opacity: 0;
+      translate: 0 8px;
+    }
+  }
+
+  /* DataGrid. The frame holds the scroller and the zero-size anchors its row and column menus open from. */
+  .ui-grid-frame
+  {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-block-size: 0;
+  }
+
+  .ui-grid-menu-anchor
+  {
+    position: absolute;
+    top: 0;
+    left: 0;
+    inline-size: 0;
+    block-size: 0;
+    pointer-events: none;
+  }
+
+  /* The scroller keeps the full browser scrollbar, and its scroll padding keeps a focused row clear of the
+     sticky header and the toast stack. */
+  .ui-grid
+  {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: auto;
+    scrollbar-width: auto;
+    scroll-padding-block-start: var(--size-grid-header);
+    scroll-padding-block-end: calc(var(--toast-stack-size, 0px) + 8px);
+    background-color: var(--color-ground);
+    color: var(--color-ink-2);
+  }
+
+  .ui-grid-head
+  {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-index-sticky);
+    background-color: var(--color-panel);
+  }
+
+  .ui-grid-head-row,
+  .ui-grid-row
+  {
+    display: grid;
+    grid-template-columns: var(--ui-grid-columns);
+  }
+
+  .ui-grid-head-row
+  {
+    block-size: var(--size-grid-header);
+    box-shadow: inset 0 -1px 0 var(--color-line-strong);
+  }
+
+  .ui-grid-header-cell
+  {
+    display: flex;
+    align-items: center;
+    min-inline-size: 0;
+    padding-inline: 12px;
+    color: var(--color-ink-3);
+    font-family: var(--font-sans);
+    font-size: var(--text-label);
+    font-weight: 600;
+    line-height: var(--text-label--line-height);
+    white-space: nowrap;
+  }
+
+  .ui-grid-header-cell:is([data-sortable], [data-kind='actions'], [data-kind='grip'])
+  {
+    padding-inline: 0;
+  }
+
+  .ui-grid-header-cell[data-align='end']
+  {
+    justify-content: flex-end;
+  }
+
+  /* The sort button fills its header cell, so the target is the full 32 px band, not the caption. */
+  .ui-grid-sort
+  {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    inline-size: 100%;
+    block-size: var(--size-grid-header);
+    padding-inline: 12px;
+    color: inherit;
+    cursor: default;
+  }
+
+  .ui-grid-header-cell[data-align='end'] .ui-grid-sort
+  {
+    justify-content: flex-end;
+  }
+
+  .ui-grid-sort:hover
+  {
+    background-color: var(--color-wash-hover);
+    color: var(--color-ink-2);
+  }
+
+  .ui-grid-sort[data-sorted]
+  {
+    color: var(--color-ink-2);
+  }
+
+  .ui-grid-sort-icon
+  {
+    flex: none;
+    color: var(--color-ink-3);
+    opacity: 0;
+  }
+
+  .ui-grid-sort:is(:hover, :focus-visible, [data-sorted]) .ui-grid-sort-icon
+  {
+    opacity: 1;
+  }
+
+  .ui-grid-sort[data-sorted] .ui-grid-sort-icon
+  {
+    color: currentColor;
+  }
+
+  /* Row heights match the 36 and 30 px the grid virtualizes with. Rows never select text on a press or drag, as in a
+     native list; Ctrl+C copies rows. */
+  .ui-grid-row
+  {
+    position: relative;
+    block-size: 36px;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+    cursor: default;
+    user-select: none;
+  }
+
+  .ui-grid[data-dragging]
+  {
+    cursor: grabbing;
+  }
+
+  .ui-grid[data-dragging] .ui-grid-row
+  {
+    cursor: grabbing;
+  }
+
+  .ui-grid[data-dragging] .ui-grid-row:not([aria-selected='true']):hover
+  {
+    background-color: transparent;
+  }
+
+  .ui-grid[data-dragging] .ui-grid-row .ui-grid-cell[data-kind='actions'] > *
+  {
+    opacity: 0;
+  }
+
+  .ui-grid-row[data-dragging]
+  {
+    opacity: 0.4;
+  }
+
+  .ui-grid-row:is([data-drop-before], [data-drop-after])::before
+  {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    z-index: var(--z-index-raised);
+    block-size: 2px;
+    background-color: var(--color-amber);
+    pointer-events: none;
+  }
+
+  .ui-grid-row[data-drop-before]::before
+  {
+    top: -1px;
+  }
+
+  .ui-grid-row[data-drop-after]::before
+  {
+    bottom: -1px;
+  }
+
+  .ui-grid-drag-chip
+  {
+    position: fixed;
+    z-index: var(--z-index-toast);
+    padding-block: 4px;
+    padding-inline: 10px;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-overlay);
+    box-shadow: var(--shadow-overlay);
+    color: var(--color-ink);
+    font-size: var(--text-label);
+    line-height: var(--text-label--line-height);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .ui-grid[data-density='compact'] .ui-grid-row
+  {
+    block-size: 30px;
+  }
+
+  .ui-grid-row:hover
+  {
+    background-color: var(--color-wash-hover);
+  }
+
+  .ui-grid-row:has(.ui-grid-grip:active)
+  {
+    background-color: var(--color-wash-pressed);
+  }
+
+  .ui-grid-row[aria-selected='true']
+  {
+    --ui-grid-edge-start: inset 0 1px 0 var(--color-brass);
+    --ui-grid-edge-end: inset 0 -1px 0 var(--color-brass);
+    background-color: var(--color-wash-selected);
+    color: var(--color-ink);
+    box-shadow: inset 1px 0 0 var(--color-brass), inset -1px 0 0 var(--color-brass), var(--ui-grid-edge-start), var(--ui-grid-edge-end);
+  }
+
+  .ui-grid-row[aria-selected='true']:hover
+  {
+    background-color: var(--color-wash-selected-hover);
+  }
+
+  /* One brass frame around each run of selected rows: a row after a selected row drops the top edge, and a row
+     before one keeps its separator where the bottom edge would be. */
+  .ui-grid-row[aria-selected='true'] + .ui-grid-row[aria-selected='true']
+  {
+    --ui-grid-edge-start: 0 0 transparent;
+  }
+
+  .ui-grid-row[aria-selected='true']:has(+ .ui-grid-row[aria-selected='true'])
+  {
+    --ui-grid-edge-end: inset 0 -1px 0 var(--color-line);
+  }
+
+  /* Every cell is an inline-size container, so a column's width never depends on its content and narrow-column
+     rules (compact status words, short stamps) can query the cell. */
+  .ui-grid-cell
+  {
+    display: flex;
+    align-items: center;
+    min-inline-size: 0;
+    padding-inline: 12px;
+    overflow: hidden;
+    white-space: nowrap;
+    container-type: inline-size;
+  }
+
+  .ui-grid-cell[data-align='end']
+  {
+    justify-content: flex-end;
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  /* Row actions stay out of the way until the row is pointed at, focused, or selected. */
+  .ui-grid-row .ui-grid-cell[data-kind='actions'] > *
+  {
+    opacity: 0;
+  }
+
+  .ui-grid-row:is(:hover, :focus-within, [aria-selected='true']) .ui-grid-cell[data-kind='actions'] > *,
+  .ui-grid-row .ui-grid-cell[data-kind='actions'] > :is([aria-expanded='true'], :focus-visible)
+  {
+    opacity: 1;
+  }
+
+  .ui-grid-cell:is([data-kind='actions'], [data-kind='grip'])
+  {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .ui-grid-grip
+  {
+    display: inline-flex;
+    color: var(--color-ink-3);
+  }
+
+  .ui-grid-skeleton,
+  .ui-grid-gap
+  {
+    pointer-events: none;
+  }
+
+  .ui-grid-skeleton-bar
+  {
+    display: block;
+    inline-size: 60%;
+    block-size: 8px;
+    border-radius: var(--radius-xs);
+    background-color: var(--color-wash-hover);
+  }
+
+  .ui-grid-skeleton:nth-child(3n + 2) .ui-grid-skeleton-bar
+  {
+    inline-size: 45%;
+  }
+
+  .ui-grid-skeleton:nth-child(3n) .ui-grid-skeleton-bar
+  {
+    inline-size: 75%;
+  }
+
+  .ui-grid-skeleton .ui-grid-cell:is([data-kind='actions'], [data-kind='grip']) .ui-grid-skeleton-bar
+  {
+    display: none;
+  }
+
+  /* In a narrow column a row stamp keeps its word and first value, which carries its own qualifier. */
+  @container (width < 280px)
+  {
+    .ui-stamp:not([data-size='md']) [data-part='value']:nth-child(n + 2)
+    {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce)
+  {
+    .ui-stamp[data-landing],
+    .ui-stamp[data-landing]::after
+    {
+      animation: none;
+    }
+
+    /* Each exit state is listed because it outranks the plain hook. */
+    .ui-popover,
+    .ui-popover:not(:popover-open),
+    .ui-tooltip,
+    .ui-tooltip:not(:popover-open),
+    .ui-dialog,
+    .ui-dialog:not([open]),
+    .ui-dialog::backdrop,
+    .ui-dialog:not([open])::backdrop,
+    .ui-toast,
+    .ui-toast[data-leaving]
+    {
+      transition: none;
+    }
+
+    select.ui-select::picker(select),
+    select.ui-select:not(:open)::picker(select)
+    {
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active)
+  {
+    select.ui-select::picker-icon
+    {
+      background-color: ButtonText !important;
+    }
+
+    select.ui-select option::checkmark
+    {
+      background-color: CanvasText !important;
+    }
+
+    select.ui-select option:not(:disabled):is(:hover, :focus-visible)::checkmark
+    {
+      background-color: HighlightText !important;
+    }
+
+    .ui-slider
+    {
+      forced-color-adjust: none !important;
+    }
+
+    .ui-slider::-webkit-slider-runnable-track
+    {
+      background: linear-gradient(to right, Highlight var(--fill, 0%), Canvas var(--fill, 0%)) !important;
+      box-shadow: 0 0 0 1px CanvasText !important;
+    }
+
+    .ui-slider::-webkit-slider-thumb
+    {
+      background: ButtonText !important;
+      box-shadow: 0 0 0 2px Canvas !important;
+    }
+
+    .ui-slider:focus-visible::-webkit-slider-thumb
+    {
+      box-shadow: 0 0 0 2px Canvas, 0 0 0 4px Highlight !important;
+    }
+
+    .ui-slider:disabled::-webkit-slider-runnable-track
+    {
+      background: linear-gradient(to right, GrayText var(--fill, 0%), Canvas var(--fill, 0%)) !important;
+      box-shadow: 0 0 0 1px GrayText !important;
+    }
+
+    .ui-slider:disabled::-webkit-slider-thumb
+    {
+      background: GrayText !important;
+    }
+
+    .ui-slider[data-mixed]::-webkit-slider-runnable-track
+    {
+      background: Canvas !important;
+    }
+
+    .ui-slider[data-mixed]::-webkit-slider-thumb
+    {
+      background: Canvas !important;
+      box-shadow: inset 0 0 0 1px ButtonText, 0 0 0 2px Canvas !important;
+    }
+
+    .ui-slider[data-mixed]:disabled::-webkit-slider-thumb
+    {
+      box-shadow: inset 0 0 0 1px GrayText, 0 0 0 2px Canvas !important;
+    }
+
+    :is(.ui-checkbox, .ui-radio)
+    {
+      border-color: ButtonText !important;
+      background-color: Canvas !important;
+    }
+
+    :is(.ui-checkbox:is(:checked, :indeterminate), .ui-radio:checked)
+    {
+      border-color: Highlight !important;
+      background-color: Highlight !important;
+    }
+
+    :is(.ui-checkbox, .ui-radio)::before
+    {
+      background-color: HighlightText !important;
+    }
+
+    :is(.ui-checkbox, .ui-radio):is(:disabled, [aria-disabled='true'])
+    {
+      border-color: GrayText !important;
+      background-color: Canvas !important;
+    }
+
+    :is(.ui-checkbox, .ui-radio):is(:disabled, [aria-disabled='true'])::before
+    {
+      background-color: GrayText !important;
+    }
+
+    .ui-switch-track
+    {
+      border-color: ButtonText !important;
+      background-color: Canvas !important;
+    }
+
+    .ui-switch-knob
+    {
+      background-color: ButtonText !important;
+    }
+
+    .ui-switch[aria-checked='true'] .ui-switch-track
+    {
+      border-color: Highlight !important;
+      background-color: Highlight !important;
+    }
+
+    .ui-switch[aria-checked='true'] .ui-switch-knob
+    {
+      background-color: HighlightText !important;
+    }
+
+    .ui-switch:disabled .ui-switch-track
+    {
+      border-color: GrayText !important;
+      background-color: Canvas !important;
+    }
+
+    .ui-switch:disabled .ui-switch-knob
+    {
+      background-color: GrayText !important;
+    }
+
+    .ui-icon-button
+    {
+      color: ButtonText !important;
+    }
+
+    .ui-icon-button[aria-pressed='true']
+    {
+      background-color: Highlight !important;
+      color: HighlightText !important;
+    }
+
+    .ui-icon-button:is(:disabled, [aria-disabled='true'])
+    {
+      color: GrayText !important;
+    }
+
+    [role='tablist'] > [role='tab']
+    {
+      border-block-end: 2px solid Canvas !important;
+    }
+
+    [role='tablist'] > [role='tab'][aria-selected='true']
+    {
+      border-block-end-color: Highlight !important;
+    }
+
+    /* Text keeps a Canvas backplate under forced-color-adjust auto, even on a Highlight fill, so items drawn on
+       that fill opt out and set every color they paint. */
+    [role='radiogroup'] > [role='radio'][aria-checked='true'],
+    :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio']):is(:hover, :focus),
+    [role='listbox'] [role='option']:is([data-highlighted], [aria-selected='true']),
+    select.ui-select option:not(:disabled):is(:hover, :focus-visible)
+    {
+      forced-color-adjust: none !important;
+      background-color: Highlight !important;
+      color: HighlightText !important;
+      box-shadow: none !important;
+    }
+
+    /* Items live inside menu and listbox popovers, so only an overlay nested inside the item itself is left out. */
+    :is([role='radiogroup'] > [role='radio'][aria-checked='true'], :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio']):is(:hover, :focus), [role='listbox'] [role='option']:is([data-highlighted], [aria-selected='true']))
+      :where(:not(
+        :is([role='radiogroup'] > [role='radio'][aria-checked='true'], [role^='menuitem'], [role='option']) :is([popover], dialog),
+        :is([role='radiogroup'] > [role='radio'][aria-checked='true'], [role^='menuitem'], [role='option']) :is([popover], dialog) *
+      ))
+    {
+      color: inherit !important;
+      background-color: transparent !important;
+      border-color: currentColor !important;
+    }
+
+    /* The opt-out is inherited, so an overlay nested inside such an item takes the system colors back. */
+    :is([role='radiogroup'] > [role='radio'][aria-checked='true'], [role^='menuitem'], [role='option']) :is([popover], dialog)
+    {
+      forced-color-adjust: auto !important;
+    }
+
+    .ui-progress-fill
+    {
+      background-color: Highlight !important;
+    }
+
+    .ui-progress[data-static] .ui-progress-fill
+    {
+      background-color: transparent !important;
+    }
+
+    .ui-status[data-held],
+    .ui-stamp,
+    .ui-catalog-number
+    {
+      background-color: transparent !important;
+    }
+
+    /* A selected row opts out like the highlighted items above: under auto its text keeps a Canvas backplate,
+       where SelectedItemText measured 1.9:1. */
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'])
+    {
+      forced-color-adjust: none !important;
+      background-color: SelectedItem !important;
+      color: SelectedItemText !important;
+      border-color: currentColor !important;
+      box-shadow: none !important;
+    }
+
+    /* Overlays stay DOM descendants of their row but paint on Canvas, and text fields and filled or pressed
+       buttons paint their own Canvas, ButtonFace, or Highlight ground, so they take the system colors back; a
+       row inside a dialog keeps the rules. */
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'])
+      :is(
+        [popover], dialog, select, textarea, input:not([type='checkbox'], [type='radio'], [type='range']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true'])
+      )
+    {
+      forced-color-adjust: auto !important;
+    }
+
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'])
+      :is(select, textarea, input:not([type='checkbox'], [type='radio'], [type='range']))
+    {
+      color: FieldText !important;
+    }
+
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'])
+      :where(:not(
+        :is([role='row'], nav [aria-current]) :is([popover], dialog),
+        :is([role='row'], nav [aria-current]) :is([popover], dialog) *,
+        select, select *, textarea, input:not([type='checkbox'], [type='radio'], [type='range']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true']) *
+      ))
+    {
+      color: SelectedItemText !important;
+    }
+
+    /* Zero specificity, so the system colors a primitive sets for itself (Checkbox, Switch, ProgressBar) win. */
+    :where(:is([role='row'][aria-selected='true'], nav [aria-current='page']))
+      :where(:not(
+        :is([role='row'], nav [aria-current]) :is([popover], dialog),
+        :is([role='row'], nav [aria-current]) :is([popover], dialog) *,
+        select, select *, textarea, input:not([type='checkbox'], [type='radio'], [type='range']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true']) *
+      ))
+    {
+      background-color: transparent !important;
+      border-color: currentColor !important;
+      box-shadow: none !important;
+    }
+
+    /* Highlight on SelectedItem measures 1.19:1, and a Highlight ring vanishes on a Highlight fill. */
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'][data-focus='inset']):focus-visible,
+    :is([role='row'][aria-selected='true'], nav [aria-current='page'])
+      :focus-visible:where(:not(
+        :is([role='row'], nav [aria-current]) :is([popover], dialog),
+        :is([role='row'], nav [aria-current]) :is([popover], dialog) *,
+        select, select *, textarea, input:not([type='checkbox'], [type='radio'], [type='range']),
+        button:is([data-variant]:not([data-variant='ghost']), [aria-pressed='true'])
+      ))
+    {
+      outline-color: SelectedItemText !important;
+    }
+
+    .ui-icon-button[aria-pressed='true']:is([data-focus='inset'], [role='gridcell'] *):focus-visible,
+    [role='radiogroup'] > [role='radio'][aria-checked='true']:focus-visible,
+    :is([role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio']):focus-visible,
+    select.ui-select option:focus-visible
+    {
+      outline-color: HighlightText !important;
+    }
+
+    /* The header's bottom edge and the skeleton bars are drawn with a shadow and a wash, which forced colors drop. */
+    .ui-grid-head-row
+    {
+      border-block-end: 1px solid CanvasText !important;
+    }
+
+    .ui-grid-skeleton-bar
+    {
+      background-color: GrayText !important;
+    }
+
+    /* The hover wash paints Canvas on Canvas, so an unselected hovered row takes a thin frame; focus keeps its ring. */
+    .ui-grid-row[data-row-id]:hover:not([aria-selected='true'], :focus-visible)
+    {
+      outline: 1px solid Highlight !important;
+      outline-offset: -1px !important;
+    }
+  }
+}

@@ -14,7 +14,7 @@
 import React from 'react'
 import { useAppStore } from '../../stores/appStore'
 import { StatBar } from './components/StatCard'
-import { ToolCard, drawEditorBg, drawPlayerBg } from './components/ToolCard'
+import { ToolCard } from './components/ToolCard'
 import { RecentActivity } from './components/RecentActivity'
 import type { AppConfig } from '../../stores/types'
 
@@ -233,12 +233,12 @@ function SystemPulse({
   const usedGB = Math.max(0, totalGB - freeGB)
   const usedPct = totalGB > 0 ? Math.min(100, (usedGB / totalGB) * 100) : 0
   const memColor = usedPct > 85 ? 'bg-red-400' : usedPct > 65 ? 'bg-amber-400' : 'bg-emerald-400'
-  const memStroke = usedPct > 85 ? '#f87171' : usedPct > 65 ? '#fbbf24' : '#34d399'
+  const memStroke = usedPct > 85 ? 'var(--color-error)' : usedPct > 65 ? 'var(--color-warning)' : 'var(--color-verified)'
 
   const cpuPct = info?.cpuUsage ?? 0
-  const cpuStroke = cpuPct > 85 ? '#f87171' : cpuPct > 60 ? '#fbbf24' : '#60a5fa'
+  const cpuStroke = cpuPct > 85 ? 'var(--color-error)' : cpuPct > 60 ? 'var(--color-warning)' : 'var(--color-running)'
   const gpuPct = gpuHistory.length > 0 ? gpuHistory[gpuHistory.length - 1] : null
-  const gpuStroke = gpuPct != null && gpuPct > 85 ? '#f87171' : gpuPct != null && gpuPct > 60 ? '#fbbf24' : '#34d399'
+  const gpuStroke = gpuPct != null && gpuPct > 85 ? 'var(--color-error)' : gpuPct != null && gpuPct > 60 ? 'var(--color-warning)' : 'var(--color-verified)'
 
   const gpuStyle = GPU_VENDOR_STYLES[gpu?.vendor || 'cpu']
   const ffmpegShort = ffmpegVersion ? ffmpegVersion.replace(/^ffmpeg version /i, '').split(/\s+/)[0] : null
@@ -254,7 +254,7 @@ function SystemPulse({
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-surface-300 tracking-wider uppercase">System Pulse</h3>
         <span className="flex items-center gap-1.5 text-2xs text-emerald-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           live
         </span>
       </div>
@@ -302,7 +302,7 @@ function SystemPulse({
             <div className={`text-sm font-semibold ${gpuStyle.text} truncate`}>{gpu ? gpu.label : 'detecting…'}</div>
           </div>
           {gpu && !gpu.pending && gpu.vendor !== 'cpu' ? (
-            <span className="shrink-0 px-1 py-px rounded text-[9px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-wider leading-tight">
+            <span className="shrink-0 px-1 py-px rounded text-label font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-400/20 uppercase tracking-wider leading-tight">
               Enabled
             </span>
           ) : (
@@ -404,7 +404,7 @@ export default function Dashboard(): React.JSX.Element {
         </div>
         <StatBar stats={[
           { label: 'Queued', value: files.length, color: 'text-accent-400', dotColor: 'bg-accent-400' },
-          { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-amber-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-amber-400 animate-pulse' : 'bg-surface-600' },
+          { label: 'Active', value: activeTasks.length, color: isProcessing ? 'text-blue-400' : 'text-surface-400', dotColor: isProcessing ? 'bg-blue-400 animate-pulse' : 'bg-surface-600' },
           { label: 'Done', value: totalProcessed, color: 'text-emerald-400', dotColor: 'bg-emerald-400' },
           { label: 'Errors', value: totalErrors, color: totalErrors > 0 ? 'text-red-400' : 'text-surface-400', dotColor: totalErrors > 0 ? 'bg-red-400' : 'bg-surface-600' },
         ]} />
@@ -451,7 +451,6 @@ export default function Dashboard(): React.JSX.Element {
               accentClass="blue"
               title="Media Editor"
               desc="Multi-track timeline, spatial transforms, keyframes, real-time preview"
-              drawBg={drawEditorBg}
               icon={
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                   <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3" />
@@ -467,7 +466,6 @@ export default function Dashboard(): React.JSX.Element {
               accentClass="accent"
               title="Media Player"
               desc="Play local files or stream from URLs with audio visualizations"
-              drawBg={drawPlayerBg}
               icon={
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                   <polygon points="5,3 19,12 5,21" />

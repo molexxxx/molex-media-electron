@@ -70,7 +70,7 @@ export function PopoutShell(): React.JSX.Element {
       <div className="drag-region h-8 flex items-center justify-between bg-surface-950/90 border-b border-white/5 px-3 shrink-0">
         <div className="flex items-center gap-2 no-drag">
           <div className="w-1.5 h-1.5 rounded-full bg-accent-500" />
-          <span className="text-[10px] font-semibold tracking-widest uppercase text-surface-400">
+          <span className="text-label font-semibold text-surface-300">
             molex<span className="text-accent-400">Media</span>
           </span>
         </div>
@@ -79,7 +79,7 @@ export function PopoutShell(): React.JSX.Element {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowSizeMenu(v => !v)}
-              className={`h-5 px-1.5 flex items-center gap-1 rounded text-[9px] font-medium transition-colors ${
+              className={`h-5 px-1.5 flex items-center gap-1 rounded text-label font-medium transition-colors ${
                 showSizeMenu ? 'text-accent-400 bg-accent-600/20' : 'text-surface-500 hover:bg-surface-700/50'
               }`}
               title="Window size"
@@ -96,27 +96,27 @@ export function PopoutShell(): React.JSX.Element {
                   <button
                     key={label}
                     onClick={() => applyPreset(label, w, h)}
-                    className={`w-full px-3 py-1.5 text-left text-[11px] flex items-center justify-between transition-colors ${
+                    className={`w-full px-3 py-1.5 text-left text-label flex items-center justify-between transition-colors ${
                       activePreset === label
                         ? 'text-accent-300 bg-accent-600/15'
                         : 'text-surface-300 hover:bg-surface-700/50'
                     }`}
                   >
                     <span>{label}</span>
-                    <span className="text-surface-500 text-[9px]">{w}×{h}</span>
+                    <span className="text-surface-500 text-label">{w}×{h}</span>
                   </button>
                 ))}
                 <div className="border-t border-white/5 mt-1 pt-1">
                   <button
                     onClick={saveCurrentSize}
-                    className={`w-full px-3 py-1.5 text-left text-[11px] flex items-center justify-between transition-colors ${
+                    className={`w-full px-3 py-1.5 text-left text-label flex items-center justify-between transition-colors ${
                       activePreset === 'Custom'
                         ? 'text-accent-300 bg-accent-600/15'
                         : 'text-surface-300 hover:bg-surface-700/50'
                     }`}
                   >
                     <span>Save Current</span>
-                    <span className="text-surface-500 text-[9px]">Custom</span>
+                    <span className="text-surface-500 text-label">Custom</span>
                   </button>
                 </div>
               </div>

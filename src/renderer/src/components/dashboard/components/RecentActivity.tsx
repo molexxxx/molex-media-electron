@@ -10,11 +10,11 @@ function StatusDot({ status }: { status: string }): React.JSX.Element {
   const colors: Record<string, string> = {
     complete: 'bg-emerald-400',
     error: 'bg-red-400',
-    processing: 'bg-amber-400 animate-pulse',
+    processing: 'bg-blue-400 animate-pulse',
     analyzing: 'bg-blue-400 animate-pulse',
     queued: 'bg-surface-500',
     cancelled: 'bg-surface-500',
-    finalizing: 'bg-cyan-400 animate-pulse'
+    finalizing: 'bg-blue-400 animate-pulse'
   }
   return <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors[status] || 'bg-surface-500'}`} />
 }

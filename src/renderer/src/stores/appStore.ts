@@ -10,11 +10,11 @@
 
 import { create } from 'zustand'
 import type {
-  View, Operation, AppConfig, FileItem, ProcessingTask, LogEntry,
+  View, Operation, AppConfig, FileItem, ProcessingTask, LogEntry, LogFilter,
   ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions
 } from './types'
 
-export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions, BoostPreset, CompressPreset, ExtractPreset } from './types'
+export type { View, Operation, Preset, AppConfig, FileItem, ProcessingTask, LogEntry, LogFilter, ConvertOptions, ExtractOptions, CompressOptions, SystemInfo, NormalizeOptions, BoostOptions, BoostPreset, CompressPreset, ExtractPreset } from './types'
 export { BUILTIN_PRESETS, BUILTIN_BOOST_PRESETS, BUILTIN_COMPRESS_PRESETS, BUILTIN_EXTRACT_PRESETS } from './types'
 export { resolveFileSettings, buildTaskSpec, isCustomized } from './taskSettings'
 export type { GlobalOperationSettings, ResolvedFileSettings, TaskSpec } from './taskSettings'
@@ -101,6 +101,9 @@ interface AppState {
   addLog: (entry: LogEntry) => void
   clearLogs: () => void
   lastSeenErrorCount: number
+  logFilter: LogFilter | null
+  showLog: (filter: LogFilter | null) => void
+  clearLogFilter: () => void
 
   // System
   systemInfo: SystemInfo | null
@@ -130,14 +133,19 @@ interface AppState {
   setUpdateDownloadPercent: (percent: number) => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentView: 'dashboard',
-  viewHistory: [],
-  setView: (view) => set((s) => ({
+/** The navigation fields for moving to a view; opening Logs marks its errors seen. */
+function navigateTo(s: AppState, view: View): Partial<AppState> {
+  return {
     currentView: view,
     viewHistory: s.currentView !== view ? [...s.viewHistory.slice(-19), s.currentView] : s.viewHistory,
     ...(view === 'logs' ? { lastSeenErrorCount: s.logs.filter((l) => l.level === 'error').length } : {})
-  })),
+  }
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  currentView: 'dashboard',
+  viewHistory: [],
+  setView: (view) => set((s) => navigateTo(s, view)),
   goBack: () => set((s) => {
     if (s.viewHistory.length === 0) return {}
     const prev = s.viewHistory[s.viewHistory.length - 1]
@@ -329,6 +337,9 @@ export const useAppStore = create<AppState>((set) => ({
       return { logs: logs.length > 5000 ? logs.slice(-2500) : logs }
     }),
   clearLogs: () => set({ logs: [], lastSeenErrorCount: 0 }),
+  logFilter: null,
+  showLog: (filter) => set((s) => ({ ...navigateTo(s, 'logs'), logFilter: filter })),
+  clearLogFilter: () => set({ logFilter: null }),
 
   systemInfo: null,
   setSystemInfo: (info) => set({ systemInfo: info }),

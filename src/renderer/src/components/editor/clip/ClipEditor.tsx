@@ -142,7 +142,7 @@ export function ClipEditor(): React.JSX.Element {
       <div
         ref={containerRef}
         tabIndex={0}
-        className="flex flex-col items-center justify-center h-full text-surface-400 outline-none"
+        className="flex flex-col items-center justify-center h-full text-surface-400 -outline-offset-2"
         onDrop={onDrop}
         onDragOver={onDragOver}
       >
@@ -192,7 +192,7 @@ export function ClipEditor(): React.JSX.Element {
     <div
       ref={containerRef}
       tabIndex={0}
-      className="flex flex-col h-full outline-none"
+      className="flex flex-col h-full -outline-offset-2"
       onDrop={onDrop}
       onDragOver={onDragOver}
     >

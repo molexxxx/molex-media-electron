@@ -239,7 +239,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
         <div className="px-5 py-4 space-y-4">
           {/* Range */}
           <fieldset disabled={isWorking}>
-            <label className="block text-[11px] text-surface-400 mb-1.5">Range</label>
+            <label className="block text-label text-surface-400 mb-1.5">Range</label>
             <div className="flex gap-2">
               <RadioBtn
                 label="Entire Timeline"
@@ -263,7 +263,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
 
           {/* Format */}
           <fieldset disabled={isWorking}>
-            <label className="block text-[11px] text-surface-400 mb-1.5">Format</label>
+            <label className="block text-label text-surface-400 mb-1.5">Format</label>
             <SelectDropdown
               value={formatValue}
               onChange={setFormatValue}
@@ -274,7 +274,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
 
           {/* Resolution */}
           <fieldset disabled={isWorking}>
-            <label className="block text-[11px] text-surface-400 mb-1.5">Resolution</label>
+            <label className="block text-label text-surface-400 mb-1.5">Resolution</label>
             <SelectDropdown
               value={resOption}
               onChange={setResOption}
@@ -288,7 +288,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
 
           {/* Quality */}
           <fieldset disabled={isWorking}>
-            <label className="block text-[11px] text-surface-400 mb-1.5">Quality</label>
+            <label className="block text-label text-surface-400 mb-1.5">Quality</label>
             <SelectDropdown
               value={crf}
               onChange={setCrf}
@@ -299,7 +299,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
 
           {/* Audio Bitrate */}
           <fieldset disabled={isWorking}>
-            <label className="block text-[11px] text-surface-400 mb-1.5">Audio Bitrate</label>
+            <label className="block text-label text-surface-400 mb-1.5">Audio Bitrate</label>
             <SelectDropdown
               value={audioBitrate}
               onChange={setAudioBitrate}
@@ -319,9 +319,9 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="text-[11px] text-surface-400">{message}</p>
+              <p className="text-label text-surface-400">{message}</p>
               {status === 'error' && (
-                <p className="text-[11px] text-red-400">{errorMsg}</p>
+                <p className="text-label text-red-400">{errorMsg}</p>
               )}
             </div>
           )}
@@ -334,7 +334,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps): React.JSX.El
           {isWorking ? (
             <button
               onClick={handleCancel}
-              className="px-4 py-1.5 text-xs rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors"
+              className="px-4 py-1.5 text-xs rounded bg-red-500/20 text-red-300 hover:bg-red-500/25 transition-colors"
             >
               Cancel
             </button>
@@ -376,7 +376,7 @@ function RadioBtn({
     <button
       onClick={onChange}
       disabled={disabled}
-      className={`px-2.5 py-1 text-[11px] rounded border transition-all ${
+      className={`px-2.5 py-1 text-label rounded border transition-all ${
         checked
           ? 'bg-accent-500/15 text-accent-200 border-accent-500/25'
           : 'text-surface-400 border-white/10 hover:text-surface-200 hover:bg-white/4'

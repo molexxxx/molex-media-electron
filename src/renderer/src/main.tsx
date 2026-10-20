@@ -3,10 +3,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { IconProvider } from './ui/Icon'
 import './styles/globals.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <IconProvider>
+      <App />
+    </IconProvider>
   </React.StrictMode>
 )

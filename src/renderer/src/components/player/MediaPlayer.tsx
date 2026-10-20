@@ -969,7 +969,7 @@ export default function MediaPlayer({ popout = false }: { popout?: boolean }): R
             </div>
           )}
           {error && (
-            <div className="absolute bottom-2 left-2 right-2 px-2 py-1.5 rounded-lg bg-red-500/15 border border-red-500/20 text-[10px] text-red-300">
+            <div className="absolute bottom-2 left-2 right-2 px-2 py-1.5 rounded-lg bg-red-500/15 border border-red-500/20 text-label text-red-300">
               {error}
             </div>
           )}

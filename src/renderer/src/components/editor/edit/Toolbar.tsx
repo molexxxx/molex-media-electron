@@ -4,6 +4,7 @@
  * Touch-friendly with tooltips and responsive layout.
  */
 import React, { useCallback, useEffect, useState } from 'react'
+import { useAppStore } from '../../../stores/appStore'
 import { useEditorStore } from '../../../stores/editorStore'
 import type { EditTool } from '../types'
 import { ShortcutsModal } from './ShortcutsModal'
@@ -33,6 +34,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
     const handler = (e: KeyboardEvent): void => {
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (useAppStore.getState().currentView !== 'editor') return
       if (e.key === '?' && useEditorStore.getState().mode === 'edit') {
         e.preventDefault()
         setShortcutsOpen((prev) => !prev)
@@ -90,7 +92,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
           <button
             key={tool.id}
             onClick={() => setActiveTool(tool.id)}
-            className={`px-2 py-1.5 text-[11px] rounded transition-all min-h-[32px] min-w-[32px] flex items-center justify-center gap-1 ${
+            className={`px-2 py-1.5 text-label rounded transition-all min-h-[32px] min-w-[32px] flex items-center justify-center gap-1 ${
               activeTool === tool.id
                 ? 'bg-accent-500/20 text-accent-200 font-medium'
                 : 'text-surface-400 hover:text-surface-200 hover:bg-white/[0.04]'
@@ -117,7 +119,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
             key={op.type}
             onClick={() => doEdit(op.type)}
             disabled={!hasSource}
-            className="px-1.5 py-1 text-[10px] rounded text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[28px]"
+            className="px-1.5 py-1 text-label whitespace-nowrap rounded text-surface-400 hover:text-surface-200 hover:bg-white/[0.04] disabled:opacity-30 disabled:pointer-events-none transition-all min-h-[28px]"
             title={op.tooltip}
           >
             {op.label}
@@ -130,7 +132,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
       {/* Snap */}
       <button
         onClick={() => setSnapEnabled(!snapEnabled)}
-        className={`px-2 py-1.5 text-[11px] rounded transition-all min-h-[32px] ${
+        className={`px-2 py-1.5 text-label rounded transition-all min-h-[32px] ${
           snapEnabled
             ? 'bg-blue-500/20 text-blue-300 font-medium'
             : 'text-surface-500 hover:text-surface-300'
@@ -147,24 +149,24 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
       <div className="flex items-center gap-1">
         <button
           onClick={onZoomOut}
-          className="text-surface-400 hover:text-surface-200 text-[11px] px-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
+          className="text-surface-400 hover:text-surface-200 text-label px-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
           title="Zoom out (Ctrl+-)"
         >
           −
         </button>
-        <span className="text-[10px] text-surface-500 min-w-[36px] text-center tabular-nums hidden sm:inline">
+        <span className="text-label text-surface-500 min-w-[36px] text-center tabular-nums hidden sm:inline">
           {Math.round(zoom)}px/s
         </span>
         <button
           onClick={onZoomIn}
-          className="text-surface-400 hover:text-surface-200 text-[11px] px-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
+          className="text-surface-400 hover:text-surface-200 text-label px-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
           title="Zoom in (Ctrl+=)"
         >
           +
         </button>
         <button
           onClick={onFitToView}
-          className="text-surface-400 hover:text-surface-200 text-[11px] px-1.5 min-h-[28px]"
+          className="text-surface-400 hover:text-surface-200 text-label px-1.5 min-h-[28px]"
           title="Fit timeline to view (Ctrl+0)"
         >
           Fit
@@ -175,7 +177,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
       <div className="flex-1" />
 
       {/* Shortcut hints */}
-      <div className="hidden lg:flex items-center gap-3 text-[10px] text-surface-500/70 mr-1 select-none">
+      <div className="hidden 2xl:flex items-center gap-3 text-label text-surface-500 mr-1 select-none">
         {[
           { keys: ['Shift', 'Scroll'], action: 'pan' },
           { keys: ['Ctrl', 'Scroll'], action: 'zoom' },
@@ -186,7 +188,7 @@ export function Toolbar({ onZoomIn, onZoomOut, onFitToView }: ToolbarProps): Rea
             {keys.map((k) => (
               <kbd
                 key={k}
-                className="inline-flex items-center justify-center px-1 py-px rounded text-[9px] font-mono leading-tight bg-white/[0.05] border border-white/[0.08] text-surface-400 min-w-[16px] text-center"
+                className="inline-flex items-center justify-center px-1 py-px rounded text-label font-mono leading-tight bg-white/[0.05] border border-white/[0.08] text-surface-400 min-w-[16px] text-center"
               >
                 {k}
               </kbd>

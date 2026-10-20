@@ -134,7 +134,7 @@ function NumericField({
       {editing ? (
         <input
           type="text"
-          className="flex-1 min-w-0 bg-white/[0.04] text-surface-200 text-2xs px-1.5 py-1 rounded-md border border-white/[0.06] outline-none focus:border-accent-500/50 transition-colors font-mono text-center"
+          className="flex-1 min-w-0 bg-white/[0.04] text-surface-200 text-2xs px-1.5 py-1 rounded-md border border-white/[0.06] focus:border-accent-500/50 transition-colors font-mono text-center"
           value={editValue}
           autoFocus
           onChange={(e) => setEditValue(e.target.value)}

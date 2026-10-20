@@ -48,7 +48,7 @@ export function NumberInput({ value, onChange, min, max, step = 0.1, unit }: {
   value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; unit?: string
 }): React.JSX.Element {
   return (
-    <div className="inline-flex items-center w-[10rem] bg-white/[0.04] border border-white/[0.06] rounded-lg overflow-hidden hover:border-white/[0.12] focus-within:border-accent-500/50 transition-colors">
+    <div className="inline-flex items-center w-[10rem] bg-white/[0.04] border border-line-control rounded-lg overflow-hidden hover:border-line-control-hover transition-colors">
       <input
         type="number"
         value={value}
@@ -56,7 +56,7 @@ export function NumberInput({ value, onChange, min, max, step = 0.1, unit }: {
         min={min}
         max={max}
         step={step}
-        className="flex-1 min-w-0 bg-transparent px-2.5 py-1.5 text-sm text-white font-mono text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="flex-1 min-w-0 bg-transparent px-2.5 py-1.5 text-sm text-white font-mono text-right -outline-offset-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
       {unit && <span className="w-14 text-center text-xs text-surface-400 font-medium border-l border-white/[0.06] py-1.5 bg-white/[0.02] shrink-0">{unit}</span>}
     </div>
@@ -124,8 +124,8 @@ export function Select({ value, onChange, options, compact, disabled, className,
   const select = (v: string) => { onChange(v); setOpen(false) }
 
   const triggerCls = compact
-    ? 'flex items-center gap-1 bg-surface-900/80 border border-white/[0.06] rounded-lg px-1.5 py-0.5 text-2xs hover:border-white/[0.12] transition-colors cursor-pointer'
-    : 'flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1.5 text-sm hover:border-white/[0.12] transition-colors cursor-pointer min-w-[8rem] sm:min-w-[13rem]'
+    ? 'flex items-center gap-1 bg-surface-900/80 border border-line-control rounded-lg px-1.5 py-0.5 text-2xs hover:border-line-control-hover transition-colors cursor-pointer'
+    : 'flex items-center gap-2 bg-white/[0.04] border border-line-control rounded-lg px-2 py-1.5 text-sm hover:border-line-control-hover transition-colors cursor-pointer min-w-[8rem] sm:min-w-[13rem]'
 
   return (
     <div ref={ref} className={`relative ${className ?? ''}`}>
@@ -133,7 +133,7 @@ export function Select({ value, onChange, options, compact, disabled, className,
         onClick={() => !disabled && setOpen((v) => !v)}
         disabled={disabled}
         title={title}
-        className={`${triggerCls} ${disabled ? 'opacity-50 pointer-events-none' : ''} text-surface-200 focus:outline-none focus:border-accent-500/50`}
+        className={`${triggerCls} ${disabled ? 'opacity-50 pointer-events-none' : ''} text-surface-200`}
       >
         <span className="truncate flex-1 text-left">{activeLabel}</span>
         <svg
@@ -216,7 +216,7 @@ export function FixedTip({ label, children, position = 'below', wide = false, in
       {children}
       {pos && createPortal(
         <div
-          className={`fixed px-2.5 py-1.5 rounded-md bg-surface-900/95 border border-surface-700/60 text-[10px] leading-snug text-surface-200 pointer-events-none z-[9999] shadow-lg shadow-black/30 backdrop-blur-sm animate-fade-in ${
+          className={`fixed px-2.5 py-1.5 rounded-md bg-surface-900/95 border border-surface-700/60 text-label leading-snug text-surface-200 pointer-events-none z-[9999] shadow-lg shadow-black/30 backdrop-blur-sm animate-fade-in ${
             wide ? 'whitespace-normal' : 'whitespace-nowrap'
           }`}
           style={position === 'right'

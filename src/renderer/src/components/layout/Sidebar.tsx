@@ -105,25 +105,25 @@ const icons = {
   )
 }
 
-/** Animated update notification badge with pulsing glow. */
+/** Static update-available badge; its words reach assistive technology through the nav item's name. */
 function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element {
   return collapsed ? (
     <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center">
-      <span className="absolute w-3.5 h-3.5 rounded-full bg-accent-500/40 animate-ping" />
-      <span className="relative w-2.5 h-2.5 rounded-full bg-accent-500 flex items-center justify-center">
-        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+      <span className="relative w-2.5 h-2.5 rounded-full bg-accent-500 text-ink flex items-center justify-center">
+        <svg aria-hidden="true" width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
         </svg>
       </span>
+      <span className="sr-only">Update available</span>
     </span>
   ) : (
     <span className="relative flex items-center justify-center">
-      <span className="absolute w-6 h-6 rounded-full bg-accent-500/20 animate-pulse-slow" />
-      <span className="relative w-5 h-5 rounded-full bg-accent-600 flex items-center justify-center shadow-glow">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <span className="relative w-5 h-5 rounded-full bg-accent-600 text-ink flex items-center justify-center">
+        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
         </svg>
       </span>
+      <span className="sr-only">Update available</span>
     </span>
   )
 }
@@ -177,14 +177,15 @@ export default function Sidebar(): React.JSX.Element {
   ]
 
   return (
-    <nav className={`${collapsed ? 'w-13' : 'w-50'} shrink-0 h-full bg-surface-900/50 border-r border-white/5 flex flex-col pt-0 pb-3 px-2 transition-all duration-200 relative`}>
+    <nav className={`${collapsed ? 'w-13' : 'w-52'} shrink-0 h-full bg-rail border-r border-rail-edge flex flex-col pt-0 pb-3 px-2 relative`}>
       {/* Drag region + collapse toggle */}
       <div className="drag-region h-10 shrink-0 relative">
         {collapsed ? (
           <SidebarTip label="Expand">
             <button
               onClick={toggleSidebar}
-              className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
+              aria-label="Expand sidebar"
+              className="no-drag absolute top-2.5 right-0 w-6 h-6 rounded-sm flex items-center justify-center text-ink-3 hover:text-ink hover:bg-wash-hover"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -196,7 +197,8 @@ export default function Sidebar(): React.JSX.Element {
         ) : (
           <button
             onClick={toggleSidebar}
-            className="no-drag absolute top-2.5 right-0 w-5 h-5 rounded flex items-center justify-center text-surface-600 hover:text-surface-300 transition-colors"
+            aria-label="Collapse sidebar"
+            className="no-drag absolute top-2.5 right-0 w-6 h-6 rounded-sm flex items-center justify-center text-ink-3 hover:text-ink hover:bg-wash-hover"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -206,12 +208,13 @@ export default function Sidebar(): React.JSX.Element {
           </button>
         )}
       </div>
-      <div className="flex-1 space-y-4 overflow-y-auto scrollbar-thin pr-1">
+      <div className="flex-1 space-y-5 overflow-y-auto scrollbar-thin">
         {sections.map((section, si) => (
           <div key={si}>
             {section.label && !collapsed && (
-              <div className="px-3 mb-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-surface-600">{section.label}</span>
+              <div className="px-3 mb-1">
+                <span aria-hidden="true" className="text-label text-ink-3">{section.label}</span>
+                <span className="sr-only">{section.label}</span>
               </div>
             )}
 
@@ -222,23 +225,26 @@ export default function Sidebar(): React.JSX.Element {
                   <button
                     key={item.id}
                     onClick={() => setView(item.id)}
-                    className={`w-full flex items-center ${collapsed ? 'justify-center' : ''} gap-2.5 ${collapsed ? 'px-0 py-2' : 'px-3 py-2'} rounded-lg text-sm font-medium transition-all duration-150 group relative
+                    aria-current={active ? 'page' : undefined}
+                    data-focus="inset"
+                    className={`w-full h-9 flex items-center ${collapsed ? 'justify-center px-0' : 'px-3'} gap-3 rounded-sm text-body group relative
                       ${active
-                        ? 'bg-accent-500/15 text-accent-300 shadow-inner-glow'
-                        : 'text-surface-400 hover:text-surface-200 hover:bg-surface-700/40'
+                        ? 'bg-wash-hover text-ink forced-colors:bg-[SelectedItem] forced-colors:text-[SelectedItemText]'
+                        : 'text-ink-2 hover:text-ink hover:bg-wash-hover active:bg-wash-pressed'
                       }`}
                   >
-                    <span className={`transition-colors shrink-0 ${active ? 'text-accent-400' : 'text-surface-500 group-hover:text-surface-300'}`}>
+                    {active && <span aria-hidden="true" className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-xs bg-amber forced-colors:bg-[SelectedItemText]" />}
+                    <span className={`shrink-0 ${active ? 'text-amber forced-colors:text-[SelectedItemText]' : 'text-ink-3 group-hover:text-ink-2'}`}>
                       {item.icon}
                     </span>
-                    {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+                    <span className={collapsed ? 'sr-only' : 'flex-1 text-left'}>{item.label}</span>
                     {!collapsed && item.badge !== undefined && item.badge > 0 && (
                       <span className={`text-2xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center
                         ${item.id === 'logs'
-                          ? 'bg-red-500/20 text-red-400'
+                          ? 'bg-red-500/20 text-red-200'
                           : active
                             ? 'bg-accent-500/30 text-accent-300'
-                            : 'bg-surface-600 text-surface-300'
+                            : 'bg-surface-700 text-surface-200'
                         }`}
                       >
                         {item.badge > 99 ? '99+' : item.badge}

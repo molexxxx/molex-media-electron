@@ -3,6 +3,7 @@
  * Edit mode keyboard shortcuts - transport, editing, tool selection, edit types, JKL.
  */
 import { useEffect, useCallback, useRef } from 'react'
+import { useAppStore } from '../../../stores/appStore'
 import { useEditorStore } from '../../../stores/editorStore'
 import type { TimelineCoords } from './useTimelineZoom'
 
@@ -16,6 +17,9 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
 
   const handler = useCallback(
     (e: KeyboardEvent) => {
+      // The editor stays mounted while hidden; only claim keys (including app zoom) while it is the visible view
+      if (useAppStore.getState().currentView !== 'editor') return
+
       // Don't capture when in an input/textarea
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
@@ -232,6 +236,7 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
           break
 
         // Zoom
+        case '+':
         case '=':
           if (ctrl) { e.preventDefault(); coords.zoomIn() }
           break

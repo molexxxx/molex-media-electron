@@ -4,6 +4,8 @@
  * used across the application state layer and UI components.
  */
 
+import type { StageId } from '../../../shared/jobs/types'
+
 export type View = 'dashboard' | 'batch' | 'editor' | 'player' | 'settings' | 'logs'
 export type Operation = 'normalize' | 'boost' | 'convert' | 'extract' | 'compress'
 
@@ -473,14 +475,26 @@ export interface ProcessingTask {
 }
 
 export interface LogEntry {
+  /** Monotonic, stamped by main's logger. */
+  id?: number
   timestamp: string
   level: 'info' | 'warn' | 'error' | 'success' | 'debug' | 'ffmpeg'
   message: string
   details?: string
+  /** The job a line is about. */
+  jobId?: string
+  runId?: string
+  attempt?: number
+  stage?: StageId
+  kind?: 'message' | 'cmd' | 'stderr' | 'event'
 }
+
+/** Narrows the Logs view to one job or one run. */
+export type LogFilter = { jobId: string } | { runId: string }
 
 export interface AppConfig {
   version: string
+  /** Legacy loudness target, read by the old processors; an upgrade carries it into the "Earlier default" preset. */
   normalization: { I: number; TP: number; LRA: number }
   audioCodec: string
   fallbackCodec: string
@@ -504,6 +518,10 @@ export interface AppConfig {
   gpuAcceleration: 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
   ytdlpBrowser: string
   sidebarCollapsed: boolean
+  /** Interface size in percent, 90 to 200; main clamps it on load. */
+  interfaceScale: number
+  /** Speaks batch progress at most every 30 seconds; defaults to false. */
+  announceProgress: boolean
 }
 
 export interface SystemInfo {

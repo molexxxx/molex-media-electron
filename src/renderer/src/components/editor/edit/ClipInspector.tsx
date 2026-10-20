@@ -65,7 +65,7 @@ export function ClipInspector({ clip }: ClipInspectorProps): React.JSX.Element {
   const panLabel = clip.pan === 0 ? 'C' : clip.pan < 0 ? `L${Math.round(-clip.pan * 100)}` : `R${Math.round(clip.pan * 100)}`
 
   return (
-    <div className="flex items-center gap-3 text-[10px] text-surface-400">
+    <div className="flex items-center gap-3 text-label text-surface-400">
       {/* Mute + Volume */}
       <div className="flex items-center gap-1.5" title="Clip volume (0-200%)">
         <button

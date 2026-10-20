@@ -5,8 +5,15 @@
  */
 
 import React from 'react'
+import { Repeat, Repeat1 } from 'lucide-react'
 import type { Track } from '../types'
 import { formatTime } from '../types'
+
+const REPEAT_LABELS: Record<'off' | 'all' | 'one', string> = {
+  off: 'Repeat off',
+  all: 'Repeat all',
+  one: 'Repeat one'
+}
 
 interface TransportBarProps {
   track: Track | null
@@ -41,7 +48,7 @@ export function TransportBar({
     >
       {/* Seek bar */}
       <div className="flex items-center gap-2 sm:gap-2.5 group/seek">
-        <span className="text-2xs text-surface-500 font-mono w-8 sm:w-9 text-right select-none tabular-nums">{formatTime(currentTime)}</span>
+        <span className="text-2xs text-surface-500 font-mono min-w-[6ch] text-right select-none tabular-nums">{formatTime(currentTime)}</span>
         <div className="relative flex-1 flex items-center h-5 cursor-pointer group/bar">
           {/* Track background */}
           <div className="absolute left-0 right-0 h-1 rounded-full bg-white/8 group-hover/bar:h-1.5 transition-all" />
@@ -70,7 +77,7 @@ export function TransportBar({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
         </div>
-        <span className="text-2xs text-surface-500 font-mono w-8 sm:w-9 select-none tabular-nums">{formatTime(duration)}</span>
+        <span className="text-2xs text-surface-500 font-mono min-w-[6ch] select-none tabular-nums">{formatTime(duration)}</span>
       </div>
 
       {/* Controls row */}
@@ -129,16 +136,11 @@ export function TransportBar({
           {/* Repeat */}
           <button
             onClick={onCycleRepeat}
-            className={`transport-btn w-7 h-7 sm:w-8 sm:h-8 relative hidden sm:flex ${repeat !== 'off' ? 'transport-btn-active' : ''}`}
-            title={`Repeat: ${repeat}`}
+            className={`transport-btn w-7 h-7 sm:w-8 sm:h-8 hidden sm:flex ${repeat !== 'off' ? 'transport-btn-active' : ''}`}
+            title={REPEAT_LABELS[repeat]}
+            aria-label={REPEAT_LABELS[repeat]}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
-              <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
-            </svg>
-            {repeat === 'one' && (
-              <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-accent-300">1</span>
-            )}
+            {repeat === 'one' ? <Repeat1 size={14} aria-hidden="true" /> : <Repeat size={14} aria-hidden="true" />}
           </button>
         </div>
 

@@ -779,7 +779,7 @@ export function Preview(): React.JSX.Element {
     <div
       ref={containerRef}
       tabIndex={0}
-      className="relative flex flex-col items-center justify-center h-full bg-black/30 rounded-lg overflow-hidden outline-none focus:ring-1 focus:ring-accent-500/30"
+      className="relative flex flex-col items-center justify-center h-full bg-black/30 rounded-lg overflow-hidden -outline-offset-2 focus:ring-1 focus:ring-accent-500/30"
     >
       {/* Video element - always mounted, hidden when spatial canvas takes over */}
       <video
@@ -827,7 +827,7 @@ export function Preview(): React.JSX.Element {
 
       {/* Track count indicator */}
       {hits.length > 1 && (
-        <div className="absolute top-1.5 left-1.5 bg-black/60 text-surface-400 text-[10px] px-1.5 py-0.5 rounded">
+        <div className="absolute top-1.5 left-1.5 bg-black/60 text-surface-400 text-label px-1.5 py-0.5 rounded">
           {hits.length} layers
         </div>
       )}

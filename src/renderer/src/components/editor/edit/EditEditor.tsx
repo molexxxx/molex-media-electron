@@ -294,7 +294,7 @@ export function EditEditor(): React.JSX.Element {
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-3 py-1 border-t border-white/5 text-[10px] text-surface-500 bg-surface-900/60 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-3 py-1 border-t border-white/5 text-label text-surface-500 bg-surface-900/60 flex-wrap">
         <span>
           {selectedClipIds.length > 0
             ? `${selectedClipIds.length} clip${selectedClipIds.length > 1 ? 's' : ''} selected`

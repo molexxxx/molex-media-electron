@@ -280,7 +280,7 @@ export function ApplicationSettings({ config, onUpdate, onResetDefaults }: Appli
       <SettingGroup title="About">
         <div className="space-y-3">
           <div className="text-xs text-surface-400 space-y-1">
-            <p><span className="text-surface-300 font-medium">molexMedia</span> v{config.version}</p>
+            <p><span className="text-surface-300 font-medium">molexMedia</span> v{__APP_VERSION__}</p>
             <p>Media processing toolkit powered by FFmpeg</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

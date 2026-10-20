@@ -380,13 +380,13 @@ export function InspectEditor(): React.JSX.Element {
                 {Object.entries(metadataEdits).map(([key, value]) => (
                   <div key={key} className="flex items-center gap-1.5">
                     <input
-                      className="w-28 shrink-0 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:outline-none focus:border-accent-500/50"
+                      className="w-28 shrink-0 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:border-accent-500/50"
                       value={key}
                       onChange={(e) => renameMetadataKey(key, e.target.value)}
                       spellCheck={false}
                     />
                     <input
-                      className="flex-1 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:outline-none focus:border-accent-500/50"
+                      className="flex-1 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:border-accent-500/50"
                       value={value}
                       onChange={(e) => updateMetadata(key, e.target.value)}
                       spellCheck={false}

@@ -361,7 +361,7 @@ export function FileBrowser({
                     onChange={(e) => setPathInput(e.target.value)}
                     onBlur={() => { handlePathSubmit() }}
                     onKeyDown={(e) => { if (e.key === 'Enter') handlePathSubmit(); if (e.key === 'Escape') setEditingPath(false) }}
-                    className="flex-1 bg-surface-800 text-surface-200 rounded px-2 py-0.5 text-xs border border-accent-500 outline-none font-mono min-w-0"
+                    className="flex-1 bg-surface-800 text-surface-200 rounded px-2 py-0.5 text-xs border border-accent-500 font-mono min-w-0"
                   />
                 ) : (
                   <button
@@ -448,7 +448,7 @@ export function FileBrowser({
                           </span>
                         )}
                         {/* Icon */}
-                        <span className={`shrink-0 ${entry.isDirectory ? 'text-amber-400/80' : isSelected ? 'text-accent-400' : 'text-surface-500'}`}>
+                        <span className={`shrink-0 ${entry.isDirectory ? 'text-amber-400' : isSelected ? 'text-accent-400' : 'text-surface-500'}`}>
                           {entry.isDirectory ? FOLDER_ICONS.folder : getFileIcon(entry.ext)}
                         </span>
                         {/* Name */}
@@ -461,7 +461,7 @@ export function FileBrowser({
                         {entry.isDirectory && allowFolders && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleAddFolder(entry.path) }}
-                            className="text-2xs text-surface-500 hover:text-accent-400 opacity-0 group-hover:opacity-100 transition-all px-1.5 py-0.5 rounded hover:bg-accent-500/10 shrink-0"
+                            className="text-2xs text-surface-500 hover:text-accent-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all px-1.5 py-0.5 rounded hover:bg-accent-500/10 shrink-0"
                             title="Add all files from this folder"
                           >
                             + All

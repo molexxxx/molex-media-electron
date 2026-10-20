@@ -69,8 +69,8 @@ function KeyCombo({ keys }: { keys: string[] }): React.JSX.Element {
     <span className="inline-flex items-center gap-0.5">
       {keys.map((k, i) => (
         <React.Fragment key={i}>
-          {i > 0 && <span className="text-surface-600 text-[8px] mx-px">+</span>}
-          <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-mono leading-none bg-white/[0.06] border border-white/[0.08] text-surface-300 min-w-[20px] text-center shadow-[0_1px_0_rgba(255,255,255,0.04)]">
+          {i > 0 && <span className="text-surface-600 text-label mx-px">+</span>}
+          <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-label font-mono leading-none bg-white/[0.06] border border-white/[0.08] text-surface-300 min-w-[20px] text-center shadow-[0_1px_0_rgba(255,255,255,0.04)]">
             {k}
           </kbd>
         </React.Fragment>
@@ -100,7 +100,7 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps): React.JS
       onClick={onClose}
     >
       <div
-        className="bg-surface-900 border border-white/10 rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-y-auto"
+        className="bg-surface-900 border border-white/10 rounded-xl shadow-2xl w-208 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -119,8 +119,9 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps): React.JS
         <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-5">
           {SECTIONS.map((section) => (
             <div key={section.title}>
-              <h3 className="text-[10px] font-semibold text-surface-500 uppercase tracking-wider mb-2">
-                {section.title}
+              <h3 className="mb-2 leading-none">
+                <span aria-hidden="true" className="type-caption text-surface-300">{section.title}</span>
+                <span className="sr-only">{section.title}</span>
               </h3>
               <div className="space-y-1.5">
                 {section.items.map((item, idx) => (
@@ -128,11 +129,11 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps): React.JS
                     key={idx}
                     className="flex items-center justify-between gap-3 py-0.5"
                   >
-                    <span className="text-[11px] text-surface-300 truncate">{item.desc}</span>
+                    <span className="text-label text-surface-300 truncate">{item.desc}</span>
                     <span className="flex items-center gap-1.5 flex-shrink-0">
                       {item.keys.map((combo, ci) => (
                         <React.Fragment key={ci}>
-                          {ci > 0 && <span className="text-surface-600 text-[9px]">/</span>}
+                          {ci > 0 && <span className="text-surface-600 text-label">/</span>}
                           <KeyCombo keys={combo} />
                         </React.Fragment>
                       ))}
@@ -146,8 +147,8 @@ export function ShortcutsModal({ open, onClose }: ShortcutsModalProps): React.JS
 
         {/* Footer */}
         <div className="px-5 py-2.5 border-t border-white/5 text-center">
-          <span className="text-[10px] text-surface-500">
-            Press <kbd className="px-1 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] font-mono">?</kbd> or <kbd className="px-1 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] font-mono">Esc</kbd> to close
+          <span className="text-label text-surface-500">
+            Press <kbd className="px-1 py-0.5 rounded bg-white/[0.06] border border-white/10 text-label font-mono">?</kbd> or <kbd className="px-1 py-0.5 rounded bg-white/[0.06] border border-white/10 text-label font-mono">Esc</kbd> to close
           </span>
         </div>
       </div>

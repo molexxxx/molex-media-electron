@@ -1,0 +1,193 @@
+/* Design tokens. Theme variables are static so every one is emitted on :root, where canvas code reads them. Type uses
+   the platform face: Segoe UI Variable on Windows, the system UI face elsewhere; nothing is bundled. */
+
+@theme static
+{
+  --color-walnut-900: #1a120c;
+  --color-walnut-700: #3b2819;
+  --color-walnut-500: #6e4a32;
+  --color-walnut-400: #94694a;
+  --color-walnut-ink: #c99a72;
+
+  --color-ground: #0e0d0c;
+  --color-rail: var(--color-walnut-900);
+  --color-panel: #151413;
+  --color-raised: #201e1c;
+  --color-raised-hover: #2a2725;
+  --color-sunken: #080707;
+  --color-overlay: #211f1d;
+
+  --color-ink: #efe9df;
+  --color-ink-2: #c4bbad;
+  --color-ink-3: #a0988c;
+  --color-ink-disabled: #625b52;
+
+  --color-line: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --color-line-strong: color-mix(in oklab, var(--color-ink) 14%, transparent);
+  --color-line-control: #8a8073;
+  --color-line-control-hover: #a69a8a;
+  --color-rail-edge: #2b1d13;
+
+  --color-brass: #c9a35a;
+  --color-brass-hover: #d6b26b;
+  --color-brass-pressed: #c09b54;
+  --color-amber: #ffb547;
+  --color-on-brass: #15100a;
+  --color-focus: var(--color-amber);
+
+  --color-mark: var(--color-ink);
+  --color-on-mark: #15100a;
+
+  --color-wash-hover: color-mix(in oklab, var(--color-ink) 5%, transparent);
+  --color-wash-pressed: color-mix(in oklab, var(--color-ink) 8%, transparent);
+  --color-wash-selected: color-mix(in oklab, var(--color-amber) 11%, transparent);
+  --color-wash-selected-hover: color-mix(in oklab, var(--color-amber) 15%, transparent);
+  --color-text-selection: color-mix(in oklab, var(--color-amber) 30%, transparent);
+  --color-scrim: rgb(6 5 4 / 0.62);
+  --color-scrollbar: #766e64;
+
+  --color-running: #7fa9d6;
+  --color-verified: #9bce90;
+  --color-warning: #f07b3f;
+  --color-error: #f3727d;
+  --color-error-fill: #e5484d;
+  --color-on-error-fill: #15100a;
+  --color-wash-running: color-mix(in oklab, var(--color-running) 10%, transparent);
+  --color-wash-verified: color-mix(in oklab, var(--color-verified) 10%, transparent);
+  --color-wash-warning: color-mix(in oklab, var(--color-warning) 10%, transparent);
+  --color-wash-error: color-mix(in oklab, var(--color-error-fill) 10%, transparent);
+  --color-held-warning: color-mix(in srgb, var(--color-warning) 14%, var(--color-ground));
+  --color-held-error: color-mix(in srgb, var(--color-error-fill) 14%, var(--color-ground));
+  --color-stamp-verified: color-mix(in srgb, var(--color-verified) 8%, var(--color-ground));
+  --color-stamp-returned: color-mix(in srgb, var(--color-error-fill) 8%, var(--color-ground));
+  --color-danger-hover: color-mix(in srgb, var(--color-error-fill) 14%, var(--color-raised));
+  --color-danger-pressed: color-mix(in srgb, var(--color-error-fill) 20%, var(--color-raised));
+
+  --color-viz-1: #f2a33a;
+  --color-viz-2: #5f9fd8;
+  --color-viz-3: #86c48c;
+  --color-viz-ref: var(--color-ink-2);
+  --color-viz-limit: var(--color-ink-3);
+  --color-viz-band: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  --color-viz-grid: var(--color-line);
+  --color-viz-axis: var(--color-line-strong);
+
+  --color-playhead: var(--color-ink);
+  --color-clip-video: #004e4b;
+  --color-clip-audio: #5b284c;
+  --color-clip-overlay: #434614;
+
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-mono--font-feature-settings: "calt" 0, "liga" 0;
+  --font-legend: 'Segoe UI Variable Small', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 0.875rem;
+  --text-caption--letter-spacing: 0.07em;
+  --text-caption--font-weight: 600;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-body: 0.8125rem;
+  --text-body--line-height: 1.25rem;
+  --text-control: 0.8125rem;
+  --text-control--line-height: 1rem;
+  --text-control--font-weight: 400;
+  --text-section: 0.875rem;
+  --text-section--line-height: 1.25rem;
+  --text-section--font-weight: 600;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-title--letter-spacing: 0;
+  --text-title--font-weight: 600;
+  --text-display: 1.5rem;
+  --text-display--line-height: 2rem;
+  --text-display--letter-spacing: 0;
+  --text-display--font-weight: 600;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  --shadow-overlay: 0 8px 24px -6px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+  --shadow-well: inset 0 1px 3px rgb(0 0 0 / 0.7), inset 0 0 0 1px rgb(0 0 0 / 0.5);
+  --shadow-dialog: 0 24px 64px -8px rgb(0 0 0 / 0.65), 0 4px 12px rgb(0 0 0 / 0.4);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --transition-duration-fast: 83ms;
+  --transition-duration-move: 150ms;
+  --transition-duration-base: 167ms;
+  --transition-duration-slow: 250ms;
+
+  --z-index-base: 0;
+  --z-index-raised: 1;
+  --z-index-sticky: 10;
+  --z-index-splitter: 20;
+  --z-index-titlebar: 30;
+  --z-index-toast: 40;
+}
+
+@utility type-caption
+{
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  font-weight: 600;
+}
+
+@utility type-legend
+{
+  font-family: var(--font-legend);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+  letter-spacing: var(--text-caption--letter-spacing);
+  font-weight: var(--text-caption--font-weight);
+  text-transform: uppercase;
+}
+
+@utility type-title
+{
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  line-height: var(--text-title--line-height);
+  font-weight: 600;
+}
+
+@utility type-display
+{
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  line-height: var(--text-display--line-height);
+  font-weight: 600;
+}
+
+@utility type-readout
+{
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-amber);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--color-amber) 35%, transparent);
+}
+
+@layer theme
+{
+  :root
+  {
+    --size-control-sm: 24px;
+    --size-control-md: 32px;
+    --size-row: 36px;
+    --size-row-compact: 30px;
+    --size-grid-header: 32px;
+    --size-titlebar: 40px;
+    --size-rail: 208px;
+    --size-rail-collapsed: 52px;
+    --size-icon-sm: 14px;
+    --size-icon-md: 16px;
+    --size-icon-lg: 20px;
+    --size-target-min: 24px;
+  }
+}

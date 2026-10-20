@@ -247,7 +247,7 @@ function TaskRow({ task }: { task: import('../../../stores/types').ProcessingTas
             <div className="h-full bg-accent-500 rounded-full transition-all duration-300" style={{ width: `${task.progress}%` }} />
           </div>
         )}
-        <span className={`text-[9px] font-semibold uppercase tracking-wider ${colors.text} tabular-nums`}>
+        <span className={`text-label font-semibold uppercase tracking-wider ${colors.text} tabular-nums`}>
           {isActive ? `${task.progress}%` : STATUS_LABELS[task.status]}
         </span>
       </div>
@@ -256,14 +256,14 @@ function TaskRow({ task }: { task: import('../../../stores/types').ProcessingTas
       {isDone && (
         <button
           onClick={() => window.api.showInFolder(task.outputPath || task.filePath)}
-          className="text-[9px] text-accent-400 hover:text-accent-300 font-medium opacity-0 group-hover:opacity-100 transition-all shrink-0 cursor-pointer"
+          className="text-label text-accent-400 hover:text-accent-300 font-medium opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shrink-0 cursor-pointer"
           title="Show in folder"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
         </button>
       )}
       {isFailed && task.error && (
-        <span className="text-[8px] text-red-400/60 opacity-0 group-hover:opacity-100 transition-all truncate max-w-[60px]" title={task.error}>
+        <span className="text-label text-red-400 hidden group-hover:block truncate max-w-[60px]" title={task.error}>
           {task.error}
         </span>
       )}
@@ -300,7 +300,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
   const closeInfo = useCallback(() => setShowInfo(false), [])
 
   const dotColor = isProcessing
-    ? isPaused ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'
+    ? isPaused ? 'bg-surface-400' : 'bg-blue-400 animate-pulse'
     : total > 0 && errors > 0 ? 'bg-red-400' : 'bg-emerald-400'
 
   const statusText = isProcessing
@@ -326,15 +326,12 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
           title={statusText}
         >
           {isProcessing ? (
-            <>
-              <svg width="22" height="22" viewBox="0 0 22 22" className="absolute">
-                <circle cx="11" cy="11" r={ringRadius} fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-800" />
-                <circle cx="11" cy="11" r={ringRadius} fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeDasharray={ringCirc} strokeDashoffset={ringOffset} strokeLinecap="round"
-                  className="text-accent-400 transition-all duration-500" transform="rotate(-90 11 11)" />
-              </svg>
-              <span className="text-[7px] font-bold font-mono text-accent-300 tabular-nums">{overallProgress}</span>
-            </>
+            <svg width="22" height="22" viewBox="0 0 22 22" className="absolute">
+              <circle cx="11" cy="11" r={ringRadius} fill="none" stroke="currentColor" strokeWidth="2" className="text-surface-800" />
+              <circle cx="11" cy="11" r={ringRadius} fill="none" stroke="currentColor" strokeWidth="2"
+                strokeDasharray={ringCirc} strokeDashoffset={ringOffset} strokeLinecap="round"
+                className="text-accent-400 transition-all duration-500" transform="rotate(-90 11 11)" />
+            </svg>
           ) : (
             <div className={`w-2 h-2 rounded-full ${dotColor} group-hover:scale-125 transition-transform`} />
           )}
@@ -376,7 +373,6 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
                 strokeDasharray={2 * Math.PI * 8} strokeDashoffset={(2 * Math.PI * 8) - (overallProgress / 100) * (2 * Math.PI * 8)}
                 strokeLinecap="round" className="text-accent-400 transition-all duration-500" transform="rotate(-90 10 10)" />
             </svg>
-            <span className="absolute text-[6px] font-bold font-mono text-accent-300 tabular-nums">{overallProgress}</span>
           </div>
         ) : (
           <div className={`w-2 h-2 rounded-full shrink-0 ${dotColor} group-hover:scale-125 transition-transform`} />
@@ -391,12 +387,12 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
         {total > 0 && !isProcessing && (
           <div className="flex items-center gap-1">
             {completed > 0 && (
-              <span className="text-[9px] font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+              <span className="text-label font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                 {completed}
               </span>
             )}
             {errors > 0 && (
-              <span className="text-[9px] font-mono font-semibold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+              <span className="text-label font-mono font-semibold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
                 {errors}
               </span>
             )}
@@ -409,13 +405,14 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
         </svg>
       </button>
 
-      {/* System info popover anchor - use existing dotRef pattern */}
+      {/* System info popover anchor - use existing dotRef pattern; it shows itself while it has keyboard focus */}
       <button
         ref={dotRef}
         onClick={toggleInfo}
-        className="sr-only"
-        aria-label="System Info"
-      />
+        className="sr-only focus-visible:not-sr-only focus-visible:block"
+      >
+        <span className="block px-3 py-1.5 text-left text-label text-surface-300">System info</span>
+      </button>
       {showInfo && <SystemInfoPopover anchorRef={panelRef} onClose={closeInfo} />}
 
       {/* Thin progress bar visible when collapsed */}
@@ -472,7 +469,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
                 <span className="text-2xs font-mono text-accent-400 tabular-nums font-semibold">{overallProgress}%</span>
               )}
               {total > 0 && (
-                <span className="text-[9px] text-surface-500 font-mono">
+                <span className="text-label text-surface-500 font-mono">
                   {completed}/{total}
                 </span>
               )}
@@ -499,7 +496,7 @@ export function ProcessingPanel({ collapsed }: { collapsed?: boolean }): React.J
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {total === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-700">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-surface-500">
                   <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
                 </svg>
                 <p className="text-2xs text-surface-600">No tasks - start a batch to see progress here</p>

@@ -83,7 +83,7 @@ export function SourceBin(): React.JSX.Element {
         <button
           onClick={handleImport}
           disabled={importing}
-          className="text-[11px] px-2 py-0.5 rounded bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 disabled:opacity-50 transition-colors"
+          className="text-label px-2 py-0.5 rounded bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 disabled:opacity-50 transition-colors"
         >
           {importing ? 'Importing...' : '+ Import'}
         </button>
@@ -138,8 +138,8 @@ export function SourceBin(): React.JSX.Element {
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-surface-200 truncate font-medium">{source.fileName}</p>
-              <p className="text-[10px] text-surface-500">
+              <p className="text-label text-surface-200 truncate font-medium">{source.fileName}</p>
+              <p className="text-label text-surface-500">
                 {formatTime(source.duration, source.frameRate)}
                 {source.width > 0 && ` · ${source.width}x${source.height}`}
               </p>
@@ -151,7 +151,7 @@ export function SourceBin(): React.JSX.Element {
                 e.stopPropagation()
                 removeSource(source.id)
               }}
-              className="text-surface-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              className="text-surface-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
               title="Remove source"
             >
               ×
