@@ -35,8 +35,9 @@ vi.mock('electron-store', () => ({
   }
 }))
 
-const { loadConfig, saveConfig, getConfig, getConfigSync, getUserDataPath, getFFmpegBinDir, getLogDir, addUrlHistory, getUrlHistory, removeUrlHistory, clearUrlHistory, getFFmpegRoot, migrateFfmpegConfig, readFfmpegConfig, saveFfmpegConfig, stripMainOwned, MAIN_OWNED_KEYS, READ_ONLY_MIRRORS, DEFAULT_CONFIG, legacyEncoderPolicy, legacyCustomRecipe, firstDefaultRecipe, presetSeed, EARLIER_DEFAULT_PRESET, clampInterfaceScale, INTERFACE_SCALE, migrateJobsConfig, legacyWorkers, legacyPolicy, saveJobsConfig, takeJobsAlerts, DEFAULT_RUN_SETTINGS, MAX_RECENT_FOLDERS } = await import('../../src/main/config')
+const { loadConfig, saveConfig, getConfig, getConfigSync, getUserDataPath, getFFmpegBinDir, getLogDir, addUrlHistory, getUrlHistory, removeUrlHistory, clearUrlHistory, getFFmpegRoot, migrateFfmpegConfig, readFfmpegConfig, saveFfmpegConfig, stripMainOwned, MAIN_OWNED_KEYS, READ_ONLY_MIRRORS, DEFAULT_CONFIG, legacyEncoderPolicy, legacyCustomRecipe, firstDefaultRecipe, clampInterfaceScale, INTERFACE_SCALE, migrateJobsConfig, legacyWorkers, legacyPolicy, saveJobsConfig, takeJobsAlerts, DEFAULT_RUN_SETTINGS, MAX_RECENT_FOLDERS } = await import('../../src/main/config')
 const { applyLoudnessPreset, applyGainPreset } = await import('../../src/shared/audio/presets')
+const { EARLIER_DEFAULT_PRESET, presetSeed } = await import('../../src/shared/jobs/presets')
 const { validateAudioRecipe } = await import('../../src/shared/audio/limits')
 const { registerConfigIPC } = await import('../../src/main/ipc/config')
 

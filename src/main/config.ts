@@ -25,8 +25,9 @@ import type { BuildSource, FfmpegConfig, SelfTestId, SelfTestRecord } from './ff
 import { AUDIO_LIMITS } from '../shared/audio/limits'
 import { applyLoudnessPreset, DEFAULT_LOUDNESS_PRESET } from '../shared/audio/presets'
 import type { EncoderPolicy, NormalizeRecipe, OutputCodec } from '../shared/audio/types'
+import { EARLIER_DEFAULT_PRESET } from '../shared/jobs/presets'
 import type { Recipe } from '../shared/jobs/recipes'
-import { DEFAULT_TEMPLATES, RUN_ALERT_KINDS, type BatchPolicy, type Destination, type RecentFolder, type RunAlertKind, type RunSettings, type UserPreset } from '../shared/jobs/types'
+import { DEFAULT_TEMPLATES, RUN_ALERT_KINDS, type BatchPolicy, type Destination, type RecentFolder, type RunAlertKind, type RunSettings } from '../shared/jobs/types'
 import { REQUEST_VALIDATORS, validateRecipe, WORKER_LIMITS } from '../shared/jobs/validate'
 
 export interface UrlHistoryEntry {
@@ -328,9 +329,6 @@ export function legacyCustomRecipe(normalization: unknown, output: EncoderPolicy
   return recipe
 }
 
-/** The user preset an upgrade makes from the old global loudness and codec settings. */
-export const EARLIER_DEFAULT_PRESET = Object.freeze({ id: 'user-earlier-default', name: 'Earlier default' })
-
 /**
  * The recipe new files get on the first start of this version. A new install gets the default loudness preset.
  * An upgrade gets the old global settings as the "Earlier default" user preset, so what the owner set keeps
@@ -342,19 +340,6 @@ export function firstDefaultRecipe(stored: Pick<LegacyJobsKeys, 'normalization' 
   }
   const output = legacyEncoderPolicy(stored.audioCodec, stored.fallbackCodec, stored.audioBitrate)
   return { ...legacyCustomRecipe(stored.normalization, output), userPreset: { ...EARLIER_DEFAULT_PRESET } }
-}
-
-/**
- * The user presets the presets store starts with when it has no file yet: the "Earlier default" preset while the
- * default recipe names it, and none otherwise.
- */
-export function presetSeed(jobs: Pick<JobsConfig, 'defaultRecipe'>, now: number): UserPreset[] {
-  const recipe = jobs.defaultRecipe
-  if (recipe.userPreset?.id !== EARLIER_DEFAULT_PRESET.id) {
-    return []
-  }
-  const plain = { ...(JSON.parse(JSON.stringify(recipe)) as Recipe), userPreset: null }
-  return [{ id: EARLIER_DEFAULT_PRESET.id, name: EARLIER_DEFAULT_PRESET.name, recipe: plain, createdAt: now, updatedAt: now }]
 }
 
 type CountSetting = RunSettings['workers']

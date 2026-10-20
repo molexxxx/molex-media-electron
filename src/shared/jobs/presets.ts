@@ -249,6 +249,24 @@ export function applyDefaultPreset(op: Operation, output: EncoderPolicy): Recipe
   return applyPreset(DEFAULT_PRESETS[op], output) as Recipe
 }
 
+/** The user preset an upgrade makes from the old global loudness and codec settings. */
+export const EARLIER_DEFAULT_PRESET = Object.freeze({ id: 'user-earlier-default', name: 'Earlier default' })
+
+/**
+ * The user presets a new presets store starts with: the "Earlier default" preset while the default recipe for new
+ * files names it, and none otherwise.
+ */
+export function presetSeed(defaults: { defaultRecipe: Recipe }, now: number): UserPreset[]
+{
+  const recipe = defaults.defaultRecipe
+  if (recipe.userPreset?.id !== EARLIER_DEFAULT_PRESET.id)
+  {
+    return []
+  }
+  const plain = { ...(structuredClone(recipe) as Recipe), userPreset: null }
+  return [{ id: EARLIER_DEFAULT_PRESET.id, name: EARLIER_DEFAULT_PRESET.name, recipe: plain, createdAt: now, updatedAt: now }]
+}
+
 /** The keys pinned on a new install. */
 export const DEFAULT_PINS: PresetState['pins'] =
 {
