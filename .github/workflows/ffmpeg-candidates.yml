@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Meter each candidate
         env:
-          URLS: ${{ inputs.urls || 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1792426763_N-127654-g7045cc9b80/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1756401489_8.0/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffmpeg.zip' }}
+          URLS: ${{ inputs.urls || 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1792426763_N-127654-g7045cc9b80/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1756401489_8.0/ffmpeg.zip https://ffmpeg.martin-riedl.de/download/macos/arm64/1741000090_7.1.1/ffmpeg.zip https://www.osxexperts.net/ffmpeg9arm.zip' }}
           HOMEBREW: ${{ github.event_name == 'push' || inputs.homebrew }}
         run: |
           set -u
