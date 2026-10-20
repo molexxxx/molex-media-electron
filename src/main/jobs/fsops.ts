@@ -410,6 +410,8 @@ export interface TrashOptions
   volumes: Pick<VolumeRegistry, 'root' | 'refreshTrash' | 'markTrashUnavailable'>
   /** The size of a file for the room check; defaults to a stat, null when it cannot be read. */
   sizeOf?(path: string): Promise<number | null>
+  /** Whether another program holds the file open; defaults to opening it for writing. */
+  isBusy?(path: string): Promise<boolean>
   log?: Pick<JobLogger, 'warn'>
 }
 
@@ -417,6 +419,21 @@ export interface TrashOptions
 export interface TrashWrapper
 {
   trash(path: string): Promise<TrashResult>
+}
+
+/** Whether another program holds a file open without sharing writes: opening it for writing fails with a lock code. */
+async function openedElsewhere(path: string): Promise<boolean>
+{
+  try
+  {
+    const handle = await fsp.open(path, 'r+')
+    await handle.close()
+    return false
+  }
+  catch (err)
+  {
+    return LOCK_CODES.has(errorCode(err) ?? '')
+  }
 }
 
 async function statSize(path: string): Promise<number | null>
@@ -441,13 +458,32 @@ export function createTrash(options: TrashOptions): TrashWrapper
 {
   const { platform, timers } = options
   const sizeOf = options.sizeOf ?? statSize
+  const isBusy = options.isBusy ?? openedElsewhere
   const binWord = platform === 'win32' ? 'Recycle Bin' : 'Trash'
 
+  /**
+   * Windows rejects a file another program holds open with the same "Operation was aborted" as a volume without a
+   * bin, so an aborted trash of a busy file is a lock: it waits on the lock schedule and never marks the volume.
+   */
   async function send(target: string): Promise<void>
   {
     if (platform === 'win32')
     {
-      await withLockRetries(() => options.trash(target), { timers, retryable: (err) => !isAbortedTrash(err) })
+      await withLockRetries(async () =>
+      {
+        try
+        {
+          await options.trash(target)
+        }
+        catch (err)
+        {
+          if (isAbortedTrash(err) && await isBusy(target))
+          {
+            throw Object.assign(new Error(`${target} is open in another program`), { code: 'EBUSY', openElsewhere: true })
+          }
+          throw err
+        }
+      }, { timers, retryable: (err) => errorCode(err) === 'EBUSY' || !isAbortedTrash(err) })
       return
     }
     try
@@ -487,6 +523,11 @@ export function createTrash(options: TrashOptions): TrashWrapper
       catch (err)
       {
         const detail = err instanceof Error ? err.message : String(err)
+        if (platform === 'win32' && (err as { openElsewhere?: boolean }).openElsewhere === true)
+        {
+          options.log?.warn(`${target} stayed open in another program, so it was not moved to the Recycle Bin`)
+          return { status: 'kept', reason: 'refused', message: 'The file is open in another program, so it stays where it is.' }
+        }
         if (platform === 'win32' && isAbortedTrash(err))
         {
           await options.volumes.markTrashUnavailable(target)

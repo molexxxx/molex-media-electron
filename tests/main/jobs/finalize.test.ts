@@ -1180,6 +1180,42 @@ describe('flow D: replace the original with the same extension', () =>
     sourceUnchanged(parked)
   })
 
+  it('waits on the lock schedule when the aborted trash is a file open elsewhere, then trashes it', async () =>
+  {
+    const aborted = vi.fn(async (_path: string): Promise<void> => undefined)
+    aborted.mockRejectedValueOnce(new Error('Operation was aborted')).mockRejectedValueOnce(new Error('Operation was aborted'))
+    const busy = vi.fn(async (_path: string) => true)
+    const { h, replace } = setup({
+      volumeRoot: 'D:\\',
+      trash: ({ timers, volumes }) => createTrash({ platform: 'win32', timers, trash: aborted, volumes, sizeOf: async () => 1, isBusy: busy })
+    })
+    const result = done(await h.place(replace))
+
+    expect(result.placement).toEqual({ kind: 'replaced-original', original: { status: 'trashed' } })
+    expect(aborted).toHaveBeenCalledTimes(3)
+    expect(busy).toHaveBeenCalledTimes(2)
+    expect(h.volumes.markTrashUnavailable).not.toHaveBeenCalled()
+    expect(h.timers.now()).toBe(50 + 100)
+  })
+
+  it('keeps a file still open elsewhere after the lock budget without marking its volume', async () =>
+  {
+    const aborted = vi.fn(async (_path: string) =>
+    {
+      throw new Error('Operation was aborted')
+    })
+    const { h, parked, replace } = setup({
+      volumeRoot: 'D:\\',
+      trash: ({ timers, volumes }) => createTrash({ platform: 'win32', timers, trash: aborted, volumes, sizeOf: async () => 1, isBusy: async () => true })
+    })
+    const result = done(await h.place(replace))
+
+    expect(result.placement).toEqual({ kind: 'replaced-original', original: { status: 'kept', path: parked, reason: expect.stringContaining('open in another program') } })
+    expect(aborted.mock.calls.length).toBeGreaterThan(3)
+    expect(h.volumes.markTrashUnavailable).not.toHaveBeenCalled()
+    sourceUnchanged(parked)
+  })
+
   it('retries a sharing violation on the lock schedule, then trashes', async () =>
   {
     const sharing = vi.fn(async (_path: string): Promise<void> => undefined)

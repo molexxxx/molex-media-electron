@@ -417,8 +417,8 @@ async function expectBusy(what, op)
 
 /**
  * Two legs over one file held open without sharing: rename and unlink fail with EBUSY until it closes, and
- * shell.trashItem rejects in a way the engine's trash wrapper retries (anything but "Operation was aborted",
- * which it reads as a volume without a bin).
+ * shell.trashItem rejects in a way the engine's trash wrapper retries: anything but "Operation was aborted", or that
+ * message while a write probe reports the file busy, which the engine reads as a lock rather than a volume without a bin.
  */
 async function locks(folder)
 {
@@ -455,9 +455,17 @@ async function locks(folder)
     }
     catch (err)
     {
-      trash = ABORTED_TRASH.test(messageOf(err))
-        ? { status: 'failed', detail: `shell.trashItem rejected with "${messageOf(err)}", the same message as a volume without a bin, so the engine keeps the file, marks the volume as having no bin for the session, and never retries` }
-        : { status: 'passed', detail: `shell.trashItem rejected with "${messageOf(err)}", which the engine retries on the lock schedule` }
+      if (!ABORTED_TRASH.test(messageOf(err)))
+      {
+        trash = { status: 'passed', detail: `shell.trashItem rejected with "${messageOf(err)}", which the engine retries on the lock schedule` }
+      }
+      else
+      {
+        const probe = await expectBusy('open for writing', async () => (await fs.open(file, 'r+')).close())
+        trash = probe === null
+          ? { status: 'passed', detail: `shell.trashItem rejected with "${messageOf(err)}", and opening the file for writing failed with a lock code, so the engine reads it as a file open elsewhere and retries on the lock schedule without marking the volume` }
+          : { status: 'failed', detail: `shell.trashItem rejected with "${messageOf(err)}", but the write probe the engine uses to tell a busy file from a volume without a bin did not report a lock: ${probe}` }
+      }
     }
     if (!(await exists(file)))
     {
