@@ -469,7 +469,7 @@ function PlanSection({ caption, children }: PlanSectionProps): React.JSX.Element
   const id = useId()
   return (
     <section aria-labelledby={id} className='flex flex-col gap-1.5'>
-      <h3 id={id} className='type-legend text-brass'>
+      <h3 id={id} className='type-legend text-accent-ink'>
         <CapsText>{caption}</CapsText>
       </h3>
       {children}

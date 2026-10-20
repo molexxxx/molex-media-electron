@@ -42,7 +42,7 @@ export function RecentActivity(): React.JSX.Element
   const recent = useJobsStore(selectRecent)
   return (
     <section aria-labelledby="dashboard-recent" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-recent" className="type-legend text-brass">Recent jobs</h2>
+      <h2 id="dashboard-recent" className="type-legend text-accent-ink">Recent jobs</h2>
       {recent.length === 0
         ? <p className="text-body text-ink-3">Finished jobs appear here.</p>
         : (

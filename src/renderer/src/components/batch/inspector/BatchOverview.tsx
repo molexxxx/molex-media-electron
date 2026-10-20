@@ -68,7 +68,7 @@ const ACTIVE_STATUS: Partial<Record<JobState, StatusKey>> = {
   finalizing: 'finalizing'
 }
 
-const CAPTION = 'type-legend text-brass'
+const CAPTION = 'type-legend text-accent-ink'
 
 function Section({ title, children }: { title: string; children: ReactNode }): ReactElement
 {

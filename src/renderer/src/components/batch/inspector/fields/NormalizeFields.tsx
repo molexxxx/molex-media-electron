@@ -392,7 +392,7 @@ export function GroupedFields({ fields, onPatch, groups, scope, more, after = {}
     <div className='flex flex-col gap-6'>
       {sections.map((section) => (
         <section key={section.heading} className='flex flex-col gap-4'>
-          <h3 className='type-legend text-brass'>{section.heading}</h3>
+          <h3 className='type-legend text-accent-ink'>{section.heading}</h3>
           {section.fields.map(row)}
         </section>
       ))}

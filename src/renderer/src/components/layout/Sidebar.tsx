@@ -1,6 +1,6 @@
 ﻿/**
  * @module components/layout/Sidebar
- * @description The walnut navigation rail: Dashboard, the tools, and the system views, with the
+ * @description The navigation rail: Dashboard, the tools, and the system views, with the
  * batch's percent and need-attention count on the Batch item and a named collapse toggle.
  */
 
@@ -128,11 +128,11 @@ function NavItem({ entry, active, collapsed, name, tip, onSelect, trailing, mark
         'relative flex h-9 w-full items-center gap-3 rounded-sm border text-body',
         collapsed ? 'justify-center px-0' : 'ps-2 pe-2',
         active
-          ? 'border-brass bg-wash-selected text-ink'
+          ? 'border-accent bg-wash-selected text-ink'
           : 'border-transparent text-ink-2 hover:bg-wash-hover hover:text-ink active:bg-wash-pressed'
       )}
     >
-      <Icon name={entry.icon} size="md" className={active ? 'text-brass' : undefined} />
+      <Icon name={entry.icon} size="md" className={active ? 'text-accent-ink' : undefined} />
       {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>}
       {!collapsed && trailing}
       {collapsed && marks}

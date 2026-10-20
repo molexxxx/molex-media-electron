@@ -1,7 +1,7 @@
 /**
  * SplitButton: the main part and the chevron as two buttons with one Tab stop each, the chevron's name and
  * menu wiring, the main part's loading and unavailable states as on a Button, and the chevron that never
- * turns brass beside a disabled main part.
+ * turns primary beside a disabled main part.
  */
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -125,7 +125,7 @@ describe('SplitButton', () =>
     expect(chevron).not.toBeDisabled()
   })
 
-  it('never draws the chevron brass beside a disabled main part', () =>
+  it('never draws the chevron primary beside a disabled main part', () =>
   {
     const { main, chevron } = setup({ disabled: true })
     expect(main).toBeDisabled()
@@ -134,7 +134,7 @@ describe('SplitButton', () =>
     expect(chevron).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('keeps a non-brass variant on the chevron when the main part is disabled', () =>
+  it('keeps a non-primary variant on the chevron when the main part is disabled', () =>
   {
     const { chevron } = setup({ variant: 'danger', disabled: true })
     expect(chevron).toHaveAttribute('data-variant', 'danger')

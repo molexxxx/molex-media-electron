@@ -489,7 +489,7 @@ export interface BatchViewState
   selectSimilar(key: ViewKey, focused: JobView, rows: readonly JobView[], basis: SimilarBasis, context?: FilterContext): string
 
   /**
-   * The brass Review action: opens Review with the part of the Queue selection that Review shows (jobs not in a
+   * The primary Review action: opens Review with the part of the Queue selection that Review shows (jobs not in a
    * batch that Review's filters keep), so "select, Review, Start only the selected" needs no reselecting. Any
    * subset is dropped. Returns how many jobs were carried.
    */

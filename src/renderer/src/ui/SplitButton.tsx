@@ -19,7 +19,7 @@ export interface SplitButtonProps extends ButtonProps
 /**
  * A Button joined to a chevron IconButton that opens a Menu of related actions. The two parts share a height
  * and are one Tab stop each. The main part takes every Button prop, so `loading` and `unavailableReason` behave
- * exactly as on a Button; the chevron follows its variant, except that it is never brass while the main part
+ * exactly as on a Button; the chevron follows its variant, except that it is never primary while the main part
  * is disabled or unavailable.
  */
 export function SplitButton({

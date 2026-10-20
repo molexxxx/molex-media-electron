@@ -156,9 +156,9 @@ export function DropOverlay({ recipe, recursive }: DropOverlayProps): React.JSX.
     <div
       data-drop-overlay=""
       aria-hidden="true"
-      className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-md bg-ground/92 px-6 text-center inset-ring inset-ring-amber"
+      className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-md bg-ground/92 px-6 text-center inset-ring inset-ring-accent-ink"
     >
-      <span className="flex text-amber"><Icon name="action.addFiles" size="lg" /></span>
+      <span className="flex text-accent-ink"><Icon name="action.addFiles" size="lg" /></span>
       <p className="text-section text-ink">{dropLine(recipe)}</p>
       <p className="text-label text-ink-3">{subfolderLine(recursive)}</p>
     </div>

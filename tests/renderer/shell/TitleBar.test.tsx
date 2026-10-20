@@ -78,14 +78,14 @@ describe('readMaximized', () =>
 
 describe('TitleBar', () =>
 {
-  it('writes the molexMedia wordmark with Media in walnut ink and the version', () =>
+  it('writes the molexMedia wordmark with Media in the accent ink and the version', () =>
   {
     render(<TitleBar />)
     const header = screen.getByRole('banner')
     expect(header.textContent).toContain('molexMedia')
     expect(header.textContent).toContain('0.0.0-test')
     const media = screen.getByText('Media')
-    expect(media.className).toContain('text-walnut-ink')
+    expect(media.className).toContain('text-accent-ink')
     expect(media.parentElement?.className).toContain('text-ink')
     expect(header.className).toContain('drag-region')
     expect(header.className).toContain('bg-rail')

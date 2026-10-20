@@ -158,7 +158,7 @@ function ShortcutSection({ group, platform }: { group: ShortcutGroup, platform: 
   const headingId = useId()
   return (
     <section aria-labelledby={headingId} data-group={group.id} className="mb-4 break-inside-avoid">
-      <h3 id={headingId} className="type-legend pb-1 text-brass">{group.title}</h3>
+      <h3 id={headingId} className="type-legend pb-1 text-accent-ink">{group.title}</h3>
       <dl>
         {group.entries.map((entry) => <ShortcutRow key={`${entry.label}:${entry.keys.join(',')}`} entry={entry} platform={platform} />)}
       </dl>

@@ -73,7 +73,7 @@ describe('Button', () =>
   it('draws each variant from its own classes and exposes it as data-variant', () =>
   {
     const expected: Record<ButtonVariant, string[]> = {
-      primary: ['bg-brass', 'text-on-brass', 'border-transparent', 'font-semibold', 'hover:bg-brass-hover', 'active:bg-brass-pressed', 'active:inset-shadow-2xs/20'],
+      primary: ['bg-accent', 'text-on-accent', 'border-transparent', 'font-semibold', 'hover:bg-accent-hover', 'active:bg-accent-pressed', 'active:inset-shadow-2xs/20'],
       secondary: ['bg-raised', 'text-ink', 'border-line-strong', 'hover:bg-raised-hover', 'active:bg-panel'],
       ghost: ['bg-transparent', 'text-ink-2', 'border-transparent', 'hover:bg-wash-hover', 'hover:text-ink', 'active:bg-wash-pressed'],
       danger: ['bg-raised', 'text-error', 'border-error-fill', 'hover:bg-danger-hover', 'active:bg-danger-pressed']
@@ -97,7 +97,7 @@ describe('Button', () =>
     expect(classesOf(button)).not.toContain('text-control')
   })
 
-  it('keeps the semibold brass label weight on a small primary button', () =>
+  it('keeps the semibold accent label weight on a small primary button', () =>
   {
     render(<Button size="sm" variant="primary">Start</Button>)
     const classes = classesOf(screen.getByRole('button', { name: 'Start' }))
@@ -123,7 +123,7 @@ describe('Button', () =>
     expect(onClick).not.toHaveBeenCalled()
     const classes = classesOf(button)
     expect(classes).toEqual(expect.arrayContaining(['bg-raised', 'text-ink-disabled', 'border-line']))
-    expect(classes).not.toContain('bg-brass')
+    expect(classes).not.toContain('bg-accent')
     expect(feedbackClasses(button)).toEqual([])
     expect(button).not.toHaveAttribute('aria-disabled')
   })
@@ -231,7 +231,7 @@ describe('Button', () =>
     expect(button).not.toBeDisabled()
     fireEvent.click(button)
     expect(onClick).not.toHaveBeenCalled()
-    expect(classesOf(button)).toEqual(expect.arrayContaining(['bg-brass', 'text-on-brass']))
+    expect(classesOf(button)).toEqual(expect.arrayContaining(['bg-accent', 'text-on-accent']))
     expect(feedbackClasses(button)).toEqual([])
     const spinner = button.querySelector('svg')
     expect(spinner).toHaveAttribute('aria-hidden', 'true')

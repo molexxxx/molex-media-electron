@@ -1,5 +1,5 @@
 /**
- * The run header: one brass element per state of the brass budget and none where it says none, disabled
+ * The run header: one primary element per state of the primary budget and none where it says none, disabled
  * primaries drawn neutral with their reason, the action slot's one stable element, the run controls in their own
  * slot, the inline confirmations, the attention button, the consequence line, and the after-run actions and
  * overflow menu at every width.
@@ -84,7 +84,7 @@ function model(over: Partial<HeaderModel> = {}): HeaderModel
     attention: null,
     action: null,
     slot: null,
-    brass: null,
+    primary: null,
     controls: null,
     consequence: { kind: 'policy', text: POLICY_TEXT, warning: false },
     output: { label: 'Output', tooltip: HEADER_TOOLTIPS.output, locked: false },
@@ -95,7 +95,7 @@ function model(over: Partial<HeaderModel> = {}): HeaderModel
 
 function withSlot(slot: HeaderAction, over: Partial<HeaderModel> = {}): HeaderModel
 {
-  return model({ action: slot, slot, brass: slot.enabled ? 'slot' : null, ...over })
+  return model({ action: slot, slot, primary: slot.enabled ? 'slot' : null, ...over })
 }
 
 const running = (over: Partial<HeaderModel> = {}): HeaderModel => model({
@@ -107,42 +107,42 @@ const running = (over: Partial<HeaderModel> = {}): HeaderModel => model({
   ...over
 })
 
-/** Each row of the brass budget: the header of that moment and the brass element it allows. */
-const BRASS_STATES: Array<{ name: string; header: HeaderModel; brass: string | null }> = [
+/** Each row of the primary budget: the header of that moment and the primary element it allows. */
+const BRASS_STATES: Array<{ name: string; header: HeaderModel; primary: string | null }> = [
   {
     name: 'empty queue (Add files is in the empty state)',
-    header: model({ subject: 'empty', sentence: sentenceOf(part('lead', 'No jobs yet')), action: action('add-files', ACTION_LABELS.addFiles, { place: 'empty-state', count: 0 }), slot: disabledReview(), brass: 'empty-state' }),
-    brass: null
+    header: model({ subject: 'empty', sentence: sentenceOf(part('lead', 'No jobs yet')), action: action('add-files', ACTION_LABELS.addFiles, { place: 'empty-state', count: 0 }), slot: disabledReview(), primary: 'empty-state' }),
+    primary: null
   },
-  { name: 'jobs waiting, no batch running', header: withSlot(action('review', reviewLabel(24), { count: 24 })), brass: 'Review 24 jobs' },
-  { name: 'Review, nothing destructive, jobs runnable', header: withSlot(action('start', startLabel(21), { count: 21 })), brass: 'Start 21 jobs' },
+  { name: 'jobs waiting, no batch running', header: withSlot(action('review', reviewLabel(24), { count: 24 })), primary: 'Review 24 jobs' },
+  { name: 'Review, nothing destructive, jobs runnable', header: withSlot(action('start', startLabel(21), { count: 21 })), primary: 'Start 21 jobs' },
   {
     name: 'Review, originals affected, box not checked',
     header: withSlot(action('start', startLabel(21, { subset: false, originals: 20, overwrites: 0 }), { count: 21, enabled: false, reason: 'Confirm the Recycle Bin step in the summary first.', blockedBy: 'acknowledgment' })),
-    brass: null
+    primary: null
   },
   {
     name: 'Review, nothing runnable',
     header: withSlot(action('start', startLabel(0), { count: 0, enabled: false, reason: 'Nothing can run: 2 jobs are blocked.', blockedBy: 'nothing-runnable' })),
-    brass: null
+    primary: null
   },
-  { name: 'running', header: running(), brass: null },
-  { name: 'running, new jobs waiting', header: running({ action: action('review-new', reviewNewLabel(3), { count: 3 }), slot: action('review-new', reviewNewLabel(3), { count: 3 }), brass: 'slot' }), brass: 'Review 3 new jobs' },
-  { name: 'running, new jobs in Review', header: running({ action: action('append', appendLabel(3, RUN), { count: 3 }), slot: action('append', appendLabel(3, RUN), { count: 3 }), brass: 'slot' }), brass: 'Append 3 jobs to Batch 31' },
+  { name: 'running', header: running(), primary: null },
+  { name: 'running, new jobs waiting', header: running({ action: action('review-new', reviewNewLabel(3), { count: 3 }), slot: action('review-new', reviewNewLabel(3), { count: 3 }), primary: 'slot' }), primary: 'Review 3 new jobs' },
+  { name: 'running, new jobs in Review', header: running({ action: action('append', appendLabel(3, RUN), { count: 3 }), slot: action('append', appendLabel(3, RUN), { count: 3 }), primary: 'slot' }), primary: 'Append 3 jobs to Batch 31' },
   {
     name: 'pausing or paused',
-    header: running({ sentence: sentenceOf(part('lead', 'Paused · 12 jobs waiting')), controls: runControls({ pause: null, pauseNow: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), brass: 'slot' }),
-    brass: 'Resume'
+    header: running({ sentence: sentenceOf(part('lead', 'Paused · 12 jobs waiting')), controls: runControls({ pause: null, pauseNow: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), primary: 'slot' }),
+    primary: 'Resume'
   },
   {
     name: 'finished with returned jobs, nothing waiting',
     header: withSlot(action('retry-returned', retryReturnedLabel(2), { count: 2 }), { title: 'Batch 31', subject: 'finished', consequence: { kind: 'outcome', text: 'Started 13:40 · Wrote to D:\\Exports\\Podcasts · Originals not touched' } }),
-    brass: 'Retry 2 returned'
+    primary: 'Retry 2 returned'
   },
   {
     name: 'finished, all verified, nothing waiting',
     header: model({ title: 'Batch 31', subject: 'finished', slot: disabledReview(), consequence: { kind: 'outcome', text: 'Started 13:40 · Wrote to D:\\Exports\\Podcasts · Originals not touched' } }),
-    brass: null
+    primary: null
   }
 ]
 
@@ -186,8 +186,8 @@ function renderHeader(header: HeaderModel, over: Partial<RunHeaderProps> = {}): 
   }
 }
 
-/** Enabled controls drawn in brass. */
-function brassElements(root: HTMLElement): HTMLElement[]
+/** Enabled controls drawn as the primary button. */
+function primaryElements(root: HTMLElement): HTMLElement[]
 {
   return Array.from(root.querySelectorAll<HTMLElement>('[data-variant="primary"]'))
     .filter((element) => !(element as HTMLButtonElement).disabled && element.getAttribute('aria-disabled') !== 'true')
@@ -227,26 +227,26 @@ describe('RunHeader confirmation words', () =>
   })
 })
 
-describe('RunHeader brass budget', () =>
+describe('RunHeader primary budget', () =>
 {
-  it.each(BRASS_STATES)('$name', ({ header, brass }) =>
+  it.each(BRASS_STATES)('$name', ({ header, primary }) =>
   {
     const { root } = renderHeader(header)
-    const lit = brassElements(root)
-    if (brass === null)
+    const lit = primaryElements(root)
+    if (primary === null)
     {
       expect(lit).toHaveLength(0)
       return
     }
     expect(lit).toHaveLength(1)
-    expect(lit[0]).toHaveAccessibleName(brass)
+    expect(lit[0]).toHaveAccessibleName(primary)
     expect(lit[0].closest('[data-slot]')).toHaveAttribute('data-slot', 'action')
   })
 
-  it('draws Start and its menu chevron as one brass split control while a selection can start alone', () =>
+  it('draws Start and its menu chevron as one primary split control while a selection can start alone', () =>
   {
     const { root, props } = renderHeader(withSlot(action('start', startLabel(21), { count: 21 })), { selectedCount: 8 })
-    const lit = brassElements(root)
+    const lit = primaryElements(root)
     expect(lit).toHaveLength(2)
     expect(lit[0]).toHaveAccessibleName('Start 21 jobs')
     expect(lit[1]).toHaveAccessibleName('More start options')
@@ -262,10 +262,10 @@ describe('RunHeader brass budget', () =>
     const chevron = screen.getByRole('button', { name: 'More start options' })
     expect(chevron).toBeDisabled()
     expect(chevron).toHaveAttribute('data-variant', 'secondary')
-    expect(brassElements(root)).toHaveLength(1)
+    expect(primaryElements(root)).toHaveLength(1)
   })
 
-  it('never draws the run controls in brass', () =>
+  it('never draws the run controls as the primary button', () =>
   {
     const { root } = renderHeader(running())
     const controls = root.querySelector('[data-slot="run-controls"]') as HTMLElement
@@ -294,7 +294,7 @@ describe('RunHeader disabled actions', () =>
 
   it('keeps a disabled Review focusable and explains it in its description', () =>
   {
-    const { root } = renderHeader(model({ subject: 'empty', slot: disabledReview(), brass: 'empty-state' }))
+    const { root } = renderHeader(model({ subject: 'empty', slot: disabledReview(), primary: 'empty-state' }))
     const button = slotButton(root)
     expect(button).toHaveAccessibleName('Review')
     expect(button).toHaveAttribute('aria-disabled', 'true')
@@ -324,8 +324,8 @@ describe('RunHeader action slot', () =>
 
     const steps: HeaderModel[] = [
       withSlot(action('start', startLabel(21), { count: 21 })),
-      running({ action: action('append', appendLabel(3, RUN), { count: 3 }), slot: action('append', appendLabel(3, RUN), { count: 3 }), brass: 'slot' }),
-      running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), brass: 'slot' }),
+      running({ action: action('append', appendLabel(3, RUN), { count: 3 }), slot: action('append', appendLabel(3, RUN), { count: 3 }), primary: 'slot' }),
+      running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), primary: 'slot' }),
       withSlot(action('retry-returned', retryReturnedLabel(2), { count: 2 }), { title: 'Batch 31', subject: 'finished' })
     ]
     for (const step of steps)
@@ -343,7 +343,7 @@ describe('RunHeader action slot', () =>
     const { root, rerender, props } = renderHeader(withSlot(start))
     const button = slotButton(root)
     const pressed = { ...start, label: 'Starting…', enabled: false, blockedBy: 'starting' as const }
-    rerender(model({ subject: 'starting', sentence: sentenceOf(part('lead', 'Starting Batch 31')), action: pressed, slot: pressed, brass: null }))
+    rerender(model({ subject: 'starting', sentence: sentenceOf(part('lead', 'Starting Batch 31')), action: pressed, slot: pressed, primary: null }))
     expect(slotButton(root)).toBe(button)
     expect(button).toHaveTextContent('Starting…')
     expect(button.textContent).toContain('Start 21 jobs')
@@ -358,7 +358,7 @@ describe('RunHeader run controls', () =>
 {
   it('keeps Pause and Cancel run in their own slot beside the action slot', () =>
   {
-    const { root } = renderHeader(running({ action: action('review-new', reviewNewLabel(3), { count: 3 }), slot: action('review-new', reviewNewLabel(3), { count: 3 }), brass: 'slot' }))
+    const { root } = renderHeader(running({ action: action('review-new', reviewNewLabel(3), { count: 3 }), slot: action('review-new', reviewNewLabel(3), { count: 3 }), primary: 'slot' }))
     const controls = root.querySelector('[data-slot="run-controls"]') as HTMLElement
     const slot = root.querySelector('[data-slot="action"]') as HTMLElement
     expect(within(controls).getByRole('button', { name: 'Pause' })).toBeInTheDocument()
@@ -377,7 +377,7 @@ describe('RunHeader run controls', () =>
 
   it('offers Pause now alone while the batch is pausing', () =>
   {
-    const { props } = renderHeader(running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), brass: 'slot' }), { discardedWork: () => 10 })
+    const { props } = renderHeader(running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), primary: 'slot' }), { discardedWork: () => 10 })
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Pause now' }))
     expect(props.onPause).toHaveBeenCalledWith('stop-running')
@@ -402,14 +402,14 @@ describe('RunHeader run controls', () =>
     const { root, rerender } = renderHeader(running())
     const pause = screen.getByRole('button', { name: 'Pause' })
     pause.focus()
-    rerender(running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), brass: 'slot' }))
+    rerender(running({ controls: runControls({ pause: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), primary: 'slot' }))
     expect(document.activeElement).toBe(slotButton(root))
     expect(document.activeElement).toHaveAccessibleName('Resume')
   })
 
   it('moves focus from Resume to Pause when the batch resumes', () =>
   {
-    const paused = running({ controls: runControls({ pause: null, pauseNow: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), brass: 'slot' })
+    const paused = running({ controls: runControls({ pause: null, pauseNow: null }), action: action('resume', ACTION_LABELS.resume), slot: action('resume', ACTION_LABELS.resume), primary: 'slot' })
     const { root, rerender, props } = renderHeader(paused)
     slotButton(root).focus()
     rerender(running())
@@ -420,7 +420,7 @@ describe('RunHeader run controls', () =>
   it('sends focus to the table when Append is accepted and the action slot empties', () =>
   {
     const append = action('append', appendLabel(3, RUN), { count: 3 })
-    const { root, rerender, props } = renderHeader(running({ action: append, slot: append, brass: 'slot' }))
+    const { root, rerender, props } = renderHeader(running({ action: append, slot: append, primary: 'slot' }))
     slotButton(root).focus()
     rerender(running())
     expect(root.querySelector('[data-slot="action"]')).toBeNull()
@@ -430,7 +430,7 @@ describe('RunHeader run controls', () =>
   it('leaves focus alone when the slot empties while focus is elsewhere', () =>
   {
     const append = action('append', appendLabel(3, RUN), { count: 3 })
-    const { root, rerender, props } = renderHeader(running({ action: append, slot: append, brass: 'slot' }))
+    const { root, rerender, props } = renderHeader(running({ action: append, slot: append, primary: 'slot' }))
     slotButton(root).focus()
     screen.getByRole('button', { name: 'Output' }).focus()
     rerender(running())

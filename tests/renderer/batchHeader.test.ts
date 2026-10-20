@@ -1,5 +1,5 @@
 /**
- * The run header's derivations: the brass precedence over every state of its table, Start's disabled reasons and
+ * The run header's derivations: the primary precedence over every state of its table, Start's disabled reasons and
  * Ctrl+Enter, the title and the state sentence per state with its shedding order, the attention count of one batch,
  * the consequence line before, during, and after a run, the run controls, and the Output and Workers labels.
  */
@@ -398,7 +398,7 @@ describe('Start in Review', () =>
   })
 })
 
-describe('the action slot, the brass, and Ctrl+Enter', () =>
+describe('the action slot, the primary, and Ctrl+Enter', () =>
 {
   it('shows the next action, a neutral disabled Review, or nothing beside the run controls', () =>
   {
@@ -414,14 +414,14 @@ describe('the action slot, the brass, and Ctrl+Enter', () =>
     expect(slotAction(waiting, action)).toBe(action)
   })
 
-  it('places the brass on the slot, on the empty state, or nowhere', () =>
+  it('places the primary on the slot, on the empty state, or nowhere', () =>
   {
-    expect(deriveHeader(state([job()]), QUEUE).brass).toBe('slot')
-    expect(deriveHeader(state([]), QUEUE).brass).toBe('empty-state')
-    expect(deriveHeader(state([job()]), { ...REVIEW, review: review({ counts: reportCounts({ ready: 0 }) }) }).brass).toBeNull()
-    expect(deriveHeader(state([inBatch('encoding')], { run: running() }), QUEUE).brass).toBeNull()
-    expect(deriveHeader(state([inBatch('done')]), QUEUE).brass).toBeNull()
-    expect(deriveHeader(state([inBatch('queued')], { run: running({ status: 'paused', needsAck: { originalsAffected: 2, overwrites: 0 } }) }), QUEUE).brass).toBeNull()
+    expect(deriveHeader(state([job()]), QUEUE).primary).toBe('slot')
+    expect(deriveHeader(state([]), QUEUE).primary).toBe('empty-state')
+    expect(deriveHeader(state([job()]), { ...REVIEW, review: review({ counts: reportCounts({ ready: 0 }) }) }).primary).toBeNull()
+    expect(deriveHeader(state([inBatch('encoding')], { run: running() }), QUEUE).primary).toBeNull()
+    expect(deriveHeader(state([inBatch('done')]), QUEUE).primary).toBeNull()
+    expect(deriveHeader(state([inBatch('queued')], { run: running({ status: 'paused', needsAck: { originalsAffected: 2, overwrites: 0 } }) }), QUEUE).primary).toBeNull()
   })
 
   it('performs the action, says why it cannot, ignores presses while starting, or says there is nothing to start', () =>
@@ -707,7 +707,7 @@ describe('the whole header', () =>
       attention: { count: 1 },
       action: { kind: 'append', label: 'Append 2 jobs to Batch 31', enabled: true },
       slot: { kind: 'append' },
-      brass: 'slot',
+      primary: 'slot',
       controls: { pause: { label: 'Pause' }, cancel: { label: 'Cancel run' } },
       consequence: { kind: 'progress', percentText: '46%', timeLeft: 'about 18 min left', throughput: '3.4x realtime' },
       output: { locked: true },

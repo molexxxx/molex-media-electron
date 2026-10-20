@@ -244,7 +244,7 @@ async function writeClipboard(text: string): Promise<void>
 function Caption({ id, children }: { id?: string; children: string }): React.JSX.Element
 {
   return (
-    <h4 id={id} className='type-legend text-brass'>
+    <h4 id={id} className='type-legend text-accent-ink'>
       <CapsText>{children}</CapsText>
     </h4>
   )

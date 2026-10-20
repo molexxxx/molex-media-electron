@@ -139,7 +139,7 @@ export function Attempts({ records, job, className }: AttemptsProps): React.JSX.
   const lines = attemptLines(records, job)
   return (
     <section aria-labelledby={captionId} className={cx('flex flex-col gap-1.5', className)}>
-      <h4 id={captionId} className='type-legend text-brass'>
+      <h4 id={captionId} className='type-legend text-accent-ink'>
         <CapsText>{ATTEMPTS_CAPTION}</CapsText>
       </h4>
       <ol className='flex flex-col gap-1 select-text'>

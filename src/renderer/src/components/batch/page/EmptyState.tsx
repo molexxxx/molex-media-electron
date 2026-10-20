@@ -53,8 +53,8 @@ export interface QueueEmptyStateProps
   /** The "New files get" recipe, such as "Normalize · Podcast (Apple Podcasts)". */
   recipe: string | null
   recentFolders: readonly RecentFolder[]
-  /** Add files is the brass action of the moment while the queue is empty. */
-  brass: boolean
+  /** Add files is the primary action of the moment while the queue is empty. */
+  primary: boolean
   onAddFiles: () => void
   onAddFolder: () => void
   /** Rescans a recent folder. */
@@ -64,7 +64,7 @@ export interface QueueEmptyStateProps
 }
 
 /** The empty queue: what to do first, how a batch works, and the recent folders. */
-export function QueueEmptyState({ recipe, recentFolders, brass, onAddFiles, onAddFolder, onOpenFolder, busy = false }: QueueEmptyStateProps): React.JSX.Element
+export function QueueEmptyState({ recipe, recentFolders, primary, onAddFiles, onAddFolder, onOpenFolder, busy = false }: QueueEmptyStateProps): React.JSX.Element
 {
   const headingId = useId()
   const howId = useId()
@@ -76,7 +76,7 @@ export function QueueEmptyState({ recipe, recentFolders, brass, onAddFiles, onAd
         <h2 id={headingId} className="text-section text-ink">{EMPTY_COPY.queueHeading}</h2>
         <p className="text-body text-ink-2">{EMPTY_COPY.queueLine}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant={brass ? 'primary' : 'secondary'} icon="action.addFiles" onClick={onAddFiles} disabled={busy}>{EMPTY_COPY.addFiles}</Button>
+          <Button variant={primary ? 'primary' : 'secondary'} icon="action.addFiles" onClick={onAddFiles} disabled={busy}>{EMPTY_COPY.addFiles}</Button>
           <Button variant="secondary" icon="action.addFolder" onClick={onAddFolder} disabled={busy}>{EMPTY_COPY.addFolder}</Button>
           <span className="flex items-center gap-2 text-label text-ink-3">
             <Kbd keys={['Mod', 'O']} />

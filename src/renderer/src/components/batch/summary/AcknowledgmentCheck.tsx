@@ -202,7 +202,7 @@ export interface AcknowledgmentCheckProps
   /** Why a refreshed report unchecked the box: "The number of originals changed to 22; confirm again." */
   notice?: string | null
   onChange: (checked: boolean) => void
-  /** The checkbox itself, which Ctrl+Enter focuses when the acknowledgment holds the brass action. */
+  /** The checkbox itself, which Ctrl+Enter focuses when the acknowledgment holds the primary action. */
   ref?: Ref<HTMLInputElement>
 }
 

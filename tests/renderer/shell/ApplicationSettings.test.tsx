@@ -79,11 +79,11 @@ describe('interfaceSizeOptions', () =>
 
 describe('Accessibility group', () =>
 {
-  it('sits in the Application tab under a brass legend', () =>
+  it('sits in the Application tab under a accent legend', () =>
   {
     renderTab()
     const heading = within(group()).getByRole('heading', { name: 'Accessibility' })
-    expect(heading).toHaveClass('type-legend', 'text-brass')
+    expect(heading).toHaveClass('type-legend', 'text-accent-ink')
   })
 
   it('shows the Interface size setting and writes interfaceScale in percent', () =>

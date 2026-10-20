@@ -19,8 +19,8 @@ export const START_OPTIONS_LABEL = 'More start options'
 export interface ActionSlotProps
 {
   action: HeaderAction
-  /** Draws the action in brass; only the one enabled next action of the moment is brass. */
-  brass: boolean
+  /** Draws the action as the primary button; only the one enabled next action of the moment is primary. */
+  primary: boolean
   /** Pending jobs selected in Review, which "Start only the selected jobs" starts. */
   selectedCount?: number
   /** A typed refusal from main for the last Start or Append, written beside the action. */
@@ -36,7 +36,7 @@ export interface ActionSlotProps
  * focus stays on it while the moment changes. A disabled action is drawn neutral with its reason written beside it;
  * "Starting…" keeps the width of the label it replaces and ignores presses. Start adds its menu of related actions.
  */
-export function ActionSlot({ action, brass, selectedCount = 0, refusal = null, onAction, onStartSelected, ref }: ActionSlotProps): ReactElement
+export function ActionSlot({ action, primary, selectedCount = 0, refusal = null, onAction, onStartSelected, ref }: ActionSlotProps): ReactElement
 {
   const starting = action.blockedBy === 'starting'
   const steadyLabel = useRef(action.label)
@@ -77,7 +77,7 @@ export function ActionSlot({ action, brass, selectedCount = 0, refusal = null, o
         <Tooltip content={action.enabled ? action.tooltip : ''}>
           <Button
             ref={ref}
-            variant={brass ? 'primary' : 'secondary'}
+            variant={primary ? 'primary' : 'secondary'}
             loading={starting}
             loadingLabel={STARTING_LABEL}
             unavailableReason={unavailable ? reason ?? action.tooltip : undefined}
@@ -96,7 +96,7 @@ export function ActionSlot({ action, brass, selectedCount = 0, refusal = null, o
               <IconButton
                 label={START_OPTIONS_LABEL}
                 icon="action.openMenu"
-                variant={brass && !menuDisabled ? 'primary' : 'secondary'}
+                variant={primary && !menuDisabled ? 'primary' : 'secondary'}
                 disabled={menuDisabled}
                 className="rounded-s-none"
               />
@@ -125,7 +125,7 @@ export interface RunControlsSlotProps
 
 /**
  * The run controls in their own slot: the Pause split button with "Pause now" in its menu, or "Pause now" alone
- * while the batch is pausing, and Cancel run. Both are secondary; the brass stays with the action slot.
+ * while the batch is pausing, and Cancel run. Both are secondary; the primary stays with the action slot.
  */
 export function RunControlsSlot({ controls, pauseRef, pauseNowRef, cancelRef, onPause, onPauseNow, onCancelRun }: RunControlsSlotProps): ReactElement
 {

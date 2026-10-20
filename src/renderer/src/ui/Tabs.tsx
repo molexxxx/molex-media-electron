@@ -197,7 +197,7 @@ export function Tabs<T extends TabValue>({
                 tab.disabled
                   ? 'text-ink-disabled'
                   : selected
-                    ? 'text-ink shadow-[inset_0_-2px_0_var(--color-amber)]'
+                    ? 'text-ink shadow-[inset_0_-2px_0_var(--color-accent-ink)]'
                     : 'text-ink-3 hover:bg-wash-hover hover:text-ink'
               )}
               onClick={() => activate(index)}

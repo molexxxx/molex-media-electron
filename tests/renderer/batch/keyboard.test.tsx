@@ -15,7 +15,7 @@ import {
   readBatchKey,
   RUN_NOT_STARTED,
   runBatchKey,
-  runBrass,
+  runPrimary,
   useBatchKeys,
   type BatchKeyCommand,
   type BatchKeyContext,
@@ -78,7 +78,7 @@ afterEach(() =>
 describe('readBatchKey', () =>
 {
   const views: Array<[string, KeyChord, BatchKeyCommand]> = [
-    ['Ctrl+Enter', ctrl('Enter'), { kind: 'brass' }],
+    ['Ctrl+Enter', ctrl('Enter'), { kind: 'primary' }],
     ['Ctrl+Shift+Enter', ctrl('Enter', { shiftKey: true }), { kind: 'start-selected' }],
     ['Ctrl+P', ctrl('p'), { kind: 'pause' }],
     ['Ctrl+K', ctrl('k'), { kind: 'picker' }],
@@ -176,7 +176,7 @@ describe('readBatchKey', () =>
   it('reads Cmd on macOS and never Ctrl+Y there', () =>
   {
     const cmd = (key: string, over: Partial<KeyChord> = {}): KeyChord => chord(key, { metaKey: true, ...over })
-    expect(readBatchKey(cmd('Enter'), FIELD, true)).toEqual({ kind: 'brass' })
+    expect(readBatchKey(cmd('Enter'), FIELD, true)).toEqual({ kind: 'primary' })
     expect(readBatchKey(cmd('p'), VIEW, true)).toEqual({ kind: 'pause' })
     expect(readBatchKey(cmd('Z', { shiftKey: true }), VIEW, true)).toEqual({ kind: 'redo' })
     expect(readBatchKey(cmd('y'), VIEW, true)).toBeNull()
@@ -205,7 +205,7 @@ describe('runBatchKey', () =>
   {
     const ctx = context({})
     const commands: BatchKeyCommand[] = [
-      { kind: 'brass' },
+      { kind: 'primary' },
       { kind: 'start-selected' },
       { kind: 'pause' },
       { kind: 'picker' },
@@ -341,41 +341,41 @@ describe('runBatchKey', () =>
   })
 })
 
-describe('runBrass', () =>
+describe('runPrimary', () =>
 {
-  it('performs the brass action of the moment', async () =>
+  it('performs the primary action of the moment', async () =>
   {
     const perform = vi.fn()
     const ctx = context({})
-    await runBrass(ctx, () => ({ kind: 'ready', perform }))
+    await runPrimary(ctx, () => ({ kind: 'ready', perform }))
     expect(perform).toHaveBeenCalledTimes(1)
     expect(ctx.busy.current).toBe(false)
   })
 
-  it('announces "Nothing to start." without a brass action', async () =>
+  it('announces "Nothing to start." without a primary action', async () =>
   {
     const ctx = context({})
-    await runBrass(ctx, () => ({ kind: 'none' }))
+    await runPrimary(ctx, () => ({ kind: 'none' }))
     expect(ctx.announce).toHaveBeenCalledWith(NOTHING_TO_START)
   })
 
   it('focuses the acknowledgment and says why when it gates Start', async () =>
   {
     const ctx = context({})
-    await runBrass(ctx, () => ({ kind: 'gated', focusAcknowledgment: () => 'Confirm that 20 originals go to the Recycle Bin on D: first.' }))
+    await runPrimary(ctx, () => ({ kind: 'gated', focusAcknowledgment: () => 'Confirm that 20 originals go to the Recycle Bin on D: first.' }))
     expect(ctx.announce).toHaveBeenCalledWith('Confirm that 20 originals go to the Recycle Bin on D: first.')
     const quiet = context({})
-    await runBrass(quiet, () => ({ kind: 'gated', focusAcknowledgment: () => null }))
+    await runPrimary(quiet, () => ({ kind: 'gated', focusAcknowledgment: () => null }))
     expect(quiet.announce).not.toHaveBeenCalled()
   })
 
-  it('refuses with "Fix {field} first." on an invalid draft and never reads the brass action', async () =>
+  it('refuses with "Fix {field} first." on an invalid draft and never reads the primary action', async () =>
   {
-    const brass = vi.fn()
+    const primary = vi.fn()
     const ctx = context({ commitDraft: () => ({ status: 'invalid', field: 'Target, integrated' }) })
-    await runBrass(ctx, brass)
+    await runPrimary(ctx, primary)
     expect(ctx.announce).toHaveBeenCalledWith('Fix Target, integrated first.')
-    expect(brass).not.toHaveBeenCalled()
+    expect(primary).not.toHaveBeenCalled()
   })
 
   it('ignores a second press while the first commits and runs', async () =>
@@ -387,8 +387,8 @@ describe('runBrass', () =>
     })
     const perform = vi.fn()
     const ctx = context({ commitDraft: () => pending })
-    const first = runBrass(ctx, () => ({ kind: 'ready', perform }))
-    await runBrass(ctx, () => ({ kind: 'ready', perform }))
+    const first = runPrimary(ctx, () => ({ kind: 'ready', perform }))
+    await runPrimary(ctx, () => ({ kind: 'ready', perform }))
     release({ status: 'committed', seq: 4 })
     await first
     expect(perform).toHaveBeenCalledTimes(1)
@@ -397,7 +397,7 @@ describe('runBrass', () =>
   it('frees the key when the action throws', async () =>
   {
     const ctx = context({})
-    await expect(runBrass(ctx, () => ({ kind: 'ready', perform: () => Promise.reject(new Error('refused')) }))).rejects.toThrow('refused')
+    await expect(runPrimary(ctx, () => ({ kind: 'ready', perform: () => Promise.reject(new Error('refused')) }))).rejects.toThrow('refused')
     expect(ctx.busy.current).toBe(false)
   })
 })
@@ -617,7 +617,7 @@ describe('useBatchKeys', () =>
     it('acts on nothing while another view shows', () =>
     {
       useAppStore.setState({ currentView: 'editor' })
-      const handlers = { brass: vi.fn(), togglePause: vi.fn(), undo: vi.fn(), addFiles: vi.fn(), openShortcuts: vi.fn(), focusRegion: vi.fn(), clearSelection: vi.fn(() => true) }
+      const handlers = { primary: vi.fn(), togglePause: vi.fn(), undo: vi.fn(), addFiles: vi.fn(), openShortcuts: vi.fn(), focusRegion: vi.fn(), clearSelection: vi.fn(() => true) }
       render(<Harness handlers={handlers} facts={RUNNING} />)
       for (const target of [grid(), document.body])
       {
@@ -732,7 +732,7 @@ describe('useBatchKeys', () =>
   })
 })
 
-interface BrassPageProps
+interface PrimaryPageProps
 {
   start: () => Promise<void>
   apply: (value: number) => Promise<number>
@@ -743,9 +743,9 @@ interface BrassPageProps
 
 /**
  * A Review moment: a Target field whose draft commits through the same path as blur, a summary the user hid with
- * the acknowledgment inside it, and Start as the brass action.
+ * the acknowledgment inside it, and Start as the primary action.
  */
-function BrassPage({ start, apply, announce, gated = false, nothing = false }: BrassPageProps): React.JSX.Element
+function PrimaryPage({ start, apply, announce, gated = false, nothing = false }: PrimaryPageProps): React.JSX.Element
 {
   const rootRef = useRef<HTMLElement>(null)
   const [drafts] = useState(() => createDraftCommitters())
@@ -773,7 +773,7 @@ function BrassPage({ start, apply, announce, gated = false, nothing = false }: B
     facts: () => ({ ...IDLE, mode: 'review' }),
     handlers: {
       commitDraft: () => drafts.commit(),
-      brass: () =>
+      primary: () =>
       {
         if (nothing)
         {
@@ -833,7 +833,7 @@ describe('Ctrl+Enter', () =>
     }))
     const start = vi.fn(async () => undefined)
     const announce = vi.fn()
-    render(<BrassPage start={start} apply={apply} announce={announce} />)
+    render(<PrimaryPage start={start} apply={apply} announce={announce} />)
     const field = screen.getByRole('textbox', { name: 'Target, integrated' })
     field.focus()
     fireEvent.change(field, { target: { value: '-18' } })
@@ -856,7 +856,7 @@ describe('Ctrl+Enter', () =>
     const apply = vi.fn(async () => 1)
     const start = vi.fn(async () => undefined)
     const announce = vi.fn()
-    render(<BrassPage start={start} apply={apply} announce={announce} />)
+    render(<PrimaryPage start={start} apply={apply} announce={announce} />)
     const field = screen.getByRole('textbox', { name: 'Target, integrated' })
     field.focus()
     fireEvent.change(field, { target: { value: '-2' } })
@@ -874,7 +874,7 @@ describe('Ctrl+Enter', () =>
   {
     const start = vi.fn(async () => undefined)
     const announce = vi.fn()
-    render(<BrassPage start={start} apply={async () => 1} announce={announce} gated />)
+    render(<PrimaryPage start={start} apply={async () => 1} announce={announce} gated />)
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(press(grid(), 'Enter', { ctrlKey: true })).toBe(true)
     await settle()
@@ -883,10 +883,10 @@ describe('Ctrl+Enter', () =>
     expect(start).not.toHaveBeenCalled()
   })
 
-  it('announces "Nothing to start." when no brass action exists', async () =>
+  it('announces "Nothing to start." when no primary action exists', async () =>
   {
     const announce = vi.fn()
-    render(<BrassPage start={vi.fn()} apply={async () => 1} announce={announce} nothing />)
+    render(<PrimaryPage start={vi.fn()} apply={async () => 1} announce={announce} nothing />)
     expect(press(grid(), 'Enter', { ctrlKey: true })).toBe(true)
     await settle()
     expect(announce).toHaveBeenCalledWith(NOTHING_TO_START)
@@ -1000,7 +1000,7 @@ describe('ShortcutsPopover', () =>
     expect(popover).toHaveFocus()
     const headings = within(popover).getAllByRole('heading', { level: 3, hidden: true })
     expect(headings.map((heading) => heading.textContent)).toEqual(['Table', 'Jobs', 'Batch', 'View'])
-    expect(headings[0]).toHaveClass('type-legend', 'text-brass')
+    expect(headings[0]).toHaveClass('type-legend', 'text-accent-ink')
     expect(within(popover).getByRole('heading', { level: 2, hidden: true })).toHaveTextContent(SHORTCUTS_LABEL)
     const batch = popover.querySelector<HTMLElement>('[data-group="batch"]') as HTMLElement
     expect(within(batch).getByText('Pause or resume').nextElementSibling).toHaveTextContent('Ctrl+P')

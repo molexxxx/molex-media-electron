@@ -40,14 +40,14 @@ const REST: Record<IconButtonVariant, string> = {
   ghost: 'border-transparent bg-transparent text-ink-2',
   secondary: 'border-line-strong bg-raised text-ink',
   danger: 'border-error-fill bg-raised text-error',
-  primary: 'border-transparent bg-brass text-on-brass'
+  primary: 'border-transparent bg-accent text-on-accent'
 }
 
 const FEEDBACK: Record<IconButtonVariant, string> = {
   ghost: 'hover:bg-wash-hover hover:text-ink active:bg-wash-pressed active:text-ink',
   secondary: 'hover:bg-raised-hover active:bg-panel',
   danger: 'hover:bg-danger-hover active:bg-danger-pressed',
-  primary: 'hover:bg-brass-hover active:bg-brass-pressed active:inset-shadow-2xs/20'
+  primary: 'hover:bg-accent-hover active:bg-accent-pressed active:inset-shadow-2xs/20'
 }
 
 const DISABLED: Record<IconButtonVariant, string> = {
@@ -63,7 +63,7 @@ const WINDOW_CLOSE = { rest: REST.ghost, feedback: 'hover:bg-error-fill hover:te
 /**
  * A glyph-only button on the native element, named by `label`. The tooltip repeats the label and shortcut
  * for sighted users and stays out of the accessibility tree, so the name is announced once. A pressed toggle
- * draws a neutral raised fill inside a control frame, never brass. The caption size fills the title bar at
+ * draws a neutral raised fill inside a control frame, never primary. The caption size fills the title bar at
  * the window's edge, so it rings inward, and its danger variant is the window's Close.
  */
 export function IconButton({

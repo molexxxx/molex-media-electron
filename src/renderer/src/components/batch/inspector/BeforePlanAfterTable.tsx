@@ -248,7 +248,7 @@ function StreamTableView({ table, caption }: { table: StreamTable; caption: stri
   return (
     <div role='region' aria-labelledby={captionId} tabIndex={0} className='overflow-x-auto select-text'>
       <table className='w-full border-collapse text-label'>
-        <caption id={captionId} className='pb-1 text-left type-legend text-brass'>
+        <caption id={captionId} className='pb-1 text-left type-legend text-accent-ink'>
           <CapsText>{caption}</CapsText>
         </caption>
         <thead>

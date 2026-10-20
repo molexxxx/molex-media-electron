@@ -446,7 +446,7 @@ describe('useLivePreflight', () =>
 
 describe('DropOverlay and EmptyState', () =>
 {
-  it('names the recipe new files get and the subfolder rule, without brass', () =>
+  it('names the recipe new files get and the subfolder rule, without primary', () =>
   {
     expect(dropLine('Normalize · Podcast (Apple Podcasts)')).toBe('Drop to add. New files get Normalize · Podcast (Apple Podcasts).')
     expect(dropLine(null)).toBe('Drop to add.')
@@ -458,7 +458,7 @@ describe('DropOverlay and EmptyState', () =>
     const { container } = render(<DropOverlay recipe="Normalize · Podcast (Apple Podcasts)" recursive />)
     const overlay = container.querySelector('[data-drop-overlay]') as HTMLElement
     expect(overlay).toHaveTextContent('Drop to add. New files get Normalize · Podcast (Apple Podcasts).Folders are scanned, including subfolders.')
-    expect(overlay.className).not.toMatch(/brass/)
+    expect(overlay.className).not.toMatch(/primary/)
   })
 
   it('teaches the four ideas and lists the recent folders', () =>
@@ -469,7 +469,7 @@ describe('DropOverlay and EmptyState', () =>
     const onOpenFolder = vi.fn()
     render(
       <PlatformProvider platform="win32">
-        <QueueEmptyState recipe="Normalize · Podcast (Apple Podcasts)" recentFolders={folders} brass onAddFiles={onAddFiles} onAddFolder={onAddFolder} onOpenFolder={onOpenFolder} />
+        <QueueEmptyState recipe="Normalize · Podcast (Apple Podcasts)" recentFolders={folders} primary onAddFiles={onAddFiles} onAddFolder={onAddFolder} onOpenFolder={onOpenFolder} />
       </PlatformProvider>
     )
     expect(screen.getByRole('heading', { name: EMPTY_COPY.queueHeading })).toBeInTheDocument()

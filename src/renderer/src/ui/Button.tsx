@@ -35,14 +35,14 @@ const SIZES: Record<ButtonSize, { box: string, gap: string, glyph: IconSize }> =
 }
 
 const REST: Record<ButtonVariant, string> = {
-  primary: 'border-transparent bg-brass text-on-brass',
+  primary: 'border-transparent bg-accent text-on-accent',
   secondary: 'border-line-strong bg-raised text-ink',
   ghost: 'border-transparent bg-transparent text-ink-2',
   danger: 'border-error-fill bg-raised text-error'
 }
 
 const FEEDBACK: Record<ButtonVariant, string> = {
-  primary: 'hover:bg-brass-hover active:bg-brass-pressed active:inset-shadow-2xs/20',
+  primary: 'hover:bg-accent-hover active:bg-accent-pressed active:inset-shadow-2xs/20',
   secondary: 'hover:bg-raised-hover active:bg-panel',
   ghost: 'hover:bg-wash-hover hover:text-ink active:bg-wash-pressed active:text-ink',
   danger: 'hover:bg-danger-hover active:bg-danger-pressed'

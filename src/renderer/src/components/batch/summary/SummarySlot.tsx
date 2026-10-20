@@ -29,7 +29,7 @@ export interface SummarySlotHandle
   /**
    * Ctrl+Enter refused because the acknowledgment holds Start: expands a hidden slot, focuses the checkbox, and
    * returns what to announce ("Confirm that 20 originals go to the Recycle Bin on D: first."). Null when the
-   * acknowledgment does not hold the brass action.
+   * acknowledgment does not hold the primary action.
    */
   focusAcknowledgment: () => string | null
 }

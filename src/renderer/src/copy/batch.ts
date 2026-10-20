@@ -512,7 +512,7 @@ export function acknowledgeRestoredReason(platform: Platform): string
   return `Confirm the ${platformWords(platform).binName} step in the banner first.`
 }
 
-/** A brass action refused by a field draft: "Fix Target, integrated first." */
+/** A primary action refused by a field draft: "Fix Target, integrated first." */
 export function fixFieldFirst(field: string): string
 {
   return `Fix ${field} first.`

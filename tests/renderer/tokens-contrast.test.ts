@@ -222,12 +222,12 @@ describe('color tokens', () =>
   it('reproduces the label grounds and state composites as they are painted', () =>
   {
     const tokenColors: Record<string, string> = {
-      'held-warning': '#2e1c13',
-      'held-error': '#2c1515',
-      'stamp-verified': '#191c17',
-      'stamp-returned': '#1f1211',
-      'danger-hover': '#3c2423',
-      'danger-pressed': '#472626'
+      'held-warning': '#2f2512',
+      'held-error': '#2b1619',
+      'stamp-verified': '#191f1b',
+      'stamp-returned': '#1e1315',
+      'danger-hover': '#392529',
+      'danger-pressed': '#45272b'
     }
     for (const [name, expected] of Object.entries(tokenColors))
     {
@@ -235,29 +235,29 @@ describe('color tokens', () =>
     }
 
     const composites: Array<[base: string, layer: string, expected: string]> = [
-      ['ground', 'wash-hover', '#191817'],
-      ['ground', 'wash-pressed', '#201f1d'],
-      ['ground', 'wash-selected', '#291f12'],
-      ['ground', 'wash-selected-hover', '#322615'],
-      ['panel', 'wash-hover', '#201f1d'],
-      ['panel', 'wash-selected', '#2f2619'],
-      ['panel', 'wash-selected-hover', '#382c1b'],
-      ['rail', 'wash-hover', '#251d17'],
-      ['rail', 'wash-selected', '#332412'],
-      ['overlay', 'wash-hover', '#2b2927'],
-      ['ground', 'text-selection', '#563f1e'],
-      ['panel', 'text-selection', '#5b4423'],
-      ['sunken', 'text-selection', '#523b1a'],
-      ['overlay', 'text-selection', '#644c2a'],
-      ['sunken', 'viz-band', '#161514'],
-      ['ground', 'wash-warning', '#251811'],
-      ['ground', 'wash-error', '#241313'],
-      ['ground', 'wash-running', '#191d20'],
-      ['ground', 'wash-verified', '#1c2019'],
-      ['panel', 'wash-warning', '#2b1e17'],
-      ['panel', 'wash-error', '#2a1919'],
-      ['panel', 'wash-running', '#202327'],
-      ['panel', 'wash-verified', '#222720']
+      ['ground', 'wash-hover', '#18191b'],
+      ['ground', 'wash-pressed', '#1f2022'],
+      ['ground', 'wash-selected', '#17242a'],
+      ['ground', 'wash-selected-hover', '#1a2b34'],
+      ['panel', 'wash-hover', '#1f2023'],
+      ['panel', 'wash-selected', '#1d2a31'],
+      ['panel', 'wash-selected-hover', '#20313b'],
+      ['rail', 'wash-hover', '#1c1d20'],
+      ['rail', 'wash-selected', '#1a272f'],
+      ['overlay', 'wash-hover', '#292b2f'],
+      ['ground', 'text-selection', '#284958'],
+      ['panel', 'text-selection', '#2d4e5d'],
+      ['sunken', 'text-selection', '#244554'],
+      ['overlay', 'text-selection', '#345666'],
+      ['sunken', 'viz-band', '#161718'],
+      ['ground', 'wash-warning', '#251e12'],
+      ['ground', 'wash-error', '#231416'],
+      ['ground', 'wash-running', '#162228'],
+      ['ground', 'wash-verified', '#1c241d'],
+      ['panel', 'wash-warning', '#2c2519'],
+      ['panel', 'wash-error', '#291a1d'],
+      ['panel', 'wash-running', '#1c282f'],
+      ['panel', 'wash-verified', '#222a25']
     ]
     for (const [base, layer, expected] of composites)
     {

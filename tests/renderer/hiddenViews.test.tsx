@@ -284,7 +284,7 @@ function BatchKeysView({ handlers }: { handlers: Record<string, ReturnType<typeo
 
 describe('the Batch keyboard map in a hidden view', () =>
 {
-  const names = ['brass', 'startSelected', 'togglePause', 'openPicker', 'addFiles', 'addFolder', 'focusSearch', 'setMode', 'toggleInspector', 'openShortcuts', 'focusRegion', 'focusAttention', 'undo', 'redo', 'historyBack', 'resolveConfirmation', 'clearSelection', 'returnToRow', 'announce']
+  const names = ['primary', 'startSelected', 'togglePause', 'openPicker', 'addFiles', 'addFolder', 'focusSearch', 'setMode', 'toggleInspector', 'openShortcuts', 'focusRegion', 'focusAttention', 'undo', 'redo', 'historyBack', 'resolveConfirmation', 'clearSelection', 'returnToRow', 'announce']
 
   it('acts on nothing, wherever the key lands', () =>
   {

@@ -172,7 +172,7 @@ export function TimelineClipComponent({ clip, coords, source, trackType, onDragS
     <div
       ref={measuredRef}
       className={`group rounded-sm overflow-hidden cursor-pointer transition-shadow ${
-        isSelected ? 'ring-2 ring-brass shadow-lg shadow-accent-500/20 z-10' : 'hover:ring-1 hover:ring-white/20'
+        isSelected ? 'ring-2 ring-accent shadow-lg shadow-accent-500/20 z-10' : 'hover:ring-1 hover:ring-white/20'
       } ${clip.locked ? 'pointer-events-none opacity-70' : ''}`}
       style={style}
       onMouseDown={handleMouseDown}

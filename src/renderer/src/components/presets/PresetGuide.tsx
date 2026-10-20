@@ -113,7 +113,7 @@ export function GoalFinder({ op, current, onChoose, layout = 'stacked', classNam
               )}
             >
               <span className="text-body text-ink">{goal.goal}</span>
-              <span className={cx('text-label', active ? 'text-brass' : 'text-ink-2')}>
+              <span className={cx('text-label', active ? 'text-accent-ink' : 'text-ink-2')}>
                 {preset?.label}
                 {active && <span className="sr-only">{`, ${GOAL_WORDS.inUse}`}</span>}
               </span>

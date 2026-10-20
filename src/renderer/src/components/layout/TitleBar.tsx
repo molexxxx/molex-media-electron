@@ -1,6 +1,6 @@
 /**
  * @module components/layout/TitleBar
- * @description The walnut title bar: the molexMedia wordmark, the version, the job engine's run
+ * @description The title bar: the molexMedia wordmark, the version, the job engine's run
  * state as a word, and the window's caption buttons.
  */
 
@@ -83,7 +83,7 @@ export default function TitleBar(): React.JSX.Element
     <header className="drag-region flex h-(--size-titlebar) shrink-0 items-center justify-between border-b border-rail-edge bg-rail ps-4">
       <div className="flex min-w-0 items-center gap-3">
         <span className="font-display text-section font-semibold whitespace-nowrap text-ink">
-          molex<span className="text-walnut-ink">Media</span>
+          molex<span className="text-accent-ink">Media</span>
         </span>
         <span className="text-label whitespace-nowrap text-ink-3 tabular-nums">{__APP_VERSION__}</span>
         <RunStateLabel status={status} />

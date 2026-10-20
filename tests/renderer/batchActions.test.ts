@@ -2,7 +2,7 @@
  * The Batch view's commands against a fake engine surface and manual timers: adds select only their own jobs and
  * confirm when they settle, the live plan preflights the pending jobs once 400 ms after the last plan-input change
  * and never after a measurement, Start sends the latest report id with the report's counts, a stale Start returns
- * the review with the reason, an append is a preflight then a Start, and every brass action commits the focused
+ * the review with the reason, an append is a preflight then a Start, and every primary action commits the focused
  * field's draft first.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -794,7 +794,7 @@ describe('commit before acting', () =>
     stop()
   })
 
-  it('refuses every brass action on an invalid draft and names the field', async () =>
+  it('refuses every primary action on an invalid draft and names the field', async () =>
   {
     const { api, announce, drafts, actions } = harness()
     drafts.register(() => ({ status: 'invalid', field: 'Target, integrated' }))

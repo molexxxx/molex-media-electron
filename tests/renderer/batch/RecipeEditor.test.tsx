@@ -157,7 +157,7 @@ function harness(rows: JobView[], api: Partial<Record<keyof JobsApi, ReturnType<
   return { jobs, view, api: spies, actions, announce }
 }
 
-/** The page around the tab: Ctrl+Enter runs the brass action, Start here. */
+/** The page around the tab: Ctrl+Enter runs the primary action, Start here. */
 function Page({ actions, children, onStart }: { actions: BatchActions; children: React.ReactNode; onStart(outcome: Promise<StartOutcome>): void }): React.JSX.Element
 {
   return (

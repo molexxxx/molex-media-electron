@@ -276,7 +276,7 @@ export function FfmpegSettings(): ReactElement
   return (
     <section aria-labelledby={headingId} className='flex flex-col gap-3'>
       <div className='flex flex-col gap-1'>
-        <h2 id={headingId} className='type-legend text-brass'>{FFMPEG_WORDS.heading}</h2>
+        <h2 id={headingId} className='type-legend text-accent-ink'>{FFMPEG_WORDS.heading}</h2>
         <p className='text-body text-ink-2'>{FFMPEG_WORDS.intro}</p>
       </div>
       <p role='status' className='sr-only'>{announce}</p>

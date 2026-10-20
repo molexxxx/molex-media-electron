@@ -14,7 +14,7 @@ export interface FocusTargets
   focusedRow(): HTMLElement | null
   /** The visible table's grid element. */
   table(): HTMLElement | null
-  /** The header's brass slot, one element that relabels Review, Start, Append, Resume, and Retry. */
+  /** The header's primary slot, one element that relabels Review, Start, Append, Resume, and Retry. */
   actionSlot(): HTMLElement | null
   /** The header's run-controls slot that holds Pause and Cancel run. */
   runControls(): HTMLElement | null
@@ -26,7 +26,7 @@ export interface FocusTargets
   inspectorTabs(): HTMLElement | null
   /** The empty state's or toolbar's Add files button. */
   addFiles(): HTMLElement | null
-  /** The acknowledgment checkbox that gates the brass action. */
+  /** The acknowledgment checkbox that gates the primary action. */
   acknowledgment(): HTMLElement | null
   /** The view root, the last resort, so focus never falls to the document body. */
   view(): HTMLElement | null

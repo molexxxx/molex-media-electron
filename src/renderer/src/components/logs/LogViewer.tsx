@@ -418,7 +418,7 @@ export function FullOutputPanel({ jobId, api }: { jobId: JobId; api: LogViewerAp
   return (
     <div data-part="full-output" className="flex shrink-0 flex-col items-start gap-2">
       <div className="flex items-center gap-3">
-        <h2 id={headingId} className="type-legend text-brass">
+        <h2 id={headingId} className="type-legend text-accent-ink">
           <CapsText>{LOG_FILTER_WORDS.fullOutput}</CapsText>
         </h2>
         <Button

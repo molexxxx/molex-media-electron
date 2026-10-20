@@ -6,4 +6,4 @@
  */
 
 /** Window background painted before the first renderer frame; must equal `--color-ground`. */
-export const GROUND_HEX = '#0e0d0c'
+export const GROUND_HEX = '#0d0e10'

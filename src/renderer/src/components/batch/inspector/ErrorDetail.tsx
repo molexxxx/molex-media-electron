@@ -165,7 +165,7 @@ export function ErrorDetail({ error, detail, onFullOutput, onCopy, onCopied, cla
       )}
       {command !== null && (
         <div className='flex flex-col gap-2'>
-          <h4 className='type-legend text-brass'>
+          <h4 className='type-legend text-accent-ink'>
             <CapsText>{COMMAND_LABEL}</CapsText>
           </h4>
           <CommandBlock

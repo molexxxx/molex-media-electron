@@ -1,6 +1,6 @@
 /**
  * The run header's derivations: the title, the state sentence and the order it sheds parts in, the attention button,
- * the one next action by the brass precedence, the run controls, the consequence line before, during, and after a
+ * the one next action by the primary precedence, the run controls, the consequence line before, during, and after a
  * run, and the Output and Workers labels. Pure functions over the jobs store and the view's Review session, so the
  * header, Ctrl+Enter, and the summary slot read one answer.
  */
@@ -251,7 +251,7 @@ export interface HeaderView
 /** What holds the one next action back, so Ctrl+Enter knows what to say and where focus goes. */
 export type ActionBlock = 'probing' | 'checking' | 'nothing-runnable' | 'acknowledgment' | 'field' | 'starting'
 
-/** The one next action; a disabled action is drawn neutral, never brass. */
+/** The one next action; a disabled action is drawn neutral, never primary. */
 export interface HeaderAction
 {
   kind: ActionKind
@@ -338,7 +338,7 @@ export function newJobsWaiting(facts: Pick<HeaderFacts, 'pending'>): number
 }
 
 /**
- * The one next action by the brass precedence: Resume, then Append or Review new jobs during a run, then Start in
+ * The one next action by the primary precedence: Resume, then Append or Review new jobs during a run, then Start in
  * Review, then Review, then Retry returned, then Add files; null when the moment has none ("Nothing to start.").
  * Start and Append may come back disabled with their reason, and Resume while a restored Replace batch waits for
  * its acknowledgment.
@@ -913,8 +913,8 @@ export interface HeaderModel
   action: HeaderAction | null
   /** What the action slot shows. */
   slot: HeaderAction | null
-  /** Where the brass is: the action slot, the empty state's Add files, or nowhere. */
-  brass: 'slot' | 'empty-state' | null
+  /** Where the primary is: the action slot, the empty state's Add files, or nowhere. */
+  primary: 'slot' | 'empty-state' | null
   controls: RunControls | null
   consequence: ConsequenceLine | null
   output: OutputButton
@@ -927,10 +927,10 @@ export function deriveHeader(state: JobsState, view: HeaderView): HeaderModel
   const facts = selectHeaderFacts(state)
   const action = nextAction(facts, view, state.preflight, (state.run?.needsAck ?? null) !== null)
   const slot = slotAction(facts, action)
-  let brass: HeaderModel['brass'] = null
+  let primary: HeaderModel['primary'] = null
   if (action !== null && action.enabled)
   {
-    brass = action.place === 'header' ? 'slot' : 'empty-state'
+    primary = action.place === 'header' ? 'slot' : 'empty-state'
   }
   return {
     title: headerTitle(facts, view),
@@ -939,7 +939,7 @@ export function deriveHeader(state: JobsState, view: HeaderView): HeaderModel
     attention: attentionButton(facts, view.platform),
     action,
     slot,
-    brass,
+    primary,
     controls: runControls(facts, state.run, view.platform),
     consequence: consequenceLine(facts, view, state.run, state.policy),
     output: outputButton(facts),

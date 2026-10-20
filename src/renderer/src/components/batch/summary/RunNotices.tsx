@@ -26,17 +26,17 @@ export interface AppendedJobsLineProps
   count: number
   runId: RunId
   onReview: () => void
-  /** Draws "Review {n} new jobs" in brass; pass false when another control already holds the brass. */
-  brass?: boolean
+  /** Draws "Review {n} new jobs" as the primary button; pass false when another control already holds the primary. */
+  primary?: boolean
 }
 
 /** The line that says jobs added during a run wait outside it, with the control that opens Review on them. */
-export function AppendedJobsLine({ count, runId, onReview, brass = true }: AppendedJobsLineProps): ReactElement
+export function AppendedJobsLine({ count, runId, onReview, primary = true }: AppendedJobsLineProps): ReactElement
 {
   return (
     <div data-notice="appended" className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
       <p className="text-body text-ink">{appendedLine(count, runId)}</p>
-      <Button size="sm" variant={brass ? 'primary' : 'secondary'} onClick={onReview}>{reviewNewLabel(count)}</Button>
+      <Button size="sm" variant={primary ? 'primary' : 'secondary'} onClick={onReview}>{reviewNewLabel(count)}</Button>
     </div>
   )
 }
@@ -48,8 +48,8 @@ export interface RunNoticesProps
   /** Jobs added during the run that wait outside it. */
   appended?: number
   onReviewAppended?: () => void
-  /** Whether the appended line's control is the page's brass action. */
-  appendedBrass?: boolean
+  /** Whether the appended line's control is the page's primary action. */
+  appendedPrimary?: boolean
   alerts?: readonly RunAlert[]
   context?: Omit<AlertContext, 'runId'>
   /** When the window took main's snapshot; only a blocking alert raised after it is read out as an alert. */
@@ -76,7 +76,7 @@ export function RunNotices({
   runId,
   appended = 0,
   onReviewAppended,
-  appendedBrass = true,
+  appendedPrimary = true,
   alerts = [],
   context = {},
   loadedAt,
@@ -99,7 +99,7 @@ export function RunNotices({
   return (
     <div data-slot-part="run-notices" className="flex flex-col gap-2">
       {showAppended && runId !== null
-        ? <AppendedJobsLine count={appended} runId={runId} brass={appendedBrass} onReview={() => onReviewAppended?.()} />
+        ? <AppendedJobsLine count={appended} runId={runId} primary={appendedPrimary} onReview={() => onReviewAppended?.()} />
         : null}
       <RunBanners
         alerts={alerts}

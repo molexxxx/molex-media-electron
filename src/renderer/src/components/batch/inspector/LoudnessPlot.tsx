@@ -433,7 +433,7 @@ function Legend({ beyond }: { beyond: boolean }): ReactElement
   )
 }
 
-const HEAD_CELL = 'pb-1 pr-3 text-left align-bottom type-legend text-brass'
+const HEAD_CELL = 'pb-1 pr-3 text-left align-bottom type-legend text-accent-ink'
 const BODY_CELL = 'border-t border-line py-1 pr-3 align-top'
 const VALUE_CELL = `${BODY_CELL} whitespace-nowrap tabular-nums text-ink`
 
@@ -449,7 +449,7 @@ function DataTable({ strips, onSelectJob }: DataTableProps): ReactElement
   return (
     <div role="region" aria-labelledby={captionId} tabIndex={0} className="overflow-x-auto select-text">
       <table className="w-full border-collapse text-label">
-        <caption id={captionId} className="pb-1 text-left type-legend text-brass">
+        <caption id={captionId} className="pb-1 text-left type-legend text-accent-ink">
           {TABLE_CAPTION}
         </caption>
         <thead>

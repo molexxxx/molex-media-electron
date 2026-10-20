@@ -462,7 +462,7 @@ export function RecipeCell({ job, album }: { job: JobView, album: string | null 
   const short = shortPreset(preset)
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <span className="flex shrink-0 text-brass"><Icon name={`op.${job.recipe.kind}`} size="sm" /></span>
+      <span className="flex shrink-0 text-accent-ink"><Icon name={`op.${job.recipe.kind}`} size="sm" /></span>
       <span className="flex min-w-0 items-baseline gap-2 truncate">
         {operation !== '' && <span className="shrink-0 text-ink-2">{operation}</span>}
         <span className="min-w-0 truncate text-ink-3">{short}</span>

@@ -1,6 +1,6 @@
 /**
  * Guards the Batch view store: each mode keeps its own selection, focus, sort, scroll, filters, and hidden columns;
- * Run stays closed until a batch starts; the brass Review carries only the pending part of the Queue selection;
+ * Run stays closed until a batch starts; the primary Review carries only the pending part of the Queue selection;
  * filter changes deselect what they hide and report it; Ctrl+A reaches only visible rows; the Review
  * acknowledgment survives refreshes with unchanged counts; and layout choices persist per viewer, with storage
  * that is missing, full, or refusing access.

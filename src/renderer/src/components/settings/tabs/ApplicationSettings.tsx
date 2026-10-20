@@ -39,7 +39,7 @@ export function AccessibilityGroup({ interfaceScale, announceProgress, onUpdate 
   const announceHint = `${id}-announce-hint`
   return (
     <section aria-labelledby={`${id}-title`} className="rounded-md border border-line bg-panel p-3 sm:p-5 space-y-4">
-      <h3 id={`${id}-title`} className="type-legend text-brass">Accessibility</h3>
+      <h3 id={`${id}-title`} className="type-legend text-accent-ink">Accessibility</h3>
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <label htmlFor={sizeId} className="text-body font-semibold text-ink">Interface size</label>

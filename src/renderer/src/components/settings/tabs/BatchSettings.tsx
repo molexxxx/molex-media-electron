@@ -179,7 +179,7 @@ function Section({ id, title, lead, children }: { id: string; title: string; lea
 {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-1 border-t border-line pt-5 first:border-t-0 first:pt-0">
-      <h2 id={id} className="type-legend text-brass">{title}</h2>
+      <h2 id={id} className="type-legend text-accent-ink">{title}</h2>
       {lead !== undefined && <div className="text-label text-ink-2">{lead}</div>}
       <div className="flex flex-col">{children}</div>
     </section>

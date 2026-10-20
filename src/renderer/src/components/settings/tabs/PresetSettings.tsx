@@ -84,7 +84,7 @@ export function commandFailure(result: { ok: true } | { ok: false; error: { mess
   return result.ok ? null : result.error.message
 }
 
-const LEGEND = 'type-legend text-brass'
+const LEGEND = 'type-legend text-accent-ink'
 
 const INPUT = [
   'h-(--size-control-md) w-full min-w-0 rounded-sm border border-line-control bg-sunken ps-2 pe-2 text-body text-ink',
@@ -346,7 +346,7 @@ export function loudnessTag(preset: LoudnessPreset): { text: string, tone: 'stan
   return preset.standard ? { text: PRESET_WORDS.standard, tone: 'standard' } : { text: PRESET_WORDS.notStandard, tone: 'app' }
 }
 
-const TAG_TONES = { standard: 'text-brass', app: 'text-ink-3', superseded: 'text-warning' } as const
+const TAG_TONES = { standard: 'text-accent-ink', app: 'text-ink-3', superseded: 'text-warning' } as const
 
 /** The DOM id of a built-in preset's row, so the goal finder can bring it into view. */
 export function builtinRowId(op: Operation, presetId: string): string

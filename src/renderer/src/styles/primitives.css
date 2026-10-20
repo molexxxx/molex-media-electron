@@ -615,13 +615,13 @@
   .ui-progress[data-tone='meter']
   {
     border-color: transparent;
-    background-color: color-mix(in oklab, var(--color-amber) 10%, var(--color-sunken));
+    background-color: color-mix(in oklab, var(--color-accent-ink) 10%, var(--color-sunken));
     mask: repeating-linear-gradient(90deg, black 0 4px, transparent 4px 6px);
   }
 
   .ui-progress[data-tone='meter'] .ui-progress-fill
   {
-    box-shadow: 0 0 8px var(--color-amber);
+    box-shadow: 0 0 8px var(--color-accent-ink);
   }
 
   .ui-progress[data-static] .ui-progress-fill
@@ -826,7 +826,7 @@
   }
 
   /* The overlay bar: only the thumb takes the pointer, a 4 px rule at rest that widens to 6 px under the pointer
-     and lights brass while dragged. It sits 3 px off the edge, clear of a neighboring splitter's 2 px reach, and
+     and lights primary while dragged. It sits 3 px off the edge, clear of a neighboring splitter's 2 px reach, and
      the 48 px actions column keeps a row's More actions button clear of it. */
   .ui-overlay-bar
   {
@@ -898,7 +898,7 @@
   {
     border-color: var(--color-line-control);
     background-color: var(--color-raised);
-    color: var(--color-brass);
+    color: var(--color-accent);
   }
 
   .ui-grid-menu-anchor
@@ -1058,7 +1058,7 @@
     inset-inline: 0;
     z-index: var(--z-index-raised);
     block-size: 2px;
-    background-color: var(--color-amber);
+    background-color: var(--color-accent-ink);
     pointer-events: none;
   }
 
@@ -1106,11 +1106,11 @@
 
   .ui-grid-row[aria-selected='true']
   {
-    --ui-grid-edge-start: inset 0 1px 0 var(--color-brass);
-    --ui-grid-edge-end: inset 0 -1px 0 var(--color-brass);
+    --ui-grid-edge-start: inset 0 1px 0 var(--color-accent);
+    --ui-grid-edge-end: inset 0 -1px 0 var(--color-accent);
     background-color: var(--color-wash-selected);
     color: var(--color-ink);
-    box-shadow: inset 1px 0 0 var(--color-brass), inset -1px 0 0 var(--color-brass), var(--ui-grid-edge-start), var(--ui-grid-edge-end);
+    box-shadow: inset 1px 0 0 var(--color-accent), inset -1px 0 0 var(--color-accent), var(--ui-grid-edge-start), var(--ui-grid-edge-end);
   }
 
   .ui-grid-row[aria-selected='true']:hover
@@ -1118,7 +1118,7 @@
     background-color: var(--color-wash-selected-hover);
   }
 
-  /* One brass frame around each run of selected rows: a row after a selected row drops the top edge, and a row
+  /* One primary frame around each run of selected rows: a row after a selected row drops the top edge, and a row
      before one keeps its separator where the bottom edge would be. */
   .ui-grid-row[aria-selected='true'] + .ui-grid-row[aria-selected='true']
   {

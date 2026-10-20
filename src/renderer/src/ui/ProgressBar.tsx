@@ -67,7 +67,7 @@ export function ProgressBar({
         <div
           className={cx(
             'ui-progress-fill h-full',
-            !still && (tone === 'error' ? 'bg-error-fill' : tone === 'meter' ? 'bg-amber' : 'bg-ink-2'),
+            !still && (tone === 'error' ? 'bg-error-fill' : tone === 'meter' ? 'bg-accent-ink' : 'bg-ink-2'),
             !indeterminate && 'w-full origin-left transition-transform duration-base ease-out'
           )}
           style={indeterminate ? undefined : { transform: `scaleX(${fraction})` }}

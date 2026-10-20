@@ -169,7 +169,7 @@ export function OutcomeByRecipeTable({ summary, jobs, onFilter, className }: Out
   const [, jobsTerm, checkTerm, withinTerm, rangeTerm, peakTerm, limitedTerm] = OUTCOME_COLUMNS
   return (
     <section aria-labelledby={captionId} className={cx('flex flex-col gap-2 select-text', className)}>
-      <h3 id={captionId} className="type-legend text-brass">{OUTCOME_CAPTION}</h3>
+      <h3 id={captionId} className="type-legend text-accent-ink">{OUTCOME_CAPTION}</h3>
       <ul aria-labelledby={captionId} className="flex flex-col">
         {rows.map((row) =>
         {

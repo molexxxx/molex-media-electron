@@ -75,8 +75,7 @@ export const TEXT_INKS: Record<string, Floor> = {
   'verified': 4.5,
   'warning': 4.5,
   'error': 4.5,
-  'walnut-ink': 4.5,
-  'brass': 3,
+  'accent-ink': 4.5,
   'ink-disabled': null
 }
 
@@ -95,9 +94,9 @@ export const LABEL_GROUNDS: Array<{ ground: string; inks: Record<string, number>
 
 /** Labels and glyphs drawn on solid fills. */
 export const FILLS: Array<{ fg: string; bg: string; floor: number; role: string }> = [
-  { fg: 'on-brass', bg: 'brass', floor: 7, role: 'primary button label' },
-  { fg: 'on-brass', bg: 'brass-hover', floor: 7, role: 'primary button label, hover' },
-  { fg: 'on-brass', bg: 'brass-pressed', floor: 7, role: 'primary button label, pressed' },
+  { fg: 'on-accent', bg: 'accent', floor: 7, role: 'primary button label' },
+  { fg: 'on-accent', bg: 'accent-hover', floor: 7, role: 'primary button label, hover' },
+  { fg: 'on-accent', bg: 'accent-pressed', floor: 7, role: 'primary button label, pressed' },
   { fg: 'on-mark', bg: 'mark', floor: 7, role: 'check glyph and switch knob' },
   { fg: 'on-error-fill', bg: 'error-fill', floor: 4.5, role: 'label on a solid error fill' },
   { fg: 'ink', bg: 'error-fill', floor: 3, role: 'window close icon on hover' },
@@ -126,7 +125,7 @@ export const BOUNDARIES: Array<{ fg: string; surfaces: SurfaceSelector; role: st
   { fg: 'line-control', surfaces: 'all', role: 'control boundary' },
   { fg: 'line-control-hover', surfaces: 'all', role: 'control boundary, hover' },
   { fg: 'focus', surfaces: 'all', role: 'focus ring and caret' },
-  { fg: 'brass', surfaces: 'selected', role: 'selection frame' },
+  { fg: 'accent', surfaces: 'selected', role: 'selection frame' },
   { fg: 'warning', surfaces: ['held-warning'], role: 'held warning frame, inside' },
   { fg: 'warning', surfaces: 'rows', role: 'held warning frame, outside' },
   { fg: 'error', surfaces: ['held-error'], role: 'held error frame, inside' },
@@ -144,7 +143,7 @@ export const BOUNDARIES: Array<{ fg: string; surfaces: SurfaceSelector; role: st
   { fg: 'scrollbar-active', surfaces: ['ground', 'panel', 'raised', 'overlay', 'rail', 'sunken'], role: 'scrollbar thumb while dragged' },
   { fg: 'mark', surfaces: ['ground', 'panel'], role: 'checked box, on switch track, slider thumb, tab underline' },
   { fg: 'mark', surfaces: ['line-control'], role: 'slider fill against its track' },
-  { fg: 'brass', surfaces: ['sunken'], role: 'selected catalog number frame in its well' },
+  { fg: 'accent', surfaces: ['sunken'], role: 'selected catalog number frame in its well' },
   { fg: 'viz-1', surfaces: ['sunken', 'panel', 'ground'], role: 'output series in the plot well; legend swatch' },
   { fg: 'viz-2', surfaces: ['sunken', 'panel', 'ground'], role: 'source series in the plot well; legend swatch' },
   { fg: 'viz-3', surfaces: ['sunken', 'panel', 'ground'], role: 'third series in the plot well; legend swatch' },
@@ -171,8 +170,8 @@ export const EXEMPTIONS: Exemption[] = [
     reason: 'disabled controls only, which WCAG 1.4.3 exempts; never used on a focusable or selectable row; measured without a floor'
   },
   {
-    tokens: ['scrim', 'walnut-400', 'walnut-500', 'walnut-700', 'rail-edge', 'line', 'line-strong', 'viz-band', 'viz-grid', 'viz-axis'],
-    reason: 'decorative: backdrops, large walnut fills, the walnut accent fills of older pages, hairlines, region edges, the tolerance band fill, gridlines, and axes never identify a control or carry text'
+    tokens: ['scrim', 'rail-edge', 'line', 'line-strong', 'viz-band', 'viz-grid', 'viz-axis'],
+    reason: 'decorative: backdrops, hairlines, region edges, the tolerance band fill, gridlines, and axes never identify a control or carry text'
   },
   {
     tokens: ['held-warning', 'held-error', 'stamp-verified', 'stamp-returned'],

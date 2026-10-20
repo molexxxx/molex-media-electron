@@ -1136,7 +1136,7 @@ export function createBatchActions(deps: BatchActionsDeps)
     return { status: 'ready' }
   }
 
-  /** Opens Review: the brass carries the Queue selection, the tab and Ctrl+2 do not. Measures, then refreshes the plan. */
+  /** Opens Review: the primary carries the Queue selection, the tab and Ctrl+2 do not. Measures, then refreshes the plan. */
   async function openReview(options: { fromQueue?: boolean } = {}): Promise<PreflightOutcome | InvalidDraft>
   {
     const commit = await commitFirst()

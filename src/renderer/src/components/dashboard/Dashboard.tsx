@@ -116,7 +116,7 @@ function OperationList({ deps }: { deps: OperationAddDeps }): React.JSX.Element
 
   return (
     <section aria-labelledby="dashboard-add" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-add" className="type-legend text-brass">Start a batch</h2>
+      <h2 id="dashboard-add" className="type-legend text-accent-ink">Start a batch</h2>
       {refusal !== null && (
         <Banner tone="error" title="The files were not added." onDismiss={() => setRefusal(null)}>{refusal}</Banner>
       )}
@@ -140,7 +140,7 @@ function ToolList({ open }: { open: (view: 'editor' | 'player') => void }): Reac
 {
   return (
     <section aria-labelledby="dashboard-tools" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-tools" className="type-legend text-brass">Tools</h2>
+      <h2 id="dashboard-tools" className="type-legend text-accent-ink">Tools</h2>
       <ul className="rounded-sm border border-line bg-panel">
         <ToolRow icon="nav.editor" title="Media Editor" detail="Timeline, transforms, keyframes, and preview" onActivate={() => open('editor')} />
         <ToolRow icon="nav.player" title="Media Player" detail="Local files and streams with visualizations" onActivate={() => open('player')} />
@@ -312,7 +312,7 @@ function SystemPanel({ ffmpegVersion }: { ffmpegVersion: string | null }): React
 
   return (
     <section aria-labelledby="dashboard-system" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-system" className="type-legend text-brass">System</h2>
+      <h2 id="dashboard-system" className="type-legend text-accent-ink">System</h2>
       <dl className="rounded-sm border border-line bg-panel">
         <SystemRow label="Memory" value={memory?.value ?? 'Detecting…'} detail={memory?.detail} />
         <SystemRow label="CPU" value={info?.cpuModel || 'Detecting…'} detail={cpuDetail} />

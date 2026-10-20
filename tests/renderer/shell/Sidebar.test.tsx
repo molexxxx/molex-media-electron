@@ -230,21 +230,21 @@ describe('Sidebar', () =>
     expect(navButton('batch').getAttribute('aria-label')).toBe('Batch, 120 need attention')
   })
 
-  it('marks the current page as wash-selected with a brass frame and a brass glyph', () =>
+  it('marks the current page as wash-selected with a primary frame and a primary glyph', () =>
   {
     useAppStore.setState({ currentView: 'batch' })
     render(<Sidebar />)
     const active = navButton('batch')
     expect(active.getAttribute('aria-current')).toBe('page')
     expect(active.className).toContain('bg-wash-selected')
-    expect(active.className).toContain('border-brass')
-    expect(active.querySelector('svg')?.getAttribute('class')).toContain('text-brass')
+    expect(active.className).toContain('border-accent')
+    expect(active.querySelector('svg')?.getAttribute('class')).toContain('text-accent-ink')
     const idle = navButton('editor')
     expect(idle.hasAttribute('aria-current')).toBe(false)
     expect(idle.className).toContain('border-transparent')
     expect(idle.className).not.toContain('bg-wash-selected')
-    expect(idle.querySelector('svg')?.getAttribute('class') ?? '').not.toContain('text-brass')
-    expect(active.querySelector('.bg-amber')).toBeNull()
+    expect(idle.querySelector('svg')?.getAttribute('class') ?? '').not.toContain('text-accent-ink')
+    expect(active.querySelector('.bg-accent-ink')).toBeNull()
   })
 
   it('navigates on click and keeps focus rings inside the rail', () =>

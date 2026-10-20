@@ -38,7 +38,7 @@ import { EmptyNote, QueueEmptyState } from './page/EmptyState'
 import { useFocusOnShow, useFocusRescue, type FocusTargets } from './page/focus'
 import { INSPECTOR_COPY, InspectorPanel, inspectorLayout, summaryOnPage, VIEW_BREAKPOINTS } from './page/InspectorPanel'
 import { ShortcutsPopover } from './page/ShortcutsPopover'
-import { useBatchKeys, type BrassMoment } from './page/useBatchKeys'
+import { useBatchKeys, type PrimaryMoment } from './page/useBatchKeys'
 import { useLivePreflight } from './page/useLivePreflight'
 import type { BannerAction } from './summary/Banners'
 import type { ReviewStale } from './summary/ReviewSummary'
@@ -707,7 +707,7 @@ function BatchView({ platform }: { platform: Platform }): React.JSX.Element
   const visibleGrid = (): HTMLElement | null =>
     Array.from(tableRef.current?.querySelectorAll<HTMLElement>('[role="grid"]') ?? []).find((element) => element.closest('[hidden]') === null) ?? null
 
-  const brassMoment = (): BrassMoment =>
+  const primaryMoment = (): PrimaryMoment =>
   {
     const action = header.slot
     if (action === null)
@@ -742,7 +742,7 @@ function BatchView({ platform }: { platform: Platform }): React.JSX.Element
     },
     handlers: {
       commitDraft,
-      brass: brassMoment,
+      primary: primaryMoment,
       startSelected: () => actions.startSelected(selectedPendingIds(useJobsStore.getState())).then(settleStart),
       togglePause: (to) =>
       {
@@ -1021,7 +1021,7 @@ function BatchView({ platform }: { platform: Platform }): React.JSX.Element
         props: {
           runId: facts.batch.runId,
           appended: newJobsWaiting(facts),
-          appendedBrass: false,
+          appendedPrimary: false,
           onReviewAppended: () => void actions.openReview({ fromQueue: false }),
           onAction: bannerAction
         }
@@ -1045,7 +1045,7 @@ function BatchView({ platform }: { platform: Platform }): React.JSX.Element
         <QueueEmptyState
           recipe={newFilesRecipe}
           recentFolders={state.recentFolders}
-          brass={header.brass === 'empty-state'}
+          primary={header.primary === 'empty-state'}
           onAddFiles={() => void toolbarRef.current?.addFiles()}
           onAddFolder={() => void toolbarRef.current?.addFolder()}
           onOpenFolder={(path) => void actions.addPaths([path], { origin: 'folder', recursive })}

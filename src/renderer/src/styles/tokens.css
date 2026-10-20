@@ -3,57 +3,51 @@
 
 @theme static
 {
-  --color-walnut-900: #1a120c;
-  --color-walnut-700: #3b2819;
-  --color-walnut-500: #6e4a32;
-  --color-walnut-400: #94694a;
-  --color-walnut-ink: #c99a72;
+  --color-ground: #0d0e10;
+  --color-rail: #111215;
+  --color-panel: #141518;
+  --color-raised: #1d1f23;
+  --color-raised-hover: #26292e;
+  --color-sunken: #08090a;
+  --color-overlay: #1f2125;
 
-  --color-ground: #0e0d0c;
-  --color-rail: var(--color-walnut-900);
-  --color-panel: #151413;
-  --color-raised: #201e1c;
-  --color-raised-hover: #2a2725;
-  --color-sunken: #080707;
-  --color-overlay: #211f1d;
-
-  --color-ink: #efe9df;
-  --color-ink-2: #c4bbad;
-  --color-ink-3: #a0988c;
-  --color-ink-disabled: #625b52;
+  --color-ink: #eceef1;
+  --color-ink-2: #babfc8;
+  --color-ink-3: #9096a1;
+  --color-ink-disabled: #5a5f68;
 
   --color-line: color-mix(in oklab, var(--color-ink) 8%, transparent);
   --color-line-strong: color-mix(in oklab, var(--color-ink) 14%, transparent);
-  --color-line-control: #8a8073;
-  --color-line-control-hover: #a69a8a;
-  --color-rail-edge: #2b1d13;
+  --color-line-control: #737985;
+  --color-line-control-hover: #949aa5;
+  --color-rail-edge: #23252a;
 
-  --color-brass: #c9a35a;
-  --color-brass-hover: #d6b26b;
-  --color-brass-pressed: #c09b54;
-  --color-amber: #ffb547;
-  --color-on-brass: #15100a;
-  --color-focus: var(--color-amber);
+  --color-accent: #4fc3f7;
+  --color-accent-hover: #6fd0fa;
+  --color-accent-pressed: #38b3ea;
+  --color-on-accent: #031420;
+  --color-accent-ink: #66d2ff;
+  --color-focus: var(--color-accent-ink);
 
   --color-mark: var(--color-ink);
-  --color-on-mark: #15100a;
+  --color-on-mark: #0d0e10;
 
   --color-wash-hover: color-mix(in oklab, var(--color-ink) 5%, transparent);
   --color-wash-pressed: color-mix(in oklab, var(--color-ink) 8%, transparent);
-  --color-wash-selected: color-mix(in oklab, var(--color-amber) 11%, transparent);
-  --color-wash-selected-hover: color-mix(in oklab, var(--color-amber) 15%, transparent);
-  --color-text-selection: color-mix(in oklab, var(--color-amber) 30%, transparent);
-  --color-scrim: rgb(6 5 4 / 0.62);
-  --color-scrollbar: #766e64;
+  --color-wash-selected: color-mix(in oklab, var(--color-accent-ink) 11%, transparent);
+  --color-wash-selected-hover: color-mix(in oklab, var(--color-accent-ink) 15%, transparent);
+  --color-text-selection: color-mix(in oklab, var(--color-accent-ink) 30%, transparent);
+  --color-scrim: rgb(4 5 6 / 0.62);
+  --color-scrollbar: #6c727c;
   --color-scrollbar-hover: var(--color-line-control-hover);
-  --color-scrollbar-active: var(--color-brass);
+  --color-scrollbar-active: var(--color-accent);
 
-  --color-running: #7fa9d6;
-  --color-verified: #9bce90;
-  --color-warning: #f07b3f;
-  --color-error: #f3727d;
+  --color-running: var(--color-accent-ink);
+  --color-verified: #a2e696;
+  --color-warning: #ffb020;
+  --color-error: #ff6b78;
   --color-error-fill: #e5484d;
-  --color-on-error-fill: #15100a;
+  --color-on-error-fill: #0d0e10;
   --color-wash-running: color-mix(in oklab, var(--color-running) 10%, transparent);
   --color-wash-verified: color-mix(in oklab, var(--color-verified) 10%, transparent);
   --color-wash-warning: color-mix(in oklab, var(--color-warning) 10%, transparent);
@@ -65,9 +59,9 @@
   --color-danger-hover: color-mix(in srgb, var(--color-error-fill) 14%, var(--color-raised));
   --color-danger-pressed: color-mix(in srgb, var(--color-error-fill) 20%, var(--color-raised));
 
-  --color-viz-1: #f2a33a;
-  --color-viz-2: #5f9fd8;
-  --color-viz-3: #86c48c;
+  --color-viz-1: var(--color-accent-ink);
+  --color-viz-2: #e8ebf0;
+  --color-viz-3: #5fd68a;
   --color-viz-ref: var(--color-ink-2);
   --color-viz-limit: var(--color-ink-3);
   --color-viz-band: color-mix(in oklab, var(--color-ink) 6%, transparent);
@@ -171,8 +165,8 @@
 {
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
-  color: var(--color-amber);
-  text-shadow: 0 0 10px color-mix(in oklab, var(--color-amber) 35%, transparent);
+  color: var(--color-accent-ink);
+  text-shadow: 0 0 10px color-mix(in oklab, var(--color-accent-ink) 35%, transparent);
 }
 
 @layer theme

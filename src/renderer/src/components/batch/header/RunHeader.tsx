@@ -415,7 +415,7 @@ export function RunHeader({
           <ActionSlot
             ref={slotRef}
             action={header.slot}
-            brass={header.brass === 'slot'}
+            primary={header.primary === 'slot'}
             selectedCount={selectedCount}
             refusal={refusal}
             onAction={onAction}

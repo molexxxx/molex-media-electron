@@ -417,20 +417,20 @@ describe('RunNotices', () =>
     expect(appendedLine(1, RUN)).toBe('1 new job is not in Batch 31.')
   })
 
-  it('offers the brass Review on the appended jobs', () =>
+  it('offers the primary Review on the appended jobs', () =>
   {
     const onReview = vi.fn()
     render(<AppendedJobsLine count={3} runId={RUN} onReview={onReview} />)
     const button = screen.getByRole('button', { name: 'Review 3 new jobs' })
-    expect(button.className).toContain('bg-brass')
+    expect(button.className).toContain('bg-accent')
     fireEvent.click(button)
     expect(onReview).toHaveBeenCalledTimes(1)
   })
 
-  it('draws the appended control neutral when the brass is elsewhere', () =>
+  it('draws the appended control neutral when the primary is elsewhere', () =>
   {
-    render(<RunNotices runId={RUN} appended={2} appendedBrass={false} onAction={() => {}} />)
-    expect(screen.getByRole('button', { name: 'Review 2 new jobs' }).className).not.toContain('bg-brass')
+    render(<RunNotices runId={RUN} appended={2} appendedPrimary={false} onAction={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Review 2 new jobs' }).className).not.toContain('bg-accent')
     fireEvent.click(screen.getByRole('button', { name: 'Review 2 new jobs' }))
   })
 

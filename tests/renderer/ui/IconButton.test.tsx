@@ -77,7 +77,7 @@ describe('IconButton', () =>
     const button = screen.getByRole('button', { name: 'Loop' })
     expect(button).toHaveAttribute('aria-pressed', 'true')
     expect(button).toHaveClass('border-line-control', 'bg-raised', 'text-ink')
-    expect(button).not.toHaveClass('bg-brass')
+    expect(button).not.toHaveClass('bg-accent')
     rerender(<IconButton label="Loop" icon="action.more" pressed={false} />)
     expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(button).toHaveClass('bg-transparent', 'text-ink-2')
@@ -145,7 +145,7 @@ describe('IconButton', () =>
       ghost: ['bg-transparent', 'text-ink-2', 'hover:bg-wash-hover'],
       secondary: ['bg-raised', 'border-line-strong', 'text-ink', 'hover:bg-raised-hover'],
       danger: ['bg-raised', 'border-error-fill', 'text-error', 'hover:bg-danger-hover'],
-      primary: ['bg-brass', 'text-on-brass', 'hover:bg-brass-hover']
+      primary: ['bg-accent', 'text-on-accent', 'hover:bg-accent-hover']
     }
     for (const [variant, classes] of Object.entries(expected) as [IconButtonVariant, string[]][])
     {

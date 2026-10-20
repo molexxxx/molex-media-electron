@@ -70,7 +70,7 @@ export function OutputTail({ text, onCopy = writeClipboard, onCopied, onFullOutp
   }
   return (
     <div className={cx('flex flex-col items-start gap-2', className)}>
-      <h4 id={captionId} className='type-legend text-brass'>
+      <h4 id={captionId} className='type-legend text-accent-ink'>
         <CapsText>{OUTPUT_TAIL_WORDS.caption}</CapsText>
       </h4>
       <div

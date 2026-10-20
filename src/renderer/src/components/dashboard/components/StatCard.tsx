@@ -33,7 +33,7 @@ function Readout({ label, value, lit = false, tone }: { label: string; value: nu
 {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <dt className="type-legend text-brass">{label}</dt>
+      <dt className="type-legend text-accent-ink">{label}</dt>
       <dd
         data-stat={label}
         className={cx(

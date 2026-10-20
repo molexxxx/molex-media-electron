@@ -10,13 +10,13 @@ import type { Announce } from '../../../ui/LiveRegion'
 import { keyBelongsToControl, type KeyChord } from '../table/tableCommands'
 import { isShown } from './focus'
 
-/** Announced when Ctrl+Enter finds no brass action. */
+/** Announced when Ctrl+Enter finds no primary action. */
 export const NOTHING_TO_START = 'Nothing to start.'
 
 /** Announced when Ctrl+3 asks for Run before the first batch. */
 export const RUN_NOT_STARTED = 'Run starts when you press Start.'
 
-/** Announced when a brass action is refused by an invalid field draft; focus stays in the field. */
+/** Announced when a primary action is refused by an invalid field draft; focus stays in the field. */
 export function fixFirst(field: string): string
 {
   return `Fix ${field} first.`
@@ -27,7 +27,7 @@ export const MODE_KEYS: readonly BatchMode[] = ['queue', 'review', 'run', 'histo
 
 /** A view chord or key of the Batch view's keyboard map that the page acts on. */
 export type BatchKeyCommand =
-  | { kind: 'brass' }
+  | { kind: 'primary' }
   | { kind: 'start-selected' }
   | { kind: 'pause' }
   | { kind: 'picker' }
@@ -65,7 +65,7 @@ function readCommandChord(chord: KeyChord, place: KeyPlace, mac: boolean): Batch
   const lower = key.toLowerCase()
   if (key === 'Enter')
   {
-    return shiftKey ? { kind: 'start-selected' } : { kind: 'brass' }
+    return shiftKey ? { kind: 'start-selected' } : { kind: 'primary' }
   }
   if (lower === 'o')
   {
@@ -176,7 +176,7 @@ export function pausePress(facts: PauseFacts): string
 }
 
 /** What Ctrl+Enter does at this moment, read after the focused draft is committed. */
-export type BrassMoment =
+export type PrimaryMoment =
   | { kind: 'none' }
   /** Start waits on an unchecked acknowledgment: expand a hidden summary, focus the checkbox, and return why. */
   | { kind: 'gated'; focusAcknowledgment: () => string | null }
@@ -200,7 +200,7 @@ export interface BatchKeyHandlers
 {
   /** Commits the focused field's draft through the same path as blur. */
   commitDraft?: () => DraftCommit | Promise<DraftCommit>
-  brass?: () => BrassMoment
+  primary?: () => PrimaryMoment
   startSelected?: () => void | Promise<void>
   togglePause?: (to: 'pause' | 'resume') => void
   openPicker?: () => void
@@ -229,7 +229,7 @@ export interface BatchKeyContext
   handlers: BatchKeyHandlers
   facts: () => BatchKeyFacts
   announce: Announce
-  /** Set while a brass action commits and runs, so a second press does not start twice. */
+  /** Set while a primary action commits and runs, so a second press does not start twice. */
   busy: { current: boolean }
 }
 
@@ -257,15 +257,15 @@ async function commitThen(ctx: BatchKeyContext, act: () => void | Promise<void>)
 }
 
 /**
- * Commits any field draft, then performs the brass action of the moment: an invalid
+ * Commits any field draft, then performs the primary action of the moment: an invalid
  * draft refuses with "Fix {field} first.", a gate on the acknowledgment focuses the checkbox and says why, and no
- * brass action says "Nothing to start."
+ * primary action says "Nothing to start."
  */
-export function runBrass(ctx: BatchKeyContext, brass: () => BrassMoment): Promise<void>
+export function runPrimary(ctx: BatchKeyContext, primary: () => PrimaryMoment): Promise<void>
 {
   return commitThen(ctx, async () =>
   {
-    const moment = brass()
+    const moment = primary()
     switch (moment.kind)
     {
       case 'gated':
@@ -302,14 +302,14 @@ export function runBatchKey(command: BatchKeyCommand, ctx: BatchKeyContext): boo
   const { handlers } = ctx
   switch (command.kind)
   {
-    case 'brass':
+    case 'primary':
     {
-      const brass = handlers.brass
-      if (brass === undefined)
+      const primary = handlers.primary
+      if (primary === undefined)
       {
         return false
       }
-      void runBrass(ctx, brass)
+      void runPrimary(ctx, primary)
       return true
     }
     case 'start-selected':

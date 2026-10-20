@@ -178,7 +178,7 @@ describe('Tabs', () =>
   it('draws the selected tab with the amber underline and the others in quiet ink', () =>
   {
     render(<Modes />)
-    expect(tab(/^Queue/)).toHaveClass('text-ink', 'shadow-[inset_0_-2px_0_var(--color-amber)]', 'h-(--size-control-md)', 'px-3')
+    expect(tab(/^Queue/)).toHaveClass('text-ink', 'shadow-[inset_0_-2px_0_var(--color-accent-ink)]', 'h-(--size-control-md)', 'px-3')
     expect(tab('Review')).toHaveClass('text-ink-3', 'hover:bg-wash-hover')
   })
 

@@ -810,14 +810,14 @@ describe('style floor detectors', () =>
 
   it('flags default palette, white, black, and legacy ramp colors in strict code', () =>
   {
-    const hits = paletteClasses('bg-red-500 hover:text-sky-300/50 border-white/5 text-black accent-accent-500 bg-surface-900 bg-brass text-ink accent-mark border-line-control')
+    const hits = paletteClasses('bg-red-500 hover:text-sky-300/50 border-white/5 text-black accent-accent-500 bg-surface-900 bg-accent text-ink accent-mark border-line-control')
     expect(hits.map((h) => h.match)).toEqual(['bg-red-500', 'hover:text-sky-300', 'border-white', 'text-black', 'accent-accent-500', 'bg-surface-900'])
   })
 
   it('flags color literals but not token references', () =>
   {
     expect(colorLiterals('#7c3aed #fff rgba(0, 0, 0, 0.2) hsl(210 50% 50%) oklch(0.8 0.1 140)').map((h) => h.match)).toEqual(['#7c3aed', '#fff', 'rgba(', 'hsl(', 'oklch('])
-    expect(colorLiterals('var(--color-brass) color-mix(in oklab, var(--color-ink) 5%, transparent) #popout')).toEqual([])
+    expect(colorLiterals('var(--color-accent) color-mix(in oklab, var(--color-ink) 5%, transparent) #popout')).toEqual([])
   })
 
   it('allows only the three radii', () =>
