@@ -166,20 +166,65 @@ describe('Tabs', () =>
     expect(document.activeElement).not.toBe(tab('Review'))
   })
 
-  it('renders a count after the label and an icon before it', () =>
+  it('renders a count after the label, lit on the selected tab, and an icon before it', () =>
   {
     render(<Modes />)
-    const queue = tab('Queue, 38')
-    expect(queue.lastElementChild).toHaveTextContent('38')
-    expect(queue.lastElementChild).toHaveClass('tabular-nums', 'text-ink-3')
+    const count = tab('Queue, 38').querySelector('[data-part="count"]')
+    expect(count).toHaveTextContent('38')
+    expect(count).toHaveClass('tabular-nums', 'type-readout')
     expect(tab('History').querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    cleanup()
+    render(<Modes initial="review" />)
+    expect(tab('Queue, 38').querySelector('[data-part="count"]')).toHaveClass('text-ink-3')
   })
 
-  it('draws the selected tab with the amber underline and the others in quiet ink', () =>
+  it('lights the selected tab and its indicator, and keeps the others in quiet ink', () =>
   {
     render(<Modes />)
-    expect(tab(/^Queue/)).toHaveClass('text-ink', 'shadow-[inset_0_-2px_0_var(--color-accent-ink)]', 'h-(--size-control-md)', 'px-3')
+    const queue = tab(/^Queue/)
+    expect(queue).toHaveClass('text-ink', 'h-(--size-control-md)', 'px-3')
+    expect(queue).toHaveTextContent(/^Queue38$/)
+    expect(queue.querySelector('[data-part="label"]')).toHaveClass('font-semibold')
+    expect(queue.querySelector('[data-part="label"]')).toHaveAttribute('data-label', 'Queue')
+    expect(tab('Review').querySelector('[data-part="label"]')).not.toHaveClass('font-semibold')
     expect(tab('Review')).toHaveClass('text-ink-3', 'hover:bg-wash-hover')
+    const indicator = screen.getByRole('tablist').querySelector('[data-part="indicator"]')
+    expect(indicator).toHaveAttribute('aria-hidden', 'true')
+    expect(indicator).toHaveClass('bg-accent-ink', 'absolute', 'bottom-0')
+  })
+
+  it('moves the lit indicator under the selected tab\'s text', () =>
+  {
+    const spy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement)
+    {
+      const owner = this.closest('[role="tab"]')
+      const text = this.getAttribute('data-part') === 'text' && owner !== null
+      const index = owner === null ? 0 : Array.from(owner.parentElement!.querySelectorAll('[role="tab"]')).indexOf(owner)
+      const left = text ? 12 + index * 80 : 0
+      const width = text ? 48 + index * 4 : 400
+      return { left, width, top: 0, height: 32, right: left + width, bottom: 32, x: left, y: 0, toJSON: () => ({}) } as DOMRect
+    })
+    try
+    {
+      render(<Modes />)
+      const indicator = screen.getByRole('tablist').querySelector('[data-part="indicator"]') as HTMLElement
+      expect(indicator).not.toHaveClass('hidden')
+      expect(indicator.style.transform).toBe('translateX(12px)')
+      expect(indicator.style.width).toBe('48px')
+      fireEvent.click(tab('History'))
+      expect(indicator.style.transform).toBe('translateX(252px)')
+      expect(indicator.style.width).toBe('60px')
+    }
+    finally
+    {
+      spy.mockRestore()
+    }
+  })
+
+  it('hides the indicator while the text has no size or no tab is selected', () =>
+  {
+    render(<Tabs id="t" label="Views" value="none" onChange={() => {}} tabs={[{ value: 'a', label: 'First' }]} />)
+    expect(screen.getByRole('tablist').querySelector('[data-part="indicator"]')).toHaveClass('hidden')
   })
 
   it('makes the panel a Tab stop only while nothing inside it can take focus', async () =>
@@ -244,7 +289,7 @@ describe('Tabs', () =>
     expect(tab('First').tabIndex).toBe(0)
     expect(tab('First').id).toBe('t-tab-a_b')
     expect(tab('Second, 2').tabIndex).toBe(-1)
-    expect(tab('Second, 2').lastElementChild).toHaveClass('text-ink-disabled')
+    expect(tab('Second, 2').querySelector('[data-part="count"]')).toHaveClass('text-ink-disabled')
     expect(tab('Second, 2')).not.toHaveAttribute('aria-describedby')
   })
 })

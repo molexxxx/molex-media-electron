@@ -473,6 +473,11 @@ describe('DropOverlay and EmptyState', () =>
       </PlatformProvider>
     )
     expect(screen.getByRole('heading', { name: EMPTY_COPY.queueHeading })).toBeInTheDocument()
+    const how = screen.getByRole('button', { name: EMPTY_COPY.howHeading })
+    expect(how).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('list', { name: EMPTY_COPY.howHeading })).toBeNull()
+    fireEvent.click(how)
+    expect(how).toHaveAttribute('aria-expanded', 'true')
     const steps = within(screen.getByRole('list', { name: EMPTY_COPY.howHeading })).getAllByRole('listitem')
     expect(steps.map((step) => step.textContent)).toEqual(howSteps('Normalize · Podcast (Apple Podcasts)'))
     expect(steps[0]).toHaveTextContent('Files you add get Normalize · Podcast (Apple Podcasts). Change it under New files before you add.')

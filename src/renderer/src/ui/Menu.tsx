@@ -241,7 +241,7 @@ function MenuRow({ item, domId, leading, submenu, onActivate, onHover }: MenuRow
       <span className="flex min-w-0 flex-1 flex-col">
         <span id={labelId} data-part="label">{item.label}</span>
         {item.description && <span id={descriptionId} className="text-label text-ink-3">{item.description}</span>}
-        {reason && <span id={reasonId} className="text-label text-ink-3">{reason}</span>}
+        {reason && <span id={reasonId} hidden>{reason}</span>}
       </span>
       {keys && <span aria-hidden="true" className={cx('ms-6 shrink-0 text-label leading-5 tabular-nums', !item.disabled && 'text-ink-3')}>{formatKeys(keys, platform)}</span>}
       {submenu && (
@@ -526,7 +526,7 @@ export function Menu({ trigger, items, label, align = 'start', filterList = fals
       {
         return (
           <div key={`group-${index}`} role="group" aria-label={entry.group}>
-            <div aria-hidden="true" className="px-2 pt-1.5 pb-0.5 type-caption text-ink-3">{entry.group}</div>
+            <div aria-hidden="true" className={cx('pt-1.5 pb-0.5 pe-2 type-caption text-ink-3', leading ? 'ps-8' : 'ps-2')}>{entry.group}</div>
             {entry.items.map((item, inner) => renderItem(item, `${domId}-${inner}`, leading, nested))}
           </div>
         )

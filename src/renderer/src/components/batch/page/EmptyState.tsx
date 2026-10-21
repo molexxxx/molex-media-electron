@@ -2,7 +2,7 @@
  * The table region's empty states: the empty queue, which teaches the page's four ideas in order and offers the
  * recent folders, Review with nothing waiting, an empty History, and filters that hide every row.
  */
-import React, { useId } from 'react'
+import React, { useId, useState } from 'react'
 import type { RecentFolder } from '../../../../../shared/jobs/types'
 import { countOf, PART_SEPARATOR } from '../../../copy/batch'
 import { Button } from '../../../ui/Button'
@@ -63,38 +63,39 @@ export interface QueueEmptyStateProps
   busy?: boolean
 }
 
-/** The empty queue: what to do first, how a batch works, and the recent folders. */
+/** The empty queue, centered in the table pane: what to do first, the recent folders, and how a batch works behind a disclosure. */
 export function QueueEmptyState({ recipe, recentFolders, primary, onAddFiles, onAddFolder, onOpenFolder, busy = false }: QueueEmptyStateProps): React.JSX.Element
 {
   const headingId = useId()
   const howId = useId()
   const recentId = useId()
+  const [howOpen, setHowOpen] = useState(false)
   const shown = recentFolders.slice(0, RECENT_SHOWN)
   return (
-    <section aria-labelledby={headingId} data-empty-state="queue" className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-[min(12vh,7rem)] pb-6">
-      <div className="flex flex-col gap-3">
+    <section
+      aria-labelledby={headingId}
+      data-empty-state="queue"
+      className="flex min-h-full w-full flex-1 flex-col items-center justify-center gap-6 px-6 pt-6 pb-[min(22vh,11rem)] text-center"
+    >
+      <div className="flex flex-col items-center gap-2">
         <h2 id={headingId} className="text-section text-ink">{EMPTY_COPY.queueHeading}</h2>
-        <p className="max-w-[65ch] text-body text-ink-2">{EMPTY_COPY.queueLine}</p>
-        <div className="flex flex-wrap items-center gap-3">
+        <p className="text-body text-ink-2">{EMPTY_COPY.queueLine}</p>
+      </div>
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button variant={primary ? 'primary' : 'secondary'} icon="action.addFiles" onClick={onAddFiles} disabled={busy}>{EMPTY_COPY.addFiles}</Button>
           <Button variant="secondary" icon="action.addFolder" onClick={onAddFolder} disabled={busy}>{EMPTY_COPY.addFolder}</Button>
-          <span className="flex items-center gap-2 text-label text-ink-3">
-            <Kbd keys={['Mod', 'O']} />
-            <span aria-hidden="true">{PART_SEPARATOR.trim()}</span>
-            <Kbd keys={['Mod', 'Shift', 'O']} />
-            <span aria-hidden="true">{PART_SEPARATOR.trim()}</span>
-            <Kbd keys={['Mod', 'V']} />
-          </span>
         </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <h3 id={howId} className="text-body font-semibold text-ink">{EMPTY_COPY.howHeading}</h3>
-        <ol aria-labelledby={howId} className="flex list-decimal flex-col gap-1.5 ps-5 text-body text-ink-2 marker:tabular-nums marker:text-ink-3">
-          {howSteps(recipe).map((step) => <li key={step} className="max-w-[65ch]">{step}</li>)}
-        </ol>
+        <span className="flex items-center gap-2 text-label text-ink-3">
+          <Kbd keys={['Mod', 'O']} />
+          <span aria-hidden="true">{PART_SEPARATOR.trim()}</span>
+          <Kbd keys={['Mod', 'Shift', 'O']} />
+          <span aria-hidden="true">{PART_SEPARATOR.trim()}</span>
+          <Kbd keys={['Mod', 'V']} />
+        </span>
       </div>
       {shown.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex w-full max-w-xl flex-col gap-1 text-start">
           <h3 id={recentId} className="text-body font-semibold text-ink">{EMPTY_COPY.recentHeading}</h3>
           <ul aria-labelledby={recentId} className="flex flex-col">
             {shown.map((folder) => (
@@ -113,6 +114,25 @@ export function QueueEmptyState({ recipe, recentFolders, primary, onAddFiles, on
           </ul>
         </div>
       )}
+      <div className="flex w-full max-w-xl flex-col items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={howOpen ? 'action.collapse' : 'action.expand'}
+          aria-expanded={howOpen}
+          aria-controls={howId}
+          onClick={() => setHowOpen(!howOpen)}
+        >
+          {EMPTY_COPY.howHeading}
+        </Button>
+        <div id={howId} hidden={!howOpen} className="w-full">
+          {howOpen && (
+            <ol aria-label={EMPTY_COPY.howHeading} className="flex list-decimal flex-col gap-1.5 ps-5 text-start text-body text-ink-2 marker:tabular-nums marker:text-ink-3">
+              {howSteps(recipe).map((step) => <li key={step}>{step}</li>)}
+            </ol>
+          )}
+        </div>
+      </div>
     </section>
   )
 }
@@ -129,7 +149,7 @@ export interface EmptyNoteProps
 export function EmptyNote({ kind, onClearFilters }: EmptyNoteProps): React.JSX.Element
 {
   return (
-    <div data-empty-state={kind} className="mx-auto flex w-full max-w-3xl flex-col items-start gap-3 px-6 pt-[min(12vh,7rem)] pb-6">
+    <div data-empty-state={kind} className="flex min-h-full w-full flex-1 flex-col items-center justify-center gap-3 px-6 pt-6 pb-[min(22vh,11rem)] text-center">
       <p className="text-body text-ink-2">{EMPTY_COPY[kind]}</p>
       {kind === 'filtered' && onClearFilters !== undefined && (
         <Button variant="secondary" size="sm" onClick={onClearFilters}>{EMPTY_COPY.clearFilters}</Button>

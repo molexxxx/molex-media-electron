@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, type ComponentPropsWithoutRef, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ComponentPropsWithoutRef, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { cx } from './cx'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
@@ -99,11 +99,35 @@ export function TabPanel<T extends TabValue>({ tabsId, value, children, ...rest 
   )
 }
 
+/** Where the lit indicator sits: the selected tab's text, measured within the tab list. */
+interface IndicatorBox
+{
+  left: number
+  width: number
+}
+
+function textBox(list: HTMLDivElement | null, text: HTMLSpanElement | null): IndicatorBox | null
+{
+  if (list === null || text === null)
+  {
+    return null
+  }
+  const listRect = list.getBoundingClientRect()
+  const rect = text.getBoundingClientRect()
+  return { left: rect.left - listRect.left + list.scrollLeft, width: rect.width }
+}
+
+function sameBox(a: IndicatorBox | null, b: IndicatorBox | null): boolean
+{
+  return a === b || (a !== null && b !== null && a.left === b.left && a.width === b.width)
+}
+
 /**
  * A named tab list on native buttons with one Tab stop on the selected tab. Left and Right move with wrap,
  * Home and End reach the ends, and activation follows focus unless `activation` is `manual`. A disabled tab
  * stays focusable with `aria-disabled` and is never activated. Every tab controls the one panel, which
- * `children` renders after the list or a {@link TabPanel} renders elsewhere.
+ * `children` renders after the list or a {@link TabPanel} renders elsewhere. One lit indicator under the
+ * selected tab's text slides to the next selection; it is placed without motion on first paint.
  */
 export function Tabs<T extends TabValue>({
   value,
@@ -120,8 +144,45 @@ export function Tabs<T extends TabValue>({
   const fallbackId = useId()
   const tabsId = id ?? fallbackId
   const tabsRef = useRef<Array<HTMLButtonElement | null>>([])
+  const listRef = useRef<HTMLDivElement>(null)
+  const textsRef = useRef<Array<HTMLSpanElement | null>>([])
+  const [indicator, setIndicator] = useState<IndicatorBox | null>(null)
+  const [animated, setAnimated] = useState(false)
   const selectedIndex = tabs.findIndex((tab) => tab.value === value)
   const tabIndexAt = selectedIndex === -1 ? 0 : selectedIndex
+
+  useLayoutEffect(() =>
+  {
+    const list = listRef.current
+    const measure = (): void =>
+    {
+      const next = textBox(list, selectedIndex === -1 ? null : textsRef.current[selectedIndex])
+      setIndicator((previous) => (sameBox(previous, next) ? previous : next))
+    }
+    measure()
+    if (list === null || typeof ResizeObserver === 'undefined')
+    {
+      return undefined
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    for (const text of textsRef.current)
+    {
+      if (text !== null)
+      {
+        observer.observe(text)
+      }
+    }
+    return () => observer.disconnect()
+  }, [selectedIndex, tabs])
+
+  useEffect(() =>
+  {
+    if (indicator !== null && !animated)
+    {
+      setAnimated(true)
+    }
+  }, [indicator, animated])
 
   const activate = (index: number): void =>
   {
@@ -171,7 +232,17 @@ export function Tabs<T extends TabValue>({
 
   return (
     <>
-      <div role="tablist" aria-label={label} className={cx('flex items-stretch', className)}>
+      <div ref={listRef} role="tablist" aria-label={label} className={cx('relative flex items-stretch', className)}>
+        <span
+          aria-hidden="true"
+          data-part="indicator"
+          className={cx(
+            'pointer-events-none absolute bottom-0 inset-s-0 h-0.75 rounded-xs bg-accent-ink shadow-[0_0_10px_color-mix(in_oklab,var(--color-accent-ink)_45%,transparent)]',
+            animated && 'transition-[transform,width] duration-(--transition-duration-move) ease-out motion-reduce:transition-none',
+            (indicator === null || indicator.width === 0) && 'hidden'
+          )}
+          style={indicator === null ? undefined : { transform: `translateX(${indicator.left}px)`, width: indicator.width }}
+        />
         {tabs.map((tab, index) =>
         {
           const selected = index === selectedIndex
@@ -197,17 +268,40 @@ export function Tabs<T extends TabValue>({
                 tab.disabled
                   ? 'text-ink-disabled'
                   : selected
-                    ? 'text-ink shadow-[inset_0_-2px_0_var(--color-accent-ink)]'
+                    ? 'text-ink'
                     : 'text-ink-3 hover:bg-wash-hover hover:text-ink'
               )}
               onClick={() => activate(index)}
               onKeyDown={(event) => handleKeyDown(event, index)}
             >
               {tab.icon && <Icon name={tab.icon} size="sm" />}
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className={cx('text-label tabular-nums', tab.disabled ? 'text-ink-disabled' : 'text-ink-3')}>{tab.count}</span>
-              )}
+              <span
+                ref={(element) =>
+                {
+                  textsRef.current[index] = element
+                }}
+                data-part="text"
+                className="inline-flex items-baseline gap-1.5"
+              >
+                <span
+                  data-part="label"
+                  data-label={tab.label}
+                  className={cx(
+                    'flex flex-col after:invisible after:h-0 after:overflow-hidden after:font-semibold after:content-[attr(data-label)]',
+                    selected && 'font-semibold'
+                  )}
+                >
+                  {tab.label}
+                </span>
+                {tab.count !== undefined && (
+                  <span
+                    data-part="count"
+                    className={cx('text-label tabular-nums', tab.disabled ? 'text-ink-disabled' : selected ? 'type-readout' : 'text-ink-3')}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </span>
               {reasonId && <span id={reasonId} hidden>{tab.disabledReason}</span>}
             </button>
           )
