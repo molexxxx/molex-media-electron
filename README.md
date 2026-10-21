@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo-light.svg">
   <img alt="molexMedia" src="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg" width="500">
 </picture>
 

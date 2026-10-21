@@ -79,8 +79,16 @@ function engineTemplate(status: TrayStatus): MenuItemConstructorOptions[] {
 /*  Icon                                                               */
 /* ------------------------------------------------------------------ */
 
+/** The tray image in resources: the multi-size ICO on Windows, so the shell picks a sharp frame at every scale, a template glyph on macOS, and the small PNG elsewhere. */
+export function trayIconFile(platform: NodeJS.Platform): string
+{
+  if (platform === 'win32') return 'icon.ico'
+  if (platform === 'darwin') return 'trayTemplate.png'
+  return 'tray.png'
+}
+
 function getIconPath(): string {
-  return path.join(__dirname, '../../resources/icon.png')
+  return path.join(__dirname, '../../resources', trayIconFile(process.platform))
 }
 
 /* ------------------------------------------------------------------ */
@@ -89,9 +97,7 @@ function getIconPath(): string {
 
 /** Create the system tray icon and initial context menu. */
 export function createTray(): void {
-  const iconPath = getIconPath()
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
-  tray = new Tray(icon)
+  tray = new Tray(nativeImage.createFromPath(getIconPath()))
   updateTrayMenu()
 
   tray.on('double-click', () => {

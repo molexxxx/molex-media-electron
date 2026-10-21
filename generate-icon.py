@@ -1,11 +1,13 @@
-"""Render the molexMedia app and tray icon from the design tokens.
+"""Render the molexMedia app icon, tray icons, and logo marks from the design tokens.
 
-A walnut squircle with a lighter walnut rim holds seven brass equalizer bars
-whose cream tops form an M. Colors come from src/renderer/src/styles/tokens.css.
+A graphite squircle with an ice blue rim holds seven ice blue equalizer bars
+whose light tops form an M. Colors come from src/renderer/src/styles/tokens.css.
 
-Writes build/icon.png and resources/icon.png at 512 px, and build/icon.ico with
-every Windows shell size. Frames up to 64 px are drawn on whole pixels so the
-taskbar and Explorer renders stay sharp.
+Writes build/icon.png and resources/icon.png at 512 px; build/icon.ico and
+resources/icon.ico with every Windows shell size; the Linux tray icon and the
+macOS menu bar template at 1x and 2x; and the vector mark and wordmarks for the
+website and the README. Frames up to 64 px are drawn on whole pixels so the
+taskbar, tray, and Explorer renders stay sharp.
 
 Usage: python generate-icon.py (requires Pillow)
 """
@@ -23,7 +25,27 @@ PNG_OUTPUTS = [
     os.path.join(ROOT, 'build', 'icon.png'),
     os.path.join(ROOT, 'resources', 'icon.png'),
 ]
-ICO_OUTPUT = os.path.join(ROOT, 'build', 'icon.ico')
+ICO_OUTPUTS = [
+    os.path.join(ROOT, 'build', 'icon.ico'),
+    os.path.join(ROOT, 'resources', 'icon.ico'),
+]
+TRAY_OUTPUTS = {
+    os.path.join(ROOT, 'resources', 'tray.png'): 24,
+    os.path.join(ROOT, 'resources', 'tray@2x.png'): 48,
+}
+TEMPLATE_OUTPUTS = {
+    os.path.join(ROOT, 'resources', 'trayTemplate.png'): 16,
+    os.path.join(ROOT, 'resources', 'trayTemplate@2x.png'): 32,
+}
+MARK_OUTPUTS = [
+    os.path.join(ROOT, 'website', 'assets', 'mark.svg'),
+    os.path.join(ROOT, 'website', 'favicon.svg'),
+    os.path.join(ROOT, '.github', 'assets', 'icon.svg'),
+]
+WORDMARK_OUTPUTS = {
+    os.path.join(ROOT, '.github', 'assets', 'logo.svg'): 'dark',
+    os.path.join(ROOT, '.github', 'assets', 'logo-light.svg'): 'light',
+}
 
 PNG_SIZE = 512
 ICO_SIZES = [16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 128, 256]
@@ -57,9 +79,21 @@ HINTS = {
     64: (59, 7, 5, 1),
 }
 
+# Menu bar template glyphs: bar count, bar width, gap, and glyph height in whole pixels.
+TEMPLATE_HINTS = {
+    16: (5, 2, 1, 14),
+    32: (7, 3, 1, 28),
+}
+TEMPLATE_TOP_ALPHA = 110
+
+# The wordmark on a light page needs a deeper blue than the accent to stay readable.
+LIGHT_WORD = (0x11, 0x12, 0x15)
+LIGHT_ACCENT_WORD = (0x0a, 0x77, 0xb5)
+WORDMARK_FONT = "'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif"
+
 
 def read_colors(path):
-    """Read the plate, rim, bar, and top colors from the token stylesheet."""
+    """Read the plate, rim, bar, top, and wordmark colors from the token stylesheet."""
     with open(path, encoding='utf-8') as handle:
         declared = dict(re.findall(r'--(color-[\w-]+)\s*:\s*([^;]+);', handle.read()))
 
@@ -76,9 +110,11 @@ def read_colors(path):
 
     return {
         'plate': resolve('color-rail'),
-        'rim': resolve('color-walnut-500'),
-        'bar': resolve('color-brass'),
+        'rim': resolve('color-accent-pressed'),
+        'bar': resolve('color-accent'),
         'top': resolve('color-ink'),
+        'word': resolve('color-ink'),
+        'accent_word': resolve('color-accent-ink'),
     }
 
 
@@ -207,6 +243,83 @@ def render(size, colors):
     return image
 
 
+def template(size):
+    """Rasterize the menu bar glyph: the bars alone in black, the tops lighter so the M still reads."""
+    count, width, gap, height = TEMPLATE_HINTS[size]
+    span = count * width + (count - 1) * gap
+    left = (size - span) // 2
+    bottom = (size + height) // 2
+    bars = []
+    for index, share in enumerate(bar_heights(count)):
+        x0 = left + index * (width + gap)
+        bars.append((x0, bottom - max(1, round(height * share)), x0 + width, bottom))
+    image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    for x0, y0, x1, y1 in bars:
+        draw.rectangle((x0, y0, x1 - 1, y1 - 1), fill=(0, 0, 0, 255))
+    tops = Image.new('L', (size, size), 0)
+    for region in top_regions(bars, size, stepped=True):
+        ImageDraw.Draw(tops).polygon(region, fill=255)
+    alpha = image.getchannel('A')
+    lighter = alpha.point(lambda value: TEMPLATE_TOP_ALPHA if value else 0)
+    image.putalpha(Image.composite(lighter, alpha, tops))
+    return image
+
+
+def hex_of(color):
+    return '#{:02x}{:02x}{:02x}'.format(*color)
+
+
+def number(value):
+    return f'{value:.1f}'.rstrip('0').rstrip('.')
+
+
+def mark_elements(colors):
+    """Return the vector mark at the design size as SVG elements, sharing the raster geometry."""
+    shape = layout(DESIGN)
+    x0, y0, x1, y1 = shape['plate']
+    rim = shape['rim']
+
+    def outline(box):
+        points = squircle(box, 1, points=192)
+        return 'M' + ' L'.join(f'{number(x)} {number(y)}' for x, y in points) + ' Z'
+
+    bars = ''.join(
+        f'<rect x="{number(bx0)}" y="{number(by0)}" width="{number(bx1 - bx0)}" height="{number(by1 - by0)}" '
+        f'rx="{number(shape["radius"])}"/>'
+        for bx0, by0, bx1, by1 in shape['bars']
+    )
+    cut = ' '.join(f'{number(x)},{number(y)}' for x, y in shape['tops'][0])
+    return (
+        f'<clipPath id="mm-top"><polygon points="{cut}"/></clipPath>'
+        f'<path fill="{hex_of(colors["rim"])}" d="{outline(shape["plate"])}"/>'
+        f'<path fill="{hex_of(colors["plate"])}" d="{outline((x0 + rim, y0 + rim, x1 - rim, y1 - rim))}"/>'
+        f'<g fill="{hex_of(colors["bar"])}">{bars}</g>'
+        f'<g fill="{hex_of(colors["top"])}" clip-path="url(#mm-top)">{bars}</g>'
+    )
+
+
+def svg_mark(colors):
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {DESIGN} {DESIGN}" width="128" height="128">'
+        f'{mark_elements(colors)}</svg>\n'
+    )
+
+
+def svg_wordmark(colors, theme):
+    """Return the README wordmark: the mark beside molexMedia, set like the title bar."""
+    word = colors['word'] if theme == 'dark' else LIGHT_WORD
+    accent = colors['accent_word'] if theme == 'dark' else LIGHT_ACCENT_WORD
+    scale = 136 / DESIGN
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">'
+        f'<g transform="translate(24 32) scale({scale:.6f})">{mark_elements(colors)}</g>'
+        f'<text x="184" y="124" font-family="{WORDMARK_FONT}" font-size="68" font-weight="600" '
+        f'fill="{hex_of(word)}">molex<tspan fill="{hex_of(accent)}">Media</tspan></text>'
+        '</svg>\n'
+    )
+
+
 def main():
     colors = read_colors(TOKENS)
     metadata = PngImagePlugin.PngInfo()
@@ -219,8 +332,25 @@ def main():
         print(f'Saved {os.path.relpath(path, ROOT)} ({PNG_SIZE} px)')
 
     frames = [render(size, colors) for size in ICO_SIZES]
-    frames[-1].save(ICO_OUTPUT, format='ICO', sizes=[(size, size) for size in ICO_SIZES], append_images=frames[:-1])
-    print(f'Saved {os.path.relpath(ICO_OUTPUT, ROOT)} ({", ".join(str(size) for size in ICO_SIZES)} px)')
+    for path in ICO_OUTPUTS:
+        frames[-1].save(path, format='ICO', sizes=[(size, size) for size in ICO_SIZES], append_images=frames[:-1])
+        print(f'Saved {os.path.relpath(path, ROOT)} ({", ".join(str(size) for size in ICO_SIZES)} px)')
+
+    for path, size in TRAY_OUTPUTS.items():
+        render(size, colors).save(path, 'PNG', optimize=True, pnginfo=metadata)
+        print(f'Saved {os.path.relpath(path, ROOT)} ({size} px)')
+    for path, size in TEMPLATE_OUTPUTS.items():
+        template(size).save(path, 'PNG', optimize=True, pnginfo=metadata)
+        print(f'Saved {os.path.relpath(path, ROOT)} ({size} px)')
+
+    for path in MARK_OUTPUTS:
+        with open(path, 'w', encoding='utf-8', newline='\n') as handle:
+            handle.write(svg_mark(colors))
+        print(f'Saved {os.path.relpath(path, ROOT)}')
+    for path, theme in WORDMARK_OUTPUTS.items():
+        with open(path, 'w', encoding='utf-8', newline='\n') as handle:
+            handle.write(svg_wordmark(colors, theme))
+        print(f'Saved {os.path.relpath(path, ROOT)}')
 
 
 if __name__ == '__main__':
