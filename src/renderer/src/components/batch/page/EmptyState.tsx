@@ -71,10 +71,10 @@ export function QueueEmptyState({ recipe, recentFolders, primary, onAddFiles, on
   const recentId = useId()
   const shown = recentFolders.slice(0, RECENT_SHOWN)
   return (
-    <section aria-labelledby={headingId} data-empty-state="queue" className="flex max-w-[44rem] flex-col gap-6 px-4 py-6">
+    <section aria-labelledby={headingId} data-empty-state="queue" className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-[min(12vh,7rem)] pb-6">
       <div className="flex flex-col gap-3">
         <h2 id={headingId} className="text-section text-ink">{EMPTY_COPY.queueHeading}</h2>
-        <p className="text-body text-ink-2">{EMPTY_COPY.queueLine}</p>
+        <p className="max-w-[65ch] text-body text-ink-2">{EMPTY_COPY.queueLine}</p>
         <div className="flex flex-wrap items-center gap-3">
           <Button variant={primary ? 'primary' : 'secondary'} icon="action.addFiles" onClick={onAddFiles} disabled={busy}>{EMPTY_COPY.addFiles}</Button>
           <Button variant="secondary" icon="action.addFolder" onClick={onAddFolder} disabled={busy}>{EMPTY_COPY.addFolder}</Button>
@@ -129,7 +129,7 @@ export interface EmptyNoteProps
 export function EmptyNote({ kind, onClearFilters }: EmptyNoteProps): React.JSX.Element
 {
   return (
-    <div data-empty-state={kind} className="flex flex-col items-start gap-3 px-4 py-6">
+    <div data-empty-state={kind} className="mx-auto flex w-full max-w-3xl flex-col items-start gap-3 px-6 pt-[min(12vh,7rem)] pb-6">
       <p className="text-body text-ink-2">{EMPTY_COPY[kind]}</p>
       {kind === 'filtered' && onClearFilters !== undefined && (
         <Button variant="secondary" size="sm" onClick={onClearFilters}>{EMPTY_COPY.clearFilters}</Button>
