@@ -1,8 +1,13 @@
 name: Golden probe
 
 # Runs one golden file on one runner with a process watchdog, for a leg that stalls without a trace.
+# A push to this file runs it with the defaults, since a workflow that exists only on a branch
+# cannot be dispatched until it has run once.
 
 on:
+  push:
+    paths:
+      - .github/workflows/golden-probe.yml
   workflow_dispatch:
     inputs:
       file:
@@ -16,7 +21,7 @@ on:
 
 jobs:
   probe:
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ inputs.runner || 'windows-2025' }}
     timeout-minutes: 14
     defaults:
       run:
@@ -67,7 +72,7 @@ jobs:
 
       - name: Run the file
         timeout-minutes: 10
-        run: npm run test:golden -- --reporter=verbose "${{ inputs.file }}"
+        run: npm run test:golden -- --reporter=verbose "${{ inputs.file || 'tests/golden/engine.golden.ts' }}"
 
       - name: Watchdog log
         if: always()
