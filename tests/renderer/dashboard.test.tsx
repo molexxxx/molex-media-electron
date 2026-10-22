@@ -4,16 +4,17 @@ import { render, screen, cleanup, fireEvent, act, waitFor } from '@testing-libra
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import Dashboard, { addFilesWithOperation, ffmpegShortVersion, memoryWords, tileDetail, TILE_OUTPUT, type OperationAddDeps } from '../../src/renderer/src/components/dashboard/Dashboard'
+import Dashboard, { addFilesWithOperation, dropHint, ffmpegShortVersion, memoryWords, tileDetail, TILE_OUTPUT, type OperationAddDeps } from '../../src/renderer/src/components/dashboard/Dashboard'
 import * as toolCard from '../../src/renderer/src/components/dashboard/components/ToolCard'
-import { StatBar } from '../../src/renderer/src/components/dashboard/components/StatCard'
-import { RecentActivity } from '../../src/renderer/src/components/dashboard/components/RecentActivity'
+import { DisplayWindow, OPEN_BATCH_LABEL, showAttentionInBatch, windowConsequence, windowLegend } from '../../src/renderer/src/components/dashboard/components/StatCard'
+import { ALL_BATCHES_LABEL, RecentActivity, RECENT_LIMIT } from '../../src/renderer/src/components/dashboard/components/RecentActivity'
 import { initialJobsState, useJobsStore } from '../../src/renderer/src/stores/jobs'
 import { useAppStore } from '../../src/renderer/src/stores/appStore'
+import { useBatchView } from '../../src/renderer/src/stores/batchView'
 import { applyPreset, DEFAULT_PRESETS } from '../../src/shared/jobs/presets'
 import { OPERATIONS, type Operation } from '../../src/shared/jobs/recipes'
 import type { JobId, RunId } from '../../src/shared/jobs/ids'
-import type { JobState, JobView, RunState } from '../../src/shared/jobs/types'
+import { JOB_STATES, type JobCounts, type JobState, type JobView, type ResultStamp, type RunState } from '../../src/shared/jobs/types'
 
 function jobView(id: string, extra: Partial<JobView> = {}): JobView
 {
@@ -81,10 +82,34 @@ function stat(label: string): string
 const R1 = 'R-0001' as RunId
 const R2 = 'R-0002' as RunId
 
+function runState(runId: RunId, status: RunState['status'], percent: number): RunState
+{
+  const counts = Object.fromEntries(JOB_STATES.map((state) => [state, 0])) as JobCounts
+  return {
+    status,
+    runId,
+    startedAt: 1_000,
+    pause: null,
+    counts,
+    progress: { percent, etaSec: 1_080, mediaSecPerSec: 3.4, aggregateSpeed: 3.4, bytesWritten: 0, elapsedMs: 60_000 },
+    workers: { setting: 2 as RunState['workers']['setting'], limits: { total: 2, videoCpu: 1, gpu: 1 }, active: { total: 1, videoCpu: 0, gpu: 1, analysis: 0, starting: 0 } },
+    quitWhenIdle: false,
+    needsAck: null
+  }
+}
+
+/** The visible state sentence of the display window, without its hidden copies and probes. */
+function sentence(): string
+{
+  const box = document.querySelector('[data-sentence]') as HTMLElement
+  return [...box.children].filter((child) => !child.hasAttribute('hidden') && child.getAttribute('aria-hidden') !== 'true').map((child) => child.textContent).join('')
+}
+
 beforeEach(() =>
 {
   nextSeq = 1
   useJobsStore.setState(initialJobsState(), true)
+  useBatchView.setState(useBatchView.getInitialState(), true)
 })
 
 afterEach(() =>
@@ -92,7 +117,7 @@ afterEach(() =>
   cleanup()
 })
 
-describe('StatBar', () =>
+describe('DisplayWindow', () =>
 {
   it('counts pending and queued jobs as Waiting and analyzing through finalizing as Active', () =>
   {
@@ -107,7 +132,7 @@ describe('StatBar', () =>
       job('held', { runId: R1 }),
       job('done', { runId: R1, endedAt: 5 })
     ])
-    render(<StatBar />)
+    render(<DisplayWindow />)
     expect(stat('Waiting')).toBe('3')
     expect(stat('Active')).toBe('4')
     expect(screen.getByText('Active')).toBeInTheDocument()
@@ -125,7 +150,7 @@ describe('StatBar', () =>
       job('held', { runId: R2 }),
       job('pending')
     ])
-    render(<StatBar />)
+    render(<DisplayWindow />)
     expect(stat('Done')).toBe('2')
     expect(stat('Need attention')).toBe('3')
   })
@@ -138,7 +163,7 @@ describe('StatBar', () =>
       job('failed', { runId: R1, endedAt: 2 }),
       job('done', { runId: R1, endedAt: 1 })
     ], { runId: R1 } as RunState)
-    render(<StatBar />)
+    render(<DisplayWindow />)
     expect(stat('Done')).toBe('2')
     expect(stat('Need attention')).toBe('1')
   })
@@ -146,17 +171,99 @@ describe('StatBar', () =>
   it('shows zeros before any batch', () =>
   {
     seed([job('pending')])
-    render(<StatBar />)
+    render(<DisplayWindow />)
     expect(stat('Waiting')).toBe('1')
     expect(stat('Done')).toBe('0')
     expect(stat('Need attention')).toBe('0')
+  })
+
+  it('says the queue is empty, then counts the waiting jobs in the words of the Batch header', () =>
+  {
+    const { unmount } = render(<DisplayWindow />)
+    expect(document.querySelector('section[data-subject="empty"]')).not.toBeNull()
+    expect(sentence()).toBe('No jobs yet')
+    expect(document.querySelector('[data-part="legend"]')).toBeNull()
+    expect(document.querySelector('[role="progressbar"]')).toBeNull()
+    unmount()
+    seed([job('pending'), job('pending'), job('pending')])
+    render(<DisplayWindow />)
+    expect(document.querySelector('section[data-subject="waiting"]')).not.toBeNull()
+    expect(sentence()).toBe('3 jobs · 3 KB')
+  })
+
+  it('names the running batch and sweeps its meter with the time left', () =>
+  {
+    seed([
+      job('done', { runId: R1, endedAt: 2 }),
+      job('encoding', { runId: R1 }),
+      job('queued', { runId: R1 })
+    ], runState(R1, 'running', 46))
+    render(<DisplayWindow />)
+    expect(document.querySelector('section[data-subject="run"]')).not.toBeNull()
+    expect(document.querySelector('[data-part="legend"]')?.textContent).toMatch(/^Batch 1/)
+    expect(sentence()).toBe('1 of 3 finished')
+    const meter = document.querySelector('[role="progressbar"]') as HTMLElement
+    expect(meter.getAttribute('aria-valuenow')).toBe('46')
+    expect(meter.getAttribute('aria-label')).toMatch(/^Batch 1 progress$/)
+    expect(meter.dataset.tone).toBe('meter')
+    expect(screen.getByText(/about 18 min left/)).toBeInTheDocument()
+    expect(stat('Active')).toBe('1')
+  })
+
+  it('states the finished batch and never its output policy', () =>
+  {
+    seed([
+      job('done', { runId: R1, startedAt: 1_000, endedAt: 61_000 }),
+      job('done', { runId: R1, startedAt: 1_000, endedAt: 121_000 })
+    ])
+    useJobsStore.setState({ policy: { destination: { mode: 'beside' }, conflict: 'rename', displaced: 'keep' } as unknown as NonNullable<ReturnType<typeof useJobsStore.getState>['policy']> })
+    render(<DisplayWindow />)
+    expect(document.querySelector('section[data-subject="finished"]')).not.toBeNull()
+    expect(sentence()).toMatch(/^Finished/)
+    expect(document.querySelector('[data-consequence="policy"], [data-consequence="warning"]')).toBeNull()
+    expect(windowConsequence({ kind: 'policy', text: 'Renames if the name is taken', warning: false })).toBeNull()
+    expect(windowConsequence({ kind: 'outcome', text: 'Started 9:00 AM' })).toEqual({ kind: 'outcome', text: 'Started 9:00 AM' })
+    expect(windowLegend('waiting', R1)).toBeNull()
+    expect(windowLegend('run', null)).toBeNull()
+    expect(windowLegend('finished', R1)).toMatch(/^Batch 1/)
+  })
+
+  it('opens Batch from its button', () =>
+  {
+    const setView = vi.fn()
+    useAppStore.setState({ setView } as never)
+    render(<DisplayWindow />)
+    fireEvent.click(screen.getByRole('button', { name: OPEN_BATCH_LABEL }))
+    expect(setView).toHaveBeenCalledWith('batch')
+  })
+
+  it('opens Batch in Run mode filtered to the jobs that need attention', () =>
+  {
+    const setView = vi.fn()
+    useAppStore.setState({ setView } as never)
+    seed([
+      job('done', { runId: R1, endedAt: 1 }),
+      job('failed', { runId: R1, endedAt: 2 })
+    ])
+    render(<DisplayWindow />)
+    expect(stat('Need attention')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: /1 needs attention/ }))
+    expect(setView).toHaveBeenCalledWith('batch')
+    const view = useBatchView.getState()
+    expect(view.mode).toBe('run')
+    expect(view.runAvailable).toBe(true)
+    expect(view.views.run.filters.chips).toEqual([{ facet: 'status', value: 'attention' }, { facet: 'batch', value: R1 }])
+    const showBatch = vi.fn()
+    showAttentionInBatch({ runId: R1, count: 1, label: '1 needs attention', tooltip: '' }, showBatch)
+    expect(showBatch).toHaveBeenCalledTimes(1)
   })
 })
 
 describe('RecentActivity', () =>
 {
-  it('lists the last six settled jobs by endedAt, newest first, with catalog numbers', () =>
+  it('lists the last settled jobs by endedAt, newest first, with catalog numbers', () =>
   {
+    expect(RECENT_LIMIT).toBe(10)
     seed([
       job('done', { runId: R1, endedAt: 10 }),
       job('failed', { runId: R1, endedAt: 70 }),
@@ -171,7 +278,7 @@ describe('RecentActivity', () =>
     ])
     render(<RecentActivity />)
     const rows = [...document.querySelectorAll('[data-job]')].map((row) => row.getAttribute('data-job'))
-    expect(rows).toEqual(['MM-0002', 'MM-0006', 'MM-0005', 'MM-0004', 'MM-0003', 'MM-0007'])
+    expect(rows).toEqual(['MM-0002', 'MM-0006', 'MM-0005', 'MM-0004', 'MM-0003', 'MM-0007', 'MM-0001'])
     expect(screen.getByText('MM-0002')).toBeInTheDocument()
     expect(screen.getByText('2', { selector: '[aria-hidden="true"]' })).toBeInTheDocument()
   })
@@ -198,6 +305,47 @@ describe('RecentActivity', () =>
     render(<RecentActivity />)
     expect(screen.getByText('Finished jobs appear here.')).toBeInTheDocument()
     expect(document.querySelector('[data-job]')).toBeNull()
+  })
+
+  it('stamps a measured job with its values and names its batch and the time it ended', () =>
+  {
+    const stamp: ResultStamp = {
+      verdict: 'verified',
+      outputName: 'MM-0001-normalize.flac',
+      container: 'flac',
+      inputBytes: 1000,
+      outputBytes: 1200,
+      durationSec: 61,
+      decode: 'full',
+      audioStreams: 1,
+      verdictStream: 0,
+      loudness: { lufs: -18.1, unit: 'LUFS', reference: 'target', referenceLufs: -18, deviation: -0.1, deviationUnit: 'LU', check: 1, checkClass: 'lossless', status: 'within' },
+      truePeak: { dbtp: -1.4, preEncodeDbtp: -1.4, limitDbtp: -1, status: 'within' },
+      size: null,
+      frames: null,
+      cues: null,
+      placement: 'planned',
+      warnings: 0
+    }
+    seed([job('done', { runId: R1, endedAt: Date.UTC(2026, 9, 21, 0, 54), stamp })])
+    render(<RecentActivity />)
+    const row = document.querySelector('[data-job]') as HTMLElement
+    expect(row.querySelector('.ui-stamp')).not.toBeNull()
+    expect(row.textContent).toMatch(/Verified/)
+    expect(row.textContent).toMatch(/LUFS/)
+    expect(row.querySelector('[data-part="batch"]')?.textContent).toBe('Batch 1')
+    expect(row.querySelector('[data-part="ended"]')?.textContent).toMatch(/\d/)
+    expect(row.querySelector('.ui-status')).toBeNull()
+  })
+
+  it('opens Batch in History mode from All batches', () =>
+  {
+    const setView = vi.fn()
+    useAppStore.setState({ setView } as never)
+    render(<RecentActivity />)
+    fireEvent.click(screen.getByRole('button', { name: ALL_BATCHES_LABEL }))
+    expect(setView).toHaveBeenCalledWith('batch')
+    expect(useBatchView.getState().mode).toBe('history')
   })
 })
 
@@ -274,15 +422,27 @@ describe('Dashboard', () =>
     delete (window as unknown as { api?: unknown }).api
   })
 
-  it('offers one "Add files with" row per operation and says Gain, never Boost or Volume', () =>
+  it('offers one "Add files with" key per operation and says Gain, never Boost or Volume', () =>
   {
     const { deps } = addDeps()
     render(<Dashboard deps={deps} />)
     for (const name of ['Normalize', 'Gain', 'Convert', 'Compress', 'Extract'])
     {
-      expect(screen.getByRole('button', { name: new RegExp(`^Add files with ${name}…`) })).toBeInTheDocument()
+      const key = screen.getByRole('button', { name: new RegExp(`^Add files with ${name}…`) })
+      expect(key.textContent).toMatch(new RegExp(`^${name}Starts with`))
     }
     expect(document.body.textContent).not.toMatch(/Boost|Volume/)
+    expect(screen.getByText('Add files with')).toBeInTheDocument()
+  })
+
+  it('says files can be dropped anywhere and names the operation they get', () =>
+  {
+    expect(dropHint(null)).toBe('Or drop files and folders anywhere on this page.')
+    expect(dropHint('Normalize · Streaming (EBU R 128 s2)')).toBe('Or drop files and folders anywhere on this page; they get Normalize · Streaming (EBU R 128 s2).')
+    useJobsStore.setState({ defaultRecipe: applyPreset(DEFAULT_PRESETS.normalize, TILE_OUTPUT) })
+    const { deps } = addDeps()
+    render(<Dashboard deps={deps} />)
+    expect(document.querySelector('[data-part="drop-hint"]')?.textContent).toMatch(/^Or drop files and folders anywhere on this page; they get Normalize/)
   })
 
   it('adds only new jobs from a tile and leaves the queue as it was', async () =>
@@ -382,9 +542,9 @@ describe('dashboard helpers', () =>
     expect(ffmpegShortVersion('ffmpeg version n7.1-12 Copyright')).toBe('n7.1-12')
   })
 
-  it('keeps no animated-background helpers in the tool rows', () =>
+  it('keeps no animated-background helpers in the keys', () =>
   {
-    expect(Object.keys(toolCard).sort()).toEqual(['ToolRow'])
+    expect(Object.keys(toolCard).sort()).toEqual(['KeyStrip', 'ToolKey'])
   })
 
   it('reads no old batch field of the app store', () =>

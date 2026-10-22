@@ -1,43 +1,61 @@
 /**
- * @module components/dashboard/ToolCard
- * @description One row of a Dashboard command list: a glyph, a name, a line of detail, and the action it runs.
+ * @module components/dashboard/ToolKey
+ * @description One key of a Dashboard key strip: a glyph, a printed name, a line of detail, and the action it runs.
  */
 import React from 'react'
 import { cx, Icon, type IconName } from '../../../ui'
 
-/** Props for {@link ToolRow}. */
-export interface ToolRowProps
+/** Props for {@link ToolKey}. */
+export interface ToolKeyProps
 {
   icon: IconName
+  /** The printed name, "Normalize". */
   title: string
-  /** The secondary line: what the row starts with or opens. */
+  /** The secondary line: the preset new files start with, or what the tool opens. */
   detail: string
+  /** The accessible name when it says more than the printed one: "Add files with Normalize…". */
+  name?: string
   onActivate: () => void
-  /** Keeps the row focusable and ignores activation while a picker is open. */
+  /** Keeps the key focusable and ignores activation while a picker is open. */
   busy?: boolean
 }
 
-/** A full-width command row with an instant hover fill; rows stack inside a framed list. */
-export function ToolRow({ icon, title, detail, onActivate, busy = false }: ToolRowProps): React.JSX.Element
+/** A key in a hairline-divided strip: the glyph above the name, an instant hover fill, and an inset focus ring. */
+export function ToolKey({ icon, title, detail, name, onActivate, busy = false }: ToolKeyProps): React.JSX.Element
 {
   return (
-    <li className="border-b border-line last:border-b-0">
+    <li className="min-w-0 bg-panel">
       <button
         type="button"
+        aria-label={name}
         aria-disabled={busy || undefined}
+        data-focus="inset"
         onClick={busy ? undefined : onActivate}
         className={cx(
-          'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-left',
+          'flex h-full min-h-22 w-full flex-col items-start justify-between gap-3 p-3 text-start',
           busy ? 'cursor-default' : 'hover:bg-wash-hover active:bg-wash-pressed'
         )}
       >
-        <Icon name={icon} size="md" className="text-ink-2" />
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate text-body text-ink">{title}</span>
-          <span className="truncate text-label text-ink-3">{detail}</span>
+        <Icon name={icon} size="lg" className="text-ink-2" />
+        <span className="flex w-full min-w-0 flex-col">
+          <span className="truncate text-body font-semibold text-ink">{title}</span>
+          <span className="truncate text-label text-ink-3" title={detail}>{detail}</span>
         </span>
-        <Icon name="action.next" size="sm" className="text-ink-3" />
       </button>
     </li>
   )
+}
+
+/** Props for {@link KeyStrip}. */
+export interface KeyStripProps
+{
+  children: React.ReactNode
+  /** The column template, such as `grid-cols-5`. */
+  className?: string
+}
+
+/** The framed strip the keys sit in; the hairline grid between keys is the strip's own ground showing through. */
+export function KeyStrip({ children, className }: KeyStripProps): React.JSX.Element
+{
+  return <ul className={cx('grid gap-px overflow-hidden rounded-sm border border-line bg-line', className)}>{children}</ul>
 }

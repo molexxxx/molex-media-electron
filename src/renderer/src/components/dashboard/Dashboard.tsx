@@ -1,19 +1,21 @@
 ﻿/**
  * @module components/dashboard/Dashboard
- * @description The home view: the queue's display window, "Add files with" shortcuts into Batch, the Editor and
- * Player, a system panel, and the latest settled jobs, all read from the jobs store.
+ * @description The home view, a front panel: the queue's display window across the top with the machine's readiness
+ * along its foot, a strip of operation keys into Batch beside the Editor and Player keys, and the latest settled
+ * jobs with their measured stamps, all read from the jobs store.
  */
 import React from 'react'
 import type { EncoderPolicy } from '../../../../shared/audio/types'
 import type { JobsApi } from '../../../../shared/jobs/contract'
-import { operationLabel } from '../../../../shared/jobs/describe'
-import { applyDefaultPreset, DEFAULT_PRESETS, findPreset } from '../../../../shared/jobs/presets'
+import { operationLabel, recipeLabel } from '../../../../shared/jobs/describe'
+import { applyDefaultPreset, DEFAULT_PRESETS, findPreset, presetLookup } from '../../../../shared/jobs/presets'
 import { OPERATIONS, type Operation } from '../../../../shared/jobs/recipes'
 import { useAppStore } from '../../stores/appStore'
+import { useJobsStore, type JobsState } from '../../stores/jobs'
 import { Banner, type IconName } from '../../ui'
 import { RecentActivity } from './components/RecentActivity'
-import { StatBar } from './components/StatCard'
-import { ToolRow } from './components/ToolCard'
+import { DisplayWindow } from './components/StatCard'
+import { KeyStrip, ToolKey } from './components/ToolCard'
 
 /** The output policy a default preset is applied with: encode as the source is encoded. */
 export const TILE_OUTPUT: EncoderPolicy = { kind: 'same-as-source' }
@@ -91,10 +93,24 @@ export interface DashboardProps
   deps?: OperationAddDeps
 }
 
+/** "Or drop files and folders anywhere on this page; they get Normalize · Streaming (EBU R 128 s2)." */
+export function dropHint(recipe: string | null): string
+{
+  return recipe === null
+    ? 'Or drop files and folders anywhere on this page.'
+    : `Or drop files and folders anywhere on this page; they get ${recipe}.`
+}
+
+const selectDefaultRecipe = (state: JobsState): JobsState['defaultRecipe'] => state.defaultRecipe
+const selectPresets = (state: JobsState): JobsState['presets'] => state.presets
+
 function OperationList({ deps }: { deps: OperationAddDeps }): React.JSX.Element
 {
   const [picking, setPicking] = React.useState(false)
   const [refusal, setRefusal] = React.useState<string | null>(null)
+  const defaultRecipe = useJobsStore(selectDefaultRecipe)
+  const presets = useJobsStore(selectPresets)
+  const hint = dropHint(defaultRecipe === null ? null : recipeLabel(defaultRecipe, presetLookup(presets?.user ?? [])))
 
   const run = async (op: Operation): Promise<void> =>
   {
@@ -116,22 +132,26 @@ function OperationList({ deps }: { deps: OperationAddDeps }): React.JSX.Element
 
   return (
     <section aria-labelledby="dashboard-add" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-add" className="type-legend text-accent-ink">Start a batch</h2>
+      <div className="flex min-h-6 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="dashboard-add" className="type-legend text-accent-ink">Add files with</h2>
+        <p data-part="drop-hint" className="min-w-0 truncate text-label text-ink-3">{hint}</p>
+      </div>
       {refusal !== null && (
         <Banner tone="error" title="The files were not added." onDismiss={() => setRefusal(null)}>{refusal}</Banner>
       )}
-      <ul className="rounded-sm border border-line bg-panel">
+      <KeyStrip className="grid-cols-5">
         {OPERATIONS.map((op) => (
-          <ToolRow
+          <ToolKey
             key={op}
             icon={OPERATION_ICONS[op]}
-            title={`Add files with ${operationLabel(op)}…`}
+            title={operationLabel(op)}
+            name={`Add files with ${operationLabel(op)}…`}
             detail={tileDetail(op)}
             busy={picking}
             onActivate={() => void run(op)}
           />
         ))}
-      </ul>
+      </KeyStrip>
     </section>
   )
 }
@@ -140,11 +160,11 @@ function ToolList({ open }: { open: (view: 'editor' | 'player') => void }): Reac
 {
   return (
     <section aria-labelledby="dashboard-tools" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-tools" className="type-legend text-accent-ink">Tools</h2>
-      <ul className="rounded-sm border border-line bg-panel">
-        <ToolRow icon="nav.editor" title="Media Editor" detail="Timeline, transforms, keyframes, and preview" onActivate={() => open('editor')} />
-        <ToolRow icon="nav.player" title="Media Player" detail="Local files and streams with visualizations" onActivate={() => open('player')} />
-      </ul>
+      <h2 id="dashboard-tools" className="min-h-6 type-legend text-accent-ink">Tools</h2>
+      <KeyStrip className="grid-cols-2">
+        <ToolKey icon="nav.editor" title="Media Editor" detail="Timeline, transforms, keyframes, and preview" onActivate={() => open('editor')} />
+        <ToolKey icon="nav.player" title="Media Player" detail="Local files and streams with visualizations" onActivate={() => open('player')} />
+      </KeyStrip>
     </section>
   )
 }
@@ -202,24 +222,27 @@ export function ffmpegShortVersion(version: string | null): string | null
   return version.replace(/^ffmpeg version /i, '').split(/\s+/)[0]
 }
 
-function SystemRow({ label, value, detail, children }: { label: string; value: string; detail?: string | null; children?: React.ReactNode }): React.JSX.Element
+function Fact({ label, value, detail, title, children }: { label: string; value: string; detail?: string | null; title?: string | null; children?: React.ReactNode }): React.JSX.Element
 {
   return (
-    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 border-b border-line px-3 py-2 last:border-b-0">
-      <dt className="text-label text-ink-3">{label}</dt>
-      <dd className="flex min-w-0 flex-col">
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-body text-ink tabular-nums" title={value}>{value}</span>
-          {children}
-        </span>
-        {detail != null && detail !== '' && <span className="truncate text-label text-ink-3 tabular-nums" title={detail}>{detail}</span>}
+    <div className="flex min-w-0 items-center gap-1.5 text-label" title={title ?? undefined}>
+      <dt className="shrink-0 text-ink-3">{label}</dt>
+      <dd className="flex min-w-0 items-center gap-1.5 tabular-nums text-ink-2">
+        <span className="truncate">{value}</span>
+        {children}
+        {detail != null && detail !== '' && (
+          <>
+            <span aria-hidden="true" className="text-ink-3">·</span>
+            <span className="truncate text-ink-3">{detail}</span>
+          </>
+        )}
       </dd>
     </div>
   )
 }
 
-/** Memory, CPU, GPU acceleration, FFmpeg, and platform, polled from main while the Dashboard shows. */
-function SystemPanel({ ffmpegVersion }: { ffmpegVersion: string | null }): React.JSX.Element
+/** FFmpeg, GPU acceleration, CPU, memory, and platform along the display window's foot, polled from main while the Dashboard shows. */
+function SystemStrip({ ffmpegVersion }: { ffmpegVersion: string | null }): React.JSX.Element
 {
   const setSystemInfo = useAppStore((s) => s.setSystemInfo)
   const [info, setInfo] = React.useState<SystemSample | null>(null)
@@ -311,26 +334,23 @@ function SystemPanel({ ffmpegVersion }: { ffmpegVersion: string | null }): React
   const platform = info?.platform ? `${PLATFORM_NAMES[info.platform] ?? info.platform}${info.arch ? ` ${info.arch}` : ''}` : 'Detecting…'
 
   return (
-    <section aria-labelledby="dashboard-system" className="flex min-w-0 flex-col gap-2">
-      <h2 id="dashboard-system" className="type-legend text-accent-ink">System</h2>
-      <dl className="rounded-sm border border-line bg-panel">
-        <SystemRow label="Memory" value={memory?.value ?? 'Detecting…'} detail={memory?.detail} />
-        <SystemRow label="CPU" value={info?.cpuModel || 'Detecting…'} detail={cpuDetail} />
-        <SystemRow label="GPU" value={gpu === null || gpu.pending ? 'Detecting…' : gpu.label} detail={gpuDetail}>
-          {gpu !== null && !gpu.pending && (
-            <span data-part="vendor" className="shrink-0 rounded-xs border border-line-strong px-1 text-label text-ink-2">
-              {VENDOR_NAMES[gpu.vendor] ?? gpu.vendor}
-            </span>
-          )}
-        </SystemRow>
-        <SystemRow label="FFmpeg" value={ffmpeg ?? 'Detecting…'} />
-        <SystemRow label="Platform" value={platform} />
-      </dl>
-    </section>
+    <dl aria-label="System" className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-1">
+      <Fact label="FFmpeg" value={ffmpeg ?? 'Detecting…'} />
+      <Fact label="GPU" value={gpu === null || gpu.pending ? 'Detecting…' : gpu.label} detail={gpuDetail} title={gpu?.gpuModel}>
+        {gpu !== null && !gpu.pending && (
+          <span data-part="vendor" className="shrink-0 rounded-xs border border-line-strong px-1 text-label text-ink-2">
+            {VENDOR_NAMES[gpu.vendor] ?? gpu.vendor}
+          </span>
+        )}
+      </Fact>
+      <Fact label="CPU" value={cpuDetail ?? 'Detecting…'} title={info?.cpuModel} />
+      <Fact label="Memory" value={memory?.value ?? 'Detecting…'} detail={memory?.detail} />
+      <Fact label="Platform" value={platform} />
+    </dl>
   )
 }
 
-/** The home view: no field of it reads the old batch state; queue numbers and recent jobs come from the jobs store. */
+/** The home view: no field of it reads the old batch state; the queue, the keys' drop hint, and recent jobs come from the jobs store. */
 export default function Dashboard({ deps }: DashboardProps = {}): React.JSX.Element
 {
   const setView = useAppStore((s) => s.setView)
@@ -339,16 +359,13 @@ export default function Dashboard({ deps }: DashboardProps = {}): React.JSX.Elem
 
   return (
     <div className="flex min-h-full flex-col gap-6 pr-2 sm:pr-3 md:pr-4">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-col gap-3">
         <h1 className="text-title font-semibold text-ink">Dashboard</h1>
-        <StatBar />
+        <DisplayWindow footer={<SystemStrip ffmpegVersion={ffmpegVersion} />} />
       </header>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <OperationList deps={addDeps} />
-          <ToolList open={setView} />
-        </div>
-        <SystemPanel ffmpegVersion={ffmpegVersion} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,2fr)]">
+        <OperationList deps={addDeps} />
+        <ToolList open={setView} />
       </div>
       <RecentActivity />
     </div>
