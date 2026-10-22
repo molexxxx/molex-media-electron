@@ -7,8 +7,10 @@
 import { ipcMain } from 'electron'
 import { logger } from '../logger'
 import { addUrlHistory } from '../config'
+import { fileURLToPath } from 'url'
 import { resolvePlaylist, getAudioStreamUrl, getInstalledBrowsers, setBrowserAndExport, clearCookies, getCookieInfo } from '../ytdlp'
-import { startPreviewServer, registerStreamProxy } from '../preview-server'
+import { getAudioFile } from '../ytdlp/resolver'
+import { startPreviewServer, registerPreviewPath, registerStreamProxy } from '../preview-server'
 
 /** Register YouTube / yt-dlp IPC handlers. */
 export function registerMediaIPC(): void {
@@ -52,13 +54,19 @@ export function registerMediaIPC(): void {
     return getCookieInfo()
   })
 
-  ipcMain.handle('ytdlp:getStreamUrl', async (_, videoUrl: string, quality?: string) => {
+  ipcMain.handle('ytdlp:getStreamUrl', async (_, videoUrl: string, quality?: string, options?: { download?: boolean }) => {
     try {
-      const result = await getAudioStreamUrl(videoUrl, (quality as any) || 'best')
-      // Register CDN URL with the HTTP server for proxied streaming
       const baseUrl = await startPreviewServer()
-      const token = registerStreamProxy(result.audioUrl)
-      return { success: true, mediaUrl: `${baseUrl}/${token}`, title: result.title, duration: result.duration }
+      if (options?.download === true) {
+        const file = await getAudioFile(videoUrl)
+        return { success: true, mediaUrl: `${baseUrl}/${registerPreviewPath(file)}`, downloaded: true }
+      }
+      const result = await getAudioStreamUrl(videoUrl, (quality as any) || 'best')
+      // A local file (the HLS fallback) is served as a file; a CDN URL is proxied with the headers yt-dlp used
+      const token = result.audioUrl.startsWith('file:')
+        ? registerPreviewPath(fileURLToPath(result.audioUrl))
+        : registerStreamProxy(result.audioUrl, result.httpHeaders)
+      return { success: true, mediaUrl: `${baseUrl}/${token}`, title: result.title, duration: result.duration, downloaded: result.audioUrl.startsWith('file:') }
     } catch (err: any) {
       logger.error(`yt-dlp stream URL failed: ${err.message}`)
       return { success: false, error: err.message }

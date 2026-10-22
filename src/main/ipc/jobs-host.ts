@@ -30,6 +30,7 @@ import {
   type BinaryIdentity, type BuildCandidate, type BuildSource, type FfmpegBuildInfo, type PinnedBuilds, type SelfTestId, type SelfTestRecord
 } from '../ffmpeg/build'
 import { createExec, type Exec } from '../ffmpeg/exec'
+import { folderCandidates } from '../ffmpeg/folder'
 import { detectGpuSummary, resetGpuDetection, type GpuMode, type GpuSummary } from '../ffmpeg/gpu'
 import pinJson from '../ffmpeg/pinned-builds.json'
 import { createProbe, type Probe } from '../ffmpeg/probe'
@@ -551,14 +552,24 @@ export interface FfmpegInfo
     version: string
     /** True when the bundled build is one of this app's pinned builds. */
     matches: boolean
-    /** True when a bundled build differs from the pin; PATH and custom builds are never offered a replacement. */
+    /** True when the build in use, or the one found, is not this app's pinned build, so the tested one can replace it. */
     offerInstall: boolean
     installLabel: string
   }
+  /** An FFmpeg on PATH that passes every required check but is not used until someone chooses it in setup. */
+  pathBuild?: PathBuild | null
+}
+
+/** A build found on PATH and offered, not adopted: its version and where it is. */
+export interface PathBuild
+{
+  version: string
+  ffmpegPath: string
 }
 
 const SELF_TEST_MEMO = new Map<string, Record<SelfTestId, boolean>>()
 let buildState: FfmpegBuildState = { info: null, candidate: null, adopted: false, refusal: null, testedAt: null, testMs: null, rev: 0 }
+let pathOffer: PathBuild | null = null
 const buildListeners = new Set<(state: FfmpegBuildState) => void>()
 
 function identityKey(identity: BinaryIdentity): string
@@ -637,7 +648,7 @@ export function ffmpegInfoOf(state: FfmpegBuildState, version: string, pinnedIds
       durationMs: state.testMs
     },
     refusal: state.refusal,
-    pin: { version, matches, offerInstall: bundled && !matches, installLabel: installLabel(version) }
+    pin: { version, matches, offerInstall: state.candidate !== null && !matches, installLabel: installLabel(version) }
   }
 }
 
@@ -657,6 +668,10 @@ export function onBuildChange(listener: (state: FfmpegBuildState) => void): () =
 function setBuildState(next: Omit<FfmpegBuildState, 'rev'>): FfmpegBuildState
 {
   buildState = { ...next, rev: buildState.rev + 1 }
+  if (next.adopted)
+  {
+    pathOffer = null
+  }
   for (const listener of buildListeners)
   {
     try
@@ -738,10 +753,12 @@ function stateOf(found: Inspected | null, adopted: boolean): Omit<FfmpegBuildSta
 
 /**
  * The `ffmpeg:check` path: tries the configured build, this pin's installed folders, the older install folder,
- * then PATH, and adopts the first one the pipeline can run on. Each binary identity runs the self-test once: a
- * passing result is cached in the `ffmpeg` config block, a failing one for the session. When none passes, the first
- * build found stays inspected but not adopted, so its failing test disables the pipeline by name. Build checks,
- * self-test runs, and installs run one at a time.
+ * then PATH, and adopts the first one the pipeline can run on. A build on PATH is adopted only when the config already
+ * records a PATH build; otherwise the first passing one is offered to setup and nothing is adopted until someone
+ * chooses it or downloads the tested build. Each binary identity runs the self-test once: a passing result is cached in
+ * the `ffmpeg` config block, a failing one for the session. When none passes, the first refused build stays inspected
+ * but not adopted, so its failing test disables the pipeline by name. Build checks, self-test runs, and installs run
+ * one at a time.
  */
 export function checkFfmpeg(): Promise<FfmpegBuildState>
 {
@@ -754,13 +771,86 @@ export function rerunSelfTest(): Promise<FfmpegBuildState>
   return serialBuild(rerun)
 }
 
-/** `ffmpeg:installPinned` and `ffmpeg:download`: installs the pinned build through the bootstrap, then adopts it. */
+/**
+ * `ffmpeg:installPinned` and `ffmpeg:download`: installs the pinned build through the bootstrap, then adopts that
+ * build, so a configured PATH or custom build never wins over the one just installed. Discovery runs only when the
+ * installed build is refused.
+ */
 export function installPinnedFfmpeg(onProgress: (progress: BootstrapProgress) => void): Promise<FfmpegBuildState>
 {
   return serialBuild(async () =>
   {
-    await downloadFFmpeg(onProgress)
-    return check()
+    const paths = await downloadFFmpeg(onProgress)
+    return (await adoptInstalled(paths)) ?? check()
+  })
+}
+
+/** Adopts the build the bootstrap installed at `paths`, or answers null with the reason logged when it cannot. */
+async function adoptInstalled(paths: { ffmpeg: string; ffprobe: string }): Promise<FfmpegBuildState | null>
+{
+  const candidate: BuildCandidate = { source: 'bundled', buildId: path.basename(path.dirname(paths.ffmpeg)), ffmpegPath: paths.ffmpeg, ffprobePath: paths.ffprobe }
+  const config = await getConfig()
+  const found = await inspectCandidate(candidate, config.ffmpeg?.selfTest ?? null, false)
+  const refusal = found ? pipelineRefusal(found.info) : `FFmpeg was not found at ${paths.ffmpeg}`
+  if (!found || refusal)
+  {
+    logger.warn(`Not using the installed FFmpeg at ${paths.ffmpeg}: ${refusal}. Looking for another build.`)
+    return null
+  }
+  await adoptBuild(candidate, found.info)
+  logger.success(`Using FFmpeg ${displayVersion(found.info.versionString)} (bundled) at ${candidate.ffmpegPath}`)
+  return setBuildState(stateOf(found, true))
+}
+
+/** What adopting a chosen folder found: the build in use now, or why the folder was not used. */
+export type FolderAdoption =
+  | { adopted: true }
+  | { adopted: false; reason: 'missing' | 'not-running' | 'minimum' | 'self-test'; version: string | null; failedTest: SelfTestId | null }
+
+/**
+ * `ffmpeg:adoptFolder`: inspects the FFmpeg in a folder the user chose, or in its bin folder, with the same
+ * version check and self-test discovery runs, and adopts it as a custom build only when the pipeline can run on it.
+ * A refused folder leaves the current build and the config as they were.
+ */
+export function adoptFfmpegFolder(folder: string): Promise<FolderAdoption>
+{
+  return serialBuild(async () =>
+  {
+    const config = await getConfig()
+    let present = false
+    let found: Inspected | null = null
+    for (const candidate of folderCandidates(folder, process.platform))
+    {
+      if (!(await identityOf(candidate.ffmpegPath)) || !(await identityOf(candidate.ffprobePath)))
+      {
+        continue
+      }
+      present = true
+      found = await inspectCandidate(candidate, config.ffmpeg?.selfTest ?? null, false)
+      if (found)
+      {
+        break
+      }
+    }
+    if (!found)
+    {
+      return { adopted: false, reason: present ? 'not-running' : 'missing', version: null, failedTest: null }
+    }
+    const version = displayVersion(found.info.versionString)
+    if (!found.info.meetsMinimum)
+    {
+      return { adopted: false, reason: 'minimum', version, failedTest: null }
+    }
+    const failedTest = selfTestFailure(found.info.selfTest)
+    if (failedTest !== null)
+    {
+      logger.warn(`FFmpeg at ${found.candidate.ffmpegPath} failed its self-test: ${failedTest}`)
+      return { adopted: false, reason: 'self-test', version, failedTest }
+    }
+    await adoptBuild(found.candidate, found.info)
+    logger.success(`Using FFmpeg ${version} (custom) at ${found.candidate.ffmpegPath}`)
+    setBuildState(stateOf(found, true))
+    return { adopted: true }
   })
 }
 
@@ -787,7 +877,9 @@ async function check(): Promise<FfmpegBuildState>
     legacyDir: getFFmpegBinDir(),
     envPath: process.env['PATH']
   })
+  const pathChosen = config.ffmpeg?.source === 'path'
   let first: Inspected | null = null
+  let offer: PathBuild | null = null
   for (const candidate of candidates)
   {
     const found = await inspectCandidate(candidate, config.ffmpeg?.selfTest ?? null, false)
@@ -795,18 +887,29 @@ async function check(): Promise<FfmpegBuildState>
     {
       continue
     }
-    first ??= found
     const refusal = pipelineRefusal(found.info)
     if (refusal)
     {
+      first ??= found
       logger.warn(`Skipping FFmpeg at ${candidate.ffmpegPath}: ${refusal}`)
+      continue
+    }
+    if (candidate.source === 'path' && !pathChosen)
+    {
+      offer ??= { version: displayVersion(found.info.versionString), ffmpegPath: candidate.ffmpegPath }
       continue
     }
     await adoptBuild(candidate, found.info)
     logger.success(`Using FFmpeg ${displayVersion(found.info.versionString)} (${candidate.source}) at ${candidate.ffmpegPath}`)
     return setBuildState(stateOf(found, true))
   }
-  return setBuildState(stateOf(first, false))
+  const state = setBuildState(stateOf(first, false))
+  pathOffer = offer
+  if (offer)
+  {
+    logger.info(`Found FFmpeg ${offer.version} on PATH at ${offer.ffmpegPath}; setup offers it instead of using it unasked`)
+  }
+  return state
 }
 
 async function rerun(): Promise<FfmpegBuildState>
@@ -837,7 +940,8 @@ async function rerun(): Promise<FfmpegBuildState>
 export function ffmpegInfo(): FfmpegInfo
 {
   const pin = pinnedBuilds()
-  return ffmpegInfoOf(buildState, pinnedVersion(pin, pinKey(process.platform, process.arch)), pinnedBuildIds(pin, process.platform, process.arch))
+  const info = ffmpegInfoOf(buildState, pinnedVersion(pin, pinKey(process.platform, process.arch)), pinnedBuildIds(pin, process.platform, process.arch))
+  return { ...info, pathBuild: buildState.adopted ? null : pathOffer }
 }
 
 /** The minimum FFmpeg version as plan messages name it. */

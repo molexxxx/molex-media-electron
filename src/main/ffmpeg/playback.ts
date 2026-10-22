@@ -25,6 +25,10 @@ import { chooseEncoder, encoderArgs, type BuildCapabilities } from './audio/enco
 import { pinStages } from './audio/chains'
 import { resolveLayout } from './audio/facts'
 import type { AudioFacts } from '../../shared/audio/types'
+import { createProbe } from './probe'
+import { videoEncoderArgs, videoFilters } from '../jobs/runners/convert'
+import { audioTracks, CHROMIUM_AUDIO_CODECS, containerPlays, summarizeProbe, type PlayerMedia, type PlayerStream, type RawProbe, type SoundPlan } from '../../shared/player/media'
+import { detectGpuMode, getGpuPreset, getGpuQualityArgs, getHwaccelInputArgs, resolveGpuCodec, type GpuMode } from './gpu'
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -215,12 +219,13 @@ export function isBrowserNative(filePath: string): boolean {
  *
  * Results are cached so repeat plays are instant.
  */
-export async function prepareForPlayback(filePath: string): Promise<string> {
+export async function prepareForPlayback(filePath: string, audioIndex = 0): Promise<string> {
   // Already playable → skip extraction
-  if (isBrowserNative(filePath)) return filePath
+  if (isBrowserNative(filePath) && audioIndex === 0) return filePath
 
   // Check cache - but validate the file still exists and isn't empty
-  const cached = extractionCache.get(filePath)
+  const cacheKey = trackKey(filePath, audioIndex)
+  const cached = extractionCache.get(cacheKey)
   if (cached) {
     if (fs.existsSync(cached)) {
       const cachedStat = fs.statSync(cached)
@@ -229,7 +234,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
       try { fs.unlinkSync(cached) } catch { /* best effort */ }
       logger.warn(`Playback: removed corrupt memory-cached file ${path.basename(cached)}`)
     }
-    extractionCache.delete(filePath)
+    extractionCache.delete(cacheKey)
   }
 
   const config = await getConfig()
@@ -238,13 +243,13 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
   if (!ffmpegPath) throw new Error('FFmpeg not configured')
   if (!ffprobePath) throw new Error('ffprobe not configured')
 
-  // Probe the source to find the first audio stream
-  const stream = await probeAudioStream(ffprobePath, filePath)
+  // Probe the source to find the chosen audio stream
+  const stream = await probeAudioStream(ffprobePath, filePath, audioIndex)
   if (!stream) throw new Error('No audio stream found in file')
 
   const baseName = path.basename(filePath, path.extname(filePath))
   // Use a hash of the full path to avoid collisions
-  const hash = simpleHash(filePath)
+  const hash = simpleHash(filePath) + trackTag(audioIndex)
 
   const target = playbackTarget(stream)
   const outExt = target.ext
@@ -264,7 +269,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
   if (fs.existsSync(outPath)) {
     const existingStat = fs.statSync(outPath)
     if (existingStat.size > 0) {
-      extractionCache.set(filePath, outPath)
+      extractionCache.set(cacheKey, outPath)
       return outPath
     }
     // Remove the empty/corrupted file so extraction can proceed
@@ -285,8 +290,8 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
 
   const args = [
     '-y', '-i', filePath,
-    '-vn',           // strip video
-    '-map', '0:a:0', // first audio stream
+    '-vn',
+    '-map', `0:a:${audioIndex}`,
     ...ffmpegCodecArgs,
     ...formatArgs,
     '-threads', '0',
@@ -300,7 +305,7 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
     throw new Error(`Audio extraction failed (code ${result.code}): ${result.stderr.slice(-200)}`)
   }
 
-  extractionCache.set(filePath, outPath)
+  extractionCache.set(cacheKey, outPath)
   logger.success(`Playback: extracted ${path.basename(filePath)} → ${path.basename(outPath)}`)
   return outPath
 }
@@ -318,10 +323,10 @@ export async function prepareForPlayback(filePath: string): Promise<string> {
  * Previous seek-extracted files for the same source are cleaned up
  * automatically to avoid filling the temp directory.
  */
-export async function prepareForPlaybackAt(filePath: string, seekTime: number): Promise<string> {
+export async function prepareForPlaybackAt(filePath: string, seekTime: number, audioIndex = 0): Promise<string> {
   // Browser-native audio files don't go through extraction - seeking is
   // handled directly by the media element and the custom protocol.
-  if (isBrowserNative(filePath)) return filePath
+  if (isBrowserNative(filePath) && audioIndex === 0) return filePath
 
   const config = await getConfig()
   const ffmpegPath = config.ffmpeg?.ffmpegPath
@@ -329,11 +334,11 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
   if (!ffmpegPath) throw new Error('FFmpeg not configured')
   if (!ffprobePath) throw new Error('ffprobe not configured')
 
-  const stream = await probeAudioStream(ffprobePath, filePath)
+  const stream = await probeAudioStream(ffprobePath, filePath, audioIndex)
   if (!stream) throw new Error('No audio stream found in file')
 
   const baseName = path.basename(filePath, path.extname(filePath))
-  const hash = simpleHash(filePath)
+  const hash = simpleHash(filePath) + trackTag(audioIndex)
   const seekTag = `seek${Math.floor(seekTime)}`
 
   const target = playbackTarget(stream)
@@ -368,7 +373,7 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
     '-ss', String(seekTime), // Input seeking - fast, skips before decoding
     '-i', filePath,
     '-vn',
-    '-map', '0:a:0',
+    '-map', `0:a:${audioIndex}`,
     ...ffmpegCodecArgs,
     ...formatArgs,
     '-threads', '0',
@@ -393,9 +398,9 @@ export async function prepareForPlaybackAt(filePath: string, seekTime: number): 
  * playback error - the cached temp file may be corrupt).
  */
 export function clearPlaybackCacheFor(filePath: string): void {
-  const cached = extractionCache.get(filePath)
-  if (cached) {
-    extractionCache.delete(filePath)
+  for (const [key, cached] of [...extractionCache]) {
+    if (key !== filePath && !key.startsWith(`${filePath}#`)) continue
+    extractionCache.delete(key)
     try { if (fs.existsSync(cached)) fs.unlinkSync(cached) } catch { /* best effort */ }
     logger.info(`Playback: cleared cache for ${path.basename(filePath)}`)
   }
@@ -415,7 +420,201 @@ export function cleanupPlaybackTemp(): void {
     fs.rmdirSync(dir)
   } catch { /* best effort */ }
   extractionCache.clear()
+  remuxCache.clear()
+  subtitleCache.clear()
   playbackTempDir = null
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pictures, tracks, and subtitles                                    */
+/* ------------------------------------------------------------------ */
+
+/** The display a decoded picture is sized for when the renderer names none; a picture is never scaled up past its source. */
+export const DEFAULT_DISPLAY_BOX = Object.freeze({ width: 1920, height: 1080 })
+
+/** The media type of a picture FFmpeg decodes for display: fragmented MP4 that Chromium plays while it arrives. */
+export const PICTURE_STREAM_TYPE = 'video/mp4'
+
+/** The quality step a display picture is encoded at, on the shared CRF and quantizer scale. */
+export const DISPLAY_QUALITY = 23
+
+/** How a picture FFmpeg decodes is handed to Chromium: a hardware H.264 encoder when this computer has one, else x264. */
+export interface DisplayEncoder {
+  mode: GpuMode
+  codec: string
+}
+
+/** The software display encoder. */
+export const SOFTWARE_DISPLAY_ENCODER: DisplayEncoder = { mode: 'off', codec: 'libx264' }
+
+/** About a second of frames between keyframes, so a seek restarts the picture within a second. */
+export function displayGop(fps: number | null): number {
+  const rate = fps !== null && Number.isFinite(fps) && fps > 0 ? fps : 30
+  return Math.min(60, Math.max(12, Math.round(rate)))
+}
+
+/**
+ * The encoder arguments of a display picture, tuned for latency rather than quality: the hardware encoder's fastest
+ * preset at the shared quality step with no B-frames, or x264's ultrafast preset with its zero-latency tune; both
+ * with a short GOP.
+ */
+export function displayEncoderArgs(encoder: DisplayEncoder, gop: number): string[] {
+  if (encoder.mode === 'off' || encoder.mode === 'auto') {
+    return [...videoEncoderArgs('libx264', null, 0), '-preset:v:0', 'ultrafast', '-tune:v:0', 'zerolatency', '-g:v:0', String(gop)]
+  }
+  return ['-c:v:0', encoder.codec, ...getGpuPreset(encoder.mode, 'veryfast'), ...getGpuQualityArgs(encoder.mode, DISPLAY_QUALITY), '-bf:v:0', '0', '-g:v:0', String(gop)]
+}
+
+/** The hardware encoder this computer offers for display pictures, found once; software when it has none. */
+export async function displayEncoder(ffmpegPath: string): Promise<DisplayEncoder> {
+  const mode = await detectGpuMode(ffmpegPath)
+  if (mode === 'off' || mode === 'auto') return SOFTWARE_DISPLAY_ENCODER
+  const resolved = await resolveGpuCodec(ffmpegPath, 'libx264', mode)
+  return resolved.isGpu ? { mode: resolved.activeMode, codec: resolved.codec } : SOFTWARE_DISPLAY_ENCODER
+}
+
+/** The file facts a sound plan depends on besides the track itself. */
+export interface SoundContext {
+  /** ffprobe's format name. */
+  container: string
+  audioCount: number
+}
+
+/**
+ * How one audio track plays. A plain audio file's first track, and the only track of a file in a container Chromium
+ * reads with a codec it decodes, play as they are; every other track is copied or converted by {@link playbackTarget}.
+ * Chromium plays only a file's first audio track, so a file with several tracks always goes through extraction.
+ */
+export function soundPlanFor(filePath: string, stream: PlayerStream, audioIndex: number, context: SoundContext): SoundPlan {
+  const plainAudio = isBrowserNative(filePath) && audioIndex === 0
+  const soleNativeTrack = context.audioCount === 1 && containerPlays(context.container) && CHROMIUM_AUDIO_CODECS.has(stream.codec)
+  if (plainAudio || soleNativeTrack) {
+    return { route: 'direct', audioIndex, streamIndex: stream.index, target: null, remappedTo: null }
+  }
+  const target = playbackTarget({
+    codec: stream.codec,
+    channels: stream.channels ?? 2,
+    ...(stream.layout === null ? {} : { layout: stream.layout }),
+    sampleRate: stream.sampleRate ?? 48000
+  })
+  return target.mode === 'remux'
+    ? { route: 'remux', audioIndex, streamIndex: stream.index, target: null, remappedTo: null }
+    : { route: 'convert', audioIndex, streamIndex: stream.index, target: 'opus', remappedTo: target.remappedTo }
+}
+
+/** The player's model of a probe: its streams and one sound plan per audio track; the renderer plans the picture. */
+export function playerMediaOf(raw: RawProbe, filePath: string): PlayerMedia {
+  const summary = summarizeProbe(raw, filePath)
+  const tracks = audioTracks(summary.streams)
+  const context: SoundContext = { container: summary.container, audioCount: tracks.length }
+  return { ...summary, picture: null, sound: tracks.map((stream, i) => soundPlanFor(filePath, stream, i, context)) }
+}
+
+/** Probes a file with the configured ffprobe and plans how the player plays it. */
+export async function inspectForPlayback(filePath: string): Promise<PlayerMedia> {
+  const config = await getConfig()
+  const ffprobePath = config.ffmpeg?.ffprobePath
+  if (!ffprobePath) throw new Error('ffprobe not configured')
+  const raw = await createProbe(ffprobePath)(filePath)
+  return playerMediaOf(raw as unknown as RawProbe, filePath)
+}
+
+/** What a display picture is sized and encoded for. */
+export interface DisplayOptions {
+  encoder: DisplayEncoder
+  /** The display in physical pixels; the picture fits inside it and never grows past its source size. */
+  width: number
+  height: number
+  /** The source frame rate, for the keyframe interval. */
+  fps: number | null
+}
+
+/**
+ * The FFmpeg arguments of a picture FFmpeg decodes for display from `seekTime` on: hardware decoding where the encoder
+ * is hardware, the picture fitted to the display as 8-bit 4:2:0, encoded for latency, with no sound, as fragmented MP4
+ * on stdout. Seeking before the input starts the stream exactly at `seekTime`, so a seek restarts it there.
+ */
+export function pictureDecodeArgs(filePath: string, streamIndex: number, seekTime: number, options: DisplayOptions): string[] {
+  const seek = seekTime > 0 ? ['-ss', seekTime.toFixed(3)] : []
+  const fit = { maxWidth: Math.max(2, Math.round(options.width)), maxHeight: Math.max(2, Math.round(options.height)), mode: 'fit' as const }
+  const filters = videoFilters({ fit, fps: null, pixelFormat: 'yuv420p' }, options.encoder.codec)
+  return [
+    '-hide_banner', '-loglevel', 'error', '-nostdin',
+    ...getHwaccelInputArgs(options.encoder.mode === 'auto' ? 'off' : options.encoder.mode, false),
+    ...seek, '-i', filePath,
+    '-map', `0:${streamIndex}`, '-an', '-sn', '-dn',
+    '-vf', filters.join(','),
+    ...displayEncoderArgs(options.encoder, displayGop(options.fps)),
+    '-f', 'mp4', '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+    'pipe:1'
+  ]
+}
+
+/** The FFmpeg arguments that copy one picture stream, unchanged, into Matroska with its seek index at the front. */
+export function pictureRemuxArgs(filePath: string, streamIndex: number, outPath: string): string[] {
+  return ['-y', '-hide_banner', '-loglevel', 'error', '-nostdin', '-i', filePath, '-map', `0:${streamIndex}`, '-c', 'copy', '-an', '-sn', '-dn', '-reserve_index_space', '50000', outPath]
+}
+
+/** The FFmpeg arguments that write one text subtitle stream as WebVTT on stdout. */
+export function subtitleArgs(filePath: string, streamIndex: number): string[] {
+  return ['-hide_banner', '-loglevel', 'error', '-nostdin', '-i', filePath, '-map', `0:${streamIndex}`, '-c:s', 'webvtt', '-f', 'webvtt', 'pipe:1']
+}
+
+const remuxCache = new Map<string, Promise<string>>()
+const subtitleCache = new Map<string, Promise<string>>()
+
+async function ffmpegPathOrThrow(): Promise<string> {
+  const config = await getConfig()
+  const ffmpegPath = config.ffmpeg?.ffmpegPath
+  if (!ffmpegPath) throw new Error('FFmpeg not configured')
+  return ffmpegPath
+}
+
+/** Copies a picture stream into a cached Matroska file Chromium reads and seeks; concurrent requests share one copy. */
+export function prepareRemuxedPicture(filePath: string, streamIndex: number): Promise<string> {
+  const key = `${filePath}#v${streamIndex}`
+  const pending = remuxCache.get(key)
+  if (pending) return pending
+  const work = (async (): Promise<string> => {
+    const ffmpegPath = await ffmpegPathOrThrow()
+    const outPath = path.join(getTempDir(), `${path.basename(filePath, path.extname(filePath))}_${simpleHash(filePath)}_v${streamIndex}.mkv`)
+    if (fs.existsSync(outPath) && fs.statSync(outPath).size > 0) return outPath
+    logger.info(`Playback: copying the picture of ${path.basename(filePath)} into Matroska`)
+    const result = await runCommand(ffmpegPath, pictureRemuxArgs(filePath, streamIndex, outPath)).promise
+    if (result.code !== 0) throw new Error(`Picture remux failed (code ${result.code}): ${result.stderr.slice(-200)}`)
+    return outPath
+  })()
+  remuxCache.set(key, work)
+  work.catch(() => remuxCache.delete(key))
+  return work
+}
+
+/** One text subtitle stream as WebVTT, cached per file and stream. */
+export function extractSubtitles(filePath: string, streamIndex: number): Promise<string> {
+  const key = `${filePath}#s${streamIndex}`
+  const pending = subtitleCache.get(key)
+  if (pending) return pending
+  const work = (async (): Promise<string> => {
+    const ffmpegPath = await ffmpegPathOrThrow()
+    const result = await runCommand(ffmpegPath, subtitleArgs(filePath, streamIndex), undefined, { log: false }).promise
+    if (result.code !== 0) throw new Error(`Subtitle extraction failed (code ${result.code}): ${result.stderr.slice(-200)}`)
+    return result.stdout
+  })()
+  subtitleCache.set(key, work)
+  work.catch(() => subtitleCache.delete(key))
+  return work
+}
+
+/** The command for a picture FFmpeg decodes for display, on this computer's display encoder unless software is asked for. */
+export async function pictureDecodeCommand(
+  filePath: string,
+  streamIndex: number,
+  seekTime: number,
+  display: { width: number, height: number, fps: number | null, software: boolean }
+): Promise<{ command: string, args: string[], encoder: string }> {
+  const command = await ffmpegPathOrThrow()
+  const encoder = display.software ? SOFTWARE_DISPLAY_ENCODER : await displayEncoder(command)
+  return { command, args: pictureDecodeArgs(filePath, streamIndex, seekTime, { encoder, width: display.width, height: display.height, fps: display.fps }), encoder: encoder.codec }
 }
 
 /* ------------------------------------------------------------------ */
@@ -425,12 +624,12 @@ export function cleanupPlaybackTemp(): void {
 /**
  * Probe the first audio stream's codec, channels, layout, and rate using ffprobe.
  */
-async function probeAudioStream(ffprobePath: string, filePath: string): Promise<PlaybackStream | null> {
+async function probeAudioStream(ffprobePath: string, filePath: string, audioIndex = 0): Promise<PlaybackStream | null> {
   const { spawn } = await import('child_process')
   return new Promise((resolve) => {
     const args = [
       '-v', 'quiet',
-      '-select_streams', 'a:0',
+      '-select_streams', `a:${audioIndex}`,
       '-show_entries', 'stream=codec_name,sample_rate,channels,channel_layout',
       '-of', 'json',
       filePath
@@ -441,6 +640,16 @@ async function probeAudioStream(ffprobePath: string, filePath: string): Promise<
     proc.on('close', () => resolve(parsePlaybackProbe(out)))
     proc.on('error', () => resolve(null))
   })
+}
+
+/** The cache key of one audio track of a file; track 0 keeps the bare path. */
+function trackKey(filePath: string, audioIndex: number): string {
+  return audioIndex === 0 ? filePath : `${filePath}#a${audioIndex}`
+}
+
+/** The file name tag of one audio track; track 0 has none, so earlier cache files stay valid. */
+function trackTag(audioIndex: number): string {
+  return audioIndex === 0 ? '' : `_a${audioIndex}`
 }
 
 /** Simple string hash for cache filenames. */

@@ -10,6 +10,7 @@
 
 import { autoUpdater } from 'electron-updater'
 import { app, ipcMain } from 'electron'
+import { getConfigSync } from './config'
 import { logger } from './logger'
 import { sendToAll } from './ipc/helpers'
 import { APP_NAME, updateWaitingText } from './jobs/status'
@@ -17,6 +18,9 @@ import type { RunId } from '../shared/jobs/ids'
 
 /** How often an install armed for when the engine is idle checks again. */
 export const IDLE_INSTALL_POLL_MS = 5_000
+
+/** How long after launch the startup check runs, so the window is ready for its events. */
+export const STARTUP_CHECK_DELAY_MS = 5_000
 
 /** What `updater:install` returns: installing, or refused while the engine is busy. */
 export type InstallResult =
@@ -166,11 +170,14 @@ export async function initUpdater(options: UpdaterOptions): Promise<void> {
     return install()
   })
 
-  // --- Auto-check on startup (always, regardless of autoUpdate setting) ---
-  // Small delay so the window is ready to receive events
+  // --- Check on startup, unless Settings turned it off; a Linux install always reports manual ---
   setTimeout(async () => {
     if (isLinux) {
       broadcast({ status: 'manual' })
+      return
+    }
+    if (getConfigSync().autoUpdate === false) {
+      logger.info('Startup update check skipped: automatic updates are off')
       return
     }
     try {
@@ -178,5 +185,5 @@ export async function initUpdater(options: UpdaterOptions): Promise<void> {
     } catch {
       // Silently fail - user can retry manually
     }
-  }, 5_000)
+  }, STARTUP_CHECK_DELAY_MS)
 }

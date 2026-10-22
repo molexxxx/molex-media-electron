@@ -310,6 +310,21 @@ describe('preload surface', () =>
     expect(electron.ipcRenderer.invoke).toHaveBeenLastCalledWith('ffmpeg:installPinned')
   })
 
+  it('reaches the yt-dlp update channels and listens to its status until unsubscribed', () =>
+  {
+    void api.getYtDlpStatus()
+    expect(electron.ipcRenderer.invoke).toHaveBeenLastCalledWith('ytdlp:status')
+    void api.checkYtDlpUpdates({ install: false })
+    expect(electron.ipcRenderer.invoke).toHaveBeenLastCalledWith('ytdlp:checkUpdates', { install: false })
+    const seen: unknown[] = []
+    const stop = api.onYtDlpStatus((status) => seen.push(status))
+    const [listener] = [...electron.listeners.get('ytdlp:status-changed')!]
+    listener({}, { installed: true })
+    expect(seen).toEqual([{ installed: true }])
+    stop()
+    expect(electron.listeners.get('ytdlp:status-changed')!.size).toBe(0)
+  })
+
   it('steps the page zoom through webFrame in half levels and answers the factor', () =>
   {
     expect(api.zoomIn()).toBeCloseTo(1.2 ** 0.5)

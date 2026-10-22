@@ -164,6 +164,7 @@ describe('Logger', () => {
         expect(entry).toMatchObject({ jobId: 'MM-0142', runId: 'R31', attempt: 2, stage: 'encode' })
       }
       expect(buf[3].details).toBe('stack')
+      expect(buf.slice(0, 5).map((e) => e.kind)).toEqual(['message', 'message', 'message', 'message', 'message'])
       expect(buf[5].kind).toBe('stderr')
       expect(job.context).toEqual({ jobId: 'MM-0142', runId: 'R31', attempt: 2, stage: 'encode' })
     })

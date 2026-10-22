@@ -692,7 +692,7 @@ describe('FFmpeg build state', () =>
     expect(info).toMatchObject({ found: true, usable: true, version: '9.0.2', source: 'custom', libsoxr: true, meetsMinimum: true })
     expect(info.selfTest).toMatchObject({ status: 'passed', failedTest: null })
     expect(info.pin.matches).toBe(false)
-    expect(info.pin.offerInstall).toBe(false)
+    expect(info.pin.offerInstall).toBe(true)
     expect(info.pin.installLabel).toMatch(/^Install FFmpeg \d+\.\d+\.x \(tested with this version\)$/)
   })
 
@@ -795,7 +795,7 @@ describe('build information', () =>
     expect(host.pinnedBuilds().version).toMatch(/^\d+\.\d+/)
   })
 
-  it('offers the tested build only to a bundled build that differs from the pin', () =>
+  it('offers the tested build to any build in use that is not the pinned one', () =>
   {
     const base = { info: null, adopted: false, refusal: null, testedAt: null, testMs: null, rev: 1 }
     const bundled = (buildId: string | null): host.FfmpegBuildState => ({ ...base, candidate: { source: 'bundled', buildId, ffmpegPath: 'f', ffprobePath: 'p' } })
@@ -803,7 +803,7 @@ describe('build information', () =>
     expect(host.ffmpegInfoOf(bundled('btbn-old'), '9.0.2', ['btbn-a']).pin).toMatchObject({ matches: false, offerInstall: true })
     expect(host.ffmpegInfoOf(bundled(null), '9.0.2', ['btbn-a']).pin.offerInstall).toBe(true)
     const onPath: host.FfmpegBuildState = { ...base, candidate: { source: 'path', buildId: null, ffmpegPath: 'f', ffprobePath: 'p' } }
-    expect(host.ffmpegInfoOf(onPath, '9.0.2', ['btbn-a']).pin.offerInstall).toBe(false)
+    expect(host.ffmpegInfoOf(onPath, '9.0.2', ['btbn-a']).pin.offerInstall).toBe(true)
   })
 
   it('names the release pinned for this platform, so a held Mac offers 7.1.x and an old 9.0.2 install is offered the held build', () =>

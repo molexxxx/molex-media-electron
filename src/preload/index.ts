@@ -11,7 +11,8 @@
 
 import { contextBridge, ipcRenderer, webFrame, webUtils, type IpcRendererEvent } from 'electron'
 import { JOB_CHANNELS, JOB_EVENT_CHANNEL, type JobEventBatch, type JobsApi } from '../shared/jobs/contract'
-import { clampZoomFactor, steppedZoomLevel, type LogEntry, type LogQuery, type WindowApi } from '../shared/ipc/api'
+import { clampZoomFactor, steppedZoomLevel, type LogEntry, type LogQuery, type LinkProgress, type PictureOptions, type VideoCodecFamily, type WindowApi, type YtDlpStatus } from '../shared/ipc/api'
+import type { PlayRoute } from '../shared/player/media'
 
 /** One wrapper per job command, each invoking its channel with the request object, plus the event subscription. */
 function buildJobsApi(): JobsApi {
@@ -50,6 +51,9 @@ const api: WindowApi = {
     ipcRenderer.on('ffmpeg:download-progress', listener)
     return () => ipcRenderer.removeListener('ffmpeg:download-progress', listener)
   },
+  getFFmpegDownloadFacts: () => ipcRenderer.invoke('ffmpeg:downloadFacts'),
+  chooseFFmpegFolder: () => ipcRenderer.invoke('ffmpeg:chooseFolder'),
+  adoptFFmpegFolder: (folder: string) => ipcRenderer.invoke('ffmpeg:adoptFolder', folder),
 
   // File dialogs
   openFiles: () => ipcRenderer.invoke('dialog:openFiles'),
@@ -67,6 +71,8 @@ const api: WindowApi = {
   cancelExport: () => ipcRenderer.invoke('editor:cancelExport'),
   extractThumbnail: (filePath: string, timeSec: number) => ipcRenderer.invoke('editor:thumbnail', filePath, timeSec),
   extractThumbnailStrip: (filePath: string, durationSeconds: number) => ipcRenderer.invoke('editor:thumbnailStrip', filePath, durationSeconds),
+  keyframeTimes: (filePath: string) => ipcRenderer.invoke('editor:keyframes', filePath),
+  probeReport: (filePath: string) => ipcRenderer.invoke('editor:probeReport', filePath),
   extractWaveform: (filePath: string, numSamples?: number) => ipcRenderer.invoke('editor:waveform', filePath, numSamples),
   onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => {
     const listener = (_: any, progress: any) => cb(progress)
@@ -102,14 +108,32 @@ const api: WindowApi = {
     return () => ipcRenderer.removeListener('player:receiveState', listener)
   },
   getPlayerState: () => ipcRenderer.invoke('player:getPendingState'),
+  returnPlayerToApp: () => ipcRenderer.invoke('player:returnToApp'),
+  inspectMedia: (filePath: string) => ipcRenderer.invoke('player:inspect', filePath),
+  getSoundUrl: (filePath: string, audioIndex: number, seekTime: number | null, route?: PlayRoute) => ipcRenderer.invoke('player:soundUrl', filePath, audioIndex, seekTime, route),
+  getPictureUrl: (filePath: string, streamIndex: number, route: PlayRoute, seekTime: number, options?: PictureOptions) => ipcRenderer.invoke('player:pictureUrl', filePath, streamIndex, route, seekTime, options),
+  getSubtitles: (filePath: string, streamIndex: number) => ipcRenderer.invoke('player:subtitles', filePath, streamIndex),
+  getLinkPicture: (pageUrl: string, maxHeight: number, codecs: VideoCodecFamily[], options?: { download?: boolean }) => ipcRenderer.invoke('player:linkPicture', pageUrl, maxHeight, codecs, options),
+  onLinkProgress: (cb: (progress: LinkProgress) => void) => {
+    const listener = (_: IpcRendererEvent, progress: LinkProgress) => cb(progress)
+    ipcRenderer.on('player:linkProgress', listener)
+    return () => ipcRenderer.removeListener('player:linkProgress', listener)
+  },
 
   // YouTube / yt-dlp
   resolvePlaylist: (url: string) => ipcRenderer.invoke('ytdlp:resolve', url),
-  getStreamUrl: (videoUrl: string, quality?: string) => ipcRenderer.invoke('ytdlp:getStreamUrl', videoUrl, quality),
+  getStreamUrl: (videoUrl: string, quality?: string, options?: { download?: boolean }) => ipcRenderer.invoke('ytdlp:getStreamUrl', videoUrl, quality, options),
   getInstalledBrowsers: () => ipcRenderer.invoke('ytdlp:getInstalledBrowsers'),
   setCookieBrowser: (browserName: string) => ipcRenderer.invoke('ytdlp:setBrowser', browserName),
   clearCookies: () => ipcRenderer.invoke('ytdlp:clearCookies'),
   getCookieInfo: () => ipcRenderer.invoke('ytdlp:cookieInfo'),
+  getYtDlpStatus: () => ipcRenderer.invoke('ytdlp:status'),
+  checkYtDlpUpdates: (options?: { install?: boolean }) => ipcRenderer.invoke('ytdlp:checkUpdates', options),
+  onYtDlpStatus: (cb: (status: YtDlpStatus) => void) => {
+    const listener = (_: IpcRendererEvent, status: YtDlpStatus) => cb(status)
+    ipcRenderer.on('ytdlp:status-changed', listener)
+    return () => ipcRenderer.removeListener('ytdlp:status-changed', listener)
+  },
 
   // Logs
   getLogBuffer: (query?: LogQuery) => ipcRenderer.invoke('logs:getBuffer', query),
@@ -137,6 +161,13 @@ const api: WindowApi = {
   windowMinimize: () => ipcRenderer.send('window:minimize'),
   windowMaximize: () => ipcRenderer.send('window:maximize'),
   windowClose: () => ipcRenderer.send('window:close'),
+  setFullScreen: (on: boolean) => ipcRenderer.invoke('window:setFullScreen', on),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  onFullScreenChanged: (cb: (on: boolean) => void) => {
+    const listener = (_: IpcRendererEvent, on: boolean) => cb(on)
+    ipcRenderer.on('window:fullscreen-changed', listener)
+    return () => ipcRenderer.removeListener('window:fullscreen-changed', listener)
+  },
   showTextContextMenu: () => ipcRenderer.send('context-menu:text'),
   onCloseConfirm: (cb: () => void) => {
     const listener = () => cb()

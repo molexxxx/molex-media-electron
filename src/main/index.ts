@@ -20,6 +20,7 @@ import { killAllProcesses } from './ffmpeg/runner'
 import { cleanupPlaybackTemp } from './ffmpeg/playback'
 import { cleanupAudioCache } from './ytdlp'
 import { initFFmpegDir } from './ytdlp/binary'
+import { startYtDlpUpdates } from './ytdlp/updater'
 import { registerMediaScheme, registerMediaHandler } from './protocol'
 import { cancelBatchPrompt, createTray, destroyTray, renderEngineTray, setEngineTray, setTrayCallbacks } from './tray'
 import { initUpdater } from './updater'
@@ -421,6 +422,7 @@ app.whenReady().then(async () => {
   cleanupAudioCache()
   createWindow()
   logger.info('Main window created')
+  startYtDlpUpdates()
 
   await initUpdater({
     busy: () => ({ busy: engineBusy(), runId: activeRunId() }),

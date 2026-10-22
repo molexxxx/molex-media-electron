@@ -12,13 +12,15 @@
  * The server binds to 127.0.0.1 on a random port and serves:
  *  - **Local files** registered via {@link registerPreviewPath}
  *  - **CDN streams** (YouTube) registered via {@link registerStreamProxy},
- *    proxied with Range header forwarding using Electron's `net.fetch`.
+ *    proxied with a plain Node request that forwards the Range header and
+ *    the headers the source expects.
  */
 
 import * as http from 'http'
+import * as https from 'https'
 import * as fs from 'fs'
+import { spawn, type ChildProcess } from 'child_process'
 import { extname } from 'path'
-import { net } from 'electron'
 import { logger } from './logger'
 
 /* ------------------------------------------------------------------ */
@@ -58,16 +60,18 @@ export function unregisterPreviewPath(token: string): void {
 /** YouTube CDN URLs expire in ~6 h; use a 4 h TTL to be safe. */
 const STREAM_TTL = 4 * 60 * 60 * 1000
 
-/** CDN stream tokens: token → { url, expires }. */
-const streamMap = new Map<string, { url: string; expires: number }>()
+/** CDN stream tokens: token → { url, headers, expires }. */
+const streamMap = new Map<string, { url: string; headers: Record<string, string>; expires: number }>()
 
 /**
  * Register a remote CDN URL and return a token the renderer can use
  * to stream through this HTTP server.  Tokens expire after 4 hours.
+ * `headers` are the request headers the source expects, such as the
+ * User-Agent and Cookie yt-dlp fetched the URL with.
  */
-export function registerStreamProxy(cdnUrl: string): string {
+export function registerStreamProxy(cdnUrl: string, headers: Record<string, string> = {}): string {
   const token = `s${++nextId}`
-  streamMap.set(token, { url: cdnUrl, expires: Date.now() + STREAM_TTL })
+  streamMap.set(token, { url: cdnUrl, headers, expires: Date.now() + STREAM_TTL })
   return token
 }
 
@@ -80,6 +84,30 @@ export function resolveStreamProxy(token: string): string | null {
     return null
   }
   return entry.url
+}
+
+/** A command whose stdout is served as one unseekable stream, such as a picture converted while it plays. */
+export interface LiveStream {
+  command: string
+  args: string[]
+  contentType: string
+}
+
+/** Live stream tokens: token to the command each request runs. */
+const liveMap = new Map<string, LiveStream>()
+
+/** The processes feeding live responses, stopped when their client leaves or the server stops. */
+const liveProcesses = new Set<ChildProcess>()
+
+/** Registers a command whose output each request streams; the request's end stops the command. */
+export function registerLiveStream(stream: LiveStream): string {
+  const token = `l${++nextId}`
+  liveMap.set(token, stream)
+  return token
+}
+
+export function unregisterLiveStream(token: string): void {
+  liveMap.delete(token)
 }
 
 /* ------------------------------------------------------------------ */
@@ -120,7 +148,14 @@ export async function startPreviewServer(): Promise<string> {
           res.end('Stream expired')
           return
         }
-        proxyCdn(cdnUrl.url, req, res, corsHeaders)
+        proxyCdn(cdnUrl.url, cdnUrl.headers, req, res, corsHeaders)
+        return
+      }
+
+      // -- Live command output (converted pictures) --
+      const live = liveMap.get(token)
+      if (live) {
+        serveLive(live, req, res, corsHeaders)
         return
       }
 
@@ -210,83 +245,141 @@ export function stopPreviewServer(): void {
     serverPort = 0
     tokenMap.clear()
     streamMap.clear()
+    liveMap.clear()
+    for (const proc of liveProcesses) proc.kill()
+    liveProcesses.clear()
     logger.info('[preview-server] Stopped')
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Live command output                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Runs a live stream's command for one request and pipes its stdout as an unseekable 200 response. The process
+ * stops when the client closes the connection, as a media element does when its source changes.
+ */
+function serveLive(live: LiveStream, req: http.IncomingMessage, res: http.ServerResponse, corsHeaders: Record<string, string>): void {
+  const headers = { ...corsHeaders, 'Content-Type': live.contentType, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'none' }
+  if (req.method === 'HEAD') {
+    res.writeHead(200, headers)
+    res.end()
+    return
+  }
+  const proc = spawn(live.command, live.args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+  liveProcesses.add(proc)
+  let stderr = ''
+  let clientGone = false
+  proc.stderr?.on('data', (d) => { stderr = (stderr + d.toString()).slice(-2000) })
+  res.writeHead(200, headers)
+  proc.stdout?.pipe(res)
+  proc.on('error', (err) => {
+    liveProcesses.delete(proc)
+    logger.error(`[preview-server] Live stream failed to start: ${err.message}`)
+    res.end()
+  })
+  proc.on('close', (code) => {
+    liveProcesses.delete(proc)
+    if (code !== 0 && !clientGone) logger.warn(`[preview-server] Live stream ended with code ${code}: ${stderr.trim().slice(-300)}`)
+    res.end()
+  })
+  res.on('close', () => {
+    clientGone = true
+    if (proc.exitCode === null) proc.kill()
+  })
 }
 
 /* ------------------------------------------------------------------ */
 /*  CDN proxy (YouTube etc.)                                           */
 /* ------------------------------------------------------------------ */
 
+/** The most redirects a CDN request follows. */
+export const PROXY_MAX_REDIRECTS = 5
+
+/** The User-Agent a CDN request carries when the source named none. */
+export const PROXY_DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
 /**
- * Proxy a request to a remote CDN URL, forwarding Range headers for
- * seeking.  Uses Electron's `net.fetch` which shares the session
- * and bypasses CORS restrictions.
+ * The headers a CDN request carries: the source's own headers (User-Agent, Accept, Cookie, and the rest yt-dlp
+ * fetched the URL with), the default User-Agent when the source named none, and the client's Range. Nothing
+ * else is added, since a browser's extra headers make some CDNs refuse a URL that was issued to another client.
+ */
+export function proxyRequestHeaders(sourceHeaders: Record<string, string>, range: string | undefined): Record<string, string> {
+  const headers: Record<string, string> = {}
+  for (const [key, value] of Object.entries(sourceHeaders)) {
+    if (key.toLowerCase() !== 'host' && key.toLowerCase() !== 'range') headers[key] = value
+  }
+  if (!Object.keys(headers).some((key) => key.toLowerCase() === 'user-agent')) headers['User-Agent'] = PROXY_DEFAULT_USER_AGENT
+  if (range) headers['Range'] = range
+  return headers
+}
+
+/** The response headers a CDN answer passes through to the media element. */
+export function proxyResponseHeaders(status: number, incoming: http.IncomingHttpHeaders, corsHeaders: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = { ...corsHeaders, 'Cache-Control': 'no-cache' }
+  for (const name of ['content-type', 'content-length', 'content-range', 'accept-ranges']) {
+    const value = incoming[name]
+    if (typeof value === 'string' && value !== '') out[name] = value
+  }
+  if (status === 206 && !out['accept-ranges']) out['accept-ranges'] = 'bytes'
+  return out
+}
+
+/**
+ * Proxies a request to a remote CDN URL with a plain Node request, forwarding the Range header for seeking and
+ * the headers the source expects, and following redirects. Electron's own fetch adds the headers a browser
+ * sends, which some CDNs answer with 403 for a URL they issued to another client.
  */
 function proxyCdn(
   cdnUrl: string,
+  sourceHeaders: Record<string, string>,
   req: http.IncomingMessage,
   res: http.ServerResponse,
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string>,
+  redirects = 0
 ): void {
-  const headers: Record<string, string> = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+  let target: URL
+  try {
+    target = new URL(cdnUrl)
+  } catch {
+    res.writeHead(502, corsHeaders)
+    res.end('Bad stream URL')
+    return
   }
-  const range = req.headers.range
-  if (range) headers['Range'] = range
-
-  net.fetch(cdnUrl, { headers })
-    .then(async (response) => {
-      // Expired CDN URLs return HTML error pages
-      if (!response.ok) {
-        logger.warn(`[preview-server] CDN returned ${response.status}`)
-        res.writeHead(response.status, corsHeaders)
-        res.end(`CDN returned ${response.status}`)
-        return
-      }
-
-      const ct = response.headers.get('content-type') || ''
-      if (ct.startsWith('text/html') || ct.startsWith('text/xml')) {
-        logger.warn(`[preview-server] CDN returned non-audio content-type: ${ct}`)
-        res.writeHead(502, corsHeaders)
-        res.end('CDN returned non-audio content')
-        return
-      }
-
-      // Build response headers
-      const outHeaders: Record<string, string> = { ...corsHeaders }
-      if (ct) outHeaders['Content-Type'] = ct
-      const cl = response.headers.get('content-length')
-      if (cl) outHeaders['Content-Length'] = cl
-      const cr = response.headers.get('content-range')
-      if (cr) outHeaders['Content-Range'] = cr
-      const ar = response.headers.get('accept-ranges')
-      if (ar) outHeaders['Accept-Ranges'] = ar
-      outHeaders['Cache-Control'] = 'no-cache'
-
-      res.writeHead(response.status, outHeaders)
-
-      if (!response.body) {
-        res.end()
-        return
-      }
-
-      // Pipe the readable stream from the CDN response
-      const reader = response.body.getReader()
-      const pump = (): void => {
-        reader.read().then(({ done, value }) => {
-          if (done) { res.end(); return }
-          res.write(Buffer.from(value), () => pump())
-        }).catch(() => res.end())
-      }
-      pump()
-
-      // Clean up if the client disconnects mid-stream
-      res.on('close', () => reader.cancel().catch(() => {}))
-    })
-    .catch((err) => {
-      logger.error(`[preview-server] CDN fetch failed: ${err.message}`)
+  const client = target.protocol === 'http:' ? http : https
+  const upstream = client.request(target, { method: req.method === 'HEAD' ? 'HEAD' : 'GET', headers: proxyRequestHeaders(sourceHeaders, req.headers.range) }, (answer) => {
+    const status = answer.statusCode ?? 502
+    const location = answer.headers.location
+    if (status >= 300 && status < 400 && location && redirects < PROXY_MAX_REDIRECTS) {
+      answer.resume()
+      proxyCdn(new URL(location, target).href, sourceHeaders, req, res, corsHeaders, redirects + 1)
+      return
+    }
+    if (status < 200 || status >= 300) {
+      logger.warn(`[preview-server] CDN returned ${status}`)
+      answer.resume()
+      res.writeHead(status, corsHeaders)
+      res.end(`CDN returned ${status}`)
+      return
+    }
+    const type = String(answer.headers['content-type'] ?? '')
+    if (type.startsWith('text/html') || type.startsWith('text/xml')) {
+      logger.warn(`[preview-server] CDN returned non-media content-type: ${type}`)
+      answer.resume()
       res.writeHead(502, corsHeaders)
-      res.end('CDN fetch failed')
-    })
+      res.end('CDN returned non-media content')
+      return
+    }
+    res.writeHead(status, proxyResponseHeaders(status, answer.headers, corsHeaders))
+    answer.pipe(res)
+    res.on('close', () => answer.destroy())
+  })
+  upstream.on('error', (err) => {
+    logger.error(`[preview-server] CDN request failed: ${err.message}`)
+    if (!res.headersSent) res.writeHead(502, corsHeaders)
+    res.end('CDN request failed')
+  })
+  req.on('close', () => upstream.destroy())
+  upstream.end()
 }

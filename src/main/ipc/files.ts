@@ -17,6 +17,7 @@ import {
   checkFfmpeg, exclusiveDialog, ffmpegInfo, installPinnedFfmpeg, mediaFileFilters, mostRecentFolder, notePickedFolder, parentWindowOf,
   rerunSelfTest, type FfmpegBuildState
 } from './jobs-host'
+import { setupProblemOf } from './setup'
 
 /** The old setup answer for a build state: found with its version and paths, or not found. */
 function checkReply(state: FfmpegBuildState): { found: true; version: string; ffmpeg: string; ffprobe: string } | { found: false } {
@@ -64,7 +65,7 @@ export function registerFilesIPC(): void {
       return { ok: true, info: ffmpegInfo() }
     } catch (err: any) {
       logger.error(`Installing the tested FFmpeg build failed: ${err.message}`)
-      return { ok: false, error: err.message, info: ffmpegInfo() }
+      return { ok: false, error: err.message, info: ffmpegInfo(), problem: setupProblemOf(err) }
     }
   })
 

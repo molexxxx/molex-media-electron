@@ -83,6 +83,18 @@ function applyZoom(win: BrowserWindow | null, interfaceScale: unknown): void {
   win.webContents.setZoomFactor(zoomFactorOf(interfaceScale))
 }
 
+/** Whether each window was maximized when it went full screen, so leaving restores that state. */
+const maximizedBeforeFullScreen = new Map<number, boolean>()
+
+/** Tells a window's page each time the window enters or leaves full screen. */
+function reportFullScreen(win: BrowserWindow): void {
+  const report = (on: boolean) => (): void => {
+    if (!win.isDestroyed()) win.webContents.send('window:fullscreen-changed', on)
+  }
+  win.on('enter-full-screen', report(true))
+  win.on('leave-full-screen', report(false))
+}
+
 /** Apply the interface size to the main window and the popout; the stored setting when none is given. */
 export function applyInterfaceScale(interfaceScale: unknown = getConfigSync().interfaceScale): void {
   applyZoom(mainWindow, interfaceScale)
@@ -183,6 +195,8 @@ export function createWindow(): void {
     onRendererGone(win, details.reason)
   })
 
+  reportFullScreen(win)
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -274,6 +288,7 @@ export function createPopoutWindow(): void {
   }
 
   const popout = popoutWindow
+  reportFullScreen(popout)
   popoutWindow.webContents.on('did-finish-load', () => {
     applyZoom(popout, getConfigSync().interfaceScale)
     // Send state eagerly; the popout also pulls via player:getPendingState
@@ -329,6 +344,25 @@ export function registerGlobalIPC(): void {
     BrowserWindow.fromWebContents(event.sender)?.close()
   })
 
+  // Full screen for the window that asks; the window reports each change back to its own page
+  ipcMain.handle('window:setFullScreen', (event, on: boolean) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return false
+    if (on === true) {
+      if (!win.isFullScreen()) maximizedBeforeFullScreen.set(win.id, win.isMaximized())
+      win.setFullScreen(true)
+    } else {
+      win.setFullScreen(false)
+      if (maximizedBeforeFullScreen.get(win.id) === true && !win.isMaximized()) win.maximize()
+      maximizedBeforeFullScreen.delete(win.id)
+    }
+    return win.isFullScreen()
+  })
+  ipcMain.handle('window:isFullScreen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return !!win && !win.isDestroyed() && win.isFullScreen()
+  })
+
   // Close confirmation response from renderer
   ipcMain.on('close:response', (_event, action: 'minimize' | 'quit', dontAskAgain: boolean) => {
     if (dontAskAgain) {
@@ -345,6 +379,12 @@ export function registerGlobalIPC(): void {
   // Popout player
   ipcMain.handle('player:popout', (_event, playerState?: any) => {
     showPopout(playerState)
+  })
+
+  // Closes the pop-out, which hands its state back, and brings the main window forward on the Player
+  ipcMain.handle('player:returnToApp', () => {
+    if (popoutWindow && !popoutWindow.isDestroyed()) popoutWindow.close()
+    showMainWindow('player')
   })
 
   ipcMain.handle('player:isPopout', () => {

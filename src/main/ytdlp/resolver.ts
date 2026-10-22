@@ -16,6 +16,28 @@ import { logger } from '../logger'
 import { getYtDl, baseFlags } from './binary'
 import { withCookieRetry } from './cookies'
 
+/** The yt-dlp errors that mean the site wants a signed-in session, so a cookie-free run is retried with cookies. */
+export function needsCookies(message: string): boolean {
+  return /sign in|log ?in|age[- ]restricted|confirm your age|private|members[- ]only|not a bot|cookies/i.test(message)
+}
+
+/**
+ * Runs a yt-dlp request without cookies first, and with the exported cookies only when the site asks for a
+ * sign-in. A signed-in session makes YouTube hand out stream URLs bound to that session, which the player's
+ * own requests cannot fetch (403), and the site may skip formats for signed-in web clients; a cookie-free run
+ * gets plain URLs that play directly. Links that need an account still get the cookies through withCookieRetry.
+ */
+export async function cookieFreeFirst<T>(fn: (cookieFlags: Record<string, any>) => Promise<T>): Promise<T> {
+  try {
+    return await fn({})
+  } catch (err: any) {
+    const message = String(err?.message ?? err)
+    if (!needsCookies(message)) throw err
+    logger.info('yt-dlp asked for a sign-in; retrying with the exported cookies')
+    return withCookieRetry(fn)
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Public types                                                       */
 /* ------------------------------------------------------------------ */
@@ -33,6 +55,8 @@ export interface ResolvedTrack {
   audioUrl: string
   title: string
   duration: number | null
+  /** The request headers yt-dlp sends for this format, which the proxy forwards. */
+  httpHeaders: Record<string, string>
 }
 
 /** Audio quality presets for stream selection. */
@@ -87,7 +111,7 @@ export async function resolvePlaylist(url: string): Promise<PlaylistEntry[]> {
   // Fast path: single video
   if (isSingleVideoUrl(url)) {
     logger.info(`Resolving single video: ${url}`)
-    return withCookieRetry(async (cookieFlags) => {
+    return cookieFreeFirst(async (cookieFlags) => {
       const data = await dl(url, {
         dumpSingleJson: true,
         noPlaylist: true,
@@ -106,7 +130,7 @@ export async function resolvePlaylist(url: string): Promise<PlaylistEntry[]> {
 
   // Playlist path
   logger.info(`Resolving playlist: ${url}`)
-  return withCookieRetry(async (cookieFlags) => {
+  return cookieFreeFirst(async (cookieFlags) => {
     const data = await dl(url, {
       flatPlaylist: true,
       dumpSingleJson: true,
@@ -161,7 +185,7 @@ export async function getAudioStreamUrl(
   const dl = await getYtDl()
   const fmt = FORMAT_STRINGS[quality] || FORMAT_STRINGS.best
 
-  return withCookieRetry(async (cookieFlags) => {
+  return cookieFreeFirst(async (cookieFlags) => {
     let data: any
     try {
       data = await dl(videoUrl, {
@@ -184,10 +208,10 @@ export async function getAudioStreamUrl(
     const title = data.title || data.id || 'Unknown'
     const duration = data.duration ?? null
 
-    const audioUrl = pickDirectAudioUrl(data)
-    if (audioUrl) {
+    const picked = pickDirectAudioUrl(data)
+    if (picked) {
       logger.info(`Audio stream: direct URL (protocol=${data.protocol || '?'}, ext=${data.ext || '?'})`)
-      return { audioUrl, title, duration }
+      return { audioUrl: picked.url, title, duration, httpHeaders: picked.headers }
     }
 
     // All formats are HLS - download to a local temp file as fallback
@@ -195,8 +219,22 @@ export async function getAudioStreamUrl(
     const localPath = await downloadAudioToFile(videoUrl, cookieFlags)
     const fileUrl = pathToFileURL(localPath).href
     logger.info(`Audio downloaded to temp file: ${localPath}`)
-    return { audioUrl: fileUrl, title, duration }
+    return { audioUrl: fileUrl, title, duration, httpHeaders: {} }
   })
+}
+
+/** Downloads a link's best audio into the cache and answers its path, for a stream Chromium could not play. */
+export async function getAudioFile(videoUrl: string): Promise<string> {
+  return cookieFreeFirst((cookieFlags) => downloadAudioToFile(videoUrl, cookieFlags))
+}
+
+/** The request headers of a yt-dlp format, as plain strings. */
+function headersOf(format: any): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(format?.http_headers ?? {})) {
+    if (typeof value === 'string' && key.toLowerCase() !== 'host') out[key] = value
+  }
+  return out
 }
 
 /**
@@ -206,14 +244,14 @@ export async function getAudioStreamUrl(
  * `formats` list (audio-only first, then a/v).  Returns `null` if
  * every available URL is HLS.
  */
-function pickDirectAudioUrl(data: any): string | null {
+function pickDirectAudioUrl(data: any): { url: string; headers: Record<string, string> } | null {
   const isDirect = (url: string, protocol?: string): boolean =>
     !!url && !isHlsUrl(url) && !isHlsProtocol(protocol)
 
   // 1. Top-level URL
   if (data.url && isDirect(data.url, data.protocol)) {
     logger.info(`pickDirectAudioUrl: using top-level URL (protocol=${data.protocol})`)
-    return data.url
+    return { url: data.url, headers: headersOf(data) }
   }
 
   // 2. requested_formats - audio track from a/v split
@@ -223,7 +261,7 @@ function pickDirectAudioUrl(data: any): string | null {
     )
     if (direct?.url) {
       logger.info(`pickDirectAudioUrl: using requested_formats (protocol=${direct.protocol}, ext=${direct.ext})`)
-      return direct.url
+      return { url: direct.url, headers: headersOf(direct) }
     }
   }
 
@@ -236,7 +274,7 @@ function pickDirectAudioUrl(data: any): string | null {
     if (directAudio.length > 0) {
       const best = directAudio[0]
       logger.info(`pickDirectAudioUrl: using formats list (protocol=${best.protocol}, ext=${best.ext}, abr=${best.abr || best.tbr})`)
-      return best.url
+      return { url: best.url, headers: headersOf(best) }
     }
 
     // 3b. a/v formats as fallback
@@ -247,12 +285,162 @@ function pickDirectAudioUrl(data: any): string | null {
     if (anyDirect.length > 0) {
       const best = anyDirect[0]
       logger.info(`pickDirectAudioUrl: using a/v format (protocol=${best.protocol}, ext=${best.ext}, abr=${best.abr || best.tbr})`)
-      return best.url
+      return { url: best.url, headers: headersOf(best) }
     }
   }
 
   logger.warn(`pickDirectAudioUrl: no direct audio URL found (top-level protocol=${data.protocol}, formats=${data.formats?.length || 0})`)
   return null
+}
+
+/* ------------------------------------------------------------------ */
+/*  Picture for a link                                                 */
+/* ------------------------------------------------------------------ */
+
+/** A video codec family; the renderer says which ones its Chromium decodes. */
+export type VideoCodecFamily = 'avc1' | 'vp9' | 'av01'
+
+/** A link's picture as a direct URL: a progressive file with its own sound, or a video-only DASH stream. */
+export interface LinkVideo {
+  kind: 'progressive' | 'dash'
+  url: string
+  httpHeaders: Record<string, string>
+  formatId: string
+  ext: string
+  width: number | null
+  height: number | null
+  /** yt-dlp's codec string, such as avc1.640028 or vp09.00.40.08. */
+  codec: string
+  fps: number | null
+  hasSound: boolean
+}
+
+/**
+ * The yt-dlp format selector for a link's picture no taller than `maxHeight`, in the order the player can use
+ * them: a video-only H.264 MP4 (the player's sound element is the clock, so a separate stream costs nothing and
+ * reaches the cap, where a progressive file stops at 360p), then a progressive H.264 MP4 with AAC sound, then VP9
+ * and AV1 video-only streams when the renderer decodes them. Every choice is one plain HTTPS URL; HLS playlists
+ * and DASH segment lists never qualify, since Chromium plays neither.
+ */
+export function videoFormatSelector(maxHeight: number, codecs: readonly VideoCodecFamily[]): string {
+  const cap = `[height<=${Math.max(144, Math.round(maxHeight))}]`
+  const https = '[protocol=https]'
+  const parts = [
+    `bv[ext=mp4][vcodec^=avc1]${cap}${https}`,
+    `b[ext=mp4][vcodec^=avc1][acodec^=mp4a]${cap}${https}`
+  ]
+  if (codecs.includes('vp9')) parts.push(`bv[vcodec^=vp09]${cap}${https}`, `bv[vcodec=vp9]${cap}${https}`)
+  if (codecs.includes('av01')) parts.push(`bv[vcodec^=av01]${cap}${https}`)
+  return parts.join('/')
+}
+
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+/** The family of a yt-dlp codec string; null for one Chromium never decodes. */
+export function codecFamily(codec: string): VideoCodecFamily | null {
+  if (/^avc1/.test(codec)) return 'avc1'
+  if (/^vp0?9/.test(codec)) return 'vp9'
+  if (/^av01/.test(codec)) return 'av01'
+  return null
+}
+
+/** The chosen format from yt-dlp's JSON as a link picture, or null when it is HLS, segmented, or a codec Chromium cannot decode. */
+export function pickLinkVideo(data: any, codecs: readonly VideoCodecFamily[]): LinkVideo | null {
+  const url = typeof data?.url === 'string' ? data.url : null
+  const codec = typeof data?.vcodec === 'string' ? data.vcodec : ''
+  const family = codecFamily(codec)
+  if (!url || isHlsUrl(url) || isHlsProtocol(data.protocol) || /dash/i.test(String(data.protocol ?? ''))) return null
+  if (family === null || (family !== 'avc1' && !codecs.includes(family))) return null
+  const hasSound = typeof data.acodec === 'string' && data.acodec !== 'none'
+  return {
+    kind: hasSound ? 'progressive' : 'dash',
+    url,
+    httpHeaders: headersOf(data),
+    formatId: String(data.format_id ?? ''),
+    ext: String(data.ext ?? ''),
+    width: finiteOrNull(data.width),
+    height: finiteOrNull(data.height),
+    codec,
+    fps: finiteOrNull(data.fps),
+    hasSound
+  }
+}
+
+/** Resolves a link's picture as a direct URL; null when the link offers none the player can show that way. */
+export async function getLinkVideo(videoUrl: string, maxHeight: number, codecs: readonly VideoCodecFamily[]): Promise<LinkVideo | null> {
+  const dl = await getYtDl()
+  return cookieFreeFirst(async (cookieFlags) => {
+    let data: any
+    try {
+      data = await dl(videoUrl, {
+        dumpSingleJson: true,
+        format: videoFormatSelector(maxHeight, codecs),
+        noPlaylist: true,
+        ...baseFlags(),
+        ...cookieFlags
+      }) as any
+    } catch (err: any) {
+      if (/requested format is not available/i.test(String(err?.message ?? err))) {
+        logger.info(`Link picture: no direct format up to ${maxHeight}p for ${videoUrl}`)
+        return null
+      }
+      throw err
+    }
+    const picture = pickLinkVideo(data, codecs)
+    if (picture) logger.info(`Link picture: ${picture.kind} ${picture.formatId} ${picture.codec} ${picture.width ?? '?'}x${picture.height ?? '?'}`)
+    return picture
+  })
+}
+
+/** The percent of a yt-dlp `--newline` download line, such as "[download]  43.2% of 10.00MiB"; null for other lines. */
+export function parseDownloadProgress(line: string): number | null {
+  const match = /\[download\]\s+([\d.]+)%/.exec(line)
+  return match ? Number(match[1]) : null
+}
+
+/** The selector of a merged download no taller than `maxHeight`: H.264 and AAC in MP4 when the site offers them, else the best the cap allows. */
+export function mergedFormatSelector(maxHeight: number): string {
+  const cap = `[height<=${Math.max(144, Math.round(maxHeight))}]`
+  return `bv*${cap}[ext=mp4]+ba[ext=m4a]/b${cap}[ext=mp4]/bv*${cap}+ba/b${cap}`
+}
+
+/**
+ * Downloads a link's picture and sound merged into one MP4 in the cache, reporting each percent yt-dlp prints,
+ * and answers the file's path. The route for links that offer only HLS or DASH segments.
+ */
+export async function downloadLinkVideo(videoUrl: string, maxHeight: number, onProgress: (percent: number) => void): Promise<string> {
+  const dl = await getYtDl()
+  fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true })
+  const id = `molex-video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+  const outTemplate = path.join(AUDIO_CACHE_DIR, `${id}.%(ext)s`)
+  await cookieFreeFirst(async (cookieFlags) => {
+    const run = dl.exec(videoUrl, {
+      format: mergedFormatSelector(maxHeight),
+      mergeOutputFormat: 'mp4',
+      output: outTemplate,
+      noPlaylist: true,
+      newline: true,
+      ...baseFlags(),
+      ...cookieFlags
+    })
+    let rest = ''
+    run.stdout?.on('data', (chunk: Buffer | string) => {
+      rest += chunk.toString()
+      const lines = rest.split(/\r?\n/)
+      rest = lines.pop() ?? ''
+      for (const line of lines) {
+        const percent = parseDownloadProgress(line)
+        if (percent !== null) onProgress(percent)
+      }
+    })
+    await run
+  })
+  const files = fs.readdirSync(AUDIO_CACHE_DIR).filter((f) => f.startsWith(id) && !/\.part$/.test(f)).map((f) => path.join(AUDIO_CACHE_DIR, f))
+  if (files.length === 0) throw new Error('yt-dlp download produced no output file')
+  logger.info(`Link picture: downloaded ${path.basename(files[0])}`)
+  return files[0]
 }
 
 /* ------------------------------------------------------------------ */

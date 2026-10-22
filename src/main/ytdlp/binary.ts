@@ -1,166 +1,55 @@
 /**
  * @module main/ytdlp/binary
- * @description yt-dlp binary acquisition and wrapper.
+ * @description The yt-dlp wrapper the rest of the app runs.
  *
- * Handles downloading the platform-specific yt-dlp binary on first use,
- * locating system-installed copies on PATH, and providing a configured
- * `youtube-dl-exec` instance for other modules to use.
+ * Finds the binary through the updater (the app-managed copy by default, downloaded and verified when missing;
+ * the copy on PATH only when the owner chose it), and hands out a `youtube-dl-exec` instance whose every run is
+ * counted, so an update replaces the binary only while nothing runs it.
  */
 
-import * as https from 'https'
-import * as http from 'http'
 import * as fs from 'fs'
 import * as path from 'path'
 import { create as createYtDl } from 'youtube-dl-exec'
-import { getUserDataPath, getConfig } from '../config'
-import { logger } from '../logger'
+import { getConfig } from '../config'
+import { ytDlpUpdater } from './updater'
 
-/* ------------------------------------------------------------------ */
-/*  Paths                                                              */
-/* ------------------------------------------------------------------ */
-
-/** Directory where the yt-dlp binary is stored. */
-function getBinDir(): string {
-  return path.join(getUserDataPath(), 'ytdlp-bin')
-}
-
-/** Full path to the yt-dlp executable. */
-function getExecutable(): string {
-  return path.join(getBinDir(), process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp')
-}
-
-/* ------------------------------------------------------------------ */
-/*  Download URLs                                                      */
-/* ------------------------------------------------------------------ */
-
-const DOWNLOAD_URLS: Record<string, string> = {
-  // Windows: single x64 executable (also runs on arm64 via emulation).
-  win32: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe',
-  // macOS: universal2 binary covering both Intel and Apple Silicon.
-  darwin: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
-  // Linux: standalone binaries that bundle their own Python runtime, keyed by
-  // architecture so no system Python is required.
-  'linux-x64': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux',
-  'linux-arm64': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64'
-}
-
-/** Resolve the yt-dlp download URL for the current platform + architecture. */
-function getDownloadUrl(): string | undefined {
-  if (process.platform === 'linux') {
-    return DOWNLOAD_URLS[`linux-${process.arch}`]
-  }
-  return DOWNLOAD_URLS[process.platform]
-}
+type YtDl = ReturnType<typeof createYtDl>
 
 /**
- * Follow HTTP 3xx redirects and return the response body as a Buffer.
- * Used for binary downloads from GitHub releases.
- */
-function followRedirects(url: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const proto = url.startsWith('https') ? https : http
-    const req = proto.get(url, { headers: { 'User-Agent': 'molexMedia/3.0' } }, (res) => {
-      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        followRedirects(res.headers.location).then(resolve).catch(reject)
-        return
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error(`Download failed: HTTP ${res.statusCode}`))
-        return
-      }
-      const chunks: Buffer[] = []
-      res.on('data', (c: Buffer) => chunks.push(c))
-      res.on('end', () => resolve(Buffer.concat(chunks)))
-      res.on('error', reject)
-    })
-    req.on('error', reject)
-    req.setTimeout(120000, () => { req.destroy(); reject(new Error('Download timed out')) })
-  })
-}
-
-/* ------------------------------------------------------------------ */
-/*  Binary management                                                  */
-/* ------------------------------------------------------------------ */
-
-/**
- * Ensure the yt-dlp binary is available. Downloads it from GitHub
- * releases if not already present and not found on the system PATH.
+ * Ensure the yt-dlp binary is available, downloading and verifying the latest release into the app folder when
+ * the copy in use does not exist.
  *
  * @returns Absolute path to the yt-dlp binary.
  */
-export async function ensureYtDlp(): Promise<string> {
-  const binPath = getExecutable()
-
-  if (fs.existsSync(binPath)) return binPath
-
-  // Check system PATH
-  const systemPath = await findInPath()
-  if (systemPath) {
-    logger.success(`Found system yt-dlp: ${systemPath}`)
-    return systemPath
-  }
-
-  // Download
-  const url = getDownloadUrl()
-  if (!url) throw new Error(`Unsupported platform/architecture: ${process.platform}-${process.arch}`)
-
-  logger.info(`Downloading yt-dlp from ${url}`)
-  const binDir = getBinDir()
-  fs.mkdirSync(binDir, { recursive: true })
-
-  const data = await followRedirects(url)
-
-  // Staged through a temp name so a second caller racing this download never
-  // observes (or executes) a half-written binary at binPath.
-  const stagePath = `${binPath}.${process.pid}.part`
-  fs.writeFileSync(stagePath, data, { mode: 0o755 })
-  if (process.platform !== 'win32') {
-    fs.chmodSync(stagePath, 0o755)
-  }
-  fs.renameSync(stagePath, binPath)
-
-  logger.success(`yt-dlp downloaded (${(data.length / 1024 / 1024).toFixed(1)}MB)`)
-  return binPath
+export async function ensureYtDlp(): Promise<string>
+{
+  return ytDlpUpdater().ensure()
 }
 
-/**
- * Search the system PATH for an existing yt-dlp installation.
- * @returns Absolute path if found, otherwise `null`.
- */
-async function findInPath(): Promise<string | null> {
-  const name = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
-  for (const dir of (process.env.PATH || '').split(path.delimiter)) {
-    const full = path.join(dir, name)
-    try {
-      await fs.promises.access(full, fs.constants.X_OK)
-      return full
-    } catch {
-      continue
-    }
-  }
-  return null
+/** A `youtube-dl-exec` instance whose runs the updater counts until each process ends. */
+export function trackRuns(inner: YtDl, track: <T extends PromiseLike<unknown>>(run: T) => T): YtDl
+{
+  const run = ((...args: Parameters<YtDl>) => track(inner(...args))) as YtDl
+  run.exec = (...args: Parameters<YtDl['exec']>) => track(inner.exec(...args))
+  return run
 }
 
-/* ------------------------------------------------------------------ */
-/*  youtube-dl-exec wrapper                                            */
-/* ------------------------------------------------------------------ */
-
-let ytdl: ReturnType<typeof createYtDl> | null = null
+let ytdl: { path: string; run: YtDl } | null = null
 
 /**
- * Get (or create) a configured `youtube-dl-exec` instance pointing at
- * the managed yt-dlp binary.
+ * Get a configured `youtube-dl-exec` instance pointing at the yt-dlp in use. The instance is kept while the
+ * binary stays at the same path, so switching between the app's copy and one on PATH takes effect on the next call.
  */
-export async function getYtDl(): Promise<ReturnType<typeof createYtDl>> {
-  if (ytdl) return ytdl
+export async function getYtDl(): Promise<YtDl>
+{
   const binPath = await ensureYtDlp()
-  ytdl = createYtDl(binPath)
-  return ytdl
+  if (ytdl === null || ytdl.path !== binPath)
+  {
+    const updater = ytDlpUpdater()
+    ytdl = { path: binPath, run: trackRuns(createYtDl(binPath), (run) => updater.track(run)) }
+  }
+  return ytdl.run
 }
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
 
 /** Cached FFmpeg directory - populated by `initFFmpegDir()`. */
 let cachedFFmpegDir: string | undefined
@@ -170,11 +59,15 @@ let cachedFFmpegDir: string | undefined
  * Called once at startup (or lazily). After this, `baseFlags()` will
  * include `ffmpegLocation` automatically.
  */
-export async function initFFmpegDir(): Promise<void> {
+export async function initFFmpegDir(): Promise<void>
+{
   const cfg = await getConfig()
-  if (cfg.ffmpegPath && fs.existsSync(cfg.ffmpegPath)) {
+  if (cfg.ffmpegPath && fs.existsSync(cfg.ffmpegPath))
+  {
     cachedFFmpegDir = path.dirname(cfg.ffmpegPath)
-  } else {
+  }
+  else
+  {
     cachedFFmpegDir = undefined
   }
 }
@@ -183,19 +76,22 @@ export async function initFFmpegDir(): Promise<void> {
  * Return the directory containing the app's FFmpeg binary (needed by
  * yt-dlp for HLS demuxing and post-processing).
  */
-export async function getFFmpegDir(): Promise<string | undefined> {
+export async function getFFmpegDir(): Promise<string | undefined>
+{
   await initFFmpegDir()
   return cachedFFmpegDir
 }
 
 /** Common flags applied to every yt-dlp invocation. */
-export function baseFlags(): Record<string, any> {
+export function baseFlags(): Record<string, any>
+{
   const flags: Record<string, any> = {
     noWarnings: true,
     noCheckCertificates: true,
     jsRuntimes: 'node'
   }
-  if (cachedFFmpegDir) {
+  if (cachedFFmpegDir)
+  {
     flags.ffmpegLocation = cachedFFmpegDir
   }
   return flags

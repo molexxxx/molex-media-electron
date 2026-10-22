@@ -12,7 +12,9 @@ import * as fs from 'fs'
 import { getConfigSync } from '../config'
 import { runCommand } from '../ffmpeg/runner'
 import { createExec } from '../ffmpeg/exec'
-import { probeMedia, type MediaInfo } from '../ffmpeg/probe'
+import { probeArgs, probeMedia, type MediaInfo } from '../ffmpeg/probe'
+import { keyframeArgs, parseKeyframeTimes } from '../ffmpeg/keyframes'
+import type { KeyframeTimesResult, ProbeReportResult } from '../../shared/ipc/api'
 import type { ExportRequest } from '../ffmpeg/processor/editor'
 import { runExportJob, type ExportVerification } from '../ffmpeg/processor/export'
 import { realTimers } from '../timers'
@@ -250,6 +252,36 @@ export function registerEditorIPC(): void {
     try {
       const info: MediaInfo = await probeMedia(filePath)
       return { success: true, data: info }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // editor:probeReport - ffprobe's own JSON report of format, streams, and chapters, unchanged
+  ipcMain.handle('editor:probeReport', async (_, filePath: string): Promise<ProbeReportResult> => {
+    const ffprobePath = getConfigSync()?.ffprobePath
+    if (!ffprobePath) return { success: false, error: 'FFprobe is not set up' }
+    if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'The file is missing' }
+    try {
+      const { promise } = runCommand(ffprobePath, probeArgs(filePath), undefined, { log: false })
+      const result = await promise
+      if (result.code !== 0) return { success: false, error: result.stderr.trim().split('\n').pop() || `FFprobe exited with code ${result.code}` }
+      return { success: true, report: result.stdout }
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+  })
+
+  // editor:keyframes - where the first video stream's keyframes fall, in seconds
+  ipcMain.handle('editor:keyframes', async (_, filePath: string): Promise<KeyframeTimesResult> => {
+    const ffprobePath = getConfigSync()?.ffprobePath
+    if (!ffprobePath) return { success: false, error: 'FFprobe is not set up' }
+    if (!filePath || !fs.existsSync(filePath)) return { success: false, error: 'The file is missing' }
+    try {
+      const { promise } = runCommand(ffprobePath, keyframeArgs(filePath), undefined, { log: false })
+      const result = await promise
+      if (result.code !== 0) return { success: false, error: result.stderr.trim().split('\n').pop() || `FFprobe exited with code ${result.code}` }
+      return { success: true, times: parseKeyframeTimes(result.stdout) }
     } catch (err: any) {
       return { success: false, error: err.message }
     }

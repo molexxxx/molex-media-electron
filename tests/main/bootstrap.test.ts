@@ -230,6 +230,7 @@ describe('downloadFFmpeg', () => {
     expect(progress.map((p) => p.stage)).toEqual(expect.arrayContaining(['downloading', 'extracting', 'verifying']))
     expect(progress[progress.length - 1]).toEqual({ stage: 'complete', message: 'FFmpeg is ready!', percent: 100 })
     expect(progress.filter((p) => p.stage === 'downloading').map((p) => p.percent)).toEqual([0, 100])
+    expect(progress.filter((p) => p.stage === 'downloading').map((p) => [p.received, p.total])).toEqual([[undefined, undefined], [ARCHIVE.length, ARCHIVE.length]])
     expect(fs.readdirSync(os.tmpdir()).filter((n) => n.startsWith('molex-ffmpeg-') && !staged.has(n))).toEqual([])
   })
 

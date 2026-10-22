@@ -7,9 +7,9 @@
  * targets, codec settings, worker count, output preferences) and manages
  * the YouTube URL history with add / remove / clear / get operations.
  *
- * The `ffmpeg` and `jobs` keys are main-owned: only the bootstrap and the
- * job engine write them, and the renderer's config channels never carry
- * them (`stripMainOwned`). The top-level `ffmpegPath` and `ffprobePath`
+ * The `ffmpeg`, `jobs`, and `ytdlp` keys are main-owned: only the bootstrap,
+ * the job engine, and the yt-dlp updater write them, and the renderer's
+ * config channels never carry them (`stripMainOwned`). The top-level `ffmpegPath` and `ffprobePath`
  * mirror the `ffmpeg` block for older readers; no save writes them directly.
  * There are no global loudness settings: every job carries its own recipe and
  * "New files" is the one default. `loadConfig` derives `jobs` from the legacy
@@ -29,12 +29,23 @@ import { EARLIER_DEFAULT_PRESET } from '../shared/jobs/presets'
 import type { Recipe } from '../shared/jobs/recipes'
 import { DEFAULT_TEMPLATES, RUN_ALERT_KINDS, type BatchPolicy, type Destination, type RecentFolder, type RunAlertKind, type RunSettings } from '../shared/jobs/types'
 import { REQUEST_VALIDATORS, validateRecipe, WORKER_LIMITS } from '../shared/jobs/validate'
+import type { YtDlpProblem } from '../shared/ipc/api'
 
 export interface UrlHistoryEntry {
   url: string
   title: string
   trackCount: number
   addedAt: number
+}
+
+/** The main-owned `ytdlp` key, written only by the yt-dlp updater, which validates it on read. */
+export interface YtDlpConfig {
+  /** When a check last reached GitHub, in epoch milliseconds. */
+  lastCheckAt: number | null
+  /** The app-managed binary's version, with the size and modification time it was read at. */
+  installed: { version: string; size: number; mtimeMs: number } | null
+  /** The last check or update that failed, until one succeeds. */
+  lastFailure: { problem: YtDlpProblem; at: number } | null
 }
 
 /** The main-owned `jobs` key; the default policy is never replace originals. */
@@ -80,6 +91,12 @@ export interface AppConfig {
 
   gpuAcceleration: 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
   ytdlpBrowser: string
+  /** Checks for a new yt-dlp once a day and installs it; never applies to a copy on PATH. */
+  ytdlpAutoUpdate: boolean
+  /** Runs the yt-dlp found on PATH instead of the app's own copy; off by default, so the copy in use is the one that updates. */
+  ytdlpUseSystem: boolean
+  /** Main-owned: when yt-dlp was last checked, the installed copy's version, and the last failure. */
+  ytdlp: YtDlpConfig
   urlHistory: UrlHistoryEntry[]
   popoutSize: { width: number; height: number }
   sidebarCollapsed: boolean
@@ -92,7 +109,7 @@ export interface AppConfig {
 }
 
 /** Keys only the main process writes; the renderer's config channels never carry them. */
-export const MAIN_OWNED_KEYS = ['ffmpeg', 'jobs'] as const
+export const MAIN_OWNED_KEYS = ['ffmpeg', 'jobs', 'ytdlp'] as const
 
 export type MainOwnedKey = typeof MAIN_OWNED_KEYS[number]
 
@@ -155,6 +172,9 @@ const DEFAULT_CONFIG: AppConfig = {
 
   gpuAcceleration: 'off',
   ytdlpBrowser: '',
+  ytdlpAutoUpdate: true,
+  ytdlpUseSystem: false,
+  ytdlp: { lastCheckAt: null, installed: null, lastFailure: null },
   urlHistory: [],
   popoutSize: { width: 420, height: 560 },
   sidebarCollapsed: false,

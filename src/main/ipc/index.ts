@@ -8,8 +8,11 @@ import { registerConfigIPC } from './config'
 import { registerFilesIPC } from './files'
 import { registerEditorIPC } from './editor'
 import { registerMediaIPC } from './media'
+import { registerYtDlpUpdateIPC } from './ytdlp-updates'
+import { registerPlayerIPC } from './player'
 import { registerSystemIPC } from './system'
 import { registerJobsIPC } from './jobs'
+import { registerSetupIPC } from './setup'
 import { hostPlatform } from './jobs-host'
 import type { CommandTarget } from '../jobs/command-gate'
 import type { JobsHost } from '../jobs/deps'
@@ -31,8 +34,11 @@ export interface JobsIPC {
 export function registerIPC(jobs?: JobsIPC): void {
   registerConfigIPC()
   registerFilesIPC()
+  registerSetupIPC()
   registerEditorIPC()
   registerMediaIPC()
+  registerYtDlpUpdateIPC()
+  registerPlayerIPC()
   registerSystemIPC()
   if (jobs) registerJobsIPC(jobs.engine, jobs.host, hostPlatform())
 }

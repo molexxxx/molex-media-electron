@@ -35,6 +35,10 @@ export interface BootstrapProgress {
   message: string
   percent: number
   detail?: string
+  /** Bytes received so far, while downloading. */
+  received?: number
+  /** Bytes of every asset of the build together, while downloading. */
+  total?: number
 }
 
 export interface FFmpegPaths {
@@ -375,7 +379,9 @@ async function installAssets(root: string, version: string, assets: readonly Ass
           stage: 'downloading',
           message: `Downloading FFmpeg ${version}... ${(bytes / 1048576).toFixed(1)}MB / ${(total / 1048576).toFixed(1)}MB`,
           percent,
-          detail: `${percent}% complete`
+          detail: `${percent}% complete`,
+          received: bytes,
+          total
         })
       })
       if (!digest.ok) {

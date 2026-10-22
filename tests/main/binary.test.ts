@@ -5,105 +5,128 @@ vi.mock('../../src/main/logger', () => ({
 }))
 
 const mockGetConfig = vi.fn()
-const mockGetUserDataPath = vi.fn(() => '/mock/userdata')
 vi.mock('../../src/main/config', () => ({
   getConfig: (...a: any[]) => mockGetConfig(...a),
-  getUserDataPath: () => mockGetUserDataPath()
+  getUserDataPath: () => '/mock/userdata'
 }))
 
 const mockExistsSync = vi.fn()
-const mockMkdirSync = vi.fn()
-const mockWriteFileSync = vi.fn()
-const mockChmodSync = vi.fn()
-const mockAccessPromise = vi.fn()
-
 vi.mock('fs', () => ({
-  existsSync: (...a: any[]) => mockExistsSync(...a),
-  mkdirSync: (...a: any[]) => mockMkdirSync(...a),
-  writeFileSync: (...a: any[]) => mockWriteFileSync(...a),
-  chmodSync: (...a: any[]) => mockChmodSync(...a),
-  constants: { X_OK: 1 },
-  promises: {
-    access: (...a: any[]) => mockAccessPromise(...a)
-  }
+  existsSync: (...a: any[]) => mockExistsSync(...a)
 }))
 
-const mockCreateYtDl = vi.fn(() => 'ytdl-instance')
+const updater = vi.hoisted(() => ({
+  ensure: vi.fn(async () => '/mock/userdata/ytdlp-bin/yt-dlp'),
+  track: vi.fn(<T,>(run: T) => run)
+}))
+vi.mock('../../src/main/ytdlp/updater', () => ({ ytDlpUpdater: () => updater }))
+
+const inner = vi.hoisted(() =>
+{
+  const fn = vi.fn(async () => ({ id: 'x' })) as any
+  fn.exec = vi.fn(() => Promise.resolve({ exitCode: 0 }))
+  return fn
+})
+const mockCreateYtDl = vi.fn((_path: string) => inner)
 vi.mock('youtube-dl-exec', () => ({
-  create: (...a: any[]) => mockCreateYtDl(...a)
+  create: (path: string) => mockCreateYtDl(path)
 }))
 
-import { baseFlags, getFFmpegDir, initFFmpegDir, ensureYtDlp } from '../../src/main/ytdlp/binary'
+import { baseFlags, getFFmpegDir, initFFmpegDir, ensureYtDlp, getYtDl, trackRuns } from '../../src/main/ytdlp/binary'
 
-describe('ytdlp/binary', () => {
-  beforeEach(() => {
-    vi.resetAllMocks()
+describe('ytdlp/binary', () =>
+{
+  beforeEach(() =>
+  {
     mockGetConfig.mockResolvedValue({ ffmpegPath: '/usr/bin/ffmpeg' })
+    mockExistsSync.mockReset()
+    updater.track.mockClear()
   })
 
-  describe('baseFlags', () => {
-    it('returns common yt-dlp flags', () => {
+  describe('baseFlags', () =>
+  {
+    it('returns common yt-dlp flags', () =>
+    {
       const flags = baseFlags()
       expect(flags.noWarnings).toBe(true)
       expect(flags.noCheckCertificates).toBe(true)
     })
 
-    it('includes ffmpegLocation after initFFmpegDir', async () => {
-      mockGetConfig.mockResolvedValue({ ffmpegPath: '/usr/bin/ffmpeg' })
+    it('includes ffmpegLocation after initFFmpegDir', async () =>
+    {
       mockExistsSync.mockReturnValue(true)
       await initFFmpegDir()
-      const flags = baseFlags()
-      expect(flags.ffmpegLocation).toContain('bin')
+      expect(baseFlags().ffmpegLocation).toContain('bin')
     })
   })
 
-  describe('getFFmpegDir', () => {
-    it('returns dirname when ffmpegPath exists', async () => {
-      mockGetConfig.mockResolvedValue({ ffmpegPath: '/usr/bin/ffmpeg' })
+  describe('getFFmpegDir', () =>
+  {
+    it('returns dirname when ffmpegPath exists', async () =>
+    {
       mockExistsSync.mockReturnValue(true)
-
-      const dir = await getFFmpegDir()
-      expect(dir).toContain('bin')
+      expect(await getFFmpegDir()).toContain('bin')
     })
 
-    it('returns undefined when ffmpegPath is empty', async () => {
+    it('returns undefined when ffmpegPath is empty', async () =>
+    {
       mockGetConfig.mockResolvedValue({ ffmpegPath: '' })
-      const dir = await getFFmpegDir()
-      expect(dir).toBeUndefined()
+      expect(await getFFmpegDir()).toBeUndefined()
     })
 
-    it('returns undefined when ffmpeg binary does not exist', async () => {
+    it('returns undefined when ffmpeg binary does not exist', async () =>
+    {
       mockGetConfig.mockResolvedValue({ ffmpegPath: '/nonexistent/ffmpeg' })
       mockExistsSync.mockReturnValue(false)
-      const dir = await getFFmpegDir()
-      expect(dir).toBeUndefined()
+      expect(await getFFmpegDir()).toBeUndefined()
     })
   })
 
-  describe('ensureYtDlp', () => {
-    it('returns local binary when it exists', async () => {
-      mockExistsSync.mockReturnValue(true)
-      const result = await ensureYtDlp()
-      expect(result).toContain('yt-dlp')
+  describe('the yt-dlp binary', () =>
+  {
+    it('comes from the updater, which finds, downloads, and verifies it', async () =>
+    {
+      await expect(ensureYtDlp()).resolves.toBe('/mock/userdata/ytdlp-bin/yt-dlp')
+      expect(updater.ensure).toHaveBeenCalled()
     })
 
-    it('searches PATH when local binary missing', async () => {
-      mockExistsSync.mockReturnValue(false)
-      // findInPath succeeds
-      mockAccessPromise.mockResolvedValueOnce(undefined)
-
-      const result = await ensureYtDlp()
-      expect(result).toBeDefined()
+    it('runs through one cached instance whose every run the updater counts', async () =>
+    {
+      const dl = await getYtDl()
+      expect(await getYtDl()).toBe(dl)
+      expect(mockCreateYtDl).toHaveBeenCalledTimes(1)
+      expect(mockCreateYtDl).toHaveBeenCalledWith('/mock/userdata/ytdlp-bin/yt-dlp')
+      await expect(dl('https://youtu.be/x', { dumpSingleJson: true })).resolves.toEqual({ id: 'x' })
+      expect(inner).toHaveBeenCalledWith('https://youtu.be/x', { dumpSingleJson: true })
+      await dl.exec('https://youtu.be/x', { getUrl: true })
+      expect(inner.exec).toHaveBeenCalledWith('https://youtu.be/x', { getUrl: true })
+      expect(updater.track).toHaveBeenCalledTimes(2)
     })
 
-    it('throws on unsupported platform when binary not found and no PATH', async () => {
-      mockExistsSync.mockReturnValue(false)
-      mockAccessPromise.mockRejectedValue(new Error('ENOENT'))
+    it('makes a new instance when the binary in use changes path', async () =>
+    {
+      const before = await getYtDl()
+      updater.ensure.mockResolvedValueOnce('/usr/local/bin/yt-dlp')
+      const after = await getYtDl()
+      expect(after).not.toBe(before)
+      expect(mockCreateYtDl).toHaveBeenLastCalledWith('/usr/local/bin/yt-dlp')
+      expect(await getYtDl()).not.toBe(after)
+      expect(mockCreateYtDl).toHaveBeenLastCalledWith('/mock/userdata/ytdlp-bin/yt-dlp')
+    })
 
-      // Mock process.platform to something the DOWNLOAD_URLS doesn't have
-      // This is tricky since process.platform is read-only. Instead, test the normal download path.
-      // The test verifies PATH scanning is attempted
-      // If all PATH dirs fail, it tries to download
+    it('wraps any instance with the counter it is given', async () =>
+    {
+      const counted: unknown[] = []
+      const wrapped = trackRuns(inner, (run) =>
+      {
+        counted.push(run)
+        return run
+      })
+      const run = wrapped('u')
+      const child = wrapped.exec('u')
+      expect(counted).toEqual([run, child])
+      await run
+      await child
     })
   })
 })

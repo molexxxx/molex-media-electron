@@ -6,7 +6,8 @@
  * log directory and keeps the newest 10,000 entries in memory, each with a
  * monotonic id, so renderer windows can hydrate with `afterId` and filter by
  * job or run. Child loggers stamp a job's catalog number, run, attempt, and
- * stage on every line they write.
+ * stage on every line they write, and a kind on every line, so a line with a
+ * kind is known to come from the job engine, which writes through them.
  */
 
 import * as fs from 'fs'
@@ -111,23 +112,23 @@ class ContextLogger implements ScopedLogger {
   constructor(private readonly root: Logger, readonly context: Readonly<LogContext>) {}
 
   debug(message: string, details?: string): void {
-    this.write({ level: 'debug', message, details })
+    this.write({ level: 'debug', kind: 'message', message, details })
   }
 
   info(message: string, details?: string): void {
-    this.write({ level: 'info', message, details })
+    this.write({ level: 'info', kind: 'message', message, details })
   }
 
   warn(message: string, details?: string): void {
-    this.write({ level: 'warn', message, details })
+    this.write({ level: 'warn', kind: 'message', message, details })
   }
 
   error(message: string, details?: string): void {
-    this.write({ level: 'error', message, details })
+    this.write({ level: 'error', kind: 'message', message, details })
   }
 
   success(message: string, details?: string): void {
-    this.write({ level: 'success', message, details })
+    this.write({ level: 'success', kind: 'message', message, details })
   }
 
   ffmpeg(line: string): void {
