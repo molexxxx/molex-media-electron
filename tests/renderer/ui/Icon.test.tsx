@@ -51,7 +51,7 @@ const EXPECTED: Record<IconName, string> = {
   'action.clearFinished': 'ListX',
   'action.reveal': 'FolderOpen',
   'action.browse': 'FolderOpen',
-  'action.trash': 'Trash2',
+  'action.trash': 'Trash',
   'action.showLog': 'ScrollText',
   'action.copy': 'Copy',
   'action.export': 'Download',
