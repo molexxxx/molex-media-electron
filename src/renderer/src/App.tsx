@@ -29,6 +29,7 @@ import { LogViewer } from './components/logs'
 import { MediaEditor } from './components/editor'
 import { MediaPlayer } from './components/player'
 import { SetupWizard } from './components/setup'
+import { StartupCheck } from './components/setup/StartupCheck'
 import { ToastRegion, toast, type ToastOptions } from './ui'
 import { focusNextRegion } from './hooks/useF6Region'
 import { listenUnclaimedKeys, useAppZoomKeys } from './hooks/useAppZoomKeys'
@@ -149,6 +150,7 @@ function App(): React.JSX.Element {
   const isPopout = window.location.hash === '#popout'
 
   const { currentView, showSetup, ffmpegChecking, goBack } = useAppStore()
+  const fullscreen = useAppStore((s) => s.fullscreen)
 
   // Global updater status listener - captures events from auto-check on startup
   const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
@@ -259,7 +261,7 @@ function App(): React.JSX.Element {
     if (isPopout) return
     return listenUnclaimedKeys((e) => {
       if (e.key !== 'F6' || e.ctrlKey || e.altKey || e.metaKey) return
-      if (document.querySelector('dialog[open]')) return
+      if (document.querySelector('dialog[open]') || useAppStore.getState().fullscreen) return
       e.preventDefault()
       focusNextRegion(e.shiftKey ? 'previous' : 'next')
     })
@@ -282,12 +284,7 @@ function App(): React.JSX.Element {
     return withCloseConfirm(
       <div className="h-full flex flex-col">
         <TitleBar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-12 h-12 border-2 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-surface-300 text-sm font-medium tracking-wide">Initializing molexMedia...</p>
-          </div>
-        </div>
+        <StartupCheck />
       </div>
     )
   }
@@ -310,25 +307,26 @@ function App(): React.JSX.Element {
     { id: 'logs', el: <LogViewer /> }
   ]
 
-  const fixedLayoutViews = new Set<View>(['batch', 'logs', 'editor'])
+  const fixedLayoutViews = new Set<View>(['batch', 'logs', 'editor', 'player'])
 
   return withCloseConfirm(
     <div className="h-full flex relative">
-      {/* Sidebar - full height of window */}
-      <div className="shrink-0 h-full">
-        <Sidebar />
-      </div>
-      {/* Title bar + content column */}
+      {/* Full screen is for playing media only: the Player's view fills the window and the shell is not rendered */}
+      {!fullscreen && (
+        <div className="shrink-0 h-full">
+          <Sidebar />
+        </div>
+      )}
       <div className="flex flex-col flex-1 min-w-0">
-        <TitleBar />
+        {!fullscreen && <TitleBar />}
         <main className="flex-1 overflow-hidden relative">
           {views.map(({ id, el }) =>
             mounted.has(id) ? (
               <div
                 key={id}
                 className={`absolute inset-0 ${
-                  id === 'batch'
-                    // Batch regions meet the window edges
+                  id === 'batch' || id === 'editor' || id === 'logs' || id === 'player'
+                    // Batch, editor, logs, and player regions meet the window edges
                     ? ''
                     : id === 'dashboard'
                       // Dashboard scrolls vertically; pad only the content
@@ -348,7 +346,7 @@ function App(): React.JSX.Element {
               </div>
             ) : null
           )}
-          <ToastRegion onShowMore={() => setView('logs')} />
+          {!fullscreen && <ToastRegion onShowMore={() => setView('logs')} />}
         </main>
       </div>
     </div>

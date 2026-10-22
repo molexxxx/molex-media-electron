@@ -270,7 +270,7 @@ describe('close confirmation', () =>
   {
     useAppStore.setState({ ffmpegChecking: true })
     render(<App />)
-    expect(screen.getByText('Initializing molexMedia...')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Looking for FFmpeg' })).toBeInTheDocument()
     act(() => openRequest?.())
     expect(screen.getByRole('dialog', { name: 'Minimize to tray?' })).toBeInTheDocument()
     expect((document.querySelector('dialog') as HTMLDialogElement).open).toBe(true)

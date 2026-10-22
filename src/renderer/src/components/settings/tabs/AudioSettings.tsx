@@ -1,6 +1,6 @@
 /**
  * The FFmpeg section of Settings: the build in use (version, source, libsoxr, minimum), its self-test result and
- * time, Re-run self-test, and Install the tested build when a bundled build differs from this version's pin. There
+ * time, Re-run self-test, and Install the tested build when the build in use is not this version's pinned one. There
  * are no loudness or encoding settings here; every job carries its own operation and preset.
  */
 import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
@@ -105,7 +105,7 @@ export function minimumLine(info: Pick<FfmpegInfo, 'found' | 'meetsMinimum' | 'r
   return info.meetsMinimum ? FFMPEG_WORDS.met : 'Below the minimum version'
 }
 
-/** Whether to offer the tested build: a bundled build differs from the pin, or no FFmpeg was found. */
+/** Whether to offer the tested build: the build in use is not the pinned one, or no FFmpeg was found. */
 export function offersInstall(info: Pick<FfmpegInfo, 'found' | 'pin'>): boolean
 {
   return info.pin.offerInstall || !info.found
