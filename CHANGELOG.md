@@ -2,6 +2,26 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [Unreleased]
+
+### Added
+
+- **Live streams in the Player.** Live links, and links that offer only
+  HLS, play through one FFmpeg session that carries the sound and the
+  picture on the stream's own clock. A live stream reads Live in place of
+  its length, counts from when you joined, and cannot be moved; the
+  playlist marks it Live. A recording seeks by opening a new session
+  from that point.
+- **Picture subtitles in the Player.** PGS (Blu-ray), DVD, and DVB
+  subtitles appear in the subtitle menu next to the text ones. FFmpeg
+  draws the chosen one onto the picture, and a subtitle already on screen
+  at the seek point shows straight away.
+
+### Fixed
+
+- The Player's seek bar no longer breaks when switching between Video and
+  a visualization on a live stream.
+
 ## [5.0.0] - 2026-10-22 - UI 2.0 and the loudness pipeline rebuilt
 
 UI 2.0 rebuilds every view of the app on one design system: ice blue on
