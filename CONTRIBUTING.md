@@ -4,14 +4,14 @@
 
 ### Prerequisites
 
-- **Node.js** 20+
+- **Node.js** 22
 - **npm** 10+
 - **Git**
 
 ### Setup
 
 ```bash
-git clone https://github.com/molex/molex-media-electron.git
+git clone https://github.com/molexxxx/molex-media-electron.git
 cd molex-media-electron
 npm install
 npm run dev
@@ -80,7 +80,7 @@ npm run build          # Compile TypeScript + Vite
 npm run package        # Build for current platform
 npm run package:win    # Windows (.exe)
 npm run package:mac    # macOS (.dmg)
-npm run package:linux  # Linux (.AppImage)
+npm run package:linux  # Linux (.deb and .rpm)
 ```
 
 ## Code Style
@@ -92,12 +92,12 @@ npm run package:linux  # Linux (.AppImage)
 
 ## Reporting Bugs
 
-Use the [Bug Report template](https://github.com/molex/molex-media-electron/issues/new?template=bug_report.yml). Include:
+Use the [Bug Report template](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml). Include:
 
 - OS and version
 - App version
 - Steps to reproduce
-- Log output (from the Log Viewer)
+- Log output (Copy lines in Logs)
 
 ## License
 

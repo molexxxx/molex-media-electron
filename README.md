@@ -1,14 +1,14 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo-light.svg">
-  <img alt="molexMedia" src="https://raw.githubusercontent.com/molexxxx/molex-media-electron/refs/heads/main/.github/assets/logo.svg" width="500">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo.svg">
+  <source media="(prefers-color-scheme: light)" srcset=".github/assets/logo-light.svg">
+  <img alt="molexMedia" src=".github/assets/logo-light.svg" width="500">
 </picture>
 
 <br/>
 
-**Cross-platform media processing toolkit powered by FFmpeg**
+**A desktop toolkit for loudness, conversion, compression, extraction, editing, and playback, built on FFmpeg.**
 
 <a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=22056855" alt="CI" /></a>
 <a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=2e9321a1" alt="build" /></a>
@@ -18,188 +18,152 @@
 
 <br/>
 
-[Download](#install) · [Features](#features) · [Quick Start](#quick-start) · [Contributing](#contributing) · [Report a Bug](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) · [Request a Feature](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml)
-
-<br/>
-
-<img alt="Dashboard" src=".github/assets/dashboard.png" width="700" />
-
-<br/>
-
-<table>
-  <tr>
-    <td align="center"><a href=".github/assets/sections/batch-processor.png"><img src=".github/assets/sections/batch-processor.png" width="160" alt="Batch Processor"/><br/><sub>Batch Processor</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/media-editor-tools.png"><img src=".github/assets/sections/media-editor-tools.png" width="160" alt="Media Editor Tools"/><br/><sub>Media Editor Tools</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/clip-video.png"><img src=".github/assets/sections/clip-video.png" width="160" alt="Clip Video"/><br/><sub>Clip Video</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/timeline-editor.png"><img src=".github/assets/sections/timeline-editor.png" width="160" alt="Timeline Editor"/><br/><sub>Timeline Editor</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/media-inspector.png"><img src=".github/assets/sections/media-inspector.png" width="160" alt="Media Inspector"/><br/><sub>Media Inspector</sub></a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href=".github/assets/sections/media-player.png"><img src=".github/assets/sections/media-player.png" width="160" alt="Media Player"/><br/><sub>Media Player</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/media-player-popout-v2.png"><img src=".github/assets/sections/media-player-popout-v2.png" width="160" alt="Player Popout"/><br/><sub>Player Popout</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/log-viewer.png"><img src=".github/assets/sections/log-viewer.png" width="160" alt="Log Viewer"/><br/><sub>Log Viewer</sub></a></td>
-    <td align="center"><a href=".github/assets/sections/app-settings.png"><img src=".github/assets/sections/app-settings.png" width="160" alt="App Settings"/><br/><sub>App Settings</sub></a></td>
-  </tr>
-</table>
+[Download](#install) · [Features](#features) · [FFmpeg and yt-dlp](#ffmpeg-and-yt-dlp) · [Development](#development) · [Changelog](CHANGELOG.md) · [Website](https://media.molex.cloud) · [Report a bug](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml)
 
 </div>
 
----
+<br/>
+
+<img alt="The Dashboard after a batch: counts of waiting, active, done, and jobs that need attention; the FFmpeg build, GPU, CPU, memory, and platform in use; buttons that add files with Normalize, Gain, Convert, Compress, or Extract; and the recent jobs with their verified loudness and true-peak stamps." src=".github/assets/dashboard.png">
+
+## What it does
+
+molexMedia runs media jobs in batches on Windows, macOS, and Linux. You queue files, give each an operation and a preset, review what every job will write, run the batch on a pool of workers, and keep a history with measured results. Beside the batch tools there is an editor with Trim, Timeline, and Inspect, and a player for files and links. Everything runs through one FFmpeg install that the app downloads and verifies, or one already on the computer.
 
 ## Features
 
-### Batch Processing
+### Batch
 
-- **Loudness Normalization** - ITU-R BS.1770-4 two-pass analysis with configurable Integrated Loudness (LUFS), True Peak (dBFS), and Loudness Range (LU); both passes run the same pre-filter chain so the measurement describes the signal being normalized, the output sample rate is pinned, and a fallback to dynamic mode is logged
-- **5 Normalization Presets** - Defaults, Dialogue, Music, Broadcast, and Cinema - each with tuned I/TP/LRA targets; Advanced mode exposes manual sliders for fine-grained control
-- **Volume Boost / Reduce** - Percentage-based amplifier applied to every audio stream, preserving each stream's own channel layout and sample rate; optional high-pass and a true-peak limiter that oversamples 2x so the dBTP ceiling is the ceiling actually delivered
-- **Format Conversion** - Configurable video codec, audio codec, bitrate, resolution, and framerate; stream-copy or full re-encode modes
-- **24 Conversion Presets** - General (MP4 H.264, MKV HEVC, WebM VP9, MP3 320k, FLAC), Web/Social (Discord 25 MB, YouTube, TikTok, Twitter/X, 720p Web), Devices (Apple, Android, Chromecast), Production (AV1, ProRes, FFV1, 4K Archive, MPEG-2), and Audio Only (WAV 16/24-bit, ALAC, M4A AAC, Opus, AC3 Surround) - with codec/container conflict detection
-- **Media Extraction** - Five extraction modes (audio, silent video, animated GIF, still frames, embedded subtitles) with **17 curated presets** covering common rip-and-repurpose jobs; audio → MP3/AAC/FLAC/WAV/OGG/Opus/M4A with bitrate/sample-rate/channel overrides; silent video → fast stream-copy or H.264 re-encode; GIF → two-pass palettegen/paletteuse with configurable width, fps, dither, loop; frames → PNG/JPG/WebP at interval, fps, even-spaced count, or a single midpoint thumbnail; subtitles → SRT/VTT/ASS sidecar files
-- **Video & Audio Compression** - CRF-based encoding with 5 encoders (H.264, H.265/HEVC, VP9, AV1 SVT, AV1 aom), 4 quality presets (lossless / high / medium / low, where lossless uses each encoder's own lossless switch rather than CRF 0) plus custom CRF slider, per-codec speed presets (veryslow → veryfast), and optional target-size bitrate limiting with two-pass mode; **12+ delivery presets** (Web 1080p/720p, Mobile, Discord 25 MB, YouTube Master, Archive Master, AV1 Streaming, Film Grain, Animation, Audio Lossless FLAC, Audio High AAC, etc.); audio-only files compress to AAC, Opus, or FLAC
-- **All Streams Preserved** - Convert and compress map streams explicitly, so multi-track sources keep every audio track instead of the single track FFmpeg's automatic selection would pick
-- **Per-file Operations** - Each file in the queue can have a different operation and options; mixed-operation batches process in a single run
-- **Concurrent Workers** - Configurable worker pool with mid-batch pause, resume, and cancellation
-- **Real-time Progress** - Per-task speed, ETA, and progress bar with desktop notifications on completion
-- **35+ Formats** - 21 video extensions (MP4, MKV, AVI, MOV, WebM, TS…) and 14 audio extensions (MP3, WAV, FLAC, OGG, M4A, AAC, Opus…)
-- **Subtitle & Metadata Preservation** - Optionally carry subtitle streams, tags, chapters, and metadata to output; subtitles are converted to the target container's own format (mov_text for MP4/MOV, copy for MKV/TS) and image-based subtitles are left out where only text can be stored
-- **Input Validation** - File existence checks, operation validation, boost range clamping, and zero-byte output detection with automatic cleanup
+Every file in the queue is a job with its own settings: an operation (Normalize, Gain, Convert, Compress, or Extract) and a preset, snapshotted when the job is added, so a later change to the defaults never touches a queued job. The inspector shows the selected jobs' settings in plain words, with a goal finder that answers common goals, such as podcast episodes or delivering to a European broadcaster, with one preset.
 
-### Media Editor
+<img alt="Batch, Queue tab: eight queued jobs with their operation, status, size, duration, and source streams. The inspector on the right shows the selected job's Convert settings: the preset's description, the goal finder, container, video codec, and bit rate." src=".github/assets/sections/batch.png">
 
-- **NLE Timeline** - Multi-track non-linear editor with V1/A1 tracks, source bin, drag-to-timeline, and frame-accurate editing
-- **7 Edit Types** - Insert, Overwrite, Replace, Ripple Overwrite, Place on Top, Append, and Fit to Fill
-- **4 Trim Types** - Roll, Ripple, Slip, and Slide with context-sensitive cursor near edit points
-- **Trim & Cut** - In/out point editing with two modes: fast (stream-copy, keyframe-aligned) or precise (re-encode, frame-accurate)
-- **Split Clip** - Split at playhead position, split at in/out selection boundaries, or clip-to-selection to trim a clip down to the selected region
-- **Merge / Concatenate** - Combine 2+ trimmed segments into a single file via FFmpeg concat demuxer (fast) or filter_complex (precise)
-- **Spatial Compositing** - Per-clip transforms with position (X/Y), scale (uniform lock), rotation, anchor point, and opacity; interactive canvas preview composites all video layers in real time
-- **Transform Gizmos** - Drag-to-move, corner/edge scale handles (Shift = uniform), rotation handle with 15° snap, and anchor adjustment - all with affine matrix hit-testing on rotated bounding boxes
-- **Keyframe Animation** - Add/remove keyframes per transform property with 4 easing functions (linear, ease-in, ease-out, ease-in-out), angle shortest-path interpolation, and binary search keyframe lookup
-- **8 Blend Modes** - Normal, Multiply, Screen, Overlay, Darken, Lighten, Add, and Difference - applied in both canvas preview and FFmpeg export
-- **Transform Inspector** - Numeric inputs for all spatial properties with drag-to-scrub, keyframe toggle buttons (◆), uniform scale lock, and blend mode dropdown
-- **Replace Audio Track (A2)** - Swap a video's audio with another file while preserving the video stream; inline trim handles on the A2 timeline track with per-track volume and mute controls; drag A2 between clips
-- **GIF Export** - Two-pass palette generation for high-quality GIFs with configurable loop, FPS (1-30), and width
-- **Remux** - Losslessly keep/drop individual streams, edit metadata tags, and set per-stream disposition flags (default, dub, original, comment, lyrics, karaoke, forced, hearing/visual impaired)
-- **Stream Inspector** - Detailed FFprobe viewer with container info, per-stream codec/resolution/channels/sample rate, and metadata editor
-- **Snap System** - Snap-to-edges during drag/trim operations with toggleable snap indicator
-- **Undo / Redo** - 50-level history stack for all clip, trim, split, transform, and keyframe operations
-- **Per-clip Controls** - Independent volume slider, mute toggle, speed adjustment, and spatial transform per clip
-- **Playback Controls** - Volume slider, speed selector (0.25x-2x), and keyboard shortcuts (Space, I, O, R, arrows, J/K/L transport)
-- **Drag-to-reorder** - Visual multi-clip track lane with proportional clip blocks, audio replacement badges, and drag-and-drop sequencing
-- **Video & Waveform Preview** - Canvas 2D composited preview for multi-layer spatial transforms; native `<video>` for single-clip; canvas waveform for audio-only
-- **FFmpeg Spatial Export** - Per-clip filter chains: scale → rotate → opacity → overlay positioning with animated keyframe expressions via `eval=frame`; blend mode support via FFmpeg blend filters
-- **7 Output Formats** - Video: MP4, MKV, WebM, AVI, MOV, TS, GIF - Audio: MP3, WAV, FLAC, OGG, M4A, AAC, Opus
+- Loudness presets are named after the documents they follow: EBU R 128, EBU R 128 s2 for streaming and s4 for film and series, ATSC A/85, the AES streaming recommendation, Apple Podcasts, and Spotify, plus Clear dialogue and Custom. Each preset states its source and tolerance. Loudness is measured with ebur128, the gain is planned from the measurement, and a true-peak limiter holds the ceiling.
+- Convert, Compress, and Extract presets are described by what they produce (container, encoder, bit rate, size), never by a platform name. Multi-track sources keep every audio and subtitle stream the container can hold, and the inspector says what a container cannot hold.
+- Review lists what each job will write before anything runs: the output file, the encoder, the streams kept, the planned FFmpeg command, and the files that would be replaced. Container limits are caught here, for example H.264 cannot be stored in WebM, so that output becomes MKV.
+- Run shows progress per job and per operation, time left, speed, and the measured result of every finished job. Each output is decoded once more and measured against its plan before it is called verified. Pause, resume, cancel, and retry work mid-batch, and a job whose output cannot be placed waits for a decision: keep it, keep it under a new name, discard it, or retry.
+- History keeps the newest 200 batches with the settings they used, the build they ran on, and how they ended, searchable by file or job number, with CSV and JSON reports and a rerun of returned jobs.
+- Output is a policy per batch: a folder or next to each source, a file-name template with fields, what to do when a name is taken (rename, skip, or overwrite), source subfolders, and one folder per preset. Replace originals is chosen per batch and never kept as a default; replaced files go to the recycle bin unless you choose to keep them beside the new ones.
+- Workers run jobs at once, automatically or at a fixed count. GPU encoding uses NVIDIA NVENC, Intel QSV, or AMD AMF with a session budget; only H.264 and HEVC have GPU encoders, lossless jobs stay on the CPU, and Review lists every job the GPU setting changes.
 
-### Media Player
+<img alt="Batch, Review tab: the summary of what the batch writes, a note that H.264 cannot be stored in WebM so that output becomes MKV, each job's output file and encoder, and the selected job's output plan with the streams kept, the encoder, and the planned FFmpeg command." src=".github/assets/sections/review.png">
 
-- **Local Playback** - Play audio and video files from your filesystem with full playlist management; seamless large file support (2 GiB+)
-- **URL Streaming** - Resolve and stream audio from YouTube videos, playlists, and direct audio URLs via yt-dlp (auto-downloaded) with auto-retry on expired CDN tokens
-- **8 Visualizations** - DMT, Space, Milkdrop, Plasma, Bars, Wave, Horizon, and Rain - all real-time canvas rendering via Web Audio API
-- **Beat Detection** - Per-frame analysis across sub-bass, bass, low-mid, mid, high-mid, and treble bands with beat-reactive visuals
-- **Audio Quality** - Best / Good / Low quality presets for YouTube stream selection
-- **Playlist Features** - Drag-to-reorder, shuffle, repeat (off / all / one), now-playing indicator, auto-scroll to active track, folder browser with system shortcuts, auto-skip on consecutive failures
-- **Transport Bar** - Custom seek bar with visual thumb and fill, play/pause, prev/next, shuffle, repeat, volume slider with mute toggle
-- **Popout Player** - Always-on-top window with compact transport, pin/unpin, 3 size presets, custom size memory, state transfer, and auto-resume playback
-- **URL Input & History** - Paste YouTube URLs or direct audio links; persisted history with title, track count, and date
-- **Cookie Caching** - Transparent browser cookie export for authenticated YouTube content with auto-retry on auth failures
+<img alt="Batch, Run tab during a batch: six jobs verified with their measured loudness, two encoding with progress, time left, and speed; on the right, progress by operation, the jobs running now, and the workers in use." src=".github/assets/sections/run.png">
 
-### App & UI
+### Dashboard
 
-- **Zero Setup** - FFmpeg and yt-dlp are downloaded automatically on first launch
-- **Setup Wizard** - First-run flow: Welcome → Downloading → Complete → Error, with retry, progress bar, and manual-install fallback
-- **Dashboard** - Quick stats (ready / processing / completed / errors), 5 workflow launchers, tool cards with animated canvas backgrounds, system info, and recent activity feed
-- **System Tray** - Icon with context menu (Show, Pop Out Player, Player, Editor, Processor, Logs, Quit), live batch progress in tooltip, and minimize-to-tray behavior
-- **Auto-updater** - Check / download / install from GitHub Releases with progress forwarding and persistent update status from startup
-- **Live Processing Panel** - Sidebar-embedded task list with progress bars, pause/cancel controls
-- **Log Viewer** - Filterable by level (info / warn / error / debug / success / ffmpeg), free-text search, auto-scroll, copy single entry or all filtered logs, open log directory
-- **Drag-and-drop Everywhere** - Drop files onto batch queue, editor, player, or processing view
+The home view is a front panel: the counts of waiting, active, done, and jobs that need attention, the last batch, the machine's readiness (the FFmpeg build, GPU, CPU, memory, and platform), keys that add files with each operation starting from its default preset, the Editor and Player, and the latest settled jobs with their measured stamps. Files and folders dropped anywhere on it are queued with the default preset.
 
----
+### Settings
+
+- Batch: where batches write and what happens to files they meet, workers and GPU encoding, what applies while a batch runs (full or sampled video verification, process priority, keep awake, notifications), history retention, recent folders, and a reset.
+- Presets: your presets by operation with rename and delete, the pinned keys Alt+1 to Alt+9, and the built-in presets, read-only, each loudness preset with its standard and sources.
+- FFmpeg: the build in use with its version and source, the self-test result and when it ran, Re-run self-test, and Install the tested build when the build in use is not the one this version ships with.
+- Application: app updates from GitHub Releases, the yt-dlp section (the version in use, last check, automatic updates, and a switch to use the yt-dlp found on this computer), what the close button does, how the window opens, interface size, spoken batch progress, and the browser YouTube cookies come from.
+
+<img alt="Settings, Presets tab: the user's presets, the pinned keys Alt+1 to Alt+9, and the built-in Normalize presets listed by goal, each answered by one preset such as Streaming (EBU R 128 s2) or ATSC A/85." src=".github/assets/sections/settings-presets.png">
+
+### Logs
+
+Every line the main process and its jobs wrote, as one list: a level filter, a sources menu, search, and Follow new lines narrow and track it; Copy lines, Open log folder, and Clear act on it. Show log from a job in Batch narrows the view to that job or batch, a job's complete FFmpeg output opens beside its lines, and a selected line opens in full in the details pane.
+
+<img alt="Logs: 1,092 lines from a batch with the level filter, sources menu, search, and Follow new lines; each line shows its time, level, source, and FFmpeg's own output under the job number." src=".github/assets/sections/logs.png">
+
+### First run
+
+Setup is one screen. It says what molexMedia needs and why, downloads the FFmpeg build this version is pinned to with the percent, size, and speed shown, checks the download against the SHA-256 the app ships with, and self-tests it. Or choose a folder with an FFmpeg already on this computer, which is self-tested the same way. yt-dlp downloads the first time you open a link in the Player.
+
+<img alt="First-run setup: what molexMedia needs, FFmpeg (required, downloaded from the pinned build, checked against its SHA-256, then self-tested) and yt-dlp (downloaded when you first open a link), with Download FFmpeg and Use an FFmpeg already on this computer." src=".github/assets/sections/setup.png">
+
+### Editor
+
+- Trim: a preview with frame steps, in and out points with lit readouts, a filmstrip trim bar, and an export panel with the format and quality. Exports re-encode at a chosen quality and cut on the exact frame, or copy the streams for the fastest cut at the nearest keyframe, and a trimmed range can be added to the timeline.
+- Timeline: a source bin, video and audio tracks, insert, overwrite, append, and on-top edits, select, trim, and split tools, snapping, zoom, and undo. The clip panel sets a clip's sound (mute, volume, pan) and its place in the picture (position, scale, rotation) with keyframes. Export chooses the range, format, size, quality, and audio bit rate.
+- Inspect: the file's ffprobe report as plain name and value rows, the file, every stream, the tags, and the keyframes, each value plain first and technical second, with Copy. Leave streams out or edit the tags, then Save a copy, which remuxes losslessly to a new file.
+
+<img alt="Editor, Trim: a frame of Big Buck Bunny in the preview, the in, out, and length readouts, the transport, the filmstrip with the selected range, and the export panel with the format and quality." src=".github/assets/sections/editor-trim.png">
+
+<img alt="Editor, Timeline: the sources, the preview, and two video clips on track V1 with the playhead in the first. The clip panel shows the selected clip's sound (mute, volume, pan) and picture (position, scale, rotation) with keyframe controls." src=".github/assets/sections/editor-timeline.png">
+
+<img alt="Editor, Inspect: the ffprobe report of an MP4 as plain rows: container, length, size, and bit rate, then the H.264 video stream and the 5.1 AAC audio stream, each with a Keep in the copy checkbox, and Save a copy at the foot." src=".github/assets/sections/editor-inspect.png">
+
+### Player
+
+- Plays files and folders, and links through yt-dlp from YouTube and many other sites, with a playlist, shuffle, repeat, and recent links.
+- Shows the video or a visualization (DMT, Space, Milkdrop, Plasma, Bars, Waveform, Horizon, or Rain) drawn from the playing audio.
+- Plays each local file the cheapest way that works: directly when the browser engine decodes it, repackaged when only the container is in the way, or decoded by FFmpeg while it plays, with a hardware encoder when one is available. Links carry a sound quality and a picture quality, and a stream that cannot be played directly is downloaded first.
+- Audio track and subtitle choice, with text subtitles shown over the picture or the visualization.
+- Real full screen: the window goes full screen, the shell hides, and the controls fade with the pointer.
+- Pop out: a small window that stays on top, with three sizes and a remembered size, and Back to the app.
+- Media information: how the file is being played, then the file and each stream as a plain line with the technical values folded under it.
+
+<img alt="Player: Big Buck Bunny playing as video with the playlist of six tracks beside it, the Video or Visualization switch, the transport, and the track's container, codec, size, and audio layout." src=".github/assets/sections/player-video.png">
+
+<img alt="Player: the DMT visualization drawn from the playing audio, filling the stage." src=".github/assets/sections/player-visualization.png">
+
+<p align="center"><img alt="The pop-out player: a small window with the video, the seek bar, the transport, and the keep-on-top, window size, and back-to-app controls in its caption bar." src=".github/assets/sections/player-popout.png" width="420"></p>
+
+The video in these screenshots is [Big Buck Bunny](https://peach.blender.org/) by the Blender Foundation, licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+## FFmpeg and yt-dlp
+
+molexMedia does not bundle FFmpeg. On first run it downloads the build pinned in [`src/main/ffmpeg/pinned-builds.json`](src/main/ffmpeg/pinned-builds.json), which records each platform's download by URL, size, and SHA-256, verifies the digest while the archive streams to disk, extracts it into the app's own data folder, and runs a self-test (the encode chains, the loudness meter on dual mono and surround input, libsoxr, and the encoders) before any job runs. You can instead point the app at an FFmpeg already on this computer, which is checked and self-tested the same way. A build that fails the surround metering test cannot run loudness jobs on more than two channels; the app says so instead of writing a wrong level.
+
+The Apple Silicon download is held at FFmpeg 7.1.1: the loudness meter in the newer macOS arm64 builds reads inputs with more than two channels 16 to 33 LU too loud, which would turn 5.1 sources far down, and 7.1.1 measures them correctly. A workflow checks newer builds' surround metering on Apple Silicon so the hold can be lifted once one passes.
+
+yt-dlp is downloaded the first time you open a link, from the yt-dlp project's own releases. The release's checksum list must carry a valid signature by the yt-dlp signing key, and the binary must match its checksum, or nothing is installed. The app checks for updates and replaces the binary only while nothing is running it. A yt-dlp found on this computer can be used instead and is left alone.
 
 ## Install
 
-Grab the latest release for your platform:
+Download the installer for your platform from the [latest release](https://github.com/molexxxx/molex-media-electron/releases/latest).
 
-| Platform | Download | Format |
-|----------|----------|--------|
-| **Windows** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.exe` (NSIS installer) |
-| **macOS** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.dmg` (Intel & Apple Silicon) |
-| **Linux** | [Latest Release](https://github.com/molexxxx/molex-media-electron/releases/latest) | `.AppImage` |
+| Platform | Package |
+|----------|---------|
+| Windows (x64) | `molexMedia-<version>-Windows-Setup.exe`, an installer that lets you choose the folder |
+| macOS (Intel and Apple Silicon) | `molexMedia-<version>-macOS-Installer.dmg`, one universal build |
+| Linux (x64) | `molexMedia-<version>-Linux-Installer.deb` or `.rpm` |
 
-> FFmpeg and yt-dlp are downloaded automatically on first launch - no manual setup required.
+The app checks GitHub Releases for updates and installs them itself; the switch is in Settings, Application, and an update waits while a batch runs.
 
----
+Requirements: a 64-bit Windows, macOS, or Linux system, and a network connection on first run for the FFmpeg download (55 to 194 MB depending on the platform) unless you point the app at an FFmpeg already installed. GPU encoding is optional and uses NVIDIA NVENC, Intel QSV, or AMD AMF when one is present.
 
-## Quick Start
+## Development
 
 ```bash
-# Clone & install
 git clone https://github.com/molexxxx/molex-media-electron.git
 cd molex-media-electron
 npm install
-
-# Development (hot-reload)
 npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-
-# Package for distribution
-npm run package          # Current platform
-npm run package:win      # Windows
-npm run package:mac      # macOS
-npm run package:linux    # Linux
 ```
 
----
+CI runs on Node 22. `npm run dev` starts the app with hot reload against your real user data folder.
 
-## Tech Stack
+```bash
+npx tsc -b --noEmit       # type check main, preload, and renderer
+npm test                  # unit tests (vitest)
+npm run test:coverage     # unit tests with the coverage thresholds CI enforces
+npm run test:golden       # the audio pipeline measured on a real FFmpeg build
+```
 
-- **Electron** - Cross-platform desktop framework
-- **React 19** - UI with functional components and hooks
-- **TypeScript** - Full type safety across main and renderer
-- **Vite** - Build tooling via electron-vite
-- **Tailwind CSS** - Utility-first styling
-- **Zustand** - Lightweight state management
-- **Framer Motion** - Animations and transitions
-- **Lucide React** - Icon library
-- **react-dropzone** - Drag-and-drop file handling
-- **electron-store** - Persistent configuration
-- **electron-builder** - Packaging & distribution
-- **Vitest** - Unit and integration testing
-- **yt-dlp** - YouTube audio streaming and playlist resolution
-- **Web Audio API** - Real-time audio analysis and visualization
+The golden suite finds `ffmpeg` and `ffprobe` in `MOLEX_FFMPEG_DIR` or on `PATH`, and CI runs it on several FFmpeg builds whenever the pipeline changes, weekly, and before every release.
 
----
+```bash
+npm run package           # installer for the current platform
+npm run package:win       # Windows
+npm run package:mac       # macOS
+npm run package:linux     # Linux
+```
 
-## Feedback & Issues
+Releases are built by the Release workflow when a `v*.*.*` tag is pushed, after the unit tests and the golden suite pass, with release notes generated from the commits.
 
-Found a bug or have an idea? We use GitHub Issue templates to keep things organized:
+Layout: `src/main` is the main process (the FFmpeg pipeline, the job engine, yt-dlp, the updater, and the tray), `src/preload` the bridge, `src/renderer` the React UI, and `src/shared` the job model, presets, and IPC contract they share. Tests live in `tests/main`, `tests/renderer`, and `tests/golden`. `website/` and `website-api/` are the project website and are separate from the app.
 
-- [**Report a Bug**](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) - Something isn't working as expected
-- [**Request a Feature**](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml) - Suggest a new feature or enhancement
-- [**Browse Open Issues**](https://github.com/molexxxx/molex-media-electron/issues) - See what's already been reported or upvote existing requests
-
-Please search existing issues before opening a new one to avoid duplicates.
-
----
+Built with Electron, electron-vite, React, TypeScript, Tailwind CSS, zustand, electron-store, electron-updater, electron-builder, youtube-dl-exec, and Vitest with Testing Library.
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on branch naming, commit conventions, and the development workflow.
-
----
+Bug reports and feature requests use the issue templates linked at the top. See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and the pull request flow.
 
 ## License
 
-[MIT](LICENSE) - build cool things with it.
-
----
-
-<div align="center">
-<sub>Built with Electron · React · Tailwind · Framer Motion · FFmpeg</sub>
-</div>
+[MIT](LICENSE).
