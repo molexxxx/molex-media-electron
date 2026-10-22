@@ -1045,12 +1045,15 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         durationSeconds: durationSec
       }
 
-      // Add source + activate it in clip mode (shared "active source" for all tabs).
+      // Add the source and make it the active one. A file already among the sources keeps its id, so
+      // the timeline clips that use it stay attached and the list never lists one file twice.
       set((s) => {
+        const existing = s.sources.find((src) => src.filePath === filePath)
+        if (existing) newSource.id = existing.id
         const isFirst = s.sources.length === 0 && s.project.name === 'Untitled'
         const name = isFirst ? newSource.fileName.replace(/\.[^.]+$/, '') : s.project.name
         return {
-          sources: [...s.sources, newSource],
+          sources: existing ? s.sources.map((src) => (src.id === existing.id ? newSource : src)) : [...s.sources, newSource],
           project: isFirst ? { ...s.project, name, modifiedAt: Date.now() } : s.project,
           clipMode: { sourceId: newSource.id, inPoint: 0, outPoint: totalFrames }
         }

@@ -1,60 +1,60 @@
 /**
  * @module editor/edit/Track
- * A single track lane: renders clips that belong to this track.
+ * One track lane and its clips. A press on the empty lane clears the selection; a source dragged from the
+ * source bin drops here at the pointer.
  */
-import React, { useCallback } from 'react'
+import { useCallback, useMemo, type DragEvent, type MouseEvent, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import type { TimelineTrack, TimelineClip as Clip, MediaSource } from '../types'
+import { cx } from '../../../ui/cx'
 import type { TimelineCoords } from '../hooks/useTimelineZoom'
+import type { MediaSource, TimelineClip, TimelineTrack } from '../types'
 import { TimelineClipComponent } from './Clip'
 
-interface TrackProps {
+interface TrackProps
+{
   track: TimelineTrack
-  clips: Clip[]
+  clips: TimelineClip[]
   sources: MediaSource[]
   coords: TimelineCoords
-  onClipDragStart: (clipId: string, e: React.MouseEvent) => void
-  onTrackDrop: (trackId: string, frame: number) => void
+  isSelected: boolean
+  onClipDragStart: (clipId: string, event: MouseEvent) => void
+  onTrackDrop: (trackId: string, frame: number) => boolean
 }
 
-export function Track({ track, clips, sources, coords, onClipDragStart, onTrackDrop }: TrackProps): React.JSX.Element {
+/** The lane. */
+export function Track({ track, clips, sources, coords, isSelected, onClipDragStart, onTrackDrop }: TrackProps): ReactElement
+{
   const clearSelection = useEditorStore((s) => s.clearSelection)
+  const sourceMap = useMemo(() => new Map(sources.map((source) => [source.id, source])), [sources])
 
-  const sourceMap = React.useMemo(() => {
-    const m: Record<string, MediaSource> = {}
-    for (const s of sources) m[s.id] = s
-    return m
-  }, [sources])
+  const handleMouseDown = useCallback((event: MouseEvent) =>
+  {
+    if (event.target === event.currentTarget)
+    {
+      clearSelection()
+    }
+  }, [clearSelection])
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      // Click on empty area deselects
-      if (e.target === e.currentTarget) {
-        clearSelection()
-      }
-    },
-    [clearSelection]
-  )
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
+  const handleDragOver = useCallback((event: DragEvent) =>
+  {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
   }, [])
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      const rect = e.currentTarget.getBoundingClientRect()
-      const px = e.clientX - rect.left
-      const frame = coords.pixelToFrame(px)
-      onTrackDrop(track.id, Math.max(0, frame))
-    },
-    [track.id, coords, onTrackDrop]
-  )
+  const handleDrop = useCallback((event: DragEvent) =>
+  {
+    const rect = event.currentTarget.getBoundingClientRect()
+    if (onTrackDrop(track.id, Math.max(0, coords.pixelToFrame(event.clientX - rect.left))))
+    {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }, [track.id, coords, onTrackDrop])
 
   return (
     <div
-      className="relative border-b border-white/5"
+      data-track-lane={track.id}
+      className={cx('track-lane relative border-b border-line', isSelected && 'bg-wash-hover')}
       style={{ height: track.height }}
       onMouseDown={handleMouseDown}
       onDragOver={handleDragOver}
@@ -65,7 +65,7 @@ export function Track({ track, clips, sources, coords, onClipDragStart, onTrackD
           key={clip.id}
           clip={clip}
           coords={coords}
-          source={sourceMap[clip.sourceId]}
+          source={sourceMap.get(clip.sourceId)}
           trackType={track.type}
           onDragStart={onClipDragStart}
         />

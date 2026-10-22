@@ -1,34 +1,68 @@
 /**
  * @module editor/edit/Timeline
- * Multi-track timeline container with zoom/scroll, ruler, tracks, clips, and playhead.
- * Handles marquee selection, clip dragging, and source drops.
+ * The multi-track timeline: the ruler, the track headers beside their lanes, the clips, and the playhead. It moves
+ * clips with snapping and a ghost at the drop place, draws a marquee from the empty lanes, takes sources dragged
+ * from the source bin, and zooms with Ctrl and the wheel or pans with Shift and the wheel. The band above the ruler
+ * takes the height splitter's hit area, which reaches 21 px into the pane it sizes, so the ruler stays reachable.
  */
-import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import { useTimelineZoom } from '../hooks/useTimelineZoom'
+import { Button } from '../../../ui/Button'
 import { useTimelineSnap } from '../hooks/useTimelineSnap'
-import { Ruler } from './Ruler'
-import { TrackHeader } from './TrackHeader'
-import { Track } from './Track'
+import type { TimelineCoords } from '../hooks/useTimelineZoom'
+import type { TimelineClip, TimelineTrack } from '../types'
 import { Playhead } from './Playhead'
+import { Ruler } from './Ruler'
+import { Track } from './Track'
+import { TrackHeader } from './TrackHeader'
 
-const HEADER_WIDTH = 140
+/** The track header column's width in px. */
+export const HEADER_WIDTH = 184
 
-interface DragState {
-  clipId: string
-  startFrame: number
-  startTrackId: string
-  offsetFrames: number // click offset within the clip
-}
-
-interface MarqueeState {
+interface MarqueeState
+{
   startX: number
   startY: number
   currentX: number
   currentY: number
 }
 
-export function Timeline(): React.JSX.Element {
+function clipDur(clip: TimelineClip): number
+{
+  return (clip.sourceOut - clip.sourceIn) / clip.speed
+}
+
+/** Video tracks top down from the highest index, then audio tracks from the lowest. */
+export function sortTracks(tracks: readonly TimelineTrack[]): TimelineTrack[]
+{
+  const video = tracks.filter((t) => t.type === 'video').sort((a, b) => b.index - a.index)
+  const audio = tracks.filter((t) => t.type === 'audio').sort((a, b) => a.index - b.index)
+  return [...video, ...audio]
+}
+
+let pendingDropSourceId: string | null = null
+
+/** Remembers the source the source bin is dragging, since drag data cannot be read before the drop. */
+export function setPendingDropSource(sourceId: string): void
+{
+  pendingDropSourceId = sourceId
+}
+
+/** Forgets the dragged source once its drag ends. */
+export function clearPendingDropSource(): void
+{
+  pendingDropSourceId = null
+}
+
+/** Props of {@link Timeline}. */
+export interface TimelineProps
+{
+  coords: TimelineCoords
+}
+
+/** The timeline. */
+export function Timeline({ coords }: TimelineProps): ReactElement
+{
   const timeline = useEditorStore((s) => s.timeline)
   const sources = useEditorStore((s) => s.sources)
   const selectedTrackId = useEditorStore((s) => s.selectedTrackId)
@@ -37,358 +71,342 @@ export function Timeline(): React.JSX.Element {
   const moveClip = useEditorStore((s) => s.moveClip)
   const addClip = useEditorStore((s) => s.addClip)
   const addTrack = useEditorStore((s) => s.addTrack)
-
-  const coords = useTimelineZoom()
   const snap = useTimelineSnap()
 
   const containerRef = useRef<HTMLDivElement>(null)
   const trackAreaRef = useRef<HTMLDivElement>(null)
-  const scrollWrapperRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(800)
-  const [, setDrag] = useState<DragState | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const ghostRef = useRef<HTMLDivElement>(null)
+  const [laneWidth, setLaneWidth] = useState(800)
   const [marquee, setMarquee] = useState<MarqueeState | null>(null)
-  const dragGhost = useRef<{ frame: number; trackId: string } | null>(null)
 
-  // Track container size
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width - HEADER_WIDTH)
-      }
+  useEffect(() =>
+  {
+    const element = containerRef.current
+    if (!element)
+    {
+      return
+    }
+    const observer = new ResizeObserver((entries) =>
+    {
+      setLaneWidth(Math.max(0, (entries[0]?.contentRect.width ?? 0) - HEADER_WIDTH))
     })
-    ro.observe(el)
-    return () => ro.disconnect()
+    observer.observe(element)
+    return () => observer.disconnect()
   }, [])
 
-  // Sort tracks: video (highest index first), then audio (lowest index first)
-  const sortedTracks = useMemo(() => {
-    const videoTracks = timeline.tracks
-      .filter((t) => t.type === 'video')
-      .sort((a, b) => b.index - a.index)
-    const audioTracks = timeline.tracks
-      .filter((t) => t.type === 'audio')
-      .sort((a, b) => a.index - b.index)
-    return [...videoTracks, ...audioTracks]
-  }, [timeline.tracks])
-
-  const clipsForTrack = useCallback(
-    (trackId: string) => timeline.clips.filter((c) => c.trackId === trackId),
-    [timeline.clips]
-  )
-
-  const totalHeight = useMemo(
-    () => sortedTracks.reduce((sum, t) => sum + t.height, 0),
-    [sortedTracks]
-  )
-
-  // Wheel handler: Ctrl = zoom, Shift/deltaX = horizontal scroll, plain = native vertical
-  // Attached as a native non-passive listener so preventDefault works for zoom/hscroll.
-  useEffect(() => {
-    const el = scrollWrapperRef.current
-    if (!el) return
-
-    const handleWheel = (e: WheelEvent): void => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
-        const rect = containerRef.current?.getBoundingClientRect()
-        if (rect) coords.handleWheelZoom(e as unknown as React.WheelEvent, rect.left + HEADER_WIDTH)
-      } else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        e.preventDefault()
-        const delta = e.shiftKey ? e.deltaY : e.deltaX
-        const { scrollX: sx, scrollY: sy, setScroll } = useEditorStore.getState()
-        const frameDelta = (delta / coords.zoom) * coords.frameRate * 3
-        setScroll(Math.max(0, sx + frameDelta), sy)
-      }
-      // Plain vertical scroll: let native overflow-y-auto handle it
+  const sortedTracks = useMemo(() => sortTracks(timeline.tracks), [timeline.tracks])
+  const totalHeight = useMemo(() => sortedTracks.reduce((sum, t) => sum + t.height, 0), [sortedTracks])
+  const clipsByTrack = useMemo(() =>
+  {
+    const map = new Map<string, TimelineClip[]>()
+    for (const clip of timeline.clips)
+    {
+      map.set(clip.trackId, [...(map.get(clip.trackId) ?? []), clip])
     }
+    return map
+  }, [timeline.clips])
 
-    el.addEventListener('wheel', handleWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleWheel)
+  useEffect(() =>
+  {
+    const element = scrollRef.current
+    if (!element)
+    {
+      return
+    }
+    const onWheel = (event: WheelEvent): void =>
+    {
+      if (event.ctrlKey || event.metaKey)
+      {
+        event.preventDefault()
+        const rect = containerRef.current?.getBoundingClientRect()
+        if (rect)
+        {
+          coords.handleWheelZoom(event as unknown as React.WheelEvent, rect.left + HEADER_WIDTH)
+        }
+      }
+      else if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY))
+      {
+        event.preventDefault()
+        const delta = event.shiftKey ? event.deltaY : event.deltaX
+        const { scrollX, scrollY, setScroll } = useEditorStore.getState()
+        setScroll(Math.max(0, scrollX + (delta / coords.zoom) * coords.frameRate * 3), scrollY)
+      }
+    }
+    element.addEventListener('wheel', onWheel, { passive: false })
+    return () => element.removeEventListener('wheel', onWheel)
   }, [coords])
 
-  // --- Clip dragging ---
-  const handleClipDragStart = useCallback(
-    (clipId: string, e: React.MouseEvent) => {
-      const clip = timeline.clips.find((c) => c.id === clipId)
-      if (!clip || clip.locked) return
-      const trackArea = trackAreaRef.current
-      if (!trackArea) return
+  const trackAt = useCallback((y: number): { track: TimelineTrack, top: number } | null =>
+  {
+    let top = 0
+    for (const track of sortedTracks)
+    {
+      if (y >= top && y < top + track.height)
+      {
+        return { track, top }
+      }
+      top += track.height
+    }
+    return null
+  }, [sortedTracks])
 
-      const rect = trackArea.getBoundingClientRect()
-      const px = e.clientX - rect.left
-      const clickFrame = coords.pixelToFrame(px)
-      const offsetFrames = clickFrame - clip.timelineStart
+  const topOf = useCallback((trackId: string): number =>
+  {
+    let top = 0
+    for (const track of sortedTracks)
+    {
+      if (track.id === trackId)
+      {
+        return top
+      }
+      top += track.height
+    }
+    return 0
+  }, [sortedTracks])
 
-      setDrag({ clipId, startFrame: clip.timelineStart, startTrackId: clip.trackId, offsetFrames })
+  const handleClipDragStart = useCallback((clipId: string, event: MouseEvent) =>
+  {
+    const clip = timeline.clips.find((c) => c.id === clipId)
+    const area = trackAreaRef.current
+    if (!clip || clip.locked || !area)
+    {
+      return
+    }
+    const rect = area.getBoundingClientRect()
+    const offsetFrames = coords.pixelToFrame(event.clientX - rect.left) - clip.timelineStart
+    const startX = event.clientX
+    const startY = event.clientY
+    const sourceType = timeline.tracks.find((t) => t.id === clip.trackId)?.type
+    const widthPx = Math.max(4, (clipDur(clip) / coords.frameRate) * coords.zoom)
+    const threshold = Math.round((10 / coords.zoom) * coords.frameRate)
+    let target: { frame: number, trackId: string } | null = null
 
-      const onMove = (ev: MouseEvent): void => {
-        const px2 = ev.clientX - rect.left
-        let targetFrame = coords.pixelToFrame(px2) - offsetFrames
-
-        // Snap
-        const snapped = snap.findSnap(targetFrame, Math.round(10 / coords.zoom * coords.frameRate))
-        if (snapped !== null) targetFrame = snapped
-
-        // Determine target track from Y
-        let cumY = 0
-        let targetTrackId = clip.trackId
-        const py = ev.clientY - rect.top
-        for (const t of sortedTracks) {
-          if (py >= cumY && py < cumY + t.height) {
-            // Only allow same-type track drops
-            if (t.type === timeline.tracks.find((tr) => tr.id === clip.trackId)?.type) {
-              targetTrackId = t.id
-            }
-            break
-          }
-          cumY += t.height
-        }
-
-        dragGhost.current = { frame: Math.max(0, targetFrame), trackId: targetTrackId }
-        // Use direct DOM update for the ghost preview
-        const ghostEl = document.getElementById('drag-ghost')
-        if (ghostEl) {
-          const left = coords.frameToPixel(Math.max(0, targetFrame))
-          ghostEl.style.left = `${left}px`
-          ghostEl.style.display = 'block'
+    const onMove = (moveEvent: globalThis.MouseEvent): void =>
+    {
+      if (target === null && Math.abs(moveEvent.clientX - startX) < 3 && Math.abs(moveEvent.clientY - startY) < 3)
+      {
+        return
+      }
+      let frame = coords.pixelToFrame(moveEvent.clientX - rect.left) - offsetFrames
+      const snapped = snap.findSnap(frame, threshold, [clip.id])
+      if (snapped !== null)
+      {
+        frame = snapped
+      }
+      else
+      {
+        const end = snap.findSnap(frame + clipDur(clip), threshold, [clip.id])
+        if (end !== null)
+        {
+          frame = end - clipDur(clip)
         }
       }
-
-      const onUp = (): void => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-        if (dragGhost.current) {
-          moveClip(clipId, dragGhost.current.trackId, dragGhost.current.frame)
-        }
-        setDrag(null)
-        dragGhost.current = null
-        const ghostEl = document.getElementById('drag-ghost')
-        if (ghostEl) ghostEl.style.display = 'none'
+      snap.showSnapIndicator(snapped ?? null)
+      let trackId = clip.trackId
+      let top = topOf(clip.trackId)
+      const hit = trackAt(moveEvent.clientY - rect.top)
+      if (hit && hit.track.type === sourceType)
+      {
+        trackId = hit.track.id
+        top = hit.top
       }
-
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
-    },
-    [timeline, coords, snap, sortedTracks, moveClip]
-  )
-
-  // --- Marquee selection ---
-  const handleTrackAreaMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('track-lane')) return
-      if (e.button !== 0) return
-
-      clearSelection()
-      const rect = trackAreaRef.current?.getBoundingClientRect()
-      if (!rect) return
-      const startX = e.clientX - rect.left
-      const startY = e.clientY - rect.top
-      setMarquee({ startX, startY, currentX: startX, currentY: startY })
-
-      const onMove = (ev: MouseEvent): void => {
-        setMarquee((prev) =>
-          prev ? { ...prev, currentX: ev.clientX - rect.left, currentY: ev.clientY - rect.top } : null
-        )
+      target = { frame: Math.max(0, frame), trackId }
+      const ghost = ghostRef.current
+      if (ghost)
+      {
+        const height = sortedTracks.find((t) => t.id === trackId)?.height ?? 0
+        ghost.style.left = `${coords.frameToPixel(target.frame)}px`
+        ghost.style.top = `${top + 2}px`
+        ghost.style.width = `${widthPx}px`
+        ghost.style.height = `${Math.max(0, height - 4)}px`
+        ghost.hidden = false
       }
+    }
 
-      const onUp = (_ev: MouseEvent): void => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
+    const onUp = (): void =>
+    {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (target !== null)
+      {
+        moveClip(clipId, target.trackId, target.frame)
+      }
+      snap.showSnapIndicator(null)
+      if (ghostRef.current)
+      {
+        ghostRef.current.hidden = true
+      }
+    }
 
-        setMarquee((prev) => {
-          if (!prev) return null
-          const x1 = Math.min(prev.startX, prev.currentX)
-          const x2 = Math.max(prev.startX, prev.currentX)
-          const y1 = Math.min(prev.startY, prev.currentY)
-          const y2 = Math.max(prev.startY, prev.currentY)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [timeline, coords, snap, sortedTracks, moveClip, trackAt, topOf])
 
-          // Hit-test clips
-          let cumY = 0
-          const { clips } = useEditorStore.getState().timeline
-          const hitIds: string[] = []
-          for (const t of sortedTracks) {
-            const trackClips = clips.filter((c) => c.trackId === t.id)
-            for (const clip of trackClips) {
-              const dur = (clip.sourceOut - clip.sourceIn) / clip.speed
-              const clipLeft = coords.frameToPixel(clip.timelineStart)
-              const clipRight = clipLeft + (dur / coords.frameRate) * coords.zoom
-              const clipTop = cumY
-              const clipBottom = cumY + t.height
+  const handleAreaMouseDown = useCallback((event: MouseEvent) =>
+  {
+    const target = event.target as HTMLElement
+    if (event.button !== 0 || (target !== event.currentTarget && !target.classList.contains('track-lane')))
+    {
+      return
+    }
+    clearSelection()
+    const rect = trackAreaRef.current?.getBoundingClientRect()
+    if (!rect)
+    {
+      return
+    }
+    const startX = event.clientX - rect.left
+    const startY = event.clientY - rect.top
+    setMarquee({ startX, startY, currentX: startX, currentY: startY })
 
-              if (clipRight > x1 && clipLeft < x2 && clipBottom > y1 && clipTop < y2) {
-                hitIds.push(clip.id)
-              }
-            }
-            cumY += t.height
-          }
+    const onMove = (moveEvent: globalThis.MouseEvent): void =>
+    {
+      setMarquee((prev) => (prev ? { ...prev, currentX: moveEvent.clientX - rect.left, currentY: moveEvent.clientY - rect.top } : null))
+    }
 
-          if (hitIds.length > 0) {
-            useEditorStore.setState({ selectedClipIds: hitIds })
-          }
+    const onUp = (): void =>
+    {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      setMarquee((prev) =>
+      {
+        if (!prev)
+        {
           return null
-        })
-      }
-
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
-    },
-    [clearSelection, coords, sortedTracks]
-  )
-
-  // --- Source bin drops onto timeline ---
-  const handleTrackDrop = useCallback(
-    (trackId: string, frame: number) => {
-      // sourceId comes from dataTransfer, set by SourceBin drag
-      // Read from a module-level variable set during dragStart
-      const sourceId = _pendingDropSourceId
-      if (!sourceId) return
-      _pendingDropSourceId = null
-
-      const source = useEditorStore.getState().sources.find((s) => s.id === sourceId)
-      if (!source) return
-
-      const track = timeline.tracks.find((t) => t.id === trackId)
-      if (!track) return
-
-      addClip({
-        sourceId: source.id,
-        trackId,
-        timelineStart: Math.max(0, frame),
-        sourceIn: 0,
-        sourceOut: source.duration,
-        name: source.fileName,
-        color: '',
-        muted: false,
-        locked: false,
-        volume: 1,
-        pan: 0,
-        speed: 1
+        }
+        const x1 = Math.min(prev.startX, prev.currentX)
+        const x2 = Math.max(prev.startX, prev.currentX)
+        const y1 = Math.min(prev.startY, prev.currentY)
+        const y2 = Math.max(prev.startY, prev.currentY)
+        const { clips } = useEditorStore.getState().timeline
+        const hits: string[] = []
+        let top = 0
+        for (const track of sortedTracks)
+        {
+          for (const clip of clips)
+          {
+            if (clip.trackId !== track.id)
+            {
+              continue
+            }
+            const left = coords.frameToPixel(clip.timelineStart)
+            const right = left + (clipDur(clip) / coords.frameRate) * coords.zoom
+            if (right > x1 && left < x2 && top + track.height > y1 && top < y2)
+            {
+              hits.push(clip.id)
+            }
+          }
+          top += track.height
+        }
+        if (hits.length > 0)
+        {
+          useEditorStore.setState({ selectedClipIds: hits })
+        }
+        return null
       })
-    },
-    [timeline.tracks, addClip]
-  )
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [clearSelection, coords, sortedTracks])
+
+  const handleTrackDrop = useCallback((trackId: string, frame: number): boolean =>
+  {
+    const sourceId = pendingDropSourceId
+    pendingDropSourceId = null
+    const source = sourceId ? useEditorStore.getState().sources.find((s) => s.id === sourceId) : undefined
+    if (!source || !timeline.tracks.some((t) => t.id === trackId))
+    {
+      return false
+    }
+    addClip({
+      sourceId: source.id,
+      trackId,
+      timelineStart: Math.max(0, frame),
+      sourceIn: 0,
+      sourceOut: source.duration,
+      name: source.fileName,
+      color: '',
+      muted: false,
+      locked: false,
+      volume: 1,
+      pan: 0,
+      speed: 1
+    })
+    return true
+  }, [timeline.tracks, addClip])
 
   return (
     <div
       ref={containerRef}
-      className="flex flex-col flex-1 overflow-hidden"
-      onTouchStart={(e) => {
+      className="flex min-h-0 flex-1 flex-col overflow-hidden bg-panel pt-5"
+      onTouchStart={(event) =>
+      {
         const rect = containerRef.current?.getBoundingClientRect()
-        if (rect) coords.handleTouchStart(e, rect.left + HEADER_WIDTH)
+        if (rect)
+        {
+          coords.handleTouchStart(event, rect.left + HEADER_WIDTH)
+        }
       }}
     >
-      {/* Ruler */}
-      <Ruler coords={coords} width={containerWidth} headerWidth={HEADER_WIDTH} />
-
-      {/* Tracks area */}
-      <div className="flex-1 overflow-hidden relative">
-        {/* Scroll wrapper - plain block with overflow-y so content height drives scrollbar */}
-        <div
-          className="h-full overflow-y-auto overflow-x-hidden"
-          ref={scrollWrapperRef}
-        >
-          {/* Inner flex row keeps headers + tracks aligned */}
+      <Ruler coords={coords} width={laneWidth} headerWidth={HEADER_WIDTH} />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div ref={scrollRef} className="h-full overflow-x-hidden overflow-y-auto">
           <div className="flex" style={{ minHeight: totalHeight }}>
-            {/* Headers */}
-            <div
-              className="flex flex-col flex-shrink-0 border-r border-white/5"
-              style={{ width: HEADER_WIDTH }}
-            >
+            <div className="flex shrink-0 flex-col border-e border-line bg-panel" style={{ width: HEADER_WIDTH }}>
               {sortedTracks.map((track) => (
-                <TrackHeader
-                  key={track.id}
-                  track={track}
-                  isSelected={selectedTrackId === track.id}
-                  onSelect={() => selectTrack(track.id)}
-                />
+                <TrackHeader key={track.id} track={track} isSelected={selectedTrackId === track.id} onSelect={() => selectTrack(track.id)} />
               ))}
-              {/* Add track buttons */}
-              <div className="flex gap-1 px-2 py-1.5">
-                <button
-                  onClick={() => addTrack('video')}
-                  className="text-label text-surface-500 hover:text-surface-300 px-1"
-                  title="Add video track"
-                >
-                  +V
-                </button>
-                <button
-                  onClick={() => addTrack('audio')}
-                  className="text-label text-surface-500 hover:text-surface-300 px-1"
-                  title="Add audio track"
-                >
-                  +A
-                </button>
+              <div className="flex flex-col items-start gap-0.5 px-1 py-1.5">
+                <Button variant="ghost" size="sm" icon="editor.add" onClick={() => addTrack('video')}>Add video track</Button>
+                <Button variant="ghost" size="sm" icon="editor.add" onClick={() => addTrack('audio')}>Add audio track</Button>
               </div>
             </div>
-
-            {/* Track lanes */}
-            <div
-              ref={trackAreaRef}
-              className="flex-1 relative"
-              onMouseDown={handleTrackAreaMouseDown}
-            >
-          {sortedTracks.map((track) => (
-            <Track
-              key={track.id}
-              track={track}
-              clips={clipsForTrack(track.id)}
-              sources={sources}
-              coords={coords}
-              onClipDragStart={handleClipDragStart}
-              onTrackDrop={handleTrackDrop}
-            />
-          ))}
-
-          {/* Playhead */}
-          <Playhead coords={coords} height={totalHeight} trackAreaRef={trackAreaRef} />
-
-          {/* Drag ghost */}
-          <div
-            id="drag-ghost"
-            className="absolute top-0 h-full bg-accent-400/20 border border-accent-400/40 rounded-sm pointer-events-none"
-            style={{ display: 'none', width: 60 }}
-          />
-
-          {/* Snap indicator line */}
-          {snap.snapIndicator !== null && (
-            <div
-              className="absolute top-0 w-px bg-green-400/80 pointer-events-none z-30"
-              style={{
-                left: coords.frameToPixel(snap.snapIndicator),
-                height: totalHeight
-              }}
-            />
-          )}
-
-          {/* Marquee */}
-          {marquee && (
-            <div
-              className="absolute border border-accent-400/60 bg-accent-400/10 pointer-events-none z-30"
-              style={{
-                left: Math.min(marquee.startX, marquee.currentX),
-                top: Math.min(marquee.startY, marquee.currentY),
-                width: Math.abs(marquee.currentX - marquee.startX),
-                height: Math.abs(marquee.currentY - marquee.startY)
-              }}
-            />
-          )}
-        </div>
-        {/* close inner flex row */}
-        </div>
-        {/* close scroll wrapper */}
+            <div ref={trackAreaRef} data-track-area className="relative min-w-0 flex-1" onMouseDown={handleAreaMouseDown}>
+              {sortedTracks.map((track) => (
+                <Track
+                  key={track.id}
+                  track={track}
+                  clips={clipsByTrack.get(track.id) ?? []}
+                  sources={sources}
+                  coords={coords}
+                  isSelected={selectedTrackId === track.id}
+                  onClipDragStart={handleClipDragStart}
+                  onTrackDrop={handleTrackDrop}
+                />
+              ))}
+              {timeline.clips.length === 0 && (
+                <p className="pointer-events-none absolute start-3 text-body text-ink-3" style={{ top: totalHeight + 12 }}>
+                  Drag a source onto a track, or select a source and choose Append.
+                </p>
+              )}
+              <Playhead coords={coords} height={totalHeight} />
+              <div ref={ghostRef} hidden data-drag-ghost className="pointer-events-none absolute rounded-xs bg-wash-selected outline-1 -outline-offset-1 outline-accent-ink" />
+              {snap.snapIndicator !== null && (
+                <div
+                  aria-hidden="true"
+                  data-snap-line
+                  className="pointer-events-none absolute top-0 z-sticky w-px bg-accent-ink"
+                  style={{ left: coords.frameToPixel(snap.snapIndicator), height: totalHeight }}
+                />
+              )}
+              {marquee && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute z-sticky border border-accent-ink bg-wash-selected"
+                  style={{
+                    left: Math.min(marquee.startX, marquee.currentX),
+                    top: Math.min(marquee.startY, marquee.currentY),
+                    width: Math.abs(marquee.currentX - marquee.startX),
+                    height: Math.abs(marquee.currentY - marquee.startY)
+                  }}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   )
-}
-
-// Module-level helper for cross-component drag data (avoids dataTransfer serialization issues)
-let _pendingDropSourceId: string | null = null
-export function setPendingDropSource(sourceId: string): void {
-  _pendingDropSourceId = sourceId
-}
-export function clearPendingDropSource(): void {
-  _pendingDropSourceId = null
 }

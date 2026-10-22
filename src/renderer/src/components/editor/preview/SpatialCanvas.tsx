@@ -21,6 +21,9 @@ import { defaultTransform } from '../types'
 import { resolveTransform } from '../shared/interpolation'
 import { buildClipMatrix } from './transformMath'
 import { useTransformGizmos } from './useTransformGizmos'
+import { useCanvasPalette } from '../shared/canvasPalette'
+
+const PLACEHOLDER_FONT = '14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif'
 
 // ---------------------------------------------------------------------------
 // Canvas ↔ BlendMode mapping
@@ -87,6 +90,7 @@ export interface SpatialCanvasProps {
 }
 
 export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasProps): React.JSX.Element {
+  const palette = useCanvasPalette()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const timeline = useEditorStore((s) => s.timeline)
   const sources = useEditorStore((s) => s.sources)
@@ -130,7 +134,7 @@ export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasPro
 
     // Clear to black
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = '#000'
+    ctx.fillStyle = palette.ground
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     // Scale to preview size
@@ -171,15 +175,15 @@ export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasPro
           ctx.drawImage(videoEl, 0, 0, source.width, source.height)
         } catch {
           // Video frame not ready - draw placeholder
-          ctx.fillStyle = '#333'
+          ctx.fillStyle = palette.raised
           ctx.fillRect(0, 0, source.width, source.height)
         }
       } else {
         // Placeholder for missing video
-        ctx.fillStyle = '#222'
+        ctx.fillStyle = palette.raised
         ctx.fillRect(0, 0, source.width, source.height)
-        ctx.fillStyle = '#666'
-        ctx.font = '14px sans-serif'
+        ctx.fillStyle = palette.ink3
+        ctx.font = PLACEHOLDER_FONT
         ctx.fillText(clip.name, 10, source.height / 2)
       }
 
@@ -208,7 +212,8 @@ export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasPro
     scaleFactorY,
     videoElements,
     selectedClip,
-    gizmos
+    gizmos,
+    palette
   ])
 
   // Render on frame changes
@@ -233,7 +238,7 @@ export function SpatialCanvas({ videoElements, width, height }: SpatialCanvasPro
       ref={canvasRef}
       width={width}
       height={height}
-      className="bg-black"
+      className="bg-sunken"
       style={{ width, height }}
       onMouseDown={gizmos.onMouseDown}
       onMouseMove={gizmos.onMouseMove}

@@ -1,139 +1,103 @@
 /**
  * @module editor/edit/TrackHeader
- * Track name + mute/lock/visible toggles.
+ * A track's header: its name, which selects it as the target for pastes and edits, its show, sound, and lock
+ * toggles, and its menu with Remove track. The controls live in the header column, apart from the lanes.
  */
-import React, { useCallback } from 'react'
+import type { ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
+import { cx } from '../../../ui/cx'
+import { IconButton } from '../../../ui/IconButton'
+import { Menu } from '../../../ui/Menu'
 import type { TimelineTrack } from '../types'
 
-interface TrackHeaderProps {
+interface TrackHeaderProps
+{
   track: TimelineTrack
   isSelected: boolean
   onSelect: () => void
 }
 
-export function TrackHeader({ track, isSelected, onSelect }: TrackHeaderProps): React.JSX.Element {
+function toggle(trackId: string, key: 'muted' | 'locked' | 'visible'): void
+{
+  useEditorStore.setState((s) => ({
+    timeline: {
+      ...s.timeline,
+      tracks: s.timeline.tracks.map((t) => (t.id === trackId ? { ...t, [key]: !t[key] } : t))
+    }
+  }))
+}
+
+/** The track's word: "Video track V1". */
+export function trackTitle(track: Pick<TimelineTrack, 'type' | 'name'>): string
+{
+  return `${track.type === 'video' ? 'Video' : 'Audio'} track ${track.name}`
+}
+
+/** One header row, as tall as its track. */
+export function TrackHeader({ track, isSelected, onSelect }: TrackHeaderProps): ReactElement
+{
   const removeTrack = useEditorStore((s) => s.removeTrack)
-
-  const toggleMute = useCallback(() => {
-    useEditorStore.setState((s) => ({
-      timeline: {
-        ...s.timeline,
-        tracks: s.timeline.tracks.map((t) =>
-          t.id === track.id ? { ...t, muted: !t.muted } : t
-        )
-      }
-    }))
-  }, [track.id])
-
-  const toggleLock = useCallback(() => {
-    useEditorStore.setState((s) => ({
-      timeline: {
-        ...s.timeline,
-        tracks: s.timeline.tracks.map((t) =>
-          t.id === track.id ? { ...t, locked: !t.locked } : t
-        )
-      }
-    }))
-  }, [track.id])
-
-  const toggleVisible = useCallback(() => {
-    useEditorStore.setState((s) => ({
-      timeline: {
-        ...s.timeline,
-        tracks: s.timeline.tracks.map((t) =>
-          t.id === track.id ? { ...t, visible: !t.visible } : t
-        )
-      }
-    }))
-  }, [track.id])
+  const title = trackTitle(track)
 
   return (
     <div
-      className={`group flex items-center gap-1.5 px-2 border-b border-white/5 select-none cursor-pointer ${
-        isSelected ? 'bg-accent-500/10' : 'bg-surface-900/80 hover:bg-white/[0.03]'
-      }`}
+      data-track-header={track.id}
+      className={cx(
+        'relative flex items-center gap-1 border-b border-line pe-1 ps-2',
+        isSelected ? 'bg-wash-selected' : 'bg-panel'
+      )}
       style={{ height: track.height }}
-      onClick={onSelect}
     >
-      <span className="text-label font-semibold text-surface-300 shrink-0">
-        {track.name}
-      </span>
-
-      <div className="flex items-center gap-0.5 ml-auto shrink-0">
-        {/* Visible toggle (video only) */}
-        {track.type === 'video' && (
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleVisible() }}
-            className={`w-5 h-5 flex items-center justify-center rounded ${
-              track.visible ? 'text-surface-300 hover:text-white' : 'text-surface-600'
-            }`}
-            title={track.visible ? 'Hide' : 'Show'}
-          >
-            {track.visible ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            )}
-          </button>
-        )}
-
-        {/* Mute */}
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleMute() }}
-          className={`w-5 h-5 flex items-center justify-center rounded text-label font-bold ${
-            track.muted ? 'text-yellow-400 bg-yellow-400/10' : 'text-surface-500 hover:text-surface-300'
-          }`}
-          title={track.muted ? 'Unmute' : 'Mute'}
-        >
-          M
-        </button>
-
-        {/* Lock */}
-        <button
-          onClick={(e) => { e.stopPropagation(); toggleLock() }}
-          className={`w-5 h-5 flex items-center justify-center rounded ${
-            track.locked ? 'text-red-400 bg-red-400/10' : 'text-surface-500 hover:text-surface-300'
-          }`}
-          title={track.locked ? 'Unlock' : 'Lock'}
-        >
-          {track.locked ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-            </svg>
-          )}
-        </button>
-
-        {/* Delete */}
-        <button
-          onClick={(e) => { e.stopPropagation(); if (!track.locked) removeTrack(track.id) }}
-          disabled={track.locked}
-          className={`w-5 h-5 flex items-center justify-center rounded transition-all ${
-            track.locked
-              ? 'text-surface-500 cursor-not-allowed opacity-50'
-              : isSelected ? 'text-red-400 hover:bg-red-400/10' : 'text-surface-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-400 hover:bg-red-400/10'
-          }`}
-          title={track.locked ? 'Unlock track to delete' : 'Remove track'}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
+      {isSelected && <span aria-hidden="true" className="absolute inset-y-0 start-0 w-0.5 bg-accent" />}
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        aria-label={`${title}, target for pastes and edits`}
+        className="flex h-(--size-control-sm) min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 text-start hover:bg-wash-hover"
+        onClick={onSelect}
+      >
+        <span className="text-label font-semibold text-ink">{track.name}</span>
+        <span className="truncate text-label text-ink-3">{track.type === 'video' ? 'Video' : 'Audio'}</span>
+      </button>
+      {track.type === 'video' && (
+        <IconButton
+          size="sm"
+          label={track.visible ? `Hide ${title}` : `Show ${title}`}
+          icon={track.visible ? 'editor.visible' : 'editor.hidden'}
+          pressed={!track.visible}
+          onClick={() => toggle(track.id, 'visible')}
+        />
+      )}
+      <IconButton
+        size="sm"
+        label={track.muted ? `Unmute ${title}` : `Mute ${title}`}
+        icon={track.muted ? 'editor.muted' : 'editor.sound'}
+        pressed={track.muted}
+        onClick={() => toggle(track.id, 'muted')}
+      />
+      <IconButton
+        size="sm"
+        label={track.locked ? `Unlock ${title}` : `Lock ${title}`}
+        icon={track.locked ? 'editor.lock' : 'editor.unlock'}
+        pressed={track.locked}
+        onClick={() => toggle(track.id, 'locked')}
+      />
+      <Menu
+        label={`${title} actions`}
+        align="end"
+        items={[
+          {
+            id: 'remove',
+            label: 'Remove track',
+            icon: 'action.trash',
+            danger: true,
+            disabled: track.locked,
+            disabledReason: track.locked ? 'Unlock the track to remove it.' : undefined,
+            onSelect: () => removeTrack(track.id)
+          }
+        ]}
+        trigger={<IconButton size="sm" label={`More actions for ${title}`} icon="action.more" />}
+      />
     </div>
   )
 }

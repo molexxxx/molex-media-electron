@@ -1,126 +1,144 @@
-/** @module editor/clip/ClipExport - Export controls for Clip mode. */
-import React, { useState } from 'react'
+/**
+ * @module editor/clip/ClipExport
+ * Trim's export panel, laid out as the Batch inspector: the format and quality up top, rare settings behind
+ * More settings, then Export and Add to timeline with the progress, the saved file, or the error at the foot.
+ */
+import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
+import { useAppStore } from '../../../stores/appStore'
 import { useEditorStore } from '../../../stores/editorStore'
-import { framesToSeconds, formatTimecode } from '../shared/TimeDisplay'
-import { Select } from '../../shared/ui'
-import { EncoderBadge } from '../../shared/EncoderBadge'
+import { Button } from '../../../ui/Button'
+import { FieldMessage } from '../../../ui/NumberField'
+import { ProgressBar } from '../../../ui/ProgressBar'
+import { Select } from '../../../ui/Select'
+import { EditorField, MoreSettings } from '../shared/Field'
+import { formatTimecode, framesToSeconds } from '../shared/TimeDisplay'
 import type { MediaSource } from '../types'
 import {
-  ClipExportAdvanced,
+  buildCutOptions,
   DEFAULT_GIF,
   DEFAULT_VIDEO,
+  FORMAT_OPTIONS,
+  formatKind,
+  GifFields,
+  GifMoreFields,
+  QUALITY_CRF,
+  qualityForCrf,
+  qualityOptions,
+  VideoMoreFields,
   type ExportFormat,
   type GifOptions,
   type VideoOptions
 } from './ClipExportAdvanced'
 
-type ExportQuality = 'low' | 'medium' | 'high' | 'lossless'
+const GPU_NAMES: Readonly<Record<string, string>> = { nvenc: 'NVENC', qsv: 'Quick Sync', amf: 'AMF', auto: 'the GPU' }
 
-const FORMAT_OPTIONS = [
-  { value: 'mp4', label: 'MP4' },
-  { value: 'mkv', label: 'MKV' },
-  { value: 'webm', label: 'WebM' },
-  { value: 'wav', label: 'WAV' },
-  { value: 'mp3', label: 'MP3' },
-  { value: 'gif', label: 'GIF' }
-]
-
-const QUALITY_OPTIONS = [
-  { value: 'lossless', label: 'Lossless (fast)' },
-  { value: 'high', label: 'High' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'low', label: 'Low' }
-]
-
-interface ClipExportProps {
-  source: MediaSource
+/** Which encoder the export uses, in one sentence. */
+export function encoderNote(gpuMode: string | undefined): string
+{
+  const name = gpuMode ? GPU_NAMES[gpuMode] : undefined
+  return name ? `Video encodes with ${name} where the codec allows.` : 'Video encodes on the CPU. GPU encoding can be turned on in Settings.'
 }
 
-export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
+function baseName(filePath: string): string
+{
+  return filePath.split(/[\\/]/).pop() || filePath
+}
+
+/** Props of {@link ClipExport}. */
+export interface ClipExportProps
+{
+  source: MediaSource
+  /** The panel's width in px. */
+  width: number
+}
+
+/** The export panel for the active file's in to out range. */
+export function ClipExport({ source, width }: ClipExportProps): ReactElement
+{
   const inPoint = useEditorStore((s) => s.clipMode.inPoint)
   const outPoint = useEditorStore((s) => s.clipMode.outPoint)
   const frameRate = useEditorStore((s) => s.project.frameRate)
+  const gpuMode = useAppStore((s) => s.config?.gpuAcceleration)
+  const headingId = useId()
+  const formatId = useId()
+  const qualityId = useId()
 
   const [format, setFormat] = useState<ExportFormat>('mp4')
-  const [quality, setQuality] = useState<ExportQuality>('high')
+  const [lossless, setLossless] = useState(false)
+  const [gif, setGif] = useState<GifOptions>(DEFAULT_GIF)
+  const [video, setVideo] = useState<VideoOptions>(DEFAULT_VIDEO)
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [lastOutput, setLastOutput] = useState<string | null>(null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [gifOpts, setGifOpts] = useState<GifOptions>(DEFAULT_GIF)
-  const [videoOpts, setVideoOpts] = useState<VideoOptions>(DEFAULT_VIDEO)
+  const [saved, setSaved] = useState<string | null>(null)
+  const unsubscribe = useRef<(() => void) | null>(null)
 
-  const duration = outPoint - inPoint
-  const durationText = formatTimecode(duration, frameRate)
+  useEffect(() => () => unsubscribe.current?.(), [])
 
-  const handleExport = async (): Promise<void> => {
+  const kind = formatKind(format)
+  const length = Math.max(0, outPoint - inPoint)
+  const quality = lossless ? 'lossless' : qualityForCrf(video.crf) ?? 'custom'
+
+  const chooseQuality = (value: string): void =>
+  {
+    if (value === 'lossless')
+    {
+      setLossless(true)
+      return
+    }
+    setLossless(false)
+    if (value === 'high' || value === 'medium' || value === 'low')
+    {
+      setVideo((current) => ({ ...current, crf: QUALITY_CRF[value] }))
+    }
+  }
+
+  const runExport = async (): Promise<void> =>
+  {
     setExporting(true)
     setError(null)
+    setSaved(null)
     setProgress(0)
-    setLastOutput(null)
-
-    const cleanup = window.api.onEditorProgress(({ percent }) => {
-      setProgress(percent)
-    })
-
-    try {
-      const inSec = framesToSeconds(inPoint, frameRate)
-      const outSec = framesToSeconds(outPoint, frameRate)
-      const mode = quality === 'lossless' ? 'fast' : 'precise'
-
-      const result = await window.api.cutMedia(source.filePath, inSec, outSec, {
-        mode,
-        outputFormat: format,
-        ...(format === 'gif'
-          ? {
-              gifOptions: {
-                fps: gifOpts.fps,
-                width: gifOpts.width,
-                loopCount: gifOpts.loopCount,
-                dither: gifOpts.dither,
-                bayerScale: gifOpts.bayerScale,
-                highQuality: gifOpts.highQuality,
-                reverse: gifOpts.reverse,
-                boomerang: gifOpts.boomerang
-              }
-            }
-          : format === 'mp4' || format === 'mkv' || format === 'webm'
-            ? {
-                videoOptions: {
-                  codec: videoOpts.codec,
-                  crf: videoOpts.crf,
-                  preset: videoOpts.preset,
-                  maxHeight: videoOpts.maxHeight,
-                  audioBitrate: videoOpts.audioBitrate
-                }
-              }
-            : {})
-      })
-
-      if (result?.success && result.outputPath) {
-        setLastOutput(result.outputPath)
-      } else {
-        setError(result?.error || 'Export failed')
+    unsubscribe.current = window.api.onEditorProgress(({ percent }) => setProgress(percent))
+    try
+    {
+      const options = buildCutOptions(format, lossless, gif, video)
+      const result = await window.api.cutMedia(source.filePath, framesToSeconds(inPoint, frameRate), framesToSeconds(outPoint, frameRate), options)
+      if (result?.success && result.outputPath)
+      {
+        setSaved(result.outputPath)
       }
-    } catch (err: any) {
-      setError(err?.message || 'Export failed')
-    } finally {
-      cleanup()
+      else if (result?.error !== 'Cancelled')
+      {
+        setError(`The export failed: ${result?.error ?? 'FFmpeg gave no reason'}. Try another format or quality, or open Logs for the FFmpeg output.`)
+      }
+    }
+    catch (caught)
+    {
+      const message = caught instanceof Error ? caught.message : String(caught)
+      setError(`The export failed: ${message}. Try again, or open Logs for the FFmpeg output.`)
+    }
+    finally
+    {
+      unsubscribe.current?.()
+      unsubscribe.current = null
       setExporting(false)
       setProgress(0)
     }
   }
 
-  const handleSendToEdit = (): void => {
-    // Find the first video track
+  const addToTimeline = (): void =>
+  {
     const { timeline, addClip, setMode } = useEditorStore.getState()
-    const videoTrack = timeline.tracks.find((t) => t.type === 'video')
-    if (!videoTrack) return
-
+    const wanted = source.width > 0 ? 'video' : 'audio'
+    const track = timeline.tracks.find((t) => t.type === wanted) ?? timeline.tracks[0]
+    if (!track)
+    {
+      return
+    }
     addClip({
       sourceId: source.id,
-      trackId: videoTrack.id,
+      trackId: track.id,
       timelineStart: timeline.duration,
       sourceIn: inPoint,
       sourceOut: outPoint,
@@ -135,134 +153,67 @@ export function ClipExport({ source }: ClipExportProps): React.JSX.Element {
     setMode('edit')
   }
 
-  const showInFolder = (path: string): void => {
-    window.api.showInFolder(path)
-  }
-
   return (
-    <div className="relative flex items-center gap-3 px-3 py-2 border-t border-white/5 text-xs">
-      {/* Duration */}
-      <span className="text-surface-400 font-mono tabular-nums">
-        Duration: {durationText}
-      </span>
-
-      <div className="w-px h-4 bg-white/10" />
-
-      {/* Format selector */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-surface-500 text-2xs font-medium">Format</span>
-        <Select
-          value={format}
-          onChange={(v) => setFormat(v as ExportFormat)}
-          options={FORMAT_OPTIONS}
-          compact
-        />
-      </div>
-
-      {/* Quality selector - hidden when GIF (uses its own controls) */}
-      {format !== 'gif' && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-surface-500 text-2xs font-medium">Quality</span>
-          <Select
-            value={quality}
-            onChange={(v) => setQuality(v as ExportQuality)}
-            options={QUALITY_OPTIONS}
-            compact
-          />
+    <aside aria-labelledby={headingId} style={{ width }} className="flex min-h-0 shrink-0 flex-col bg-panel" data-panel="trim-export">
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto ps-5 pe-3 py-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 id={headingId} className="text-section text-ink">Export</h2>
+          <p className="text-label tabular-nums text-ink-3">
+            {formatTimecode(length, frameRate)} from {formatTimecode(inPoint, frameRate)}
+          </p>
         </div>
-      )}
-
-      {/* Advanced toggle */}
-      <button
-        onClick={() => setShowAdvanced((v) => !v)}
-        title="Advanced export options"
-        className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-2xs font-medium transition-colors ${
-          showAdvanced
-            ? 'bg-accent-500/15 border-accent-500/30 text-accent-200'
-            : 'bg-white/4 border-white/8 text-surface-300 hover:text-surface-100 hover:border-white/15'
-        }`}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-        Advanced
-      </button>
-
-      <EncoderBadge />
-
-      <div className="flex-1" />
-
-      {/* Progress bar */}
-      {exporting && (
-        <div className="w-32 h-1.5 bg-surface-700 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent-500 transition-all duration-200"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Error message */}
-      {error && <span className="text-red-400 truncate max-w-48">{error}</span>}
-
-      {/* Output path */}
-      {lastOutput && (
-        <button
-          onClick={() => showInFolder(lastOutput)}
-          className="text-accent-300 hover:text-accent-200 transition-colors truncate max-w-48"
-          title={lastOutput}
-        >
-          Show in folder
-        </button>
-      )}
-
-      {/* Send to Edit */}
-      <button
-        onClick={handleSendToEdit}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/4 border border-white/6 hover:border-white/12 text-surface-300 hover:text-surface-100 transition-colors"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12" />
-          <polyline points="12 5 19 12 12 19" />
-        </svg>
-        Edit Mode
-      </button>
-
-      {/* Export button */}
-      <button
-        onClick={handleExport}
-        disabled={exporting || duration <= 0}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 hover:text-accent-200 border border-accent-500/20 hover:border-accent-500/30 disabled:opacity-40 disabled:pointer-events-none font-medium transition-colors"
-      >
-        {exporting ? (
-          <>
-            <div className="w-3 h-3 border-[1.5px] border-accent-400 border-t-transparent rounded-full animate-spin" />
-            Exporting…
-          </>
-        ) : (
-          <>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export
-          </>
+        <EditorField label="Format" htmlFor={formatId}>
+          <Select id={formatId} value={format} options={FORMAT_OPTIONS} onChange={(value) => setFormat(value as ExportFormat)} className="w-full" />
+        </EditorField>
+        {kind !== 'gif' && (
+          <EditorField
+            label="Quality"
+            htmlFor={qualityId}
+            note={lossless
+              ? 'Copies the streams without re-encoding, so cuts land on the nearest keyframe. MP4 always re-encodes.'
+              : kind === 'audio'
+                ? 'Re-encodes the audio.'
+                : 'Re-encodes at this CRF, cutting on the exact frame.'}
+          >
+            <Select id={qualityId} value={quality} options={qualityOptions(lossless, video.crf)} onChange={chooseQuality} className="w-full" />
+          </EditorField>
         )}
-      </button>
-
-      {/* Advanced popover */}
-      {showAdvanced && (
-        <ClipExportAdvanced
-          format={format}
-          gif={gifOpts}
-          video={videoOpts}
-          onGifChange={setGifOpts}
-          onVideoChange={setVideoOpts}
-          onClose={() => setShowAdvanced(false)}
-        />
-      )}
-    </div>
+        {kind === 'gif' && <GifFields gif={gif} onChange={setGif} />}
+        {kind === 'gif' && (
+          <MoreSettings scope="trim-gif">
+            <GifMoreFields gif={gif} onChange={setGif} />
+          </MoreSettings>
+        )}
+        {kind === 'video' && (
+          <MoreSettings scope="trim-video">
+            <VideoMoreFields video={video} onChange={setVideo} />
+          </MoreSettings>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col gap-3 border-t border-line px-5 py-3">
+        {exporting && <ProgressBar value={progress / 100} label={`Exporting ${source.fileName}`} size="sm" />}
+        {error !== null && !exporting && <FieldMessage id={`${headingId}-error`} tone="error">{error}</FieldMessage>}
+        {saved !== null && !exporting && (
+          <div className="flex min-w-0 items-center justify-between gap-2" role="status">
+            <p className="min-w-0 truncate text-label text-ink-2">Saved {baseName(saved)}</p>
+            <Button size="sm" variant="ghost" icon="action.reveal" onClick={() => void window.api.showInFolder(saved)}>Show in folder</Button>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="primary"
+            icon="action.export"
+            loading={exporting}
+            loadingLabel="Exporting"
+            unavailableReason={length <= 0 ? 'Set an out point after the in point to export.' : undefined}
+            onClick={() => void runExport()}
+          >
+            Export
+          </Button>
+          <Button icon="editor.add" onClick={addToTimeline}>Add to timeline</Button>
+        </div>
+        <p className="text-label text-ink-3">{encoderNote(gpuMode)}</p>
+      </div>
+    </aside>
   )
 }

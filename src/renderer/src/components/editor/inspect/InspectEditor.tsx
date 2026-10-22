@@ -1,490 +1,401 @@
 /**
  * @module editor/inspect/InspectEditor
- * Inspect mode - displays FFprobe format metadata and per-stream details
- * for the currently loaded media source. Supports editing metadata tags
- * and removing streams via lossless remux.
+ * Inspect: the active file's ffprobe report as quiet name and value lists spanning the pane: the file, every stream,
+ * the tags, and the keyframes, each value plain first and technical second with a Copy button. The header copies the
+ * path or the whole report and opens the file in Trim. Leaving streams out or editing tags enables Save a copy,
+ * which remuxes losslessly to a new file.
  */
-import React, { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import {
-  VideoStreamInfo,
-  AudioStreamInfo,
-  SubtitleStreamInfo,
-  DataStreamInfo
-} from './StreamInfo'
+import { Button } from '../../../ui/Button'
+import { IconButton } from '../../../ui/IconButton'
+import { Menu } from '../../../ui/Menu'
+import { FieldMessage } from '../../../ui/NumberField'
+import { ProgressBar } from '../../../ui/ProgressBar'
 import { KeyframeView } from './KeyframeView'
+import { containerFacts, hasVideo, parseReport, reportFromProbe, reportText, type ProbeReport, type ReportStream } from './report'
+import { FactList, StreamSection, useCopy } from './StreamInfo'
 
-/** MediaInfo shape returned by `editor:probeDetailed`. */
-interface ProbeMediaInfo {
-  audioStreams: any[]
-  videoStreams: any[]
-  subtitleStreams: any[]
-  dataStreams: any[]
-  format: {
-    filename: string
-    duration: string
-    size: string
-    bit_rate: string
-    format_name: string
-    tags?: Record<string, string>
+/** One tag row while editing; the id keeps a row's fields in place while its name changes. */
+interface TagRow
+{
+  id: string
+  key: string
+  value: string
+}
+
+/** The report Inspect shows, and the raw ffprobe text when it came from ffprobe's own report. */
+interface Loaded
+{
+  report: ProbeReport
+  raw: string | null
+}
+
+const TEXT_FRAME = [
+  'h-7 w-full min-w-0 rounded-sm border border-line-control bg-sunken px-2 text-body text-ink',
+  'placeholder:text-ink-3 transition-colors duration-fast ease-out hover:border-line-control-hover'
+].join(' ')
+
+/** Every stream index of the report, in order. */
+export function allStreamIndices(streams: readonly Pick<ReportStream, 'index'>[]): number[]
+{
+  return streams.map((s) => s.index).sort((a, b) => a - b)
+}
+
+/** The edited tags as the record the remux writes; a later row wins a repeated name. */
+export function tagsRecord(rows: readonly TagRow[]): Record<string, string>
+{
+  const record: Record<string, string> = {}
+  for (const row of rows)
+  {
+    record[row.key] = row.value
   }
-  isVideoFile: boolean
-  isAudioOnly: boolean
+  return record
 }
 
-/** Format bytes to human-readable size. */
-function formatSize(s: string | number): string {
-  const n = typeof s === 'string' ? parseInt(s, 10) : s
-  if (isNaN(n) || n === 0) return '-'
-  if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(2)} GB`
-  if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(2)} MB`
-  if (n >= 1_024) return `${(n / 1_024).toFixed(1)} KB`
-  return `${n} B`
+/** Whether the edited tags differ from the file's. */
+export function tagsChanged(original: Record<string, string> | undefined, edited: Record<string, string>): boolean
+{
+  const before = original ?? {}
+  const beforeKeys = Object.keys(before).sort()
+  const afterKeys = Object.keys(edited).sort()
+  if (beforeKeys.length !== afterKeys.length)
+  {
+    return true
+  }
+  return beforeKeys.some((key, i) => key !== afterKeys[i] || before[key] !== edited[afterKeys[i]])
 }
 
-/** Format duration seconds to HH:MM:SS.mmm. */
-function formatDuration(s: string | number): string {
-  const sec = typeof s === 'string' ? parseFloat(s) : s
-  if (isNaN(sec) || sec <= 0) return '-'
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const ss = sec % 60
-  const parts = [h, m].filter((_, i) => i === 1 || h > 0).map((v) => String(v).padStart(2, '0'))
-  parts.push(ss.toFixed(3).padStart(6, '0'))
-  return parts.join(':')
+/** The options the remux receives: the kept streams, and the tags only when they were edited. */
+export function remuxOptions(kept: ReadonlySet<number>, editing: boolean, original: Record<string, string> | undefined, rows: readonly TagRow[]): { keepStreams: number[], metadata?: Record<string, string> }
+{
+  const options: { keepStreams: number[], metadata?: Record<string, string> } = { keepStreams: [...kept].sort((a, b) => a - b) }
+  const edited = tagsRecord(rows)
+  if (editing && tagsChanged(original, edited))
+  {
+    options.metadata = edited
+  }
+  return options
 }
 
-/** Format bitrate number-string to human-readable. */
-function formatBitrate(br?: string): string {
-  if (!br) return '-'
-  const n = parseInt(br, 10)
-  if (isNaN(n) || n === 0) return '-'
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} Mb/s`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} kb/s`
-  return `${n} b/s`
-}
-
-/** Collect all stream indices from probe data. */
-function allStreamIndices(data: ProbeMediaInfo): number[] {
-  const all = [
-    ...data.videoStreams,
-    ...data.audioStreams,
-    ...data.subtitleStreams,
-    ...data.dataStreams
-  ]
-  return all.map((s) => s.index).sort((a, b) => a - b)
-}
-
-export function InspectEditor(): React.JSX.Element {
-  const sources = useEditorStore((s) => s.sources)
-  const clipMode = useEditorStore((s) => s.clipMode)
-  const source = sources.find((s) => s.id === clipMode.sourceId)
-  const loadMediaFile = useEditorStore((s) => s.loadMediaFile)
-  const mediaLoading = useEditorStore((s) => s.mediaLoading)
-
-  const [probeData, setProbeData] = useState<ProbeMediaInfo | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // -- Editing state --
-  const [includedStreams, setIncludedStreams] = useState<Set<number>>(new Set())
-  const [editingMetadata, setEditingMetadata] = useState(false)
-  const [metadataEdits, setMetadataEdits] = useState<Record<string, string>>({})
-  const [remuxing, setRemuxing] = useState(false)
-  const [remuxResult, setRemuxResult] = useState<{ success: boolean; message: string } | null>(null)
-
-  // Fetch probe data when the source changes
-  useEffect(() => {
-    if (!source) {
-      setProbeData(null)
-      return
+/** Reads ffprobe's own report, and falls back to the app's probe when that report cannot be read. */
+export async function loadReport(filePath: string): Promise<Loaded>
+{
+  const answer = await window.api.probeReport(filePath).catch(() => null)
+  if (answer?.success)
+  {
+    const report = parseReport(answer.report)
+    if (report)
+    {
+      return { report, raw: answer.report }
     }
+  }
+  const probe = await window.api.probeDetailed(filePath)
+  if (!probe?.success || !probe.data)
+  {
+    throw new Error(probe?.error || 'FFprobe could not read it')
+  }
+  return { report: reportFromProbe(probe.data), raw: null }
+}
 
+let rowCounter = 0
+
+function toRows(tags: Record<string, string> | undefined): TagRow[]
+{
+  return Object.entries(tags ?? {}).map(([key, value]) => ({ id: `tag-${++rowCounter}`, key, value }))
+}
+
+function baseName(filePath: string): string
+{
+  return filePath.split(/[\\/]/).pop() || filePath
+}
+
+/** Inspect for the active file; nothing while no file is open. */
+export function InspectEditor(): ReactElement | null
+{
+  const sources = useEditorStore((s) => s.sources)
+  const sourceId = useEditorStore((s) => s.clipMode.sourceId)
+  const source = sources.find((s) => s.id === sourceId)
+  if (!source)
+  {
+    return null
+  }
+  return <InspectFile key={source.id} filePath={source.filePath} fileName={source.fileName} durationSeconds={source.durationSeconds} />
+}
+
+function InspectFile({ filePath, fileName, durationSeconds }: { filePath: string, fileName: string, durationSeconds: number }): ReactElement
+{
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [kept, setKept] = useState<Set<number>>(new Set())
+  const [editing, setEditing] = useState(false)
+  const [rows, setRows] = useState<TagRow[]>([])
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState<{ success: boolean, message: string } | null>(null)
+  const { copied, copy } = useCopy()
+  const ids = { file: useId(), streams: useId(), tags: useId() }
+
+  useEffect(() =>
+  {
     let cancelled = false
     setLoading(true)
     setError(null)
-    setRemuxResult(null)
-
-    window.api
-      .probeDetailed(source.filePath)
-      .then((result: { success: boolean; data?: ProbeMediaInfo; error?: string }) => {
-        if (cancelled) return
-        if (result.success && result.data) {
-          setProbeData(result.data)
-          // Initialize all streams as included
-          setIncludedStreams(new Set(allStreamIndices(result.data)))
-          // Initialize metadata from existing tags
-          setMetadataEdits(result.data.format.tags ? { ...result.data.format.tags } : {})
-          setEditingMetadata(false)
-        } else {
-          setError(result.error || 'Failed to probe file')
+    loadReport(filePath)
+      .then((next) =>
+      {
+        if (cancelled)
+        {
+          return
+        }
+        setLoaded(next)
+        setKept(new Set(allStreamIndices(next.report.streams)))
+        setRows(toRows(next.report.format.tags))
+        setEditing(false)
+      })
+      .catch((caught: Error) =>
+      {
+        if (!cancelled)
+        {
+          setError(caught.message)
         }
       })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message)
+      .finally(() =>
+      {
+        if (!cancelled)
+        {
+          setLoading(false)
+        }
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-
-    return () => {
+    return () =>
+    {
       cancelled = true
     }
-  }, [source?.id, source?.filePath])
+  }, [filePath])
 
-  // Toggle a stream in/out
-  const toggleStream = useCallback((index: number) => {
-    setIncludedStreams((prev) => {
+  const toggleStream = useCallback((index: number) =>
+  {
+    setKept((prev) =>
+    {
       const next = new Set(prev)
-      if (next.has(index)) {
+      if (next.has(index))
+      {
         next.delete(index)
-      } else {
+      }
+      else
+      {
         next.add(index)
       }
       return next
     })
-    setRemuxResult(null)
+    setResult(null)
   }, [])
 
-  // Update a metadata tag value
-  const updateMetadata = useCallback((key: string, value: string) => {
-    setMetadataEdits((prev) => ({ ...prev, [key]: value }))
-    setRemuxResult(null)
-  }, [])
+  const report = loaded?.report ?? null
+  const total = report ? report.streams.length : 0
+  const tagChanges = report !== null && editing && tagsChanged(report.format.tags, tagsRecord(rows))
+  const changed = (report !== null && kept.size !== total) || tagChanges
+  const removed = total - kept.size
 
-  // Add a new metadata tag
-  const addMetadataTag = useCallback(() => {
-    const key = `tag_${Date.now()}`
-    setMetadataEdits((prev) => ({ ...prev, [key]: '' }))
-  }, [])
-
-  // Remove a metadata tag
-  const removeMetadataTag = useCallback((key: string) => {
-    setMetadataEdits((prev) => {
-      const next = { ...prev }
-      delete next[key]
-      return next
-    })
-  }, [])
-
-  // Rename a metadata key
-  const renameMetadataKey = useCallback((oldKey: string, newKey: string) => {
-    if (oldKey === newKey) return
-    setMetadataEdits((prev) => {
-      const next: Record<string, string> = {}
-      for (const [k, v] of Object.entries(prev)) {
-        next[k === oldKey ? newKey : k] = v
-      }
-      return next
-    })
-  }, [])
-
-  // Check if anything has been modified
-  const hasStreamChanges = probeData ? includedStreams.size !== allStreamIndices(probeData).length : false
-  const hasMetadataChanges = probeData ? (() => {
-    const original = probeData.format.tags || {}
-    const origKeys = Object.keys(original).sort()
-    const editKeys = Object.keys(metadataEdits).sort()
-    if (origKeys.length !== editKeys.length) return true
-    return origKeys.some((k, i) => k !== editKeys[i] || original[k] !== metadataEdits[editKeys[i]])
-  })() : false
-  const hasChanges = hasStreamChanges || (editingMetadata && hasMetadataChanges)
-
-  // Execute remux
-  const handleRemux = useCallback(async () => {
-    if (!source || !probeData) return
-    setRemuxing(true)
-    setRemuxResult(null)
-
-    try {
-      const keepStreams = Array.from(includedStreams).sort((a, b) => a - b)
-      if (keepStreams.length === 0) {
-        setRemuxResult({ success: false, message: 'Must keep at least one stream' })
-        setRemuxing(false)
-        return
-      }
-
-      const options: {
-        keepStreams: number[]
-        metadata?: Record<string, string>
-      } = { keepStreams }
-
-      if (editingMetadata && hasMetadataChanges) {
-        options.metadata = metadataEdits
-      }
-
-      const result = await window.api.remuxMedia(source.filePath, options)
-      if (result.success) {
-        setRemuxResult({ success: true, message: `Saved to ${result.outputPath}` })
-      } else {
-        setRemuxResult({ success: false, message: result.error || 'Remux failed' })
-      }
-    } catch (err: any) {
-      setRemuxResult({ success: false, message: err.message || 'Remux failed' })
-    } finally {
-      setRemuxing(false)
+  const changeSummary = useMemo(() =>
+  {
+    const parts: string[] = []
+    if (removed > 0)
+    {
+      parts.push(removed === 1 ? 'leaves 1 stream out' : `leaves ${removed} streams out`)
     }
-  }, [source, probeData, includedStreams, editingMetadata, hasMetadataChanges, metadataEdits])
+    if (tagChanges)
+    {
+      parts.push('writes the edited tags')
+    }
+    return parts.length > 0 ? `The copy ${parts.join(' and ')}.` : ''
+  }, [removed, tagChanges])
 
-  // -- No source loaded -- show drop zone + Open File button (independent of Trim/Clip mode)
-  if (!source) {
-    const onDrop = (e: React.DragEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
-      const files = Array.from(e.dataTransfer.files)
-      if (files.length > 0) {
-        const filePath = window.api.getFilePath(files[0])
-        if (filePath) loadMediaFile(filePath)
-      }
+  const save = async (): Promise<void> =>
+  {
+    if (!report)
+    {
+      return
     }
-    const onDragOver = (e: React.DragEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
+    if (kept.size === 0)
+    {
+      setResult({ success: false, message: 'Keep at least one stream to save a copy.' })
+      return
     }
-    const openFile = async (): Promise<void> => {
-      const files = await window.api.openFiles()
-      if (files?.length > 0) loadMediaFile(files[0])
+    setSaving(true)
+    setResult(null)
+    try
+    {
+      const answer = await window.api.remuxMedia(filePath, remuxOptions(kept, editing, report.format.tags, rows))
+      setResult(answer.success
+        ? { success: true, message: answer.outputPath ?? '' }
+        : { success: false, message: `The copy failed: ${answer.error || 'FFmpeg gave no reason'}. Try keeping more streams, or open Logs for the FFmpeg output.` })
     }
+    catch (caught)
+    {
+      setResult({ success: false, message: `The copy failed: ${caught instanceof Error ? caught.message : String(caught)}. Try again, or open Logs for the FFmpeg output.` })
+    }
+    finally
+    {
+      setSaving(false)
+    }
+  }
 
+  const updateRow = (id: string, patch: Partial<TagRow>): void =>
+  {
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+    setResult(null)
+  }
+
+  const cancelEditing = (): void =>
+  {
+    setEditing(false)
+    setRows(toRows(report?.format.tags))
+  }
+
+  if (loading)
+  {
     return (
-      <div
-        className="flex flex-col items-center justify-center h-full text-surface-400"
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-      >
-        {mediaLoading ? (
-          <div className="text-center animate-fade-in">
-            <div className="w-12 h-12 border-2 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-surface-300">Probing media…</p>
-          </div>
-        ) : (
-          <div className="text-center animate-fade-in">
-            <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-surface-800/60 border border-white/5 flex items-center justify-center">
-              <SearchIcon />
-            </div>
-            <p className="text-lg font-medium mb-1 text-surface-300">Drop a file to inspect</p>
-            <p className="text-sm text-surface-500 mb-5">View streams, codecs, and metadata</p>
-            <button
-              onClick={openFile}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 hover:text-accent-200 border border-accent-500/20 hover:border-accent-500/30 text-sm font-medium transition-all hover:shadow-glow"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              </svg>
-              Open File
-            </button>
-          </div>
-        )}
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-3 px-6 pt-[min(12vh,7rem)]">
+        <p className="text-body text-ink-2">Reading {fileName}</p>
+        <ProgressBar label={`Reading ${fileName}`} size="sm" showValue={false} />
       </div>
     )
   }
 
-  // -- Loading --
-  if (loading) {
+  if (error !== null || report === null)
+  {
     return (
-      <div className="flex items-center justify-center h-full text-surface-400">
-        <div className="text-center">
-          <div className="w-5 h-5 border-2 border-accent-500/30 border-t-accent-400 rounded-full animate-spin mx-auto" />
-          <p className="text-xs mt-2">Probing media…</p>
-        </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 px-6 pt-[min(12vh,7rem)]">
+        <h2 className="text-section text-ink">Could not read {fileName}</h2>
+        <FieldMessage id={`${ids.file}-error`} tone="error">{`${error ?? 'FFprobe gave no answer'}. Check that the file still exists and is a media file, then open it again.`}</FieldMessage>
       </div>
     )
   }
 
-  // -- Error --
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-400">
-        <div className="text-center">
-          <p className="text-sm font-medium">Probe failed</p>
-          <p className="text-xs text-surface-500 mt-1 max-w-xs">{error}</p>
-        </div>
-      </div>
-    )
-  }
-
-  const fmt = probeData?.format
+  const tags = Object.entries(report.format.tags ?? {}).map(([key, value]) => ({ name: key, value }))
+  const copyItems = [
+    { id: 'path', label: 'Copy the file path', onSelect: () => copy('menu:path', filePath, 'the file path') },
+    { id: 'text', label: 'Copy the report as text', onSelect: () => copy('menu:text', reportText(report, fileName, filePath), 'the report') },
+    {
+      id: 'json',
+      label: 'Copy the FFprobe report',
+      description: 'JSON, as FFprobe printed it',
+      disabled: loaded?.raw === null,
+      disabledReason: loaded?.raw === null ? 'FFprobe could not print its report for this file.' : undefined,
+      onSelect: () => copy('menu:json', loaded?.raw ?? '', 'the FFprobe report')
+    }
+  ]
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-4">
-      {/* File header */}
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 mt-0.5">
-          {probeData?.isVideoFile ? <FileVideoIcon /> : <FileAudioIcon />}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-line px-4 pt-3 pb-3">
+        <div className="min-w-0">
+          <h1 id={ids.file} className="truncate text-title text-ink">{fileName}</h1>
+          <p className="mt-0.5 truncate font-mono text-label text-ink-3">{filePath}</p>
         </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-surface-100 truncate">{source.fileName}</h2>
-          <p className="text-2xs text-surface-500 font-mono truncate">{source.filePath}</p>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 pt-1">
+          <Button icon="editor.split" onClick={() => useEditorStore.getState().setMode('clip')}>Open in Trim</Button>
+          <Menu label="Copy" align="end" items={copyItems} trigger={<Button icon="action.copy" iconEnd="action.openMenu">Copy</Button>} />
+          <Button icon="action.reveal" onClick={() => void window.api.showInFolder(filePath)}>Show in folder</Button>
         </div>
-        {/* Save button */}
-        {hasChanges && (
-          <button
-            onClick={handleRemux}
-            disabled={remuxing}
-            className="shrink-0 px-3 py-1 rounded-lg text-xs font-medium bg-accent-500/20 text-accent-200 border border-accent-500/30 hover:bg-accent-500/30 disabled:opacity-50 transition-colors"
-          >
-            {remuxing ? 'Saving…' : 'Save as…'}
-          </button>
-        )}
-      </div>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-6 px-2 py-4">
+          <section aria-labelledby={`${ids.file}-legend`} className="flex flex-col gap-1">
+            <h2 id={`${ids.file}-legend`} className="type-legend px-2 text-accent-ink">File</h2>
+            <FactList facts={containerFacts(report, fileName)} label="File facts" scope="file" copied={copied} onCopy={copy} />
+          </section>
 
-      {/* Remux result toast */}
-      {remuxResult && (
-        <div className={`rounded-lg px-3 py-2 text-xs ${remuxResult.success ? 'bg-green-500/10 text-green-300 border border-green-500/20' : 'bg-red-500/10 text-red-300 border border-red-500/20'}`}>
-          {remuxResult.message}
-        </div>
-      )}
+          <section aria-labelledby={ids.streams} className="flex flex-col gap-3">
+            <h2 id={ids.streams} className="type-legend px-2 text-accent-ink">Streams</h2>
+            {report.streams.map((stream) => (
+              <StreamSection key={stream.index} stream={stream} kept={kept.has(stream.index)} onToggle={toggleStream} copied={copied} onCopy={copy} />
+            ))}
+          </section>
 
-      {/* Format overview */}
-      {fmt && (
-        <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-surface-300 uppercase tracking-wide">Container / Format</h3>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat label="Format" value={fmt.format_name} />
-            <Stat label="Duration" value={formatDuration(fmt.duration)} />
-            <Stat label="Size" value={formatSize(fmt.size)} />
-            <Stat label="Bitrate" value={formatBitrate(fmt.bit_rate)} />
-          </div>
-
-          {/* Metadata tags - read-only or editable */}
-          <div className="mt-3 pt-2 border-t border-white/5">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-2xs text-surface-500 uppercase tracking-wide">Metadata Tags</p>
-              <button
-                onClick={() => setEditingMetadata(!editingMetadata)}
-                className="text-2xs text-accent-400 hover:text-accent-300 transition-colors"
-              >
-                {editingMetadata ? 'Cancel editing' : 'Edit'}
-              </button>
+          <section aria-labelledby={ids.tags} className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-3 px-2">
+              <h2 id={ids.tags} className="type-legend text-accent-ink">Tags</h2>
+              {editing
+                ? <Button size="sm" variant="ghost" onClick={cancelEditing}>Discard tag edits</Button>
+                : <Button size="sm" variant="secondary" icon="action.edit" onClick={() => setEditing(true)}>Edit tags</Button>}
             </div>
-
-            {!editingMetadata ? (
-              /* Read-only tags */
-              (fmt.tags && Object.keys(fmt.tags).length > 0) ? (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs font-mono">
-                  {Object.entries(fmt.tags).map(([k, v]) => (
-                    <div key={k} className="flex gap-2">
-                      <span className="text-surface-500 shrink-0">{k}</span>
-                      <span className="text-surface-300 truncate">{v}</span>
-                    </div>
-                  ))}
+            {!editing && (tags.length === 0
+              ? <p className="px-2 text-body text-ink-3">The file has no tags.</p>
+              : <FactList facts={tags} label="Tags" scope="tags" copied={copied} onCopy={copy} />)}
+            {editing && (
+              <div className="flex flex-col gap-2 px-2">
+                <div className="grid grid-cols-[14rem_minmax(0,1fr)_1.5rem] gap-2 text-label text-ink-3" aria-hidden="true">
+                  <span>Name</span>
+                  <span>Value</span>
                 </div>
-              ) : (
-                <p className="text-xs text-surface-600 italic">No metadata tags</p>
-              )
-            ) : (
-              /* Editable tags */
-              <div className="space-y-1.5">
-                {Object.entries(metadataEdits).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-1.5">
+                {rows.map((row) => (
+                  <div key={row.id} className="grid grid-cols-[14rem_minmax(0,1fr)_1.5rem] items-center gap-2">
                     <input
-                      className="w-28 shrink-0 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:border-accent-500/50"
-                      value={key}
-                      onChange={(e) => renameMetadataKey(key, e.target.value)}
+                      aria-label="Tag name"
+                      className={`${TEXT_FRAME} font-mono`}
+                      value={row.key}
                       spellCheck={false}
+                      onChange={(event) => updateRow(row.id, { key: event.target.value })}
                     />
                     <input
-                      className="flex-1 px-1.5 py-0.5 rounded bg-surface-800 border border-white/10 text-xs font-mono text-surface-200 focus:border-accent-500/50"
-                      value={value}
-                      onChange={(e) => updateMetadata(key, e.target.value)}
+                      aria-label={`Value of ${row.key || 'the new tag'}`}
+                      className={TEXT_FRAME}
+                      value={row.value}
                       spellCheck={false}
+                      onChange={(event) => updateRow(row.id, { value: event.target.value })}
                     />
-                    <button
-                      onClick={() => removeMetadataTag(key)}
-                      className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-surface-500 hover:text-red-400 transition-colors"
-                      title="Remove tag"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </button>
+                    <IconButton
+                      size="sm"
+                      label={`Remove the tag ${row.key || 'without a name'}`}
+                      icon="action.remove"
+                      onClick={() => setRows((current) => current.filter((r) => r.id !== row.id))}
+                    />
                   </div>
                 ))}
-                <button
-                  onClick={addMetadataTag}
-                  className="text-2xs text-accent-400 hover:text-accent-300 transition-colors mt-1"
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon="editor.add"
+                  className="-ms-2 self-start"
+                  onClick={() => setRows((current) => [...current, { id: `tag-${++rowCounter}`, key: `tag_${Date.now()}`, value: '' }])}
                 >
-                  + Add tag
-                </button>
+                  Add tag
+                </Button>
               </div>
             )}
-          </div>
+          </section>
+
+          {hasVideo(report) && (
+            <div className="px-2">
+              <KeyframeView filePath={filePath} durationSeconds={durationSeconds || parseFloat(report.format.duration ?? '') || 0} />
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Streams - with toggle checkboxes */}
-      {probeData && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-surface-300 uppercase tracking-wide">
-              Streams ({probeData.videoStreams.length + probeData.audioStreams.length + probeData.subtitleStreams.length + probeData.dataStreams.length})
-            </h3>
-            {hasStreamChanges && (
-              <span className="text-2xs text-amber-400">
-                {includedStreams.size} of {allStreamIndices(probeData).length} selected
-              </span>
-            )}
-          </div>
-          {probeData.videoStreams.map((s) => (
-            <VideoStreamInfo key={`v-${s.index}`} stream={s} included={includedStreams.has(s.index)} onToggle={toggleStream} />
-          ))}
-          {probeData.audioStreams.map((s) => (
-            <AudioStreamInfo key={`a-${s.index}`} stream={s} included={includedStreams.has(s.index)} onToggle={toggleStream} />
-          ))}
-          {probeData.subtitleStreams.map((s) => (
-            <SubtitleStreamInfo key={`s-${s.index}`} stream={s} included={includedStreams.has(s.index)} onToggle={toggleStream} />
-          ))}
-          {probeData.dataStreams.map((s) => (
-            <DataStreamInfo key={`d-${s.index}`} stream={s} included={includedStreams.has(s.index)} onToggle={toggleStream} />
-          ))}
-        </div>
-      )}
-
-      {/* Keyframe analysis (video only) */}
-      {probeData?.isVideoFile && source && (
-        <KeyframeView filePath={source.filePath} />
-      )}
+      </div>
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-t border-line bg-panel px-4 py-2" data-region="inspect-actions">
+        <Button
+          variant="primary"
+          icon="action.save"
+          loading={saving}
+          loadingLabel="Saving"
+          unavailableReason={changed ? undefined : 'Leave a stream out or edit the tags first.'}
+          onClick={() => void save()}
+        >
+          Save a copy
+        </Button>
+        <p className="min-w-0 flex-1 text-label text-ink-3">
+          {changed ? changeSummary : 'Leave streams out or edit the tags, then save a copy. The original file is not changed.'}
+        </p>
+        {result !== null && result.success && (
+          <span className="flex min-w-0 items-center gap-2" role="status">
+            <span className="truncate text-label text-ink-2">Saved {baseName(result.message)}</span>
+            <Button size="sm" variant="ghost" icon="action.reveal" onClick={() => void window.api.showInFolder(result.message)}>Show in folder</Button>
+          </span>
+        )}
+        {result !== null && !result.success && <FieldMessage id={`${ids.file}-save`} tone="error">{result.message}</FieldMessage>}
+      </div>
     </div>
-  )
-}
-
-/* -- Small inline SVG helpers -- */
-
-function Stat({ label, value }: { label: string; value: string }): React.JSX.Element {
-  return (
-    <div>
-      <p className="text-2xs text-surface-500 uppercase tracking-wide">{label}</p>
-      <p className="text-xs font-mono text-surface-200 mt-0.5">{value}</p>
-    </div>
-  )
-}
-
-function SearchIcon(): React.JSX.Element {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto text-surface-600">
-      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  )
-}
-
-function FileVideoIcon(): React.JSX.Element {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <polygon points="10 12 16 15.5 10 19 10 12" />
-    </svg>
-  )
-}
-
-function FileAudioIcon(): React.JSX.Element {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <circle cx="10" cy="16" r="2" />
-      <path d="M12 12v4" />
-      <path d="M12 12a2 2 0 0 1 2-2" />
-    </svg>
   )
 }

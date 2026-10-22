@@ -6,6 +6,8 @@ import { useEffect, useCallback, useRef } from 'react'
 import { useAppStore } from '../../../stores/appStore'
 import { useEditorStore } from '../../../stores/editorStore'
 import type { TimelineCoords } from './useTimelineZoom'
+import { placeSource } from '../edit/Toolbar'
+import { modalOpen, ownsKey } from '../shared/keys'
 
 interface UseTimelineKeyboardOptions {
   coords: TimelineCoords
@@ -20,9 +22,8 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
       // The editor stays mounted while hidden; only claim keys (including app zoom) while it is the visible view
       if (useAppStore.getState().currentView !== 'editor') return
 
-      // Don't capture when in an input/textarea
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      // A field, slider, menu, grid, or open dialog keeps its own keys
+      if (modalOpen() || ownsKey(e.target, e.key)) return
 
       const state = useEditorStore.getState()
       const { mode, playback, timeline, selectedClipIds } = state
@@ -128,12 +129,12 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
         // --- Edit Operations ---
         case ',':
           e.preventDefault()
-          performEdit(state, 'insert')
+          placeSource('insert')
           break
 
         case '.':
           e.preventDefault()
-          performEdit(state, 'overwrite')
+          placeSource('overwrite')
           break
 
         // --- Editing ---
@@ -272,27 +273,6 @@ export function useTimelineKeyboard({ coords }: UseTimelineKeyboardOptions): voi
 }
 
 // --- Helpers ---
-
-function performEdit(state: ReturnType<typeof useEditorStore.getState>, type: 'insert' | 'overwrite'): void {
-  const sourceId = state.selectedSourceId || state.clipMode.sourceId
-  if (!sourceId) return
-  const source = state.sources.find((s) => s.id === sourceId)
-  if (!source) return
-
-  const inOut: [number, number] =
-    state.clipMode.sourceId === sourceId
-      ? [state.clipMode.inPoint, state.clipMode.outPoint]
-      : [0, source.duration]
-
-  const trackId = state.selectedTrackId || state.timeline.tracks.find((t) => t.type === 'video')?.id
-  if (!trackId) return
-
-  if (type === 'insert') {
-    state.insertClip(sourceId, inOut, state.playback.currentFrame, trackId)
-  } else {
-    state.overwriteClip(sourceId, inOut, state.playback.currentFrame, trackId)
-  }
-}
 
 function splitSelectedOrAtPlayhead(state: ReturnType<typeof useEditorStore.getState>): void {
   const { selectedClipIds, playback, timeline } = state

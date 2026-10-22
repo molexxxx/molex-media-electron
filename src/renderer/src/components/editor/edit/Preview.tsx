@@ -12,7 +12,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import { formatTimecode, framesToSeconds } from '../shared/TimeDisplay'
+import { framesToSeconds } from '../shared/TimeDisplay'
 import { Waveform } from '../shared/Waveform'
 import { SpatialCanvas } from '../preview/SpatialCanvas'
 import type { MediaSource, TimelineClip } from '../types'
@@ -722,43 +722,7 @@ export function Preview(): React.JSX.Element {
     }
   }, [])
 
-  // ---------- Play/Pause toggle ----------
-  const togglePlayback = useCallback(() => {
-    ensureAudioCtx()
-    const store = useEditorStore.getState()
-    if (store.playback.isPlaying) store.pause()
-    else store.play()
-  }, [ensureAudioCtx])
-
-  // ---------- Keyboard shortcuts ----------
   const containerRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    const onKeyDown = (e: KeyboardEvent): void => {
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
-
-      switch (e.key.toLowerCase()) {
-        case ' ':
-          e.preventDefault()
-          togglePlayback()
-          break
-        case 'arrowleft':
-          e.preventDefault()
-          useEditorStore.getState().seek(playback.currentFrame + (e.shiftKey ? -10 : -1))
-          break
-        case 'arrowright':
-          e.preventDefault()
-          useEditorStore.getState().seek(playback.currentFrame + (e.shiftKey ? 10 : 1))
-          break
-      }
-    }
-
-    el.addEventListener('keydown', onKeyDown)
-    return () => el.removeEventListener('keydown', onKeyDown)
-  }, [togglePlayback, playback.currentFrame])
 
   // Container size for audio-only waveform
   const [containerSize, setContainerSize] = useState<{ w: number; h: number } | null>(null)
@@ -774,70 +738,54 @@ export function Preview(): React.JSX.Element {
   }, [])
 
   const audioOnlyHit = !videoHit ? hits.find((h) => h.trackType === 'audio') : null
+  const waveWidth = containerSize ? Math.min(containerSize.w - 48, 960) : 0
+  const waveHeight = containerSize ? Math.min(120, containerSize.h * 0.35) : 0
 
   return (
     <div
       ref={containerRef}
-      tabIndex={0}
-      className="relative flex flex-col items-center justify-center h-full bg-black/30 rounded-lg overflow-hidden -outline-offset-2 focus:ring-1 focus:ring-accent-500/30"
+      data-preview
+      className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-sunken"
     >
-      {/* Video element - always mounted, hidden when spatial canvas takes over */}
       <video
         ref={videoRef}
+        aria-label="Timeline preview"
         className={
           videoHit && activeVideoUrl && !spatialMode
-            ? 'max-w-full max-h-[calc(100%-32px)] object-contain'
-            : 'absolute w-0 h-0 opacity-0 pointer-events-none'
+            ? 'max-h-full max-w-full object-contain'
+            : 'pointer-events-none absolute h-0 w-0 opacity-0'
         }
         crossOrigin="anonymous"
         preload="auto"
         playsInline
       />
 
-      {/* Spatial compositing canvas - overlays all video layers with transforms */}
       {spatialMode && containerSize && containerSize.w > 0 && containerSize.h > 0 && (
         <SpatialCanvas
           videoElements={spatialVideoElements}
-          width={Math.min(containerSize.w, Math.round((containerSize.h - 32) * (resolution.width / resolution.height)))}
-          height={Math.min(containerSize.h - 32, Math.round(containerSize.w * (resolution.height / resolution.width)))}
+          width={Math.min(containerSize.w, Math.round(containerSize.h * (resolution.width / resolution.height)))}
+          height={Math.min(containerSize.h, Math.round(containerSize.w * (resolution.height / resolution.width)))}
         />
       )}
 
-      {/* Audio-only waveform - shown when no visible video track */}
       {!videoHit && audioOnlyHit && (
-        <div className="flex flex-col items-center gap-2">
-          {containerSize && containerSize.w > 60 && (
-            <div className="relative" style={{ width: containerSize.w - 40, height: Math.min(100, containerSize.h * 0.35) }}>
-              <Waveform
-                filePath={audioOnlyHit.source.filePath}
-                width={containerSize.w - 40}
-                height={Math.min(100, containerSize.h * 0.35)}
-                color="rgba(124, 58, 237, 0.6)"
-              />
-            </div>
+        <div className="flex flex-col items-center gap-3">
+          {waveWidth > 40 && (
+            <Waveform filePath={audioOnlyHit.source.filePath} width={waveWidth} height={waveHeight} />
           )}
-          <p className="text-xs text-surface-400">{audioOnlyHit.source.fileName}</p>
+          <p className="text-body text-ink-2">{audioOnlyHit.source.fileName}</p>
         </div>
       )}
 
-      {/* No clips at all */}
       {!videoHit && !audioOnlyHit && (
-        <div className="text-surface-600 text-sm">No clip at playhead</div>
+        <p className="text-body text-ink-3">No clip at the playhead</p>
       )}
 
-      {/* Track count indicator */}
       {hits.length > 1 && (
-        <div className="absolute top-1.5 left-1.5 bg-black/60 text-surface-400 text-label px-1.5 py-0.5 rounded">
-          {hits.length} layers
-        </div>
+        <span className="absolute start-2 top-2 rounded-xs bg-scrim px-1.5 py-0.5 text-label text-ink-2">
+          {hits.length} layers at the playhead
+        </span>
       )}
-
-      {/* Timecode overlay */}
-      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-black/60 text-surface-300 font-mono text-xs px-2 py-0.5 rounded tabular-nums">
-        {formatTimecode(playback.currentFrame, frameRate)}
-      </div>
-
-
     </div>
   )
 }

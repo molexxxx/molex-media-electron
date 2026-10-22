@@ -1,164 +1,206 @@
 /**
  * @module editor/edit/SourceBin
- * Imported media browser panel - list of sources with drag-to-timeline.
+ * The timeline's sources as a list pane. Drag a source onto a track, or choose it as the edit source (click,
+ * Enter, or Space) and place it with Insert, Overwrite, Append, or On top. Up and Down move through the list,
+ * Delete removes the focused source.
  */
-import React, { useCallback, useState } from 'react'
+import { useCallback, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import type { MediaSource } from '../types'
-import { formatTime } from '../shared/TimeDisplay'
-import { setPendingDropSource, clearPendingDropSource } from './Timeline'
+import { Button } from '../../../ui/Button'
+import { cx } from '../../../ui/cx'
+import { IconButton } from '../../../ui/IconButton'
+import { importSources } from '../open'
+import { formatLength } from '../shared/format'
 import { ThumbnailStrip } from '../shared/ThumbnailStrip'
 import { Waveform } from '../shared/Waveform'
+import type { MediaSource } from '../types'
+import { clearPendingDropSource, setPendingDropSource } from './Timeline'
 
-export function SourceBin(): React.JSX.Element {
+/** The second line of a source: its length and picture size, or that it is audio. */
+export function sourceDetail(source: Pick<MediaSource, 'durationSeconds' | 'width' | 'height' | 'audioChannels'>): string
+{
+  const parts = [formatLength(source.durationSeconds)]
+  if (source.width > 0)
+  {
+    parts.push(`${source.width} × ${source.height}`)
+  }
+  else if (source.audioChannels > 0)
+  {
+    parts.push('Audio')
+  }
+  return parts.filter(Boolean).join(' · ')
+}
+
+/** Props of {@link SourceBin}. */
+export interface SourceBinProps
+{
+  width: number
+}
+
+/** The pane. */
+export function SourceBin({ width }: SourceBinProps): ReactElement
+{
   const sources = useEditorStore((s) => s.sources)
-  const addSource = useEditorStore((s) => s.addSource)
   const removeSource = useEditorStore((s) => s.removeSource)
   const selectSource = useEditorStore((s) => s.selectSource)
   const selectedSourceId = useEditorStore((s) => s.selectedSourceId)
-  const frameRate = useEditorStore((s) => s.project.frameRate)
   const [importing, setImporting] = useState(false)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  const headingId = useId()
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(async () =>
+  {
     setImporting(true)
-    try {
-      const result = await window.api.openFiles()
-      if (!result || !Array.isArray(result)) return
-
-      for (const filePath of result) {
-        // Check if already imported
-        if (sources.some((s) => s.filePath === filePath)) continue
-
-        const probeResult = await window.api.probeDetailed(filePath)
-        if (!probeResult?.success || !probeResult.data) continue
-
-        const info = probeResult.data
-        const video = info.videoStreams?.[0]
-        const audio = info.audioStreams?.[0]
-        const durationSec = parseFloat(info.format?.duration || '0')
-        const totalFrames = Math.round(durationSec * frameRate)
-
-        const newSource: MediaSource = {
-          id: `src-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-          filePath,
-          fileName: filePath.split(/[\\/]/).pop() || filePath,
-          duration: totalFrames,
-          frameRate,
-          width: video?.width ?? 0,
-          height: video?.height ?? 0,
-          audioChannels: audio?.channels ?? 0,
-          audioSampleRate: parseInt(audio?.sample_rate || '0', 10),
-          codec: video?.codec_name || audio?.codec_name || 'unknown',
-          format: info.format?.format_name || 'unknown',
-          fileSize: parseInt(info.format?.size || '0', 10),
-          durationSeconds: durationSec
-        }
-        addSource(newSource)
+    try
+    {
+      const files: string[] | undefined = await window.api.openFiles()
+      if (files && files.length > 0)
+      {
+        await importSources(files)
       }
-    } catch (err) {
-      console.error('Import failed:', err)
-    } finally {
+    }
+    finally
+    {
       setImporting(false)
     }
-  }, [sources, frameRate, addSource])
-
-  const handleDragStart = useCallback(
-    (e: React.DragEvent, source: MediaSource) => {
-      e.dataTransfer.effectAllowed = 'copy'
-      e.dataTransfer.setData('text/plain', source.id)
-      setPendingDropSource(source.id)
-    },
-    []
-  )
-
-  const handleDragEnd = useCallback(() => {
-    clearPendingDropSource()
   }, [])
 
+  const focusRow = (index: number): void =>
+  {
+    const rows = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]')
+    if (!rows || rows.length === 0)
+    {
+      return
+    }
+    rows[Math.max(0, Math.min(rows.length - 1, index))].focus()
+  }
+
+  const toggle = (source: MediaSource): void =>
+  {
+    selectSource(selectedSourceId === source.id ? null : source.id)
+  }
+
+  const remove = (source: MediaSource, index: number): void =>
+  {
+    if (selectedSourceId === source.id)
+    {
+      selectSource(null)
+    }
+    removeSource(source.id)
+    requestAnimationFrame(() => focusRow(index))
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLLIElement>, source: MediaSource, index: number): void =>
+  {
+    switch (event.key)
+    {
+      case 'ArrowDown':
+        focusRow(index + 1)
+        break
+      case 'ArrowUp':
+        focusRow(index - 1)
+        break
+      case 'Home':
+        focusRow(0)
+        break
+      case 'End':
+        focusRow(sources.length - 1)
+        break
+      case 'Enter':
+      case ' ':
+        toggle(source)
+        break
+      case 'Delete':
+        remove(source, index)
+        break
+      default:
+        return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
+  const onDragStart = (event: DragEvent, source: MediaSource): void =>
+  {
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData('text/plain', source.id)
+    setPendingDropSource(source.id)
+  }
+
+  const tabStop = focusedId !== null && sources.some((s) => s.id === focusedId) ? focusedId : selectedSourceId ?? sources[0]?.id
+
   return (
-    <div className="flex flex-col h-full border-r border-white/5 bg-surface-900/40">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
-        <span className="text-xs font-semibold text-surface-300 uppercase tracking-wider">Sources</span>
-        <button
-          onClick={handleImport}
-          disabled={importing}
-          className="text-label px-2 py-0.5 rounded bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 disabled:opacity-50 transition-colors"
-        >
-          {importing ? 'Importing...' : '+ Import'}
-        </button>
+    <section aria-labelledby={headingId} style={{ width }} className="flex min-h-0 shrink-0 flex-col bg-panel" data-pane="sources">
+      <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-line ps-3 pe-2">
+        <h2 id={headingId} className="text-body font-semibold text-ink">Sources</h2>
+        <Button variant="ghost" size="sm" icon="action.addFiles" loading={importing} loadingLabel="Adding" onClick={() => void handleImport()}>
+          Add files
+        </Button>
       </div>
-
-      {/* Source list */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
-        {sources.length === 0 && (
-          <div className="text-center py-8 text-surface-600 text-xs">
-            <p className="mb-1">No sources</p>
-            <p>Click + Import or drag files</p>
-          </div>
-        )}
-
-        {sources.map((source) => (
-          <div
-            key={source.id}
-            draggable
-            onDragStart={(e) => handleDragStart(e, source)}
-            onDragEnd={handleDragEnd}
-            onClick={() => selectSource(selectedSourceId === source.id ? null : source.id)}
-            className={`flex items-start gap-2 p-2 rounded-md cursor-grab active:cursor-grabbing group transition-colors ${
-              selectedSourceId === source.id
-                ? 'bg-accent-500/15 ring-1 ring-accent-500/40'
-                : 'bg-white/[0.03] hover:bg-white/[0.06]'
-            }`}
-          >
-            {/* Source thumbnail / waveform */}
-            <div className="w-10 h-7 rounded bg-surface-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {source.width > 0 ? (
-                <ThumbnailStrip
-                  filePath={source.filePath}
-                  durationSeconds={source.durationSeconds}
-                  width={40}
-                  height={28}
-                  numThumbnails={1}
-                />
-              ) : source.audioChannels > 0 ? (
-                <Waveform
-                  filePath={source.filePath}
-                  width={40}
-                  height={28}
-                  color="rgba(124, 58, 237, 0.7)"
-                  numSamples={40}
-                />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-surface-400">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-label text-surface-200 truncate font-medium">{source.fileName}</p>
-              <p className="text-label text-surface-500">
-                {formatTime(source.duration, source.frameRate)}
-                {source.width > 0 && ` · ${source.width}x${source.height}`}
-              </p>
-            </div>
-
-            {/* Remove button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                removeSource(source.id)
-              }}
-              className="text-surface-600 hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-              title="Remove source"
+      {sources.length === 0
+        ? <p className="px-3 py-4 text-body text-ink-3">Add files or drop them here to use them on the timeline.</p>
+        : (
+            <ul
+              ref={listRef}
+              role="listbox"
+              aria-labelledby={headingId}
+              aria-describedby={`${headingId}-hint`}
+              className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto p-1"
             >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
+              {sources.map((source, index) =>
+              {
+                const selected = selectedSourceId === source.id
+                return (
+                  <li
+                    key={source.id}
+                    role="option"
+                    aria-selected={selected}
+                    tabIndex={source.id === tabStop ? 0 : -1}
+                    draggable
+                    data-source={source.id}
+                    className={cx(
+                      'group relative flex h-12 shrink-0 cursor-grab items-center gap-2 rounded-sm ps-2 pe-1 active:cursor-grabbing',
+                      selected ? 'bg-wash-selected hover:bg-wash-selected-hover' : 'hover:bg-wash-hover'
+                    )}
+                    onFocus={() => setFocusedId(source.id)}
+                    onClick={() => toggle(source)}
+                    onKeyDown={(event) => onKeyDown(event, source, index)}
+                    onDragStart={(event) => onDragStart(event, source)}
+                    onDragEnd={clearPendingDropSource}
+                  >
+                    {selected && <span aria-hidden="true" className="absolute inset-y-1 start-0 w-0.5 rounded-xs bg-accent" />}
+                    <span aria-hidden="true" className="flex h-7 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xs bg-sunken">
+                      {source.width > 0
+                        ? <ThumbnailStrip filePath={source.filePath} durationSeconds={source.durationSeconds} width={48} height={28} numThumbnails={1} />
+                        : source.audioChannels > 0
+                          ? <Waveform filePath={source.filePath} width={48} height={28} numSamples={48} />
+                          : null}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-body text-ink">{source.fileName}</span>
+                      <span className="truncate text-label tabular-nums text-ink-3">{sourceDetail(source)}</span>
+                    </span>
+                    <IconButton
+                      size="sm"
+                      label={`Remove ${source.fileName} from the sources`}
+                      icon="action.remove"
+                      tabIndex={-1}
+                      className={selected ? undefined : 'invisible group-hover:visible group-focus-visible:visible'}
+                      onClick={(event) =>
+                      {
+                        event.stopPropagation()
+                        remove(source, index)
+                      }}
+                    />
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+      <p id={`${headingId}-hint`} className="shrink-0 border-t border-line px-3 py-2 text-label text-ink-3">
+        The chosen source goes where Insert, Overwrite, Append, and On top place it.
+      </p>
+    </section>
   )
 }

@@ -1,26 +1,21 @@
 /**
  * @module editor/inspect/TransformInspector
- * Numeric input panel for per-clip spatial transforms.
- *
- * Displays Position (x,y), Scale (x,y + uniform lock), Rotation,
- * Anchor Point, Opacity, and Blend Mode with keyframe toggle ◆.
+ * The selected clip's place in the picture: position, scale with a linked aspect, rotation, anchor, opacity, and
+ * blend mode, with a keyframe at the playhead. Fields take typed values and arrow keys; drag a field's letter
+ * sideways to scrub it, which commits one undo step on release.
  */
-import React, { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState, type PointerEvent, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import { Select, Toggle, FixedTip } from '../../shared/ui'
-import type {
-  ClipTransform,
-  BlendMode,
-  TimelineClip
-} from '../types'
-import { defaultTransform } from '../types'
+import { IconButton } from '../../../ui/IconButton'
+import { NumberField } from '../../../ui/NumberField'
+import { Select, type SelectOption } from '../../../ui/Select'
+import { Slider } from '../../../ui/Slider'
+import { EditorField } from '../shared/Field'
 import { resolveTransform } from '../shared/interpolation'
+import type { BlendMode, ClipTransform, TimelineClip } from '../types'
+import { defaultTransform } from '../types'
 
-// ---------------------------------------------------------------------------
-// Blend mode options
-// ---------------------------------------------------------------------------
-
-const BLEND_MODES: { value: BlendMode; label: string }[] = [
+const BLEND_OPTIONS: SelectOption[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'multiply', label: 'Multiply' },
   { value: 'screen', label: 'Screen' },
@@ -31,153 +26,102 @@ const BLEND_MODES: { value: BlendMode; label: string }[] = [
   { value: 'difference', label: 'Difference' }
 ]
 
-const BLEND_OPTIONS = BLEND_MODES.map((bm) => ({ value: bm.value, label: bm.label }))
-
-// ---------------------------------------------------------------------------
-// Custom themed slider (matches player/settings style)
-// ---------------------------------------------------------------------------
-
-function ThemedSlider({ value, min = 0, max = 1, step = 0.01, onChange }: {
-  value: number; min?: number; max?: number; step?: number; onChange: (v: number) => void
-}): React.JSX.Element {
-  const pct = ((value - min) / (max - min)) * 100
-  return (
-    <div className="group relative flex-1 flex items-center h-5 cursor-pointer">
-      <div className="absolute left-0 right-0 h-1 rounded-full bg-white/[0.08] group-hover:h-1.5 transition-all" />
-      <div className="absolute left-0 h-1 rounded-full bg-accent-500/70 group-hover:h-1.5 group-hover:bg-accent-400 transition-all" style={{ width: `${pct}%` }} />
-      <div
-        className="absolute w-2.5 h-2.5 rounded-full bg-accent-400 border-2 border-accent-600 shadow-sm shadow-accent-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none -translate-x-1/2"
-        style={{ left: `${pct}%` }}
-      />
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-      />
-    </div>
-  )
+/** Sets a clip's transform for a live gesture without an undo step; the gesture's end commits one. */
+function setLive(clipId: string, partial: Partial<ClipTransform>, fallback: ClipTransform): void
+{
+  useEditorStore.setState((s) => ({
+    timeline: {
+      ...s.timeline,
+      clips: s.timeline.clips.map((c) => (c.id === clipId ? { ...c, transform: { ...(c.transform ?? fallback), ...partial } } : c))
+    }
+  }))
 }
 
-// ---------------------------------------------------------------------------
-// Numeric field component
-// ---------------------------------------------------------------------------
-
-interface NumericFieldProps {
-  label: string
+interface ScrubProps
+{
+  /** The visible letter, such as X. */
+  letter: string
   value: number
+  /** How much one px of drag changes the value. */
+  perPixel: number
   min?: number
   max?: number
-  step?: number
-  suffix?: string
-  onChange: (value: number) => void
-  hasKeyframe?: boolean
-  onToggleKeyframe?: () => void
+  onLive: (value: number) => void
+  onCommit: (value: number) => void
 }
 
-function NumericField({
-  label,
-  value,
-  min,
-  max,
-  step = 1,
-  suffix = '',
-  onChange,
-  hasKeyframe,
-  onToggleKeyframe
-}: NumericFieldProps): React.JSX.Element {
-  const [editing, setEditing] = useState(false)
-  const [editValue, setEditValue] = useState('')
-
-  const displayValue = suffix === '%' ? (value * 100).toFixed(1) : value.toFixed(1)
-
-  const handleCommit = useCallback((): void => {
-    setEditing(false)
-    let parsed = parseFloat(editValue)
-    if (isNaN(parsed)) return
-    if (suffix === '%') parsed /= 100
-    if (min != null) parsed = Math.max(min, parsed)
-    if (max != null) parsed = Math.min(max, parsed)
-    onChange(parsed)
-  }, [editValue, min, max, onChange, suffix])
-
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      if (editing) return
-      e.preventDefault()
-      const startX = e.clientX
-      const startValue = value
-
-      const onMove = (ev: MouseEvent): void => {
-        const delta = (ev.clientX - startX) * step
-        let newVal = startValue + delta
-        if (min != null) newVal = Math.max(min, newVal)
-        if (max != null) newVal = Math.min(max, newVal)
-        onChange(newVal)
+/** A field's letter that scrubs its value when dragged sideways. */
+function Scrub({ letter, value, perPixel, min, max, onLive, onCommit }: ScrubProps): ReactElement
+{
+  const onPointerDown = (event: PointerEvent<HTMLSpanElement>): void =>
+  {
+    if (event.button !== 0)
+    {
+      return
+    }
+    event.preventDefault()
+    const element = event.currentTarget
+    element.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    let last = value
+    const clampValue = (next: number): number => Math.min(max ?? Infinity, Math.max(min ?? -Infinity, next))
+    const move = (moveEvent: globalThis.PointerEvent): void =>
+    {
+      last = clampValue(value + (moveEvent.clientX - startX) * perPixel)
+      onLive(last)
+    }
+    const end = (): void =>
+    {
+      element.removeEventListener('pointermove', move)
+      element.removeEventListener('pointerup', end)
+      element.removeEventListener('pointercancel', end)
+      if (last !== value)
+      {
+        onCommit(last)
       }
-      const onUp = (): void => {
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-      }
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
-    },
-    [editing, value, step, min, max, onChange]
-  )
-
+    }
+    element.addEventListener('pointermove', move)
+    element.addEventListener('pointerup', end)
+    element.addEventListener('pointercancel', end)
+  }
   return (
-    <div className="flex items-center gap-1 min-w-0">
-      {label && <span className="text-2xs text-surface-500 w-4 shrink-0 select-none">{label}</span>}
-      {editing ? (
-        <input
-          type="text"
-          className="flex-1 min-w-0 bg-white/[0.04] text-surface-200 text-2xs px-1.5 py-1 rounded-md border border-white/[0.06] focus:border-accent-500/50 transition-colors font-mono text-center"
-          value={editValue}
-          autoFocus
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleCommit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleCommit()
-            if (e.key === 'Escape') setEditing(false)
-          }}
-        />
-      ) : (
-        <span
-          className="flex-1 min-w-0 text-2xs text-surface-200 bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.12] px-1.5 py-1 rounded-md cursor-ew-resize select-none text-center tabular-nums font-mono transition-colors"
-          onDoubleClick={() => {
-            setEditValue(displayValue)
-            setEditing(true)
-          }}
-          onMouseDown={handleDragStart}
-        >
-          {displayValue}
-          {suffix}
-        </span>
-      )}
-      {onToggleKeyframe && (
-        <FixedTip label={hasKeyframe ? 'Remove keyframe' : 'Add keyframe'}>
-          <button
-            className={`text-2xs px-0.5 transition-colors ${hasKeyframe ? 'text-amber-400' : 'text-surface-600'} hover:text-amber-300`}
-            onClick={onToggleKeyframe}
-          >
-            ◆
-          </button>
-        </FixedTip>
-      )}
+    <span
+      aria-hidden="true"
+      className="w-3 shrink-0 cursor-ew-resize touch-none select-none text-center text-label font-semibold text-ink-3 hover:text-ink"
+      onPointerDown={onPointerDown}
+    >
+      {letter}
+    </span>
+  )
+}
+
+interface AxisFieldProps
+{
+  letter: string
+  label: string
+  value: number
+  step: number
+  perPixel: number
+  min?: number
+  max?: number
+  unit?: string
+  onLive: (value: number) => void
+  onCommit: (value: number) => void
+}
+
+function AxisField({ letter, label, value, step, perPixel, min, max, unit, onLive, onCommit }: AxisFieldProps): ReactElement
+{
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Scrub letter={letter} value={value} perPixel={perPixel} min={min} max={max} onLive={onLive} onCommit={onCommit} />
+      <NumberField label={label} value={value} step={step} min={min} max={max} unit={unit} size="sm" onCommit={onCommit} className="min-w-0 flex-1" />
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// TransformInspector
-// ---------------------------------------------------------------------------
-
-export function TransformInspector(): React.JSX.Element | null {
-  const selectedClipIds = useEditorStore((s) => s.selectedClipIds)
-  const timeline = useEditorStore((s) => s.timeline)
+/** The transform fields for one clip. */
+export function TransformInspector({ clip }: { clip: TimelineClip }): ReactElement
+{
   const sources = useEditorStore((s) => s.sources)
   const resolution = useEditorStore((s) => s.project.resolution)
   const currentFrame = useEditorStore((s) => s.playback.currentFrame)
@@ -185,259 +129,160 @@ export function TransformInspector(): React.JSX.Element | null {
   const addKeyframe = useEditorStore((s) => s.addKeyframe)
   const removeKeyframe = useEditorStore((s) => s.removeKeyframe)
   const setClipBlendMode = useEditorStore((s) => s.setClipBlendMode)
+  const [linked, setLinked] = useState(true)
+  const ids = { rotation: useId(), opacity: useId(), blend: useId(), anchor: useId(), position: useId(), scale: useId() }
 
-  const [uniformScale, setUniformScale] = useState(true)
+  const source = sources.find((s) => s.id === clip.sourceId)
+  const base = useMemo<ClipTransform>(() => (source && source.width > 0
+    ? defaultTransform(source.width, source.height, resolution.width, resolution.height)
+    : { x: resolution.width / 2, y: resolution.height / 2, scaleX: 1, scaleY: 1, rotation: 0, anchorX: 0.5, anchorY: 0.5, opacity: 1 }), [source, resolution])
+  const frameOffset = currentFrame - clip.timelineStart
+  const transform = useMemo(() => resolveTransform(clip, frameOffset, base), [clip, frameOffset, base])
+  const keyframeHere = (clip.keyframes ?? []).some((k) => k.frame === frameOffset)
+  const keyframeCount = clip.keyframes?.length ?? 0
 
-  const clip: TimelineClip | undefined = useMemo(
-    () =>
-      selectedClipIds.length === 1
-        ? timeline.clips.find((c) => c.id === selectedClipIds[0])
-        : undefined,
-    [selectedClipIds, timeline.clips]
-  )
+  const commit = useCallback((partial: Partial<ClipTransform>) => setClipTransform(clip.id, partial), [clip.id, setClipTransform])
+  const live = useCallback((partial: Partial<ClipTransform>) => setLive(clip.id, partial, base), [clip.id, base])
 
-  const source = useMemo(
-    () => (clip ? sources.find((s) => s.id === clip.sourceId) : undefined),
-    [clip, sources]
-  )
-
-  const defT = useMemo(
-    () =>
-      source
-        ? defaultTransform(source.width, source.height, resolution.width, resolution.height)
-        : {
-            x: resolution.width / 2,
-            y: resolution.height / 2,
-            scaleX: 1,
-            scaleY: 1,
-            rotation: 0,
-            anchorX: 0.5,
-            anchorY: 0.5,
-            opacity: 1
-          },
-    [source, resolution]
-  )
-
-  // Current frame offset within clip
-  const frameOffset = clip ? currentFrame - clip.timelineStart : 0
-
-  // Resolved transform at current frame
-  const transform = useMemo(
-    () => (clip ? resolveTransform(clip, frameOffset, defT) : defT),
-    [clip, frameOffset, defT]
-  )
-
-  // Does a keyframe exist at the current frame offset?
-  const hasKeyframeAtFrame = useMemo(
-    () => (clip?.keyframes ?? []).some((k) => k.frame === frameOffset),
-    [clip, frameOffset]
-  )
-
-  if (!clip) {
-    return (
-      <div className="px-3 py-6 text-2xs text-surface-500 italic text-center">
-        Select a clip to edit its transform properties.
-      </div>
-    )
+  const scalePatch = (axis: 'x' | 'y', percent: number): Partial<ClipTransform> =>
+  {
+    const next = percent / 100
+    if (!linked)
+    {
+      return axis === 'x' ? { scaleX: next } : { scaleY: next }
+    }
+    const current = axis === 'x' ? transform.scaleX : transform.scaleY
+    const ratio = current !== 0 ? next / current : 1
+    return axis === 'x' ? { scaleX: next, scaleY: transform.scaleY * ratio } : { scaleY: next, scaleX: transform.scaleX * ratio }
   }
 
-  const clipId = clip.id
-
-  const updateTransform = (partial: Partial<ClipTransform>): void => {
-    setClipTransform(clipId, partial)
-  }
-
-  const handleScaleX = (val: number): void => {
-    if (uniformScale) {
-      const ratio = transform.scaleX !== 0 ? val / transform.scaleX : 1
-      updateTransform({ scaleX: val, scaleY: transform.scaleY * ratio })
-    } else {
-      updateTransform({ scaleX: val })
+  const toggleKeyframe = (): void =>
+  {
+    if (keyframeHere)
+    {
+      removeKeyframe(clip.id, frameOffset)
+    }
+    else
+    {
+      addKeyframe(clip.id, frameOffset, transform)
     }
   }
 
-  const handleScaleY = (val: number): void => {
-    if (uniformScale) {
-      const ratio = transform.scaleY !== 0 ? val / transform.scaleY : 1
-      updateTransform({ scaleY: val, scaleX: transform.scaleX * ratio })
-    } else {
-      updateTransform({ scaleY: val })
-    }
-  }
-
-  const toggleKeyframe = (): void => {
-    if (hasKeyframeAtFrame) {
-      removeKeyframe(clipId, frameOffset)
-    } else {
-      addKeyframe(clipId, frameOffset, transform)
-    }
-  }
-
-  const handleReset = (): void => {
-    setClipTransform(clipId, defT)
-  }
+  const round = (value: number, places: number): number => Number(value.toFixed(places))
 
   return (
-    <div className="space-y-3">
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-xs text-surface-200 font-medium">Transform</span>
+    <section aria-labelledby={`${ids.position}-legend`} className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 id={`${ids.position}-legend`} className="type-legend text-accent-ink">Picture</h3>
         <div className="flex items-center gap-0.5">
-          <FixedTip label={hasKeyframeAtFrame ? 'Remove keyframe' : 'Add keyframe'}>
-            <button
-              className={`flex items-center justify-center w-6 h-6 rounded-md transition-colors ${
-                hasKeyframeAtFrame
-                  ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                  : 'text-surface-600 hover:text-amber-300 hover:bg-white/[0.04]'
-              }`}
-              onClick={toggleKeyframe}
-            >
-              <span className="text-2xs">◆</span>
-            </button>
-          </FixedTip>
-          <FixedTip label="Reset transform">
-            <button
-              onClick={handleReset}
-              className="flex items-center justify-center w-6 h-6 rounded-md text-surface-500 hover:text-surface-200 hover:bg-white/[0.04] transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                <path d="M2 2v5h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M3.05 10A6 6 0 1 0 4 4L2 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </FixedTip>
+          <IconButton
+            size="sm"
+            label={keyframeHere ? 'Remove the keyframe at the playhead' : 'Add a keyframe at the playhead'}
+            icon="editor.keyframe"
+            pressed={keyframeHere}
+            onClick={toggleKeyframe}
+          />
+          <IconButton size="sm" label="Reset the picture to fit the frame" icon="action.retry" onClick={() => commit(base)} />
         </div>
       </div>
-
-      {/* Position */}
-      <div>
-        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Position</div>
-        <div className="flex gap-2">
-          <NumericField
-            label="X"
-            value={transform.x}
+      <EditorField label="Position" captionId={ids.position}>
+        <div role="group" aria-labelledby={ids.position} className="grid grid-cols-2 gap-2">
+          <AxisField letter="X" label="Position X" value={round(transform.x, 1)} step={1} perPixel={1} unit="px" onLive={(x) => live({ x })} onCommit={(x) => commit({ x })} />
+          <AxisField letter="Y" label="Position Y" value={round(transform.y, 1)} step={1} perPixel={1} unit="px" onLive={(y) => live({ y })} onCommit={(y) => commit({ y })} />
+        </div>
+      </EditorField>
+      <EditorField label="Scale" captionId={ids.scale}>
+        <div className="flex items-center gap-1">
+          <div role="group" aria-labelledby={ids.scale} className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+            <AxisField
+              letter="X"
+              label="Scale X"
+              value={round(transform.scaleX * 100, 1)}
+              step={1}
+              perPixel={0.5}
+              min={1}
+              max={1000}
+              unit="%"
+              onLive={(v) => live(scalePatch('x', v))}
+              onCommit={(v) => commit(scalePatch('x', v))}
+            />
+            <AxisField
+              letter="Y"
+              label="Scale Y"
+              value={round(transform.scaleY * 100, 1)}
+              step={1}
+              perPixel={0.5}
+              min={1}
+              max={1000}
+              unit="%"
+              onLive={(v) => live(scalePatch('y', v))}
+              onCommit={(v) => commit(scalePatch('y', v))}
+            />
+          </div>
+          <IconButton
+            size="sm"
+            label={linked ? 'Scale X and Y separately' : 'Keep the aspect ratio when scaling'}
+            icon={linked ? 'editor.linked' : 'editor.unlinked'}
+            pressed={linked}
+            onClick={() => setLinked(!linked)}
+          />
+        </div>
+      </EditorField>
+      <EditorField label="Rotation" htmlFor={ids.rotation}>
+        <NumberField id={ids.rotation} value={round(transform.rotation, 1)} step={0.5} min={-360} max={360} unit="°" size="sm" onCommit={(rotation) => commit({ rotation })} />
+      </EditorField>
+      <EditorField label="Anchor" captionId={ids.anchor} note="Where the clip turns and scales from, as a share of its width and height.">
+        <div role="group" aria-labelledby={ids.anchor} className="grid grid-cols-2 gap-2">
+          <AxisField
+            letter="X"
+            label="Anchor X"
+            value={Math.round(transform.anchorX * 100)}
             step={1}
-            onChange={(v) => updateTransform({ x: v })}
-            hasKeyframe={hasKeyframeAtFrame}
-            onToggleKeyframe={toggleKeyframe}
+            perPixel={0.5}
+            min={0}
+            max={100}
+            unit="%"
+            onLive={(v) => live({ anchorX: v / 100 })}
+            onCommit={(v) => commit({ anchorX: v / 100 })}
           />
-          <NumericField
-            label="Y"
-            value={transform.y}
+          <AxisField
+            letter="Y"
+            label="Anchor Y"
+            value={Math.round(transform.anchorY * 100)}
             step={1}
-            onChange={(v) => updateTransform({ y: v })}
-          />
-        </div>
-      </div>
-
-      {/* Scale */}
-      <div>
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-surface-500 text-2xs uppercase tracking-wider">Scale</span>
-          <FixedTip label={uniformScale ? 'Constrained' : 'Independent'}>
-            <div className="flex items-center">
-              <Toggle checked={uniformScale} onChange={setUniformScale} />
-            </div>
-          </FixedTip>
-        </div>
-        <div className="flex gap-2">
-          <NumericField
-            label="X"
-            value={transform.scaleX}
-            min={0.01}
-            max={10}
-            step={0.01}
-            suffix="%"
-            onChange={handleScaleX}
-          />
-          <NumericField
-            label="Y"
-            value={transform.scaleY}
-            min={0.01}
-            max={10}
-            step={0.01}
-            suffix="%"
-            onChange={handleScaleY}
-          />
-        </div>
-      </div>
-
-      {/* Rotation */}
-      <div>
-        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Rotation</div>
-        <NumericField
-          label="°"
-          value={transform.rotation}
-          min={-360}
-          max={360}
-          step={0.5}
-          onChange={(v) => updateTransform({ rotation: v })}
-        />
-      </div>
-
-      {/* Anchor */}
-      <div>
-        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Anchor Point</div>
-        <div className="flex gap-2">
-          <NumericField
-            label="X"
-            value={transform.anchorX}
+            perPixel={0.5}
             min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => updateTransform({ anchorX: v })}
-          />
-          <NumericField
-            label="Y"
-            value={transform.anchorY}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => updateTransform({ anchorY: v })}
+            max={100}
+            unit="%"
+            onLive={(v) => live({ anchorY: v / 100 })}
+            onCommit={(v) => commit({ anchorY: v / 100 })}
           />
         </div>
-      </div>
-
-      {/* Opacity */}
-      <div>
-        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Opacity</div>
-        <div className="flex items-center gap-2">
-          <NumericField
-            label=""
-            value={transform.opacity}
+      </EditorField>
+      <EditorField label="Opacity" htmlFor={ids.opacity}>
+        <div className="flex items-center gap-3">
+          <Slider
+            label="Opacity"
+            value={Math.round(transform.opacity * 100)}
             min={0}
-            max={1}
-            step={0.01}
-            suffix="%"
-            onChange={(v) => updateTransform({ opacity: v })}
+            max={100}
+            step={1}
+            valueText={(v) => `${v}%`}
+            onInput={(v) => live({ opacity: v / 100 })}
+            onChange={(v) => commit({ opacity: v / 100 })}
+            className="min-w-0 flex-1"
           />
-          <ThemedSlider
-            value={transform.opacity}
-            min={0}
-            max={1}
-            step={0.01}
-            onChange={(v) => updateTransform({ opacity: v })}
-          />
+          <NumberField id={ids.opacity} value={Math.round(transform.opacity * 100)} step={1} min={0} max={100} unit="%" size="sm" onCommit={(v) => commit({ opacity: v / 100 })} className="w-20" />
         </div>
-      </div>
-
-      {/* Blend Mode */}
-      <div>
-        <div className="text-surface-500 mb-1.5 text-2xs uppercase tracking-wider">Blend Mode</div>
-        <Select
-          value={clip.blendMode ?? 'normal'}
-          onChange={(v) => setClipBlendMode(clipId, v as BlendMode)}
-          options={BLEND_OPTIONS}
-          compact
-        />
-      </div>
-
-      {/* Keyframe count info */}
-      {clip.keyframes && clip.keyframes.length > 0 && (
-        <div className="text-surface-500 text-2xs tabular-nums">
-          {clip.keyframes.length} keyframe{clip.keyframes.length !== 1 ? 's' : ''}
-        </div>
-      )}
-    </div>
+      </EditorField>
+      <EditorField label="Blend mode" htmlFor={ids.blend}>
+        <Select id={ids.blend} size="sm" value={clip.blendMode ?? 'normal'} options={BLEND_OPTIONS} onChange={(mode) => setClipBlendMode(clip.id, mode as BlendMode)} className="w-full" />
+      </EditorField>
+      <p className="text-label text-ink-3">
+        {keyframeCount === 0
+          ? 'No keyframes. Add one to animate the picture from this point.'
+          : `${keyframeCount} ${keyframeCount === 1 ? 'keyframe' : 'keyframes'}${keyframeHere ? ', one at the playhead' : ''}.`}
+      </p>
+    </section>
   )
 }

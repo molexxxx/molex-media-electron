@@ -1,274 +1,240 @@
 /**
  * @module editor/edit/Clip
- * Renders a single clip rectangle on the timeline at the correct position/width.
- * Handles selection, context menu, drag initiation, and context-sensitive trim cursor.
+ * One clip on its track: the clip color from the tokens, thumbnails or a waveform in the viz tokens, its name, the
+ * level line, and the selection frame in accent with the selection wash. The Select tool moves it, the Trim tool
+ * trims its edges (roll where it touches a neighbor, Alt slips, Alt+Shift slides), and the Split tool cuts it.
  */
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactElement } from 'react'
 import { useEditorStore } from '../../../stores/editorStore'
-import type { TimelineClip, MediaSource } from '../types'
+import { cx } from '../../../ui/cx'
+import { Icon } from '../../../ui/Icon'
 import type { TimelineCoords } from '../hooks/useTimelineZoom'
 import { useTimelineDrag, type TrimCursor } from '../hooks/useTimelineDrag'
-import { Waveform } from '../shared/Waveform'
 import { ThumbnailStrip } from '../shared/ThumbnailStrip'
+import { Waveform } from '../shared/Waveform'
+import type { MediaSource, TimelineClip } from '../types'
 
-/** Map trim cursor type to CSS cursor value. */
-function cursorForTrim(trimType: TrimCursor, altHeld: boolean, shiftHeld: boolean): string {
-  if (trimType === 'default') {
-    if (altHeld && shiftHeld) return 'ew-resize' // slide
-    if (altHeld) return 'grab' // slip
-    return 'default'
+/** How close to an edge, in px, the Trim tool trims instead of selecting. */
+export const TRIM_EDGE_PX = 10
+
+/** The CSS cursor for a trim at the pointer, with the modifier keys held. */
+export function cursorForTrim(trimType: TrimCursor, altHeld: boolean, shiftHeld: boolean): string
+{
+  if (trimType === 'default')
+  {
+    if (altHeld && shiftHeld)
+    {
+      return 'ew-resize'
+    }
+    return altHeld ? 'grab' : 'default'
   }
-  if (trimType === 'roll') return 'col-resize'
-  if (trimType === 'ripple-in') return 'w-resize'
-  return 'e-resize' // ripple-out
+  if (trimType === 'roll')
+  {
+    return 'col-resize'
+  }
+  return trimType === 'ripple-in' ? 'w-resize' : 'e-resize'
 }
 
-interface ClipProps {
+interface ClipProps
+{
   clip: TimelineClip
   coords: TimelineCoords
   source?: MediaSource
   trackType: 'video' | 'audio'
-  onDragStart: (clipId: string, e: React.MouseEvent) => void
+  onDragStart: (clipId: string, event: MouseEvent) => void
 }
 
-export function TimelineClipComponent({ clip, coords, source, trackType, onDragStart }: ClipProps): React.JSX.Element {
-  const selectedClipIds = useEditorStore((s) => s.selectedClipIds)
+function clipDur(clip: TimelineClip): number
+{
+  return (clip.sourceOut - clip.sourceIn) / clip.speed
+}
+
+function findLeftAdjacent(clip: TimelineClip, trackClips: TimelineClip[]): TimelineClip | null
+{
+  return trackClips.find((c) => c.id !== clip.id && Math.abs(c.timelineStart + clipDur(c) - clip.timelineStart) <= 1) ?? null
+}
+
+function findRightAdjacent(clip: TimelineClip, trackClips: TimelineClip[]): TimelineClip | null
+{
+  const end = clip.timelineStart + clipDur(clip)
+  return trackClips.find((c) => c.id !== clip.id && Math.abs(c.timelineStart - end) <= 1) ?? null
+}
+
+/** The clip block. */
+export function TimelineClipComponent({ clip, coords, source, trackType, onDragStart }: ClipProps): ReactElement
+{
+  const isSelected = useEditorStore((s) => s.selectedClipIds.includes(clip.id))
   const selectClip = useEditorStore((s) => s.selectClip)
   const splitClip = useEditorStore((s) => s.splitClip)
   const activeTool = useEditorStore((s) => s.activeTool)
-
   const clipRef = useRef<HTMLDivElement>(null)
-  const [clipSize, setClipSize] = useState<{ w: number; h: number } | null>(null)
+  const [size, setSize] = useState<{ w: number, h: number } | null>(null)
   const { detectTrimCursor, startTrimDrag } = useTimelineDrag()
 
-  const isSelected = selectedClipIds.includes(clip.id)
-  const duration = (clip.sourceOut - clip.sourceIn) / clip.speed
+  const duration = clipDur(clip)
   const left = coords.frameToPixel(clip.timelineStart)
   const width = Math.max(4, (duration / coords.frameRate) * coords.zoom)
-  const bg = trackType === 'audio' ? 'var(--color-clip-audio)' : 'var(--color-clip-video)'
 
-  // Track rendered clip size for waveform/thumbnail
-  const measuredRef = useCallback((node: HTMLDivElement | null) => {
-    clipRef.current = node
-    if (!node) return
-    const ro = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (entry) setClipSize({ w: Math.round(entry.contentRect.width), h: Math.round(entry.contentRect.height) })
+  useEffect(() =>
+  {
+    const element = clipRef.current
+    if (!element)
+    {
+      return
+    }
+    const observer = new ResizeObserver((entries) =>
+    {
+      const rect = entries[0]?.contentRect
+      if (rect)
+      {
+        setSize({ w: Math.round(rect.width), h: Math.round(rect.height) })
+      }
     })
-    ro.observe(node)
+    observer.observe(element)
+    return () => observer.disconnect()
   }, [])
 
-  // Determine whether to show waveform or thumbnails
-  const showWaveform = trackType === 'audio' && source?.filePath
-  const showThumbnails = trackType === 'video' && source?.filePath && source.width > 0
+  const showWaveform = trackType === 'audio' && Boolean(source?.filePath)
+  const showThumbnails = trackType === 'video' && Boolean(source?.filePath) && (source?.width ?? 0) > 0
+  const range = source && source.duration > 0
+    ? { rangeStart: clip.sourceIn / source.duration, rangeEnd: clip.sourceOut / source.duration }
+    : { rangeStart: 0, rangeEnd: 1 }
 
-  // --- Context-sensitive cursor for trim tool ---
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (activeTool !== 'trim' || !clipRef.current) return
-      const rect = clipRef.current.getBoundingClientRect()
-      const px = e.clientX - rect.left
-      const trimCursor = detectTrimCursor(clip, px, rect.width)
-      clipRef.current.style.cursor = cursorForTrim(trimCursor, e.altKey, e.shiftKey)
-    },
-    [activeTool, clip, detectTrimCursor]
-  )
+  const handleMouseMove = useCallback((event: MouseEvent) =>
+  {
+    const element = clipRef.current
+    if (activeTool !== 'trim' || !element)
+    {
+      return
+    }
+    const rect = element.getBoundingClientRect()
+    element.style.cursor = cursorForTrim(detectTrimCursor(clip, event.clientX - rect.left, rect.width), event.altKey, event.shiftKey)
+  }, [activeTool, clip, detectTrimCursor])
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (e.button !== 0) return
-
-      // Razor tool: split at click position
-      if (activeTool === 'razor') {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        const px = e.clientX - rect.left
-        const frame = clip.timelineStart + Math.round((px / width) * duration)
-        splitClip(clip.id, frame)
+  const handleMouseDown = useCallback((event: MouseEvent) =>
+  {
+    event.stopPropagation()
+    if (event.button !== 0)
+    {
+      return
+    }
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const px = event.clientX - rect.left
+    if (activeTool === 'razor')
+    {
+      splitClip(clip.id, clip.timelineStart + Math.round((px / width) * duration))
+      return
+    }
+    if (activeTool === 'trim')
+    {
+      selectClip(clip.id, false)
+      const trackClips = useEditorStore.getState().timeline.clips.filter((c) => c.trackId === clip.trackId)
+      if (event.altKey)
+      {
+        startTrimDrag(clip, event.shiftKey ? 'slide' : 'slip', event, coords)
         return
       }
-
-      // Trim tool: detect trim type and start trim drag
-      if (activeTool === 'trim') {
-        selectClip(clip.id, false)
-
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-        const px = e.clientX - rect.left
-        const edgeThreshold = 10
-        const { timeline } = useEditorStore.getState()
-        const trackClips = timeline.clips.filter((c) => c.trackId === clip.trackId)
-
-        // Check modifier keys for slip/slide
-        if (e.altKey && e.shiftKey) {
-          startTrimDrag(clip, 'slide', e, coords)
-          return
+      if (px <= TRIM_EDGE_PX)
+      {
+        const neighbor = findLeftAdjacent(clip, trackClips)
+        if (neighbor)
+        {
+          startTrimDrag(clip, 'roll', event, coords, neighbor.id)
         }
-        if (e.altKey) {
-          startTrimDrag(clip, 'slip', e, coords)
-          return
+        else
+        {
+          startTrimDrag(clip, 'ripple-in', event, coords)
         }
-
-        // Near left edge
-        if (px <= edgeThreshold) {
-          const adj = findLeftAdjacent(clip, trackClips)
-          if (adj) {
-            startTrimDrag(clip, 'roll', e, coords, adj.id)
-          } else {
-            startTrimDrag(clip, 'ripple-in', e, coords)
-          }
-          return
-        }
-
-        // Near right edge
-        if (px >= rect.width - edgeThreshold) {
-          const adj = findRightAdjacent(clip, trackClips)
-          if (adj) {
-            startTrimDrag(adj, 'roll', e, coords, clip.id)
-          } else {
-            startTrimDrag(clip, 'ripple-out', e, coords)
-          }
-          return
-        }
-
-        // Middle of clip - no default trim action, just select
         return
       }
-
-      // Select tool: select and initiate move drag
-      selectClip(clip.id, e.ctrlKey || e.metaKey)
-      if (activeTool === 'select') {
-        onDragStart(clip.id, e)
+      if (px >= rect.width - TRIM_EDGE_PX)
+      {
+        const neighbor = findRightAdjacent(clip, trackClips)
+        if (neighbor)
+        {
+          startTrimDrag(neighbor, 'roll', event, coords, clip.id)
+        }
+        else
+        {
+          startTrimDrag(clip, 'ripple-out', event, coords)
+        }
       }
-    },
-    [clip, duration, width, activeTool, selectClip, splitClip, onDragStart, startTrimDrag, coords]
-  )
+      return
+    }
+    selectClip(clip.id, event.ctrlKey || event.metaKey)
+    if (activeTool === 'select')
+    {
+      onDragStart(clip.id, event)
+    }
+  }, [clip, duration, width, activeTool, selectClip, splitClip, onDragStart, startTrimDrag, coords])
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (!selectedClipIds.includes(clip.id)) {
-        selectClip(clip.id, false)
-      }
-    },
-    [clip.id, selectedClipIds, selectClip]
-  )
+  const handleContextMenu = useCallback((event: MouseEvent) =>
+  {
+    event.preventDefault()
+    event.stopPropagation()
+    if (!useEditorStore.getState().selectedClipIds.includes(clip.id))
+    {
+      selectClip(clip.id, false)
+    }
+  }, [clip.id, selectClip])
 
-  const style: React.CSSProperties = useMemo(
-    () => ({
-      position: 'absolute',
-      left,
-      top: 0,
-      width,
-      height: '100%',
-      backgroundColor: bg,
-      opacity: clip.muted ? 0.4 : 1,
-      cursor: activeTool === 'razor' ? 'crosshair' : undefined
-    }),
-    [left, width, bg, clip.muted, activeTool]
-  )
+  const style = useMemo<CSSProperties>(() => ({
+    left,
+    width,
+    backgroundColor: trackType === 'audio' ? 'var(--color-clip-audio)' : 'var(--color-clip-video)',
+    cursor: activeTool === 'razor' ? 'crosshair' : undefined
+  }), [left, width, trackType, activeTool])
+
+  const name = clip.name || source?.fileName || 'Clip'
+  const levelBottom = `${Math.max(2, Math.min(95, (clip.volume / 2) * 100))}%`
 
   return (
     <div
-      ref={measuredRef}
-      className={`group rounded-sm overflow-hidden cursor-pointer transition-shadow ${
-        isSelected ? 'ring-2 ring-accent shadow-lg shadow-accent-500/20 z-10' : 'hover:ring-1 hover:ring-white/20'
-      } ${clip.locked ? 'pointer-events-none opacity-70' : ''}`}
+      ref={clipRef}
+      data-clip={clip.id}
+      data-selected={isSelected || undefined}
+      className={cx(
+        'group absolute inset-y-0.5 overflow-hidden rounded-xs',
+        isSelected ? 'z-raised outline-2 -outline-offset-2 outline-accent' : 'hover:outline-1 hover:-outline-offset-1 hover:outline-line-control-hover',
+        clip.muted && 'opacity-40',
+        clip.locked && 'pointer-events-none opacity-70'
+      )}
       style={style}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}
     >
-      {/* Clip name */}
-      <div className="relative z-10 px-1.5 py-0.5 text-label font-medium text-ink truncate select-none leading-tight drop-shadow-sm">
-        {clip.name || source?.fileName || 'Clip'}
+      {showThumbnails && size && size.w > 20 && source && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-50">
+          <ThumbnailStrip filePath={source.filePath} durationSeconds={source.durationSeconds} width={size.w} height={size.h} {...range} />
+        </div>
+      )}
+      {showWaveform && size && size.w > 8 && source && (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-5 bottom-0 opacity-70">
+          <Waveform filePath={source.filePath} width={size.w} height={Math.max(1, size.h - 20)} tone="onClip" {...range} />
+        </div>
+      )}
+      {isSelected && <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-wash-selected" />}
+      <div className="pointer-events-none relative flex min-w-0 items-center gap-1 px-1 pt-0.5">
+        <span className="flex min-w-0 items-center gap-1 rounded-xs bg-scrim px-1 text-label font-medium text-ink">
+          {clip.locked && <Icon name="status.locked" size="sm" />}
+          <span className="truncate">{name}</span>
+        </span>
       </div>
-
-      {/* Waveform overlay for audio clips */}
-      {showWaveform && clipSize && clipSize.w > 8 && (
-        <div className="absolute inset-0 top-4 opacity-50 pointer-events-none">
-          <Waveform
-            filePath={source!.filePath}
-            width={clipSize.w}
-            height={Math.max(1, clipSize.h - 16)}
-            color="rgba(255,255,255,0.5)"
-            rangeStart={source!.duration > 0 ? clip.sourceIn / source!.duration : 0}
-            rangeEnd={source!.duration > 0 ? clip.sourceOut / source!.duration : 1}
-          />
-        </div>
-      )}
-
-      {/* Thumbnail strip overlay for video clips */}
-      {showThumbnails && clipSize && clipSize.w > 20 && (
-        <div className="absolute inset-0 opacity-40 pointer-events-none">
-          <ThumbnailStrip
-            filePath={source!.filePath}
-            durationSeconds={source!.durationSeconds}
-            width={clipSize.w}
-            height={clipSize.h}
-            rangeStart={source!.duration > 0 ? clip.sourceIn / source!.duration : 0}
-            rangeEnd={source!.duration > 0 ? clip.sourceOut / source!.duration : 1}
-          />
-        </div>
-      )}
-
-      {/* Fallback gradient when no media visual loaded yet */}
-      {!showWaveform && !showThumbnails && (
-        <div className="absolute inset-0 top-4 opacity-30 pointer-events-none">
-          <div className="h-full bg-gradient-to-t from-black/30 to-transparent" />
-        </div>
-      )}
-
-      {/* Trim edge indicators (visible on hover when trim tool active) */}
       {activeTool === 'trim' && (
         <>
-          <div className="absolute left-0 top-0 w-0.75 h-full bg-yellow-400/0 group-hover:bg-yellow-400/40 transition-colors" />
-          <div className="absolute right-0 top-0 w-0.75 h-full bg-yellow-400/0 group-hover:bg-yellow-400/40 transition-colors" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 start-0 w-1 bg-transparent group-hover:bg-accent" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 end-0 w-1 bg-transparent group-hover:bg-accent" />
         </>
       )}
-
-      {/* Volume level rubber band (visible on audio clips or when clip selected) */}
       {(trackType === 'audio' || isSelected) && (
         <div
-          className="absolute left-0 right-0 h-0.5 pointer-events-none"
-          style={{
-            bottom: `${Math.max(2, Math.min(95, (clip.volume / 2) * 100))}%`,
-            backgroundColor: clip.volume > 1 ? 'rgba(251, 191, 36, 0.7)' : 'rgba(74, 222, 128, 0.6)'
-          }}
-          title={`Volume: ${Math.round(clip.volume * 100)}%`}
+          aria-hidden="true"
+          data-level
+          className={cx('pointer-events-none absolute inset-x-0 h-0.5', clip.volume > 1 ? 'bg-warning' : 'bg-viz-3')}
+          style={{ bottom: levelBottom }}
         />
       )}
-
-      {/* Locked overlay */}
-      {clip.locked && (
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,rgba(255,255,255,0.06)_4px,rgba(255,255,255,0.06)_8px)]" />
-      )}
     </div>
-  )
-}
-
-// --- Adjacent clip finders ---
-
-function clipDur(clip: TimelineClip): number {
-  return (clip.sourceOut - clip.sourceIn) / clip.speed
-}
-
-function findLeftAdjacent(clip: TimelineClip, trackClips: TimelineClip[]): TimelineClip | null {
-  return (
-    trackClips.find((c) => {
-      if (c.id === clip.id) return false
-      const cEnd = c.timelineStart + clipDur(c)
-      return Math.abs(cEnd - clip.timelineStart) <= 1
-    }) ?? null
-  )
-}
-
-function findRightAdjacent(clip: TimelineClip, trackClips: TimelineClip[]): TimelineClip | null {
-  const clipEnd = clip.timelineStart + clipDur(clip)
-  return (
-    trackClips.find((c) => {
-      if (c.id === clip.id) return false
-      return Math.abs(c.timelineStart - clipEnd) <= 1
-    }) ?? null
   )
 }

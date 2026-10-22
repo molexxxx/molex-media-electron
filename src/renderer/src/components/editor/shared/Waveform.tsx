@@ -1,161 +1,161 @@
 /**
  * @module editor/shared/Waveform
- * Audio waveform visualization with IPC data fetching and canvas rendering + caching.
+ * A file's audio peaks drawn on a canvas in the viz tokens. Peaks are fetched once per file and sample count.
  */
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCanvasPalette } from './canvasPalette'
 
-/** In-memory cache: filePath+samples → peaks array */
+/** In-memory cache: path and sample count to peaks. */
 const waveformCache = new Map<string, number[]>()
 
-interface WaveformProps {
-  /** Absolute file path for the audio source */
+/** Which viz color the peaks take: `neutral` on a neutral ground, `onClip` over a colored clip. */
+export type WaveformTone = 'neutral' | 'onClip'
+
+interface WaveformProps
+{
+  /** Absolute path of the audio source. */
   filePath: string
-  /** Number of peak samples to request (default 800) */
+  /** How many peaks to request; 800 by default. */
   numSamples?: number
-  /** Canvas width in CSS pixels */
+  /** Canvas width in CSS pixels. */
   width: number
-  /** Canvas height in CSS pixels */
+  /** Canvas height in CSS pixels. */
   height: number
-  /** Waveform color */
-  color?: string
-  /** Background color (transparent if omitted) */
-  bgColor?: string
-  /** Optional: normalized 0-1 range to render (for clip sub-range) */
+  tone?: WaveformTone
+  /** The start of the part to draw, from 0 to 1 of the file. */
   rangeStart?: number
-  /** Optional: normalized 0-1 range end */
+  /** The end of the part to draw, from 0 to 1 of the file. */
   rangeEnd?: number
   className?: string
 }
 
+/** The peaks of a file, or the canvas's quiet fallback while they load or when the file has no audio. */
 export function Waveform({
   filePath,
   numSamples = 800,
   width,
   height,
-  color = 'rgba(124, 58, 237, 0.6)',
-  bgColor,
+  tone = 'neutral',
   rangeStart = 0,
   rangeEnd = 1,
   className = ''
-}: WaveformProps): React.JSX.Element {
+}: WaveformProps): ReactElement
+{
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [peaks, setPeaks] = useState<number[] | null>(null)
-  const [error, setError] = useState(false)
+  const palette = useCanvasPalette()
+  const [peaks, setPeaks] = useState<number[] | null>(() => waveformCache.get(`${filePath}:${numSamples}`) ?? null)
+  const [failed, setFailed] = useState(false)
 
-  // Fetch waveform data via IPC with caching
-  useEffect(() => {
-    if (!filePath) return
-    let cancelled = false
-    const cacheKey = `${filePath}:${numSamples}`
-
-    if (waveformCache.has(cacheKey)) {
-      setPeaks(waveformCache.get(cacheKey)!)
+  useEffect(() =>
+  {
+    if (!filePath)
+    {
       return
     }
-
-    setError(false)
+    let cancelled = false
+    const cacheKey = `${filePath}:${numSamples}`
+    const cached = waveformCache.get(cacheKey)
+    if (cached)
+    {
+      setPeaks(cached)
+      return
+    }
+    setFailed(false)
     window.api
       .extractWaveform(filePath, numSamples)
-      .then((result) => {
-        if (cancelled) return
-        if (result?.success && result.data) {
+      .then((result) =>
+      {
+        if (cancelled)
+        {
+          return
+        }
+        if (result?.success && result.data)
+        {
           waveformCache.set(cacheKey, result.data)
           setPeaks(result.data)
-        } else {
-          setError(true)
+        }
+        else
+        {
+          setFailed(true)
         }
       })
-      .catch(() => {
-        if (!cancelled) setError(true)
+      .catch(() =>
+      {
+        if (!cancelled)
+        {
+          setFailed(true)
+        }
       })
-
-    return () => {
+    return () =>
+    {
       cancelled = true
     }
   }, [filePath, numSamples])
 
-  // Render peaks to canvas
-  const render = useCallback(() => {
+  useEffect(() =>
+  {
     const canvas = canvasRef.current
-    if (!canvas || !peaks || peaks.length === 0) return
-
+    if (!canvas || !peaks || peaks.length === 0)
+    {
+      return
+    }
     const dpr = window.devicePixelRatio || 1
-    canvas.width = width * dpr
-    canvas.height = height * dpr
+    canvas.width = Math.max(1, Math.round(width * dpr))
+    canvas.height = Math.max(1, Math.round(height * dpr))
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
+    if (!ctx)
+    {
+      return
+    }
     ctx.scale(dpr, dpr)
-
-    // Clear
-    if (bgColor) {
-      ctx.fillStyle = bgColor
-      ctx.fillRect(0, 0, width, height)
-    } else {
-      ctx.clearRect(0, 0, width, height)
+    ctx.clearRect(0, 0, width, height)
+    const part = peaks.slice(Math.floor(rangeStart * peaks.length), Math.ceil(rangeEnd * peaks.length))
+    if (part.length === 0)
+    {
+      return
     }
-
-    // Select range of peaks
-    const startIdx = Math.floor(rangeStart * peaks.length)
-    const endIdx = Math.ceil(rangeEnd * peaks.length)
-    const rangePeaks = peaks.slice(startIdx, endIdx)
-    if (rangePeaks.length === 0) return
-
-    const barWidth = width / rangePeaks.length
-    const midY = height / 2
-
-    ctx.fillStyle = color
-
-    for (let i = 0; i < rangePeaks.length; i++) {
-      const peak = rangePeaks[i]
-      const barH = Math.max(1, peak * midY)
-      const x = i * barWidth
-      ctx.fillRect(x, midY - barH, Math.max(1, barWidth - 0.5), barH * 2)
+    const barWidth = width / part.length
+    const middle = height / 2
+    ctx.fillStyle = tone === 'onClip' ? palette.waveformOnClip : palette.waveform
+    for (let i = 0; i < part.length; i++)
+    {
+      const reach = Math.max(1, part[i] * middle)
+      ctx.fillRect(i * barWidth, middle - reach, Math.max(1, barWidth - 0.5), reach * 2)
     }
-  }, [peaks, width, height, color, bgColor, rangeStart, rangeEnd])
+  }, [peaks, width, height, tone, rangeStart, rangeEnd, palette])
 
-  useEffect(() => {
-    render()
-  }, [render])
-
-  if (error) {
+  if (failed)
+  {
     return (
-      <div
-        className={`flex items-center justify-center text-surface-600 text-2xs ${className}`}
-        style={{ width, height }}
-      >
-        No audio
+      <div className={`flex items-center justify-center text-label text-ink-3 ${className}`} style={{ width, height }}>
+        {height >= 16 ? 'No audio' : null}
       </div>
     )
   }
 
-  if (!peaks) {
-    return (
-      <div
-        className={`flex items-center justify-center ${className}`}
-        style={{ width, height }}
-      >
-        <div className="w-4 h-4 border-2 border-accent-500/40 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+  if (!peaks)
+  {
+    return <div aria-hidden="true" className={className} style={{ width, height }} />
   }
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className={className}
-      style={{ width, height }}
-    />
-  )
+  return <canvas ref={canvasRef} aria-hidden="true" className={className} style={{ width, height }} />
 }
 
-/** Invalidate the cache for a specific file or all files. */
-export function clearWaveformCache(filePath?: string): void {
-  if (filePath) {
-    for (const key of waveformCache.keys()) {
-      if (key.startsWith(filePath + ':')) waveformCache.delete(key)
+/** Drops the cached peaks of one file, or of every file. */
+export function clearWaveformCache(filePath?: string): void
+{
+  if (filePath)
+  {
+    for (const key of waveformCache.keys())
+    {
+      if (key.startsWith(`${filePath}:`))
+      {
+        waveformCache.delete(key)
+      }
     }
-  } else {
+  }
+  else
+  {
     waveformCache.clear()
   }
 }

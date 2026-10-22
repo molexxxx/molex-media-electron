@@ -15,6 +15,7 @@ import { useEditorStore } from '../../../stores/editorStore'
 import type { ClipTransform, MediaSource, Resolution, TimelineClip } from '../types'
 import { defaultTransform } from '../types'
 import { resolveTransform } from '../shared/interpolation'
+import { useCanvasPalette } from '../shared/canvasPalette'
 import {
   buildClipMatrix,
   getClipCorners,
@@ -55,6 +56,7 @@ const ROTATE_OFFSET = 30 // px above top-center
 
 export function useTransformGizmos(config: GizmoConfig) {
   const dragRef = useRef<DragState | null>(null)
+  const palette = useCanvasPalette()
   const setClipTransform = useEditorStore((s) => s.setClipTransform)
   const currentFrame = useEditorStore((s) => s.playback.currentFrame)
 
@@ -318,7 +320,7 @@ export function useTransformGizmos(config: GizmoConfig) {
       ctx.scale(scaleFactorX, scaleFactorY)
 
       // Bounding box outline
-      ctx.strokeStyle = '#3b82f6'
+      ctx.strokeStyle = palette.accent
       ctx.lineWidth = 1.5 / scaleFactorX
       ctx.beginPath()
       ctx.moveTo(corners[0][0], corners[0][1])
@@ -329,8 +331,8 @@ export function useTransformGizmos(config: GizmoConfig) {
       const hs = HANDLE_SIZE / (2 * scaleFactorX)
 
       // Corner handles (white squares)
-      ctx.fillStyle = '#fff'
-      ctx.strokeStyle = '#3b82f6'
+      ctx.fillStyle = palette.ink
+      ctx.strokeStyle = palette.accent
       ctx.lineWidth = 1 / scaleFactorX
       for (const [cx, cy] of corners) {
         ctx.fillRect(cx - hs, cy - hs, hs * 2, hs * 2)
@@ -359,7 +361,7 @@ export function useTransformGizmos(config: GizmoConfig) {
       const rotY = topMidY - Math.cos(rad) * rotOffset
 
       // Line from top-center to rotate handle
-      ctx.strokeStyle = '#3b82f6'
+      ctx.strokeStyle = palette.accent
       ctx.lineWidth = 1 / scaleFactorX
       ctx.beginPath()
       ctx.moveTo(topMidX, topMidY)
@@ -367,8 +369,8 @@ export function useTransformGizmos(config: GizmoConfig) {
       ctx.stroke()
 
       // Rotate circle
-      ctx.fillStyle = '#fff'
-      ctx.strokeStyle = '#3b82f6'
+      ctx.fillStyle = palette.ink
+      ctx.strokeStyle = palette.accent
       ctx.beginPath()
       ctx.arc(rotX, rotY, hs, 0, Math.PI * 2)
       ctx.fill()
@@ -378,7 +380,7 @@ export function useTransformGizmos(config: GizmoConfig) {
       const mat = buildClipMatrix(t, sourceW, sourceH)
       const [ancX, ancY] = transformPoint(mat, t.anchorX * sourceW, t.anchorY * sourceH)
       const cs = hs * 1.5
-      ctx.strokeStyle = '#f59e0b'
+      ctx.strokeStyle = palette.accentInk
       ctx.lineWidth = 1.5 / scaleFactorX
       ctx.beginPath()
       ctx.moveTo(ancX - cs, ancY)
@@ -392,7 +394,7 @@ export function useTransformGizmos(config: GizmoConfig) {
 
       ctx.restore()
     },
-    [scaleFactorX, scaleFactorY]
+    [scaleFactorX, scaleFactorY, palette]
   )
 
   return {

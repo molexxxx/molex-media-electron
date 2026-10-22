@@ -1,31 +1,85 @@
 /**
  * @module editor/shared/ThumbnailStrip
- * Frame thumbnail strip using batch extraction and canvas rendering.
- *
- * Extracts all frames for a source in one batch IPC call,
- * caches the base64 strings per filePath, and picks the nearest frame
- * for each canvas slot - zoom / resize never triggers new FFmpeg calls.
+ * A strip of frame thumbnails on a canvas. Every frame of a source is extracted in one IPC call and decoded once,
+ * and each slot draws the nearest cached frame, so zooming or resizing never runs FFmpeg again.
  */
-import React, { useEffect, useRef, useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCanvasPalette } from './canvasPalette'
 
-/** Per-source cached strip metadata (interval + frame count) */
-const stripMeta = new Map<string, { interval: number; count: number }>()
-/** Dedup concurrent IPC requests for the same source */
+/** Per-source strip metadata: the seconds between frames and the frame count. */
+const stripMeta = new Map<string, { interval: number, count: number }>()
+/** Concurrent requests for one source share one IPC call. */
 const stripRequests = new Map<string, Promise<void>>()
-/** Pre-decoded Image objects per source (decoded once, reused for drawing) */
-const imageCache = new Map<string, (HTMLImageElement | null)[]>()
+/** Decoded frames per source. */
+const imageCache = new Map<string, Array<HTMLImageElement | null>>()
 
-interface ThumbnailStripProps {
+interface ThumbnailStripProps
+{
   filePath: string
   durationSeconds: number
   width: number
   height: number
+  /** Slots to draw; by default one per 60 px. */
   numThumbnails?: number
+  /** The start of the part to draw, from 0 to 1 of the file. */
   rangeStart?: number
+  /** The end of the part to draw, from 0 to 1 of the file. */
   rangeEnd?: number
   className?: string
 }
 
+async function decode(dataUrl: string): Promise<HTMLImageElement | null>
+{
+  try
+  {
+    return await new Promise<HTMLImageElement>((resolve, reject) =>
+    {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = reject
+      image.src = dataUrl
+    })
+  }
+  catch
+  {
+    return null
+  }
+}
+
+function requestStrip(filePath: string, durationSeconds: number): Promise<void>
+{
+  const pending = stripRequests.get(filePath)
+  if (pending)
+  {
+    return pending
+  }
+  const request = (async () =>
+  {
+    try
+    {
+      const result = await window.api.extractThumbnailStrip(filePath, durationSeconds)
+      if (!result?.success || !result.frames)
+      {
+        return
+      }
+      const images: Array<HTMLImageElement | null> = []
+      for (const dataUrl of result.frames as Array<string | null>)
+      {
+        images.push(dataUrl ? await decode(dataUrl) : null)
+      }
+      imageCache.set(filePath, images)
+      stripMeta.set(filePath, { interval: result.interval, count: images.length })
+    }
+    catch
+    {
+      return
+    }
+  })().finally(() => stripRequests.delete(filePath))
+  stripRequests.set(filePath, request)
+  return request
+}
+
+/** The strip, or an empty well while its frames load. */
 export function ThumbnailStrip({
   filePath,
   durationSeconds,
@@ -35,135 +89,117 @@ export function ThumbnailStrip({
   rangeStart = 0,
   rangeEnd = 1,
   className = ''
-}: ThumbnailStripProps): React.JSX.Element {
+}: ThumbnailStripProps): ReactElement
+{
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const palette = useCanvasPalette()
   const [ready, setReady] = useState(() => imageCache.has(filePath))
 
-  // -- Fetch the full strip once per source ----------------------
-  useEffect(() => {
-    if (!filePath || durationSeconds <= 0) return
-    let cancelled = false
-
-    // Already decoded
-    if (imageCache.has(filePath)) {
+  useEffect(() =>
+  {
+    if (!filePath || durationSeconds <= 0)
+    {
+      return
+    }
+    if (imageCache.has(filePath))
+    {
       setReady(true)
       return
     }
-
-    // Kick off IPC (deduped)
-    if (!stripRequests.has(filePath)) {
-      const req = (async () => {
-        try {
-          const result = await window.api.extractThumbnailStrip(filePath, durationSeconds)
-          if (!result?.success || !result.frames) return
-
-          // Decode frames into Image elements sequentially (no GPU pressure)
-          const images: (HTMLImageElement | null)[] = []
-          for (const dataUrl of result.frames) {
-            if (!dataUrl) { images.push(null); continue }
-            try {
-              const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-                const el = new Image()
-                el.onload = () => resolve(el)
-                el.onerror = reject
-                el.src = dataUrl
-              })
-              images.push(img)
-            } catch {
-              images.push(null)
-            }
-          }
-          imageCache.set(filePath, images)
-          // Store lightweight metadata, base64 strings are now GC-eligible
-          stripMeta.set(filePath, { interval: result.interval, count: result.frames.length })
-        } catch { /* extraction failed */ }
-      })().finally(() => stripRequests.delete(filePath))
-      stripRequests.set(filePath, req)
-    }
-
-    stripRequests.get(filePath)!.then(() => {
-      if (!cancelled) setReady(imageCache.has(filePath))
+    let cancelled = false
+    void requestStrip(filePath, durationSeconds).then(() =>
+    {
+      if (!cancelled)
+      {
+        setReady(imageCache.has(filePath))
+      }
     })
-
-    return () => { cancelled = true }
+    return () =>
+    {
+      cancelled = true
+    }
   }, [filePath, durationSeconds])
 
-  // -- Canvas render - picks nearest cached frame per slot -------
-  const renderToCanvas = useCallback(() => {
+  const draw = useCallback(() =>
+  {
     const canvas = canvasRef.current
     const meta = stripMeta.get(filePath)
     const images = imageCache.get(filePath)
-    if (!canvas || !meta || !images || images.length === 0) return
-
+    if (!canvas || !meta || !images || images.length === 0)
+    {
+      return
+    }
     const dpr = window.devicePixelRatio || 1
-    canvas.width = width * dpr
-    canvas.height = height * dpr
+    canvas.width = Math.max(1, Math.round(width * dpr))
+    canvas.height = Math.max(1, Math.round(height * dpr))
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
+    if (!ctx)
+    {
+      return
+    }
     ctx.scale(dpr, dpr)
-    ctx.fillStyle = '#0f1320'
+    ctx.fillStyle = palette.ground
     ctx.fillRect(0, 0, width, height)
 
-    const spacing = 60
-    const count = numThumbnails ?? Math.max(2, Math.min(40, Math.floor(width / spacing)))
-    const thumbWidth = width / count
-    const rangeDuration = (rangeEnd - rangeStart) * durationSeconds
-    const startSec = rangeStart * durationSeconds
-
-    for (let i = 0; i < count; i++) {
-      const timeSec = startSec + (i / Math.max(1, count - 1)) * rangeDuration
-      const frameIdx = Math.min(
-        meta.count - 1,
-        Math.max(0, Math.round(timeSec / meta.interval))
-      )
-      const img = images[frameIdx]
-      if (!img) continue
-
-      const srcAspect = img.naturalWidth / img.naturalHeight
-      const slotAspect = thumbWidth / height
-      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight
-      if (srcAspect > slotAspect) {
-        sw = img.naturalHeight * slotAspect
-        sx = (img.naturalWidth - sw) / 2
-      } else {
-        sh = img.naturalWidth / slotAspect
-        sy = (img.naturalHeight - sh) / 2
+    const count = numThumbnails ?? Math.max(2, Math.min(40, Math.floor(width / 60)))
+    const slotWidth = width / count
+    const span = (rangeEnd - rangeStart) * durationSeconds
+    const start = rangeStart * durationSeconds
+    for (let i = 0; i < count; i++)
+    {
+      const time = start + (i / Math.max(1, count - 1)) * span
+      const index = Math.min(meta.count - 1, Math.max(0, Math.round(time / meta.interval)))
+      const image = images[index]
+      if (!image)
+      {
+        continue
       }
-      ctx.drawImage(img, sx, sy, sw, sh, i * thumbWidth, 0, thumbWidth, height)
+      const imageAspect = image.naturalWidth / image.naturalHeight
+      const slotAspect = slotWidth / height
+      let sx = 0
+      let sy = 0
+      let sw = image.naturalWidth
+      let sh = image.naturalHeight
+      if (imageAspect > slotAspect)
+      {
+        sw = image.naturalHeight * slotAspect
+        sx = (image.naturalWidth - sw) / 2
+      }
+      else
+      {
+        sh = image.naturalWidth / slotAspect
+        sy = (image.naturalHeight - sh) / 2
+      }
+      ctx.drawImage(image, sx, sy, sw, sh, i * slotWidth, 0, slotWidth, height)
     }
-  }, [filePath, durationSeconds, width, height, numThumbnails, rangeStart, rangeEnd])
+  }, [filePath, durationSeconds, width, height, numThumbnails, rangeStart, rangeEnd, palette])
 
-  useEffect(() => {
-    if (ready) renderToCanvas()
-  }, [ready, renderToCanvas])
+  useEffect(() =>
+  {
+    if (ready)
+    {
+      draw()
+    }
+  }, [ready, draw])
 
-  if (!ready) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-surface-800/50 ${className}`}
-        style={{ width, height }}
-      >
-        <div className="w-4 h-4 border-2 border-accent-500/40 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+  if (!ready)
+  {
+    return <div aria-hidden="true" className={`bg-sunken ${className}`} style={{ width, height }} />
   }
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className={`rounded-sm ${className}`}
-      style={{ width, height }}
-    />
-  )
+  return <canvas ref={canvasRef} aria-hidden="true" className={className} style={{ width, height }} />
 }
 
-/** Invalidate the cache for a specific file or all files. */
-export function clearThumbnailCache(filePath?: string): void {
-  if (filePath) {
+/** Drops the cached frames of one file, or of every file. */
+export function clearThumbnailCache(filePath?: string): void
+{
+  if (filePath)
+  {
     stripMeta.delete(filePath)
     imageCache.delete(filePath)
-  } else {
+  }
+  else
+  {
     stripMeta.clear()
     imageCache.clear()
   }
