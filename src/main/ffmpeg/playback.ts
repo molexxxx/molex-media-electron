@@ -29,6 +29,8 @@ import { createProbe } from './probe'
 import { videoEncoderArgs, videoFilters } from '../jobs/runners/convert'
 import { audioTracks, CHROMIUM_AUDIO_CODECS, containerPlays, summarizeProbe, type PlayerMedia, type PlayerStream, type RawProbe, type SoundPlan } from '../../shared/player/media'
 import { detectGpuMode, getGpuPreset, getGpuQualityArgs, getHwaccelInputArgs, resolveGpuCodec, type GpuMode } from './gpu'
+import type { LinkStreamPlan, ProbedFormat, StreamInput, VideoCodecFamily } from '../ytdlp/resolver'
+import type { PictureSubtitle } from '../../shared/ipc/api'
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -136,6 +138,11 @@ function playbackFacts(stream: PlaybackStream): AudioFacts {
 export function playbackTarget(stream: PlaybackStream): PlaybackTarget {
   const native = NATIVE_CODEC_MAP[stream.codec]
   if (native) return { ext: native.ext, args: ['-c:a', native.codec], mode: 'remux', remappedTo: null }
+  return { ext: 'webm', mode: 'transcode', ...opusPlaybackArgs(stream) }
+}
+
+/** The libopus arguments of a playback transcode, with the layout written when libopus needed a relabel. */
+export function opusPlaybackArgs(stream: PlaybackStream): { args: string[], remappedTo: string | null } {
   const facts = playbackFacts(stream)
   const policy = { kind: 'codec', codec: 'opus', kbpsPerPair: PLAYBACK_KBPS_PER_PAIR } as const
   const own = chooseEncoder(facts, policy, 'webm', { channels: stream.channels, layout: facts.layout ?? '', minSampleRate: null }, OPUS_ONLY)
@@ -144,9 +151,7 @@ export function playbackTarget(stream: PlaybackStream): PlaybackTarget {
   const c = decision.choice
   const pin = pinStages({ sampleRate: c.sampleRate, layout: c.layout, pin: c.pin, encoder: c.encoder })
   return {
-    ext: 'webm',
     args: [...encoderArgs(c, 0), '-af', pin.join(',')],
-    mode: 'transcode',
     remappedTo: c.notes.includes('layout-remapped') ? c.layout : null
   }
 }
@@ -527,23 +532,44 @@ export interface DisplayOptions {
   height: number
   /** The source frame rate, for the keyframe interval. */
   fps: number | null
+  /** A picture subtitle stream drawn onto the picture, scaled to it when its canvas differs; absent or null for none. */
+  subtitle?: PictureSubtitle | null
+}
+
+/**
+ * Seconds read before the seek point while a picture subtitle is drawn, so a subtitle that began just before it is
+ * on screen from the first frame; the frames before the seek point are decoded and dropped.
+ */
+export const SUBTITLE_PREROLL = 5
+
+/** The filter graph that draws a picture subtitle onto the picture, then fits it, ending in [pic]. */
+export function subtitleOverlayGraph(streamIndex: number, subtitle: PictureSubtitle, filters: readonly string[]): string {
+  const scale = subtitle.scaleTo === null ? null : `[0:${subtitle.streamIndex}]scale=${Math.round(subtitle.scaleTo.width)}:${Math.round(subtitle.scaleTo.height)}[sub]`
+  const overlay = `[0:${streamIndex}]${scale === null ? `[0:${subtitle.streamIndex}]` : '[sub]'}overlay=eof_action=pass${filters.length > 0 ? `,${filters.join(',')}` : ''}[pic]`
+  return scale === null ? overlay : `${scale};${overlay}`
 }
 
 /**
  * The FFmpeg arguments of a picture FFmpeg decodes for display from `seekTime` on: hardware decoding where the encoder
  * is hardware, the picture fitted to the display as 8-bit 4:2:0, encoded for latency, with no sound, as fragmented MP4
- * on stdout. Seeking before the input starts the stream exactly at `seekTime`, so a seek restarts it there.
+ * on stdout. Seeking before the input starts the stream exactly at `seekTime`, so a seek restarts it there. With a
+ * picture subtitle the overlay draws it first, decoding in software, and the input starts a few seconds early.
  */
 export function pictureDecodeArgs(filePath: string, streamIndex: number, seekTime: number, options: DisplayOptions): string[] {
-  const seek = seekTime > 0 ? ['-ss', seekTime.toFixed(3)] : []
+  const subtitle = options.subtitle ?? null
+  const preroll = subtitle !== null && seekTime > 0 ? Math.min(seekTime, SUBTITLE_PREROLL) : 0
+  const inputSeek = seekTime - preroll
+  const seek = inputSeek > 0 ? ['-ss', inputSeek.toFixed(3)] : []
   const fit = { maxWidth: Math.max(2, Math.round(options.width)), maxHeight: Math.max(2, Math.round(options.height)), mode: 'fit' as const }
   const filters = videoFilters({ fit, fps: null, pixelFormat: 'yuv420p' }, options.encoder.codec)
+  const picture = subtitle === null
+    ? ['-map', `0:${streamIndex}`, '-an', '-sn', '-dn', '-vf', filters.join(',')]
+    : ['-filter_complex', subtitleOverlayGraph(streamIndex, subtitle, filters), '-map', '[pic]', '-an', '-sn', '-dn', ...(preroll > 0 ? ['-ss', preroll.toFixed(3)] : [])]
   return [
     '-hide_banner', '-loglevel', 'error', '-nostdin',
-    ...getHwaccelInputArgs(options.encoder.mode === 'auto' ? 'off' : options.encoder.mode, false),
+    ...getHwaccelInputArgs(options.encoder.mode === 'auto' ? 'off' : options.encoder.mode, subtitle !== null),
     ...seek, '-i', filePath,
-    '-map', `0:${streamIndex}`, '-an', '-sn', '-dn',
-    '-vf', filters.join(','),
+    ...picture,
     ...displayEncoderArgs(options.encoder, displayGop(options.fps)),
     '-f', 'mp4', '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
     'pipe:1'
@@ -610,11 +636,159 @@ export async function pictureDecodeCommand(
   filePath: string,
   streamIndex: number,
   seekTime: number,
-  display: { width: number, height: number, fps: number | null, software: boolean }
+  display: { width: number, height: number, fps: number | null, software: boolean, subtitle?: PictureSubtitle | null }
 ): Promise<{ command: string, args: string[], encoder: string }> {
   const command = await ffmpegPathOrThrow()
   const encoder = display.software ? SOFTWARE_DISPLAY_ENCODER : await displayEncoder(command)
-  return { command, args: pictureDecodeArgs(filePath, streamIndex, seekTime, { encoder, width: display.width, height: display.height, fps: display.fps }), encoder: encoder.codec }
+  return { command, args: pictureDecodeArgs(filePath, streamIndex, seekTime, { encoder, width: display.width, height: display.height, fps: display.fps, subtitle: display.subtitle ?? null }), encoder: encoder.codec }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Link streams: live and HLS-only links through FFmpeg               */
+/* ------------------------------------------------------------------ */
+
+/** The sound codecs a stream session copies into fragmented MP4, where Chromium decodes them; the rest become Opus. */
+export const STREAM_COPY_AUDIO: ReadonlySet<string> = new Set(['aac', 'mp3', 'opus'])
+
+/** How long FFmpeg waits on a stalled read of a stream before it gives up, in microseconds. */
+export const STREAM_READ_TIMEOUT_US = 15_000_000
+
+/** The media type of a stream session's sound output. */
+export const STREAM_SOUND_TYPE = 'audio/mp4'
+
+/** The request headers yt-dlp fetched a stream with, as FFmpeg's `-headers` option; Host is FFmpeg's own. */
+export function streamHeaderArgs(headers: Record<string, string>): string[] {
+  const lines = Object.entries(headers)
+    .filter(([key, value]) => key.toLowerCase() !== 'host' && typeof value === 'string' && value !== '' && !/[\r\n]/.test(key + value))
+    .map(([key, value]) => `${key}: ${value}\r\n`)
+  return lines.length > 0 ? ['-headers', lines.join('')] : []
+}
+
+/** Where a stream session starts and how its picture is fitted and encoded when FFmpeg decodes it. */
+export interface LinkStreamOptions {
+  /** Content seconds for a recording, or the stream clock a live picture restarts from; null starts at the beginning or the live edge. */
+  at: number | null
+  /** The video codec families Chromium decodes as they are; any other picture is decoded by FFmpeg. */
+  copyFamilies: readonly VideoCodecFamily[]
+  encoder: DisplayEncoder
+  width: number
+  height: number
+}
+
+/** A stream session's FFmpeg arguments, the order of its outputs on stdout and pipe:3, and the picture encoder when FFmpeg decodes it. */
+export interface LinkStreamCommand {
+  args: string[]
+  outputs: Array<'sound' | 'picture'>
+  encoder: string | null
+}
+
+/** True when a stream's picture is copied as it is: H.264 always, VP9 and AV1 when Chromium decodes them. */
+export function copiesPicture(family: VideoCodecFamily | null, copyFamilies: readonly VideoCodecFamily[]): boolean {
+  return family !== null && (family === 'avc1' || copyFamilies.includes(family))
+}
+
+/**
+ * The FFmpeg arguments of a stream session: each input read with its own request headers, the sound as fragmented
+ * MP4 on stdout and the picture as fragmented MP4 on pipe:3, both keeping the stream's own clock (`-copyts`), so
+ * the two media elements play on one timeline. A recording's clock starts at zero and the session seeks to `at`
+ * before the inputs, then trims each output to start exactly there; a live stream keeps the broadcast's clock and
+ * starts at its live edge. Codecs Chromium decodes are copied; other sound becomes Opus and another picture is
+ * decoded and encoded for display. `delay_moov` writes each track's true start, which Chromium honors.
+ */
+export function linkStreamArgs(plan: LinkStreamPlan, options: LinkStreamOptions): LinkStreamCommand {
+  const at = options.at !== null && Number.isFinite(options.at) && options.at > 0 ? options.at : null
+  const decodePicture = plan.picture !== null && !copiesPicture(plan.picture.family, options.copyFamilies)
+  const inputs = plan.inputs.flatMap((input, i) => [
+    ...streamHeaderArgs(input.headers),
+    '-rw_timeout', String(STREAM_READ_TIMEOUT_US),
+    ...(decodePicture && plan.picture?.input === i ? getHwaccelInputArgs(options.encoder.mode === 'auto' ? 'off' : options.encoder.mode, false) : []),
+    ...(!plan.live && at !== null ? ['-ss', at.toFixed(3)] : []),
+    '-i', input.url
+  ])
+  const trim = at === null ? [] : ['-ss', at.toFixed(3), '-output_ts_offset', at.toFixed(3)]
+  const outputs: Array<'sound' | 'picture'> = []
+  const parts: string[] = []
+  const pipe = (): string => outputs.length === 1 ? 'pipe:1' : 'pipe:3'
+  if (plan.sound !== null) {
+    const sound = plan.sound
+    const codec = sound.codec
+    const copy = codec !== null && STREAM_COPY_AUDIO.has(codec)
+    const coding = copy
+      ? ['-c:a', 'copy', ...(codec === 'aac' ? ['-bsf:a', 'aac_adtstoasc'] : [])]
+      : opusPlaybackArgs({ codec: codec ?? 'unknown', channels: sound.channels ?? 2, sampleRate: sound.sampleRate ?? 48000 }).args
+    outputs.push('sound')
+    parts.push(
+      '-map', `${sound.input}:a:0${sound.optional ? '?' : ''}`, ...trim, '-vn', '-sn', '-dn', ...coding,
+      '-f', 'mp4', '-movflags', 'empty_moov+delay_moov+default_base_moof', '-frag_duration', '500000', pipe()
+    )
+  }
+  if (plan.picture !== null) {
+    const picture = plan.picture
+    const fit = { maxWidth: Math.max(2, Math.round(options.width)), maxHeight: Math.max(2, Math.round(options.height)), mode: 'fit' as const }
+    const coding = decodePicture
+      ? ['-vf', videoFilters({ fit, fps: null, pixelFormat: 'yuv420p' }, options.encoder.codec).join(','), ...displayEncoderArgs(options.encoder, displayGop(picture.fps))]
+      : ['-c:v', 'copy']
+    outputs.push('picture')
+    parts.push(
+      '-map', `${picture.input}:v:0`, ...trim, '-an', '-sn', '-dn', ...coding,
+      '-f', 'mp4', '-movflags', 'frag_keyframe+empty_moov+delay_moov+default_base_moof', '-frag_duration', '1000000', pipe()
+    )
+  }
+  return {
+    args: ['-hide_banner', '-loglevel', 'error', '-nostdin', '-copyts', ...(plan.live ? [] : ['-start_at_zero']), ...inputs, ...parts],
+    outputs,
+    encoder: decodePicture ? options.encoder.codec : null
+  }
+}
+
+/** A stream session's command on this computer: the configured FFmpeg, and its display encoder when the picture is decoded. */
+export async function linkStreamCommand(
+  plan: LinkStreamPlan,
+  request: { at: number | null, copyFamilies: readonly VideoCodecFamily[], width: number, height: number, software: boolean }
+): Promise<LinkStreamCommand & { command: string }> {
+  const command = await ffmpegPathOrThrow()
+  const decodes = plan.picture !== null && !copiesPicture(plan.picture.family, request.copyFamilies)
+  const encoder = !decodes || request.software ? SOFTWARE_DISPLAY_ENCODER : await displayEncoder(command)
+  return { command, ...linkStreamArgs(plan, { at: request.at, copyFamilies: request.copyFamilies, encoder, width: request.width, height: request.height }) }
+}
+
+/** The ffprobe arguments that list the streams of a link's stream URL, read with its request headers. */
+export function streamProbeArgs(input: StreamInput): string[] {
+  return [
+    '-v', 'error', ...streamHeaderArgs(input.headers), '-rw_timeout', String(STREAM_READ_TIMEOUT_US),
+    '-show_entries', 'stream=codec_type,codec_name,width,height,channels,sample_rate', '-of', 'json', input.url
+  ]
+}
+
+/** ffprobe's JSON for a stream URL as the codecs and sizes of its first picture and first sound; null when unreadable. */
+export function parseStreamProbe(json: string): ProbedFormat | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    return null
+  }
+  const streams = (parsed as { streams?: unknown } | null)?.streams
+  if (!Array.isArray(streams)) return null
+  const number = (value: unknown): number | null => {
+    const n = Number(value)
+    return value !== undefined && value !== null && Number.isFinite(n) && n > 0 ? n : null
+  }
+  const video = streams.find((s) => s?.codec_type === 'video' && typeof s.codec_name === 'string')
+  const audio = streams.find((s) => s?.codec_type === 'audio' && typeof s.codec_name === 'string')
+  return {
+    video: video === undefined ? null : { codec: video.codec_name, width: number(video.width), height: number(video.height) },
+    audio: audio === undefined ? null : { codec: audio.codec_name, channels: number(audio.channels), sampleRate: number(audio.sample_rate) }
+  }
+}
+
+/** Probes a stream URL yt-dlp could not describe, with the configured ffprobe; null when it cannot be read. */
+export async function probeStreamInput(input: StreamInput): Promise<ProbedFormat | null> {
+  const config = await getConfig()
+  const ffprobePath = config.ffmpeg?.ffprobePath
+  if (!ffprobePath) return null
+  const result = await runCommand(ffprobePath, streamProbeArgs(input), undefined, { log: false }).promise
+  return result.code === 0 ? parseStreamProbe(result.stdout) : null
 }
 
 /* ------------------------------------------------------------------ */

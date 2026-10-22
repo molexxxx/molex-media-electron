@@ -6,12 +6,13 @@
 import React, { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, waitFor } from '@testing-library/react'
-import { usePlayer, type PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
+import { PICTURE_JOIN_LEAD, usePlayer, type PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
 
 const api = vi.hoisted(() => ({
   resolvePlaylist: vi.fn(),
   getStreamUrl: vi.fn(),
   getLinkPicture: vi.fn(),
+  getLinkStream: vi.fn(),
   inspectMedia: vi.fn(),
   getSoundUrl: vi.fn(),
   getPictureUrl: vi.fn(),
@@ -77,7 +78,7 @@ describe('usePlayer', () =>
   beforeEach(() =>
   {
     vi.clearAllMocks()
-    for (const fn of [api.resolvePlaylist, api.getStreamUrl, api.inspectMedia, api.getSoundUrl, api.getLinkPicture])
+    for (const fn of [api.resolvePlaylist, api.getStreamUrl, api.inspectMedia, api.getSoundUrl, api.getLinkPicture, api.getLinkStream, api.getPictureUrl])
     {
       fn.mockReset()
     }
@@ -348,6 +349,347 @@ describe('usePlayer', () =>
       current().clear()
     })
     expect(current().tracks).toHaveLength(0)
+  })
+
+  it('plays a live link through one FFmpeg session: the picture first, then the sound, Live, and no seeking', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'L1', title: 'Lofi radio', url: 'https://www.youtube.com/watch?v=L1', duration: null }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: true, title: 'Lofi radio', duration: null })
+    api.getLinkStream.mockImplementation(async (_url: string, request: { sound: boolean, picture: boolean }) => ({
+      ok: true,
+      stream: {
+        live: true,
+        sound: request.sound ? `http://127.0.0.1:1/s${api.getLinkStream.mock.calls.length}` : null,
+        picture: request.picture ? { url: `http://127.0.0.1:1/p${api.getLinkStream.mock.calls.length}`, live: true, offset: 0, encoder: null, shared: true } : null,
+        hasPicture: true,
+        duration: null
+      }
+    }))
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://www.youtube.com/watch?v=L1', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    const video = container.querySelector('video') as HTMLVideoElement
+    await waitFor(() => expect(video.getAttribute('src')).toBe('http://127.0.0.1:1/p1'))
+    expect(api.getLinkStream).toHaveBeenCalledWith('https://www.youtube.com/watch?v=L1', expect.objectContaining({ at: null, sound: true, picture: true, soundQuality: 'best', codecs: expect.arrayContaining(['avc1']) }))
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
+    await act(async () =>
+    {
+      video.dispatchEvent(new Event('canplay'))
+    })
+    await waitFor(() => expect(current().status).toBe('playing'))
+    expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1')
+    expect(current().live).toBe(true)
+    expect(current().current?.live).toBe(true)
+    expect(current().duration).toBe(0)
+    expect(api.getLinkPicture).not.toHaveBeenCalled()
+    const clock = { time: 0, ready: 0 }
+    Object.defineProperty(audio, 'currentTime', { get: () => clock.time, set: (value: number) => { clock.time = value }, configurable: true })
+    Object.defineProperty(audio, 'readyState', { get: () => clock.ready, configurable: true })
+    Object.defineProperty(audio, 'paused', { value: false, configurable: true })
+    const tick = async (time: number, ready = 4): Promise<void> =>
+    {
+      clock.time = time
+      clock.ready = ready
+      await act(async () =>
+      {
+        audio.dispatchEvent(new Event('timeupdate'))
+      })
+    }
+    await tick(0, 0)
+    await tick(7662.5)
+    expect(current().time).toBe(0)
+    await tick(7672.5)
+    await act(async () =>
+    {
+      current().seek(30)
+      current().seekBy(5)
+    })
+    expect(current().time).toBe(10)
+    expect(api.getLinkStream).toHaveBeenCalledTimes(1)
+    for (let round = 0; round < 2; round++)
+    {
+      await act(async () =>
+      {
+        current().setView('visualization')
+      })
+      expect(video.hasAttribute('src')).toBe(false)
+      await tick(7680 + round * 20)
+      await act(async () =>
+      {
+        current().setView('video')
+      })
+      await waitFor(() => expect(api.getLinkStream).toHaveBeenLastCalledWith('https://www.youtube.com/watch?v=L1', expect.objectContaining({ at: 7680 + round * 20 + PICTURE_JOIN_LEAD, sound: false, picture: true })))
+      await waitFor(() => expect(video.getAttribute('src')).toBe(`http://127.0.0.1:1/p${round + 2}`))
+      await tick(7690 + round * 20)
+      expect(current().time).toBe(7690 + round * 20 - 7662.5)
+    }
+    expect(api.getLinkStream).toHaveBeenCalledTimes(3)
+    expect(api.getLinkStream.mock.calls.filter(([, request]) => request.sound)).toHaveLength(1)
+    expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1')
+    expect(current().live).toBe(true)
+    expect(current().duration).toBe(0)
+  })
+
+  it('keeps one clock for an HLS-only recording across the Show switch, and seeking still works after it', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'v1', title: 'Talk', url: 'https://vimeo.example/2' }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: false, duration: 300 })
+    api.getLinkStream.mockImplementation(async (_url: string, request: { sound: boolean, picture: boolean }) => ({
+      ok: true,
+      stream: {
+        live: false,
+        sound: request.sound ? `http://127.0.0.1:1/s${api.getLinkStream.mock.calls.length}` : null,
+        picture: request.picture ? { url: `http://127.0.0.1:1/p${api.getLinkStream.mock.calls.length}`, live: true, offset: 0, encoder: null, shared: true } : null,
+        hasPicture: true,
+        duration: 300
+      }
+    }))
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://vimeo.example/2', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    const video = container.querySelector('video') as HTMLVideoElement
+    await waitFor(() => expect(video.getAttribute('src')).toBe('http://127.0.0.1:1/p1'))
+    await act(async () =>
+    {
+      video.dispatchEvent(new Event('canplay'))
+    })
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1'))
+    const clock = { time: 0, ready: 4 }
+    Object.defineProperty(audio, 'currentTime', { get: () => clock.time, set: (value: number) => { clock.time = value }, configurable: true })
+    Object.defineProperty(audio, 'readyState', { get: () => clock.ready, configurable: true })
+    const tick = async (time: number): Promise<void> =>
+    {
+      clock.time = time
+      await act(async () =>
+      {
+        audio.dispatchEvent(new Event('timeupdate'))
+      })
+    }
+    await tick(41.5)
+    for (const view of ['visualization', 'video', 'visualization', 'video'] as const)
+    {
+      await act(async () =>
+      {
+        current().setView(view)
+      })
+      await tick(clock.time + 2)
+      expect(current().time).toBe(clock.time)
+      expect(current().duration).toBe(300)
+    }
+    expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1')
+    expect(api.getLinkStream.mock.calls.filter(([, request]) => request.sound)).toHaveLength(1)
+    let opened: (value: unknown) => void = () => undefined
+    api.getLinkStream.mockImplementationOnce(() => new Promise((resolve) => { opened = resolve }))
+    await act(async () =>
+    {
+      current().seek(200)
+    })
+    expect(current().time).toBe(200)
+    await tick(49.5)
+    expect(current().time).toBe(200)
+    expect(api.getLinkStream).toHaveBeenLastCalledWith('https://vimeo.example/2', expect.objectContaining({ at: 200, sound: true, picture: true }))
+    await act(async () =>
+    {
+      opened({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/seek', picture: null, hasPicture: true, duration: 300 } })
+    })
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/seek'))
+    await tick(200.2)
+    expect(current().time).toBe(200.2)
+    expect(current().duration).toBe(300)
+  })
+
+  it('keeps a direct link\'s sound and length across the Show switch, and seeks it in place after', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'v1', title: 'Bunny', url: 'https://youtu.be/b', duration: 634 }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, mediaUrl: 'http://127.0.0.1:1/s1', duration: 634 })
+    api.getLinkPicture.mockResolvedValue({ ok: true, link: { kind: 'dash', url: 'http://127.0.0.1:1/v', width: 1920, height: 1080, codec: 'avc1.640028', fps: 24, hasSound: false } })
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://youtu.be/b', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(current().status).toBe('playing'))
+    const clock = { time: 0 }
+    Object.defineProperty(audio, 'currentTime', { get: () => clock.time, set: (value: number) => { clock.time = value }, configurable: true })
+    for (const view of ['visualization', 'video', 'visualization', 'video'] as const)
+    {
+      await act(async () =>
+      {
+        current().setView(view)
+      })
+      clock.time += 3
+      await act(async () =>
+      {
+        audio.dispatchEvent(new Event('timeupdate'))
+      })
+      expect(current().time).toBe(clock.time)
+      expect(current().duration).toBe(634)
+    }
+    expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1')
+    expect(api.getStreamUrl).toHaveBeenCalledTimes(1)
+    await act(async () =>
+    {
+      current().seek(317)
+    })
+    expect(clock.time).toBe(317)
+    expect(current().time).toBe(317)
+  })
+
+  it('never shows the last time of the track it left while the next one loads', async () =>
+  {
+    api.inspectMedia.mockResolvedValue({ ok: true, media: mp4Probe })
+    api.getSoundUrl.mockResolvedValue({ ok: true, url: 'http://127.0.0.1:1/p1' })
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      current().addPaths(['C:/m/a.mp3', 'C:/m/b.mp3'])
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/p1'))
+    Object.defineProperty(audio, 'currentTime', { value: 95, configurable: true, writable: true })
+    let release: (value: unknown) => void = () => undefined
+    api.getSoundUrl.mockImplementation(() => new Promise((resolve) => { release = resolve }))
+    await act(async () =>
+    {
+      current().next()
+    })
+    await act(async () =>
+    {
+      audio.dispatchEvent(new Event('timeupdate'))
+    })
+    expect(current().time).toBe(0)
+    await act(async () =>
+    {
+      release({ ok: true, url: 'http://127.0.0.1:1/p2' })
+    })
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/p2'))
+  })
+
+  it('retries a live stream that stops once with a fresh reading, then says so in plain words', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'L1', title: 'Lofi radio', url: 'https://www.youtube.com/watch?v=L1' }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: true })
+    api.getLinkStream.mockResolvedValue({ ok: true, stream: { live: true, sound: 'http://127.0.0.1:1/s', picture: null, hasPicture: false, duration: null } })
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://www.youtube.com/watch?v=L1', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(current().status).toBe('playing'))
+    expect(current().picture).toBe('none')
+    Object.defineProperty(audio, 'error', { value: { code: 4, message: 'DEMUXER_ERROR_COULD_NOT_OPEN' }, configurable: true })
+    await act(async () =>
+    {
+      audio.dispatchEvent(new Event('error'))
+    })
+    await waitFor(() => expect(api.getLinkStream).toHaveBeenLastCalledWith('https://www.youtube.com/watch?v=L1', expect.objectContaining({ fresh: true, at: null })))
+    await act(async () =>
+    {
+      audio.dispatchEvent(new Event('error'))
+    })
+    await waitFor(() => expect(current().problem?.message).toContain('This live stream could not be played'))
+    expect(api.getStreamUrl).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), { download: true })
+  })
+
+  it('says a live stream that cannot start could not be played, without downloading', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'L1', title: 'News', url: 'https://news.example/live' }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: true })
+    api.getLinkStream.mockResolvedValue({ ok: false, error: 'HTTP error 403 Forbidden' })
+    render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://news.example/live', 'site')
+    })
+    await waitFor(() => expect(current().problem).toEqual({ message: expect.stringContaining('This live stream could not be played'), detail: 'HTTP error 403 Forbidden' }))
+    expect(current().status).toBe('paused')
+    expect(api.getStreamUrl).toHaveBeenCalledTimes(1)
+  })
+
+  it('streams an HLS-only recording, seeks by restarting the stream, and falls back to the download', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'v1', title: 'Talk', url: 'https://vimeo.example/1' }] })
+    api.getStreamUrl
+      .mockResolvedValueOnce({ success: true, streamed: true, live: false, duration: 300 })
+      .mockResolvedValueOnce({ success: true, mediaUrl: 'http://127.0.0.1:1/file', downloaded: true })
+    api.getLinkStream
+      .mockResolvedValueOnce({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/s1', picture: null, hasPicture: false, duration: 300 } })
+      .mockResolvedValueOnce({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/s2', picture: null, hasPicture: false, duration: 300 } })
+      .mockResolvedValueOnce({ ok: false, error: 'HTTP error 410' })
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://vimeo.example/1', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1'))
+    expect(current().duration).toBe(300)
+    expect(current().live).toBe(false)
+    await act(async () =>
+    {
+      current().seek(500)
+    })
+    await waitFor(() => expect(api.getLinkStream).toHaveBeenLastCalledWith('https://vimeo.example/1', expect.objectContaining({ at: 299, sound: true })))
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s2'))
+    expect(current().time).toBe(299)
+    await act(async () =>
+    {
+      current().seek(120)
+    })
+    await waitFor(() => expect(api.getStreamUrl).toHaveBeenLastCalledWith('https://vimeo.example/1', 'best', { download: true }))
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/file'))
+    expect(current().soundNote).toContain('downloaded first')
+  })
+
+  it('draws a picture subtitle on the decode route, and returns to the cheapest route without it', async () =>
+  {
+    const subtitled = {
+      ...mp4Probe,
+      path: 'C:/clips/s.mkv',
+      container: 'matroska,webm',
+      streams: [
+        mp4Probe.streams[0],
+        mp4Probe.streams[1],
+        { ...mp4Probe.streams[1], index: 2, kind: 'subtitle', codec: 'hdmv_pgs_subtitle', width: 1920, height: 1080, channels: null, sampleRate: null, layout: null },
+        { ...mp4Probe.streams[1], index: 3, kind: 'subtitle', codec: 'subrip', width: null, height: null, channels: null, sampleRate: null, layout: null }
+      ]
+    }
+    api.inspectMedia.mockResolvedValue({ ok: true, media: subtitled })
+    api.getSoundUrl.mockResolvedValue({ ok: true, url: 'http://127.0.0.1:1/p1' })
+    api.getPictureUrl.mockResolvedValue({ ok: true, picture: { url: 'http://127.0.0.1:1/v', live: false, offset: 0, encoder: null } })
+    render(<Harness />)
+    await act(async () =>
+    {
+      current().addPaths(['C:/clips/s.mkv'])
+    })
+    await waitFor(() => expect(api.getPictureUrl).toHaveBeenCalledWith('C:/clips/s.mkv', 0, 'direct', 0, expect.objectContaining({ subtitle: null })))
+    await act(async () =>
+    {
+      current().selectSubtitles(2)
+    })
+    await waitFor(() => expect(api.getPictureUrl).toHaveBeenLastCalledWith('C:/clips/s.mkv', 0, 'convert', 0, expect.objectContaining({ subtitle: { streamIndex: 2, scaleTo: { width: 1280, height: 720 } } })))
+    expect(api.getSubtitles).not.toHaveBeenCalled()
+    const calls = api.getPictureUrl.mock.calls.length
+    await act(async () =>
+    {
+      current().selectSubtitles(3)
+    })
+    await waitFor(() => expect(api.getSubtitles).toHaveBeenCalledWith('C:/clips/s.mkv', 3))
+    expect(api.getPictureUrl.mock.calls.length).toBe(calls + 1)
+    expect(api.getPictureUrl).toHaveBeenLastCalledWith('C:/clips/s.mkv', 0, 'direct', 0, expect.objectContaining({ subtitle: null }))
+    await act(async () =>
+    {
+      current().selectSubtitles(null)
+    })
+    expect(api.getPictureUrl.mock.calls.length).toBe(calls + 1)
   })
 
   it('carries its state to the pop-out and reads it back', async () =>

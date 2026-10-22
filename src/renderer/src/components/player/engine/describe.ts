@@ -3,7 +3,7 @@
  * information sections, each a plain sentence first with the technical values folded under it.
  */
 
-import { audioTracks, codecName, pictureStream, type PictureReason, type PlayerMedia, type PlayerStream, type PlayRoute, type SoundPlan } from '../../../../../shared/player/media'
+import { audioTracks, codecName, isImageSubtitle, pictureStream, type PictureReason, type PlayerMedia, type PlayerStream, type PlayRoute, type SoundPlan } from '../../../../../shared/player/media'
 import { getExt, type Track } from '../types'
 
 const SEP = ' · '
@@ -190,15 +190,14 @@ export function audioTrackName(stream: PlayerStream, position: number): string
   return `${name} (${codecName(stream.codec)}, ${channelWords(stream.channels, stream.layout)})`
 }
 
-/** A subtitle track's menu name: its title, else its language, else "Subtitles N". */
+/** A subtitle track's menu name: its title, else its language, else "Subtitles N"; picture subtitles say so. */
 export function subtitleTrackName(stream: PlayerStream, position: number): string
 {
   const language = languageName(stream.language)
-  if (stream.title !== null)
-  {
-    return language !== null && !stream.title.includes(language) ? `${stream.title} (${language})` : stream.title
-  }
-  return language ?? `Subtitles ${position + 1}`
+  const name = stream.title !== null
+    ? language !== null && !stream.title.includes(language) ? `${stream.title} (${language})` : stream.title
+    : language ?? `Subtitles ${position + 1}`
+  return isImageSubtitle(stream.codec) ? `${name}, picture` : name
 }
 
 function hostOf(url: string): string
@@ -219,7 +218,12 @@ export function trackFacts(track: Track, audioIndex = track.audioIndex ?? 0): st
   if (track.videoUrl !== undefined)
   {
     const host = hostOf(track.videoUrl)
-    return host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com' ? 'YouTube link' : `Link from ${host}`
+    const youtube = host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com'
+    if (track.live === true)
+    {
+      return youtube ? 'YouTube live stream' : `Live stream from ${host}`
+    }
+    return youtube ? 'YouTube link' : `Link from ${host}`
   }
   if (track.filePath === undefined)
   {
@@ -268,7 +272,8 @@ const PICTURE_REASONS: Readonly<Record<PictureReason, (codec: string, container:
 {
   container: (_codec, container) => `repackaged into Matroska without changing the picture, because Chromium does not read ${container} files`,
   codec: (codec) => `decoded by FFmpeg, because Chromium has no decoder for ${codec}`,
-  machine: (codec) => `decoded by FFmpeg, because Chromium on this computer cannot decode this ${codec} stream`
+  machine: (codec) => `decoded by FFmpeg, because Chromium on this computer cannot decode this ${codec} stream`,
+  subtitles: () => 'decoded by FFmpeg to show image subtitles'
 }
 
 /** How the picture plays, as a sentence, naming the encoder that hands a decoded picture to Chromium. */

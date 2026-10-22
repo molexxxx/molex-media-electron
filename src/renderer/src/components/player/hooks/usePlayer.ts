@@ -1,12 +1,13 @@
 /**
  * The player's engine: one audio element as the clock and the sound, one muted video element following it, the
  * audio graph the visualizations read, the playlist, and the session choices. Local files are probed and played the
- * cheapest way; links resolve through yt-dlp; the state moves to and from the pop-out window whole.
+ * cheapest way; links resolve through yt-dlp, and a live or HLS-only link streams through FFmpeg with its sound and
+ * picture on the stream's own clock; the state moves to and from the pop-out window whole.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import type { LinkProgress, VideoCodecFamily } from '../../../../../shared/ipc/api'
-import { audioTracks, pictureStream, planPicture, textSubtitles, type PlayerMedia, type PlayRoute } from '../../../../../shared/player/media'
+import type { LinkProgress, LinkStream, PictureSubtitle, PlayerResult, VideoCodecFamily } from '../../../../../shared/ipc/api'
+import { audioTracks, pictureStream, pictureWithSubtitles, planPicture, textSubtitles, type PicturePlan, type PlayerMedia, type PlayRoute } from '../../../../../shared/player/media'
 import { PLAYER_COPY } from '../copy'
 import type { GridMoveTo } from '../../../ui/DataGrid'
 import type { VisMode } from '../../../visualizations/types'
@@ -14,7 +15,7 @@ import { pictureVerdict } from '../engine/decode'
 import { describeLinkError, pictureHeightFor, type LinkFailure, type PictureQuality, type SoundQuality } from '../engine/links'
 import { afterEnd, dropTracks, moveTracks, nextRepeat, stepTrack, type RepeatMode } from '../engine/queue'
 import { portableTracks, readSnapshot, type PlayerSnapshot, type StageView } from '../engine/snapshot'
-import { PictureFollower, type FollowSource } from '../engine/sync'
+import { PictureFollower, whenPlayable, type FollowSource } from '../engine/sync'
 import { cueTextAt, parseVtt, type Cue } from '../engine/vtt'
 import { getExt, isMediaPath, trackFromPath, VIDEO_EXTS, type Track } from '../types'
 
@@ -35,6 +36,34 @@ export const MAX_CONSECUTIVE_SKIPS = 5
 
 /** Previous restarts the track instead when it has played longer than this, in seconds. */
 export const RESTART_AFTER = 3
+
+/** How long a stream's sound waits for its picture to be ready, so both start together, in ms. */
+export const PICTURE_WAIT_MS = 8000
+
+/** A stream's picture restarts at most this many times a minute before the visualization takes over. */
+export const MAX_PICTURE_RESTARTS = 5
+
+/**
+ * How far ahead of the sound a stream's picture joins when Video is chosen, in seconds: FFmpeg takes about this long
+ * to start, and a picture that arrives ahead waits on its first frame for the sound, which never stops.
+ */
+export const PICTURE_JOIN_LEAD = 2
+
+/** A link streamed through FFmpeg: its page, whether it is live, and the picture its session carries. */
+interface StreamState
+{
+  trackId: string
+  pageUrl: string
+  live: boolean
+  /** The stream clock when a live stream's sound first played, so the transport counts from joining. */
+  base: number | null
+  /** The picture of the current sound session, until the follower takes it; each URL plays once. */
+  picture: FollowSource | null
+  /** True when the link offers a picture at all. */
+  hasPicture: boolean
+  /** When the picture last restarted, for the limit on restarts. */
+  pictureRestarts: number[]
+}
 
 /** What a lookup of a site link reports to the Add link popover. */
 export type LinkOutcome = { ok: true, count: number } | { ok: false, problem: PlayerProblem }
@@ -75,6 +104,8 @@ export interface PlayerEngine
   poppedOut: boolean
   /** True when the current source has, or may have, a picture to show. */
   canShowPicture: boolean
+  /** True while a live stream plays: the position counts from joining and cannot be moved. */
+  live: boolean
   addPaths(paths: readonly string[], options?: { play?: boolean }): number
   addLink(url: string, kind: 'site' | 'file'): Promise<LinkOutcome>
   playId(id: string): void
@@ -155,11 +186,44 @@ export function linkProgressLabel(progress: Pick<LinkProgress, 'stage' | 'percen
   return PLAYER_COPY.gettingPicture
 }
 
-/** What a picture FFmpeg decodes is sized and encoded for. */
-function pictureOptions(media: PlayerMedia | null, software: boolean): { width: number, height: number, fps: number | null, software: boolean }
+/** What a picture FFmpeg decodes is sized and encoded for, with the picture subtitle it draws. */
+function pictureOptions(media: PlayerMedia | null, software: boolean, subtitle: PictureSubtitle | null = null): { width: number, height: number, fps: number | null, software: boolean, subtitle: PictureSubtitle | null }
 {
   const stream = media === null ? null : pictureStream(media.streams)
-  return { ...displayBox(), fps: stream?.frameRate ?? null, software }
+  return { ...displayBox(), fps: stream?.frameRate ?? null, software, subtitle }
+}
+
+/** The picture subtitle a plan draws, scaled to the picture when the subtitle's canvas has another size; null for none. */
+export function pictureSubtitleFor(media: PlayerMedia | null, plan: PicturePlan | null): PictureSubtitle | null
+{
+  if (media === null || plan === null || plan.subtitleIndex === undefined)
+  {
+    return null
+  }
+  const subtitle = media.streams.find((stream) => stream.index === plan.subtitleIndex)
+  const picture = media.streams.find((stream) => stream.index === plan.streamIndex)
+  const canvas = subtitle !== undefined && subtitle.width !== null && subtitle.height !== null ? { width: subtitle.width, height: subtitle.height } : null
+  const size = picture !== undefined && picture.width !== null && picture.height !== null ? { width: picture.width, height: picture.height } : null
+  const differs = canvas !== null && size !== null && (canvas.width !== size.width || canvas.height !== size.height)
+  return { streamIndex: plan.subtitleIndex, scaleTo: differs ? size : null }
+}
+
+/** The plan the picture plays by with the chosen subtitle. */
+function shownPlan(media: PlayerMedia | null | undefined, subtitleIndex: number | null): PicturePlan | null
+{
+  return media ? pictureWithSubtitles(media.picture, media.streams, subtitleIndex) : null
+}
+
+/** A new stream state for an opened session of a link. */
+function startStream(trackId: string, pageUrl: string, stream: LinkStream): StreamState
+{
+  return { trackId, pageUrl, live: stream.live, base: null, picture: stream.picture, hasPicture: stream.hasPicture, pictureRestarts: [] }
+}
+
+/** True when two plans play the picture the same way. */
+function samePlan(a: PicturePlan | null, b: PicturePlan | null): boolean
+{
+  return a?.route === b?.route && a?.subtitleIndex === b?.subtitleIndex
 }
 
 /** What the player says while it readies a file's sound. */
@@ -244,6 +308,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
   const [subtitleIndex, setSubtitleIndex] = useState<number | null>(null)
   const [subtitleText, setSubtitleText] = useState('')
   const [poppedOut, setPoppedOut] = useState(false)
+  const [live, setLive] = useState(false)
 
   const tracksRef = useRef<Track[]>([])
   const currentRef = useRef<string | null>(null)
@@ -265,6 +330,11 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
   const softwareRef = useRef(false)
   const codecsRef = useRef<VideoCodecFamily[] | null>(null)
   const linkPictureRef = useRef<{ pageUrl: string, kind: 'progressive' | 'dash' | 'download' } | null>(null)
+  const streamRef = useRef<StreamState | null>(null)
+  const sessionRef = useRef(0)
+  /** The sound source the clock reads; null while a new one is chosen, so the old source's last times are ignored. */
+  const clockSrcRef = useRef<string | null>(null)
+  const streamPictureRef = useRef<(at: number) => Promise<void>>(async () => undefined)
 
   repeatRef.current = repeat
   shuffleRef.current = shuffle
@@ -287,6 +357,30 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
   }, [commitTracks])
 
   const clockTime = useCallback((): number => audioRef.current?.currentTime ?? 0, [])
+
+  /** True while the current track plays through a stream session. */
+  const streamed = useCallback((): StreamState | null =>
+  {
+    const state = streamRef.current
+    return state !== null && state.trackId === currentRef.current ? state : null
+  }, [])
+
+  /** Opens a stream session for a link: its sound, its picture, or both, from `at` on. */
+  const requestStream = useCallback((pageUrl: string, at: number | null, parts: { sound: boolean, picture: boolean }, fresh = false): Promise<PlayerResult<'stream'>> =>
+  {
+    const screenRows = Math.round((window.screen?.height ?? 1080) * (window.devicePixelRatio || 1))
+    codecsRef.current ??= linkCodecs()
+    return window.api.getLinkStream(pageUrl, {
+      at,
+      sound: parts.sound,
+      picture: parts.picture,
+      soundQuality: soundQualityRef.current,
+      maxHeight: pictureHeightFor(pictureQualityRef.current, screenRows),
+      codecs: codecsRef.current,
+      display: { ...displayBox(), software: softwareRef.current },
+      fresh
+    })
+  }, [])
 
   const ensureGraph = useCallback((): void =>
   {
@@ -399,18 +493,38 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       setPicture('none')
       return
     }
+    const stream = streamRef.current !== null && streamRef.current.trackId === track.id ? streamRef.current : null
+    if (stream !== null && !stream.hasPicture)
+    {
+      setPicture('none')
+      return
+    }
     if (viewRef.current !== 'video')
     {
       setPicture('hidden')
       return
     }
     setPicture('loading')
+    if (stream !== null)
+    {
+      const ready = stream.picture
+      stream.picture = null
+      if (ready === null)
+      {
+        const playing = !(audioRef.current?.paused ?? true)
+        void streamPictureRef.current(clockTime() + (playing ? PICTURE_JOIN_LEAD : 0))
+        return
+      }
+      setPictureEncoder(ready.encoder ?? null)
+      follower.load(ready)
+      return
+    }
     let source: FollowSource | null = null
     let note: string | null = null
     if (track.filePath !== undefined && media?.picture)
     {
-      const plan = media.picture
-      const result = await window.api.getPictureUrl(track.filePath, plan.streamIndex, plan.route, plan.route === 'convert' ? clockTime() : 0, pictureOptions(media, softwareRef.current))
+      const plan = shownPlan(media, subtitleRef.current) as PicturePlan
+      const result = await window.api.getPictureUrl(track.filePath, plan.streamIndex, plan.route, plan.route === 'convert' ? clockTime() : 0, pictureOptions(media, softwareRef.current, pictureSubtitleFor(media, plan)))
       source = result.ok ? result.picture : null
       if (result.ok)
       {
@@ -462,6 +576,8 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
   const stopElements = useCallback((): void =>
   {
     const audio = audioRef.current
+    streamRef.current = null
+    clockSrcRef.current = null
     followerRef.current?.clear()
     if (audio)
     {
@@ -506,6 +622,8 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     const token = ++tokenRef.current
     currentRef.current = id
     setCurrentId(id)
+    streamRef.current = null
+    setLive(track.live === true)
     if (!options.keepProblem)
     {
       setProblem(null)
@@ -522,6 +640,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     followerRef.current?.clear()
     setPicture('none')
     setPictureNote(null)
+    clockSrcRef.current = null
     audio.pause()
     setStatus('loading')
     setLoadingSince(Date.now())
@@ -573,7 +692,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
         {
           return
         }
-        if (!result.success || !result.mediaUrl)
+        if (!result.success || (!result.mediaUrl && result.streamed !== true))
         {
           setProblem(describeLinkError(result.error))
           setLoadingLabel(null)
@@ -581,12 +700,47 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
           skipAfterFailure(track.id)
           return
         }
-        url = result.mediaUrl
-        setSoundNote(options.download ? PLAYER_COPY.soundDownloaded : null)
-        if (typeof result.duration === 'number' && !track.duration)
+        if (result.streamed === true && !options.download)
         {
-          patchTrack(track.id, { duration: result.duration })
-          setDuration(result.duration)
+          const isLive = result.live === true
+          setLive(isLive)
+          patchTrack(track.id, { live: isLive, ...(typeof result.duration === 'number' && !isLive && !track.duration ? { duration: result.duration } : {}) })
+          if (typeof result.duration === 'number' && !isLive)
+          {
+            setDuration(result.duration)
+          }
+          setLoadingLabel(isLive ? PLAYER_COPY.startingLive : PLAYER_COPY.startingStream)
+          const opened = await requestStream(track.videoUrl, isLive ? null : options.at ?? null, { sound: true, picture: viewRef.current === 'video' })
+          if (tokenRef.current !== token)
+          {
+            return
+          }
+          if (!opened.ok || opened.stream.sound === null)
+          {
+            if (isLive)
+            {
+              setProblem({ message: PLAYER_COPY.liveFailed, detail: opened.ok ? null : opened.error })
+              setLoadingLabel(null)
+              setLoadingSince(null)
+              skipAfterFailure(track.id)
+              return
+            }
+            void playTrackRef.current(id, { ...options, download: true })
+            return
+          }
+          streamRef.current = startStream(track.id, track.videoUrl, opened.stream)
+          pendingSeekRef.current = null
+          url = opened.stream.sound
+        }
+        else
+        {
+          url = result.mediaUrl ?? ''
+          setSoundNote(options.download ? PLAYER_COPY.soundDownloaded : null)
+          if (typeof result.duration === 'number' && !track.duration)
+          {
+            patchTrack(track.id, { duration: result.duration })
+            setDuration(result.duration)
+          }
         }
       }
       if (tokenRef.current !== token)
@@ -608,8 +762,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       audio.volume = volumeRef.current
       audio.muted = mutedRef.current
       ensureGraph()
+      clockSrcRef.current = url
       audio.src = url
       void loadSubtitles(track, media, subtitleRef.current, token)
+      const pictureFirst = streamRef.current?.trackId === track.id && streamRef.current.picture !== null && viewRef.current === 'video'
       void startPicture(track, media, token)
       if (options.paused)
       {
@@ -617,6 +773,14 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
         setLoadingLabel(null)
         setLoadingSince(null)
         return
+      }
+      if (pictureFirst && videoRef.current !== null)
+      {
+        await whenPlayable(videoRef.current, PICTURE_WAIT_MS)
+        if (tokenRef.current !== token)
+        {
+          return
+        }
       }
       await audio.play()
       if (tokenRef.current === token)
@@ -636,11 +800,152 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       setLoadingLabel(null)
       setLoadingSince(null)
       setStatus('paused')
+      if (streamRef.current?.trackId === track.id)
+      {
+        return
+      }
       setProblem((previous) => previous ?? fileProblem(errorText(err)))
     }
-  }, [ensureGraph, inspectTrack, loadSubtitles, patchTrack, skipAfterFailure, startPicture])
+  }, [ensureGraph, inspectTrack, loadSubtitles, patchTrack, requestStream, skipAfterFailure, startPicture])
 
   playTrackRef.current = playTrack
+
+  /**
+   * Opens a new session for the current stream from `at` (a recording) or its live edge: the sound, and the picture
+   * when the Video view shows it. A recording that fails falls back to the download from the same point.
+   */
+  const restartStream = useCallback(async (at: number | null, options: { play: boolean, fresh?: boolean }): Promise<void> =>
+  {
+    const stream = streamed()
+    const audio = audioRef.current
+    if (stream === null || audio === null)
+    {
+      return
+    }
+    const token = tokenRef.current
+    const session = ++sessionRef.current
+    const wantPicture = viewRef.current === 'video' && stream.hasPicture
+    const start = stream.live ? null : Math.max(0, at ?? 0)
+    setStatus('loading')
+    setLoadingSince(Date.now())
+    setLoadingLabel(stream.live ? PLAYER_COPY.startingLive : PLAYER_COPY.startingStream)
+    followerRef.current?.clear()
+    setPicture(wantPicture ? 'loading' : stream.hasPicture ? 'hidden' : 'none')
+    setPictureNote(null)
+    clockSrcRef.current = null
+    audio.pause()
+    if (start !== null)
+    {
+      setTime(start)
+    }
+    const opened = await requestStream(stream.pageUrl, start, { sound: true, picture: wantPicture }, options.fresh === true)
+    if (tokenRef.current !== token || sessionRef.current !== session)
+    {
+      return
+    }
+    if (!opened.ok || opened.stream.sound === null)
+    {
+      setLoadingLabel(null)
+      setLoadingSince(null)
+      setStatus('paused')
+      if (stream.live)
+      {
+        setProblem({ message: PLAYER_COPY.liveFailed, detail: opened.ok ? null : opened.error })
+        return
+      }
+      streamRef.current = null
+      void playTrackRef.current(stream.trackId, { at: start ?? 0, download: true, paused: !options.play })
+      return
+    }
+    stream.picture = null
+    clockSrcRef.current = opened.stream.sound
+    audio.src = opened.stream.sound
+    const picture = opened.stream.picture
+    if (picture !== null && wantPicture)
+    {
+      setPictureEncoder(picture.encoder)
+      followerRef.current?.load(picture)
+    }
+    if (!options.play)
+    {
+      setStatus('paused')
+      setLoadingLabel(null)
+      setLoadingSince(null)
+      return
+    }
+    if (picture !== null && wantPicture && videoRef.current !== null)
+    {
+      await whenPlayable(videoRef.current, PICTURE_WAIT_MS)
+    }
+    if (tokenRef.current !== token || sessionRef.current !== session)
+    {
+      return
+    }
+    try
+    {
+      await audio.play()
+      if (tokenRef.current === token && sessionRef.current === session)
+      {
+        setStatus('playing')
+      }
+    }
+    catch
+    {
+      if (tokenRef.current === token && sessionRef.current === session)
+      {
+        setStatus('paused')
+      }
+    }
+    finally
+    {
+      if (tokenRef.current === token && sessionRef.current === session)
+      {
+        setLoadingLabel(null)
+        setLoadingSince(null)
+      }
+    }
+  }, [requestStream, streamed])
+
+  /**
+   * Starts the current stream's picture again on its own session, trimmed to `at` on the sound's clock, so it joins
+   * the sound wherever it is; after too many restarts in a minute the visualization takes over.
+   */
+  const restartStreamPicture = useCallback(async (at: number): Promise<void> =>
+  {
+    const stream = streamed()
+    if (stream === null || viewRef.current !== 'video' || !stream.hasPicture)
+    {
+      return
+    }
+    const now = performance.now()
+    stream.pictureRestarts = stream.pictureRestarts.filter((when) => now - when < 60_000)
+    if (stream.pictureRestarts.length >= MAX_PICTURE_RESTARTS)
+    {
+      followerRef.current?.clear()
+      setPicture('failed')
+      setPictureNote(PLAYER_COPY.pictureBehind)
+      return
+    }
+    stream.pictureRestarts.push(now)
+    const token = tokenRef.current
+    const session = sessionRef.current
+    const opened = await requestStream(stream.pageUrl, Math.max(0, at), { sound: false, picture: true })
+    if (tokenRef.current !== token || sessionRef.current !== session || viewRef.current !== 'video')
+    {
+      return
+    }
+    if (!opened.ok || opened.stream.picture === null)
+    {
+      followerRef.current?.clear()
+      setPicture('failed')
+      setPictureNote(PLAYER_COPY.pictureFailed)
+      return
+    }
+    setPictureEncoder(opened.stream.picture.encoder)
+    followerRef.current?.load(opened.stream.picture)
+  }, [requestStream, streamed])
+
+  streamPictureRef.current = restartStreamPicture
 
   useEffect(() =>
   {
@@ -655,16 +960,21 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       rate: () => audioRef.current?.playbackRate ?? 1
     }, (at) =>
     {
+      if (streamRef.current !== null && streamRef.current.trackId === currentRef.current)
+      {
+        void streamPictureRef.current(at)
+        return
+      }
       const track = tracksRef.current.find((candidate) => candidate.id === currentRef.current)
-      const plan = track?.media?.picture
+      const plan = shownPlan(track?.media, subtitleRef.current)
       if (!track?.filePath || !plan || plan.route !== 'convert')
       {
         return
       }
       const token = tokenRef.current
-      void window.api.getPictureUrl(track.filePath, plan.streamIndex, 'convert', at, pictureOptions(track.media ?? null, softwareRef.current)).then((result) =>
+      void window.api.getPictureUrl(track.filePath, plan.streamIndex, 'convert', at, pictureOptions(track.media ?? null, softwareRef.current, pictureSubtitleFor(track.media ?? null, plan))).then((result) =>
       {
-        if (tokenRef.current === token && result.ok && viewRef.current === 'video')
+        if (tokenRef.current === token && result.ok && viewRef.current === 'video' && samePlan(shownPlan(track.media, subtitleRef.current), plan))
         {
           setPictureEncoder(result.picture.encoder)
           follower.load(result.picture)
@@ -687,8 +997,21 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
         return
       }
       const track = tracksRef.current.find((candidate) => candidate.id === currentRef.current)
-      const plan = track?.media?.picture
+      const plan = shownPlan(track?.media, subtitleRef.current)
       const link = linkPictureRef.current
+      if (source.shared === true && streamRef.current !== null && streamRef.current.trackId === track?.id)
+      {
+        if (source.encoder !== null && source.encoder !== undefined && source.encoder !== 'libx264' && !softwareRef.current)
+        {
+          softwareRef.current = true
+          void streamPictureRef.current(clockTime())
+          return
+        }
+        follower.clear()
+        setPicture('failed')
+        setPictureNote(PLAYER_COPY.pictureStopped)
+        return
+      }
       if (track?.videoUrl !== undefined && link !== null && link.pageUrl === track.videoUrl && link.kind !== 'download')
       {
         linkPictureRef.current = { pageUrl: track.videoUrl, kind: 'download' }
@@ -719,7 +1042,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       {
         softwareRef.current = true
         const token = tokenRef.current
-        void window.api.getPictureUrl(track.filePath, plan.streamIndex, 'convert', clockTime(), pictureOptions(track.media ?? null, true)).then((result) =>
+        void window.api.getPictureUrl(track.filePath, plan.streamIndex, 'convert', clockTime(), pictureOptions(track.media ?? null, true, pictureSubtitleFor(track.media ?? null, plan))).then((result) =>
         {
           if (tokenRef.current === token && result.ok)
           {
@@ -754,6 +1077,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     const follow = (): void => followerRef.current?.follow()
     const onMetadata = (): void =>
     {
+      if (streamed() !== null)
+      {
+        return
+      }
       if (Number.isFinite(audio.duration) && audio.duration > 0)
       {
         setDuration(audio.duration)
@@ -772,7 +1099,21 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     }
     const onTime = (): void =>
     {
-      if (!seekingRef.current)
+      if (clockSrcRef.current === null || audio.getAttribute('src') !== clockSrcRef.current)
+      {
+        return
+      }
+      const stream = streamed()
+      if (stream !== null && audio.readyState < 2)
+      {
+        return
+      }
+      if (stream?.live === true)
+      {
+        stream.base ??= audio.currentTime
+        setTime(Math.max(0, audio.currentTime - stream.base))
+      }
+      else if (!seekingRef.current)
       {
         setTime(audio.currentTime)
       }
@@ -791,7 +1132,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     const onSeeked = (): void =>
     {
       seekingRef.current = false
-      setTime(audio.currentTime)
+      if (clockSrcRef.current !== null && audio.getAttribute('src') === clockSrcRef.current)
+      {
+        setTime(audio.currentTime)
+      }
       follow()
     }
     const onPlay = (): void =>
@@ -819,6 +1163,11 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       }
       if (next === currentRef.current)
       {
+        if (streamed() !== null)
+        {
+          void restartStream(0, { play: true })
+          return
+        }
         audio.currentTime = 0
         void audio.play()
         return
@@ -836,6 +1185,22 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       const track = tracksRef.current.find((candidate) => candidate.id === id)
       if (!track)
       {
+        return
+      }
+      if (streamed()?.live === true)
+      {
+        if (retriedRef.current !== id)
+        {
+          retriedRef.current = id
+          void restartStream(null, { play: true, fresh: true })
+          return
+        }
+        retriedRef.current = null
+        setLoadingLabel(null)
+        setLoadingSince(null)
+        setStatus('paused')
+        setProblem({ message: PLAYER_COPY.liveFailed, detail: audio.error?.message || null })
+        skipAfterFailure(id)
         return
       }
       if (retriedRef.current !== id && (track.videoUrl !== undefined || track.filePath !== undefined))
@@ -882,7 +1247,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
         audio.removeEventListener(name, listener)
       }
     }
-  }, [patchTrack, skipAfterFailure])
+  }, [patchTrack, restartStream, skipAfterFailure, streamed])
 
   useEffect(() => () =>
   {
@@ -992,6 +1357,11 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     {
       void ctxRef.current.resume()
     }
+    if (audio.ended && streamed() !== null)
+    {
+      void restartStream(0, { play: true })
+      return
+    }
     if (audio.paused)
     {
       void audio.play().catch(() => undefined)
@@ -1000,26 +1370,11 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     {
       audio.pause()
     }
-  }, [playId])
+  }, [playId, restartStream, streamed])
 
   const next = useCallback((): void =>
   {
     const target = stepTrack(tracksRef.current.map((track) => track.id), currentRef.current, 1, shuffleRef.current)
-    if (target !== null)
-    {
-      playId(target)
-    }
-  }, [playId])
-
-  const previous = useCallback((): void =>
-  {
-    const audio = audioRef.current
-    if (audio && audio.currentTime > RESTART_AFTER)
-    {
-      audio.currentTime = 0
-      return
-    }
-    const target = stepTrack(tracksRef.current.map((track) => track.id), currentRef.current, -1, shuffleRef.current)
     if (target !== null)
     {
       playId(target)
@@ -1033,11 +1388,47 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     {
       return
     }
+    const stream = streamed()
+    if (stream !== null)
+    {
+      if (stream.live)
+      {
+        return
+      }
+      const length = tracksRef.current.find((track) => track.id === stream.trackId)?.duration ?? null
+      const target = Math.max(0, length !== null && length > 1 ? Math.min(seconds, length - 1) : seconds)
+      setTime(target)
+      void restartStream(target, { play: !audio.paused })
+      return
+    }
     const end = Number.isFinite(audio.duration) ? audio.duration : Number.POSITIVE_INFINITY
     const target = Math.max(0, Math.min(seconds, Math.max(0, end - 0.05)))
     setTime(target)
     audio.currentTime = target
-  }, [])
+  }, [restartStream, streamed])
+
+  const previous = useCallback((): void =>
+  {
+    const audio = audioRef.current
+    const stream = streamed()
+    if (audio && audio.currentTime > RESTART_AFTER && stream?.live !== true)
+    {
+      if (stream !== null)
+      {
+        seek(0)
+      }
+      else
+      {
+        audio.currentTime = 0
+      }
+      return
+    }
+    const target = stepTrack(tracksRef.current.map((track) => track.id), currentRef.current, -1, shuffleRef.current)
+    if (target !== null)
+    {
+      playId(target)
+    }
+  }, [playId, seek, streamed])
 
   const seekBy = useCallback((delta: number): void =>
   {
@@ -1111,9 +1502,16 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     const track = tracksRef.current.find((candidate) => candidate.id === currentRef.current)
     if (track?.videoUrl !== undefined && viewRef.current === 'video')
     {
+      if (streamed() !== null)
+      {
+        followerRef.current?.clear()
+        setPicture('loading')
+        void restartStreamPicture(clockTime())
+        return
+      }
       void startPicture(track, null, tokenRef.current)
     }
-  }, [startPicture])
+  }, [clockTime, restartStreamPicture, startPicture, streamed])
 
   const selectAudio = useCallback((index: number): void =>
   {
@@ -1132,14 +1530,21 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
 
   const selectSubtitles = useCallback((streamIndex: number | null): void =>
   {
+    const before = subtitleRef.current
     subtitleRef.current = streamIndex
     setSubtitleIndex(streamIndex)
     const track = tracksRef.current.find((candidate) => candidate.id === currentRef.current)
-    if (track)
+    if (!track)
     {
-      void loadSubtitles(track, track.media ?? null, streamIndex, tokenRef.current)
+      return
     }
-  }, [loadSubtitles])
+    const media = track.media ?? null
+    void loadSubtitles(track, media, streamIndex, tokenRef.current)
+    if (media?.picture && viewRef.current === 'video' && !samePlan(shownPlan(media, before), shownPlan(media, streamIndex)))
+    {
+      void startPicture(track, media, tokenRef.current)
+    }
+  }, [loadSubtitles, startPicture])
 
   const removeIds = useCallback((ids: readonly string[]): void =>
   {
@@ -1161,6 +1566,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       setStatus('idle')
       setTime(0)
       setDuration(0)
+      setLive(false)
       setPicture('none')
       setLoadingLabel(null)
       setLoadingSince(null)
@@ -1337,6 +1743,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     subtitleText,
     poppedOut,
     canShowPicture,
+    live,
     addPaths,
     addLink,
     playId,

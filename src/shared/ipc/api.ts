@@ -242,15 +242,56 @@ export interface PictureSource
   offset: number
   /** The encoder of a picture FFmpeg decodes, such as h264_nvenc or libx264; null when Chromium reads the stream itself. */
   encoder: string | null
+  /** True when the picture carries the sound's own clock, as a link stream's picture does, so its times compare as they are. */
+  shared?: boolean
 }
 
-/** How a picture FFmpeg decodes is sized and encoded: the display in physical pixels, the frame rate, and software only after a hardware failure. */
+/** A picture subtitle FFmpeg draws onto a decoded picture, scaled to the picture's size when its canvas differs. */
+export interface PictureSubtitle
+{
+  streamIndex: number
+  scaleTo: { width: number, height: number } | null
+}
+
+/** How a picture FFmpeg decodes is sized and encoded: the display in physical pixels, the frame rate, software only after a hardware failure, and the picture subtitle drawn onto it. */
 export interface PictureOptions
 {
   width?: number
   height?: number
   fps?: number | null
   software?: boolean
+  subtitle?: PictureSubtitle | null
+}
+
+/** What a link stream session plays: from where, which parts, and at what qualities. */
+export interface LinkStreamRequest
+{
+  /**
+   * Where to start: content seconds for a recording, or the stream clock a live picture restarts from; null starts
+   * a recording at its beginning and a live stream at its live edge.
+   */
+  at: number | null
+  sound: boolean
+  picture: boolean
+  soundQuality: 'best' | 'good' | 'low'
+  /** The tallest picture the session takes. */
+  maxHeight: number
+  /** The video codec families the renderer's Chromium decodes; any other picture is decoded by FFmpeg. */
+  codecs: VideoCodecFamily[]
+  display?: PictureOptions
+  /** Reads the link with yt-dlp again rather than reusing its last reading, after a session failed. */
+  fresh?: boolean
+}
+
+/** A link streamed through FFmpeg: its sound and picture URLs on one clock, whether it is live, and its length when known. */
+export interface LinkStream
+{
+  live: boolean
+  sound: string | null
+  picture: PictureSource | null
+  /** True when the link offers a picture at all, whether or not this session carries it. */
+  hasPicture: boolean
+  duration: number | null
 }
 
 /** A link's picture, served by the local server: a progressive file, a video-only DASH stream, or a merged download. */
@@ -285,6 +326,7 @@ export interface PlayerPayloads
   picture: PictureSource
   vtt: string
   link: LinkPicture
+  stream: LinkStream
 }
 
 /** A player channel's answer: its payload under its own key, or the error message. */
@@ -388,6 +430,8 @@ export interface WindowApi
   getLinkPicture: (pageUrl: string, maxHeight: number, codecs: VideoCodecFamily[], options?: { download?: boolean }) => Promise<PlayerResult<'link'>>
   /** Progress of getting a link's picture, while a download runs. */
   onLinkProgress: (cb: (progress: LinkProgress) => void) => () => void
+  /** A live or HLS-only link's sound and picture streamed through FFmpeg on one clock, from the request's start point. */
+  getLinkStream: (pageUrl: string, request: LinkStreamRequest) => Promise<PlayerResult<'stream'>>
 
   cutMedia: (filePath: string, inPoint: number, outPoint: number, options?: CutOptions) => Promise<any>
   probeDetailed: (filePath: string) => Promise<any>
@@ -404,8 +448,12 @@ export interface WindowApi
   onEditorProgress: (cb: (progress: { percent: number; message: string }) => void) => () => void
 
   resolvePlaylist: (url: string) => Promise<{ success: boolean; entries: any[]; error?: string }>
-  /** A link's sound as a URL the audio element plays: the best direct stream proxied, or, with `download`, the whole track fetched into the cache first. */
-  getStreamUrl: (videoUrl: string, quality?: string, options?: { download?: boolean }) => Promise<{ success: boolean; mediaUrl?: string; title?: string; duration?: number | null; downloaded?: boolean; error?: string }>
+  /**
+   * A link's sound as a URL the audio element plays: the best direct stream proxied, or, with `download`, the whole
+   * track fetched into the cache first. A live link, or one offering only HLS, answers `streamed` with no URL; its
+   * sound and picture then come from `getLinkStream`.
+   */
+  getStreamUrl: (videoUrl: string, quality?: string, options?: { download?: boolean }) => Promise<{ success: boolean; mediaUrl?: string; title?: string; duration?: number | null; downloaded?: boolean; live?: boolean; streamed?: boolean; error?: string }>
   getInstalledBrowsers: () => Promise<CookieBrowser[]>
   setCookieBrowser: (browserName: string) => Promise<{ success: boolean; error?: string | null }>
   clearCookies: () => Promise<{ success: boolean }>

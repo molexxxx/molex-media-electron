@@ -5,7 +5,7 @@
  */
 
 import { useState, type ReactElement } from 'react'
-import { audioTracks, textSubtitles } from '../../../../../shared/player/media'
+import { audioTracks, mediaWithSubtitles, shownSubtitles } from '../../../../../shared/player/media'
 import { cx } from '../../../ui/cx'
 import { IconButton } from '../../../ui/IconButton'
 import { Menu, type MenuEntry } from '../../../ui/Menu'
@@ -42,26 +42,30 @@ function Readout({ value, lit, align }: { value: string, lit: boolean, align: 's
   )
 }
 
-/** The seek bar between the two lit readouts; dragging previews the position and the release seeks. */
+/**
+ * The seek bar between the two lit readouts; dragging previews the position and the release seeks. A live stream
+ * reads Live in place of its length and its bar stays disabled, since nothing past the live edge exists to move to.
+ */
 export function SeekBar({ player }: { player: PlayerEngine }): ReactElement
 {
   const [scrub, setScrub] = useState<number | null>(null)
-  const loaded = player.current !== null && player.duration > 0
+  const live = player.live && player.current !== null
+  const loaded = player.current !== null && player.duration > 0 && !live
   const shown = scrub ?? player.time
   return (
-    <div className="flex min-w-0 items-center gap-3" data-part="seek">
+    <div className="flex min-w-0 items-center gap-3" data-part="seek" data-live={live || undefined}>
       <Readout value={formatTime(shown)} lit={player.current !== null} align="end" />
       <Slider
         className="min-w-0 flex-1"
-        label={PLAYER_COPY.seek}
-        value={Math.min(shown, player.duration || 0)}
+        label={live ? PLAYER_COPY.liveSeek : PLAYER_COPY.seek}
+        value={live ? 1 : Math.min(shown, player.duration || 0)}
         min={0}
-        max={player.duration > 0 ? player.duration : 1}
+        max={!live && player.duration > 0 ? player.duration : 1}
         step={0.1}
         keyStep={SEEK_STEPS.arrow}
         bigStep={SEEK_STEPS.page}
         disabled={!loaded}
-        valueText={(value) => positionText(value, player.duration)}
+        valueText={(value) => live ? `${PLAYER_COPY.live}, ${formatTime(shown)} since joining` : positionText(value, player.duration)}
         onInput={(value) => setScrub(value)}
         onChange={(value) =>
         {
@@ -69,7 +73,7 @@ export function SeekBar({ player }: { player: PlayerEngine }): ReactElement
           player.seek(value)
         }}
       />
-      <Readout value={formatTime(player.duration)} lit={player.current !== null && player.duration > 0} align="start" />
+      <Readout value={live ? PLAYER_COPY.live : formatTime(player.duration)} lit={player.current !== null && (live || player.duration > 0)} align="start" />
     </div>
   )
 }
@@ -122,7 +126,7 @@ export function TrackMenus({ player }: { player: PlayerEngine }): ReactElement |
     return null
   }
   const sounds = audioTracks(media.streams)
-  const subtitles = textSubtitles(media.streams)
+  const subtitles = shownSubtitles(media.streams)
   const audioIndex = Math.min(player.current?.audioIndex ?? 0, Math.max(0, sounds.length - 1))
   const soundItems: MenuEntry[] = sounds.map((stream, i) => ({
     kind: 'radio',
@@ -200,7 +204,8 @@ export function NowPlaying({ player, compact = false }: { player: PlayerEngine, 
 {
   const current = player.current
   const facts = current === null ? null : trackFacts(current)
-  const note = current === null ? null : decodeNote(current.media, current.audioIndex ?? 0, player.picture === 'showing')
+  const media = current?.media ? mediaWithSubtitles(current.media, player.subtitleIndex) : current?.media
+  const note = current === null ? null : decodeNote(media, current.audioIndex ?? 0, player.picture === 'showing')
   return (
     <div className="flex min-w-0 flex-col" data-part="now-playing">
       <span className={cx('truncate font-semibold', compact ? 'text-label' : 'text-body', current === null ? 'text-ink-3' : 'text-ink')} title={current?.name}>

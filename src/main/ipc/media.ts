@@ -62,7 +62,10 @@ export function registerMediaIPC(): void {
         return { success: true, mediaUrl: `${baseUrl}/${registerPreviewPath(file)}`, downloaded: true }
       }
       const result = await getAudioStreamUrl(videoUrl, (quality as any) || 'best')
-      // A local file (the HLS fallback) is served as a file; a CDN URL is proxied with the headers yt-dlp used
+      if (result.stream) {
+        return { success: true, streamed: true, live: result.stream.live, title: result.title, duration: result.duration }
+      }
+      // A local file is served as a file; a CDN URL is proxied with the headers yt-dlp used
       const token = result.audioUrl.startsWith('file:')
         ? registerPreviewPath(fileURLToPath(result.audioUrl))
         : registerStreamProxy(result.audioUrl, result.httpHeaders)

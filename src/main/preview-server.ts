@@ -14,6 +14,9 @@
  *  - **CDN streams** (YouTube) registered via {@link registerStreamProxy},
  *    proxied with a plain Node request that forwards the Range header and
  *    the headers the source expects.
+ *  - **Command output**: one command's stdout per request
+ *    ({@link registerLiveStream}), or one command's several outputs as
+ *    separate URLs ({@link registerLiveSession}).
  */
 
 import * as http from 'http'
@@ -110,6 +113,161 @@ export function unregisterLiveStream(token: string): void {
   liveMap.delete(token)
 }
 
+/**
+ * One command with several outputs served as separate URLs: the first output is its stdout, the next pipe:3, and
+ * so on. The command starts on the first request to any of them; output a client has not asked for yet is held
+ * until it does, up to {@link SESSION_HOLD_BYTES}. The first output leads: when its client leaves, the command stops.
+ */
+export interface LiveSession {
+  command: string
+  args: string[]
+  /** One media type per output, in pipe order. */
+  outputs: string[]
+}
+
+/** The most output a session holds for a client that has not connected yet. */
+export const SESSION_HOLD_BYTES = 64 * 1024 * 1024
+
+interface SessionOutput {
+  contentType: string
+  held: Buffer[]
+  heldBytes: number
+  client: http.ServerResponse | null
+  /** A client connected once; later requests for the output are refused. */
+  served: boolean
+  /** No client will read it any more: its client left, or it outgrew the hold. */
+  dropped: boolean
+  ended: boolean
+}
+
+interface SessionState {
+  session: LiveSession
+  outputs: SessionOutput[]
+  proc: ChildProcess | null
+  tokens: string[]
+  /** True once the session is being stopped on purpose, so its exit is not reported as a failure. */
+  stopping: boolean
+}
+
+/** How long a registered session waits for its first request before its tokens are dropped. */
+export const SESSION_UNCLAIMED_MS = 2 * 60 * 1000
+
+/** Session output tokens: token to its session and output. */
+const sessionMap = new Map<string, { state: SessionState, index: number }>()
+
+/** Registers a session and answers one token per output, in pipe order. */
+export function registerLiveSession(session: LiveSession): string[] {
+  const state: SessionState = {
+    session,
+    outputs: session.outputs.map((contentType) => ({ contentType, held: [], heldBytes: 0, client: null, served: false, dropped: false, ended: false })),
+    proc: null,
+    tokens: [],
+    stopping: false
+  }
+  state.tokens = session.outputs.map((_, index) => {
+    const token = `m${++nextId}`
+    sessionMap.set(token, { state, index })
+    return token
+  })
+  const unclaimed = setTimeout(() => {
+    if (state.proc === null) endSession(state)
+  }, SESSION_UNCLAIMED_MS)
+  unclaimed.unref?.()
+  return state.tokens
+}
+
+/** The stdio of a session's command: stdout for the first output and one more pipe for each further output. */
+export function sessionStdio(outputs: number): Array<'ignore' | 'pipe'> {
+  return ['ignore', 'pipe', 'pipe', ...Array.from({ length: Math.max(0, outputs - 1) }, () => 'pipe' as const)]
+}
+
+function endSession(state: SessionState): void {
+  state.stopping = true
+  for (const token of state.tokens) sessionMap.delete(token)
+  if (state.proc !== null && state.proc.exitCode === null) state.proc.kill()
+}
+
+function startSession(state: SessionState): void {
+  const proc = spawn(state.session.command, state.session.args, { windowsHide: true, stdio: sessionStdio(state.outputs.length) })
+  state.proc = proc
+  liveProcesses.add(proc)
+  let stderr = ''
+  proc.stderr?.on('data', (d) => { stderr = (stderr + d.toString()).slice(-2000) })
+  state.outputs.forEach((output, index) => {
+    const source = proc.stdio[index === 0 ? 1 : index + 2] as NodeJS.ReadableStream | null
+    if (!source) return
+    source.on('data', (chunk: Buffer) => {
+      if (output.dropped) return
+      if (output.client !== null) {
+        if (!output.client.write(chunk)) {
+          source.pause()
+          output.client.once('drain', () => source.resume())
+        }
+        return
+      }
+      output.held.push(chunk)
+      output.heldBytes += chunk.length
+      if (output.heldBytes > SESSION_HOLD_BYTES) {
+        output.dropped = true
+        output.held = []
+        output.heldBytes = 0
+      }
+    })
+    source.on('end', () => {
+      output.ended = true
+      output.client?.end()
+    })
+  })
+  proc.on('error', (err) => {
+    liveProcesses.delete(proc)
+    logger.error(`[preview-server] Stream session failed to start: ${err.message}`)
+    for (const output of state.outputs) output.client?.end()
+    endSession(state)
+  })
+  proc.on('close', (code) => {
+    liveProcesses.delete(proc)
+    if (code !== 0 && !state.stopping) logger.warn(`[preview-server] Stream session ended with code ${code}: ${stderr.trim().slice(-300)}`)
+    for (const output of state.outputs) {
+      output.ended = true
+      output.client?.end()
+    }
+    for (const token of state.tokens) sessionMap.delete(token)
+  })
+}
+
+/** Serves one output of a session: what it held so far, then the rest as the command writes it. */
+function serveSessionOutput(state: SessionState, index: number, req: http.IncomingMessage, res: http.ServerResponse, corsHeaders: Record<string, string>): void {
+  const output = state.outputs[index]
+  const headers = { ...corsHeaders, 'Content-Type': output.contentType, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'none' }
+  if (req.method === 'HEAD') {
+    res.writeHead(200, headers)
+    res.end()
+    return
+  }
+  if (output.served || output.dropped) {
+    res.writeHead(410, corsHeaders)
+    res.end('Stream output already served')
+    return
+  }
+  output.served = true
+  output.client = res
+  res.writeHead(200, headers)
+  for (const chunk of output.held) res.write(chunk)
+  output.held = []
+  output.heldBytes = 0
+  if (output.ended) {
+    res.end()
+  }
+  res.on('close', () => {
+    output.client = null
+    output.dropped = true
+    const source = state.proc?.stdio[index === 0 ? 1 : index + 2] as NodeJS.ReadableStream | null | undefined
+    source?.resume()
+    if (index === 0) endSession(state)
+  })
+  if (state.proc === null) startSession(state)
+}
+
 /* ------------------------------------------------------------------ */
 /*  Server                                                             */
 /* ------------------------------------------------------------------ */
@@ -156,6 +314,13 @@ export async function startPreviewServer(): Promise<string> {
       const live = liveMap.get(token)
       if (live) {
         serveLive(live, req, res, corsHeaders)
+        return
+      }
+
+      // -- One output of a stream session (live and HLS-only links) --
+      const sessionOutput = sessionMap.get(token)
+      if (sessionOutput) {
+        serveSessionOutput(sessionOutput.state, sessionOutput.index, req, res, corsHeaders)
         return
       }
 
@@ -246,6 +411,7 @@ export function stopPreviewServer(): void {
     tokenMap.clear()
     streamMap.clear()
     liveMap.clear()
+    sessionMap.clear()
     for (const proc of liveProcesses) proc.kill()
     liveProcesses.clear()
     logger.info('[preview-server] Stopped')

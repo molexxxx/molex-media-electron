@@ -29,7 +29,7 @@ vi.mock('../../src/main/ytdlp/cookies', () => ({
   withCookieRetry: (...a: any[]) => mockWithCookieRetry(...a)
 }))
 
-import { cleanupAudioCache, resolvePlaylist, getAudioStreamUrl } from '../../src/main/ytdlp/resolver'
+import { cleanupAudioCache, downloadLinkVideo, getAudioFile, resolvePlaylist, getAudioStreamUrl } from '../../src/main/ytdlp/resolver'
 
 describe('ytdlp/resolver', () => {
   beforeEach(() => {
@@ -289,11 +289,7 @@ describe('ytdlp/resolver', () => {
       expect(mockDl).toHaveBeenCalledTimes(2)
     })
 
-    it('downloads to temp file when all formats are HLS', async () => {
-      // Control the id generation
-      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(99999)
-      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
-
+    it('streams a link through FFmpeg instead of downloading it when all formats are HLS', async () => {
       const mockDl = vi.fn()
         .mockResolvedValueOnce({
           title: 'HLS Only',
@@ -304,20 +300,13 @@ describe('ytdlp/resolver', () => {
             { acodec: 'aac', vcodec: 'none', url: 'https://cdn.example.com/hls.m3u8', protocol: 'm3u8' }
           ]
         })
-        // downloadAudioToFile calls dl again
-        .mockResolvedValueOnce(undefined)
 
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockMkdirSync.mockReturnValue(undefined)
-      // The id will be molex-99999-i (0.5.toString(36) = "0.i" -> slice(2,6) = "i")
-      mockReaddirSync.mockReturnValue(['molex-99999-i.opus'])
 
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
-      expect(track.audioUrl).toContain('file:///')
-      expect(track.title).toBe('HLS Only')
-
-      mockNow.mockRestore()
-      mockRandom.mockRestore()
+      expect(track).toMatchObject({ audioUrl: '', title: 'HLS Only', duration: 120, stream: { live: false } })
+      expect(mockDl).toHaveBeenCalledTimes(1)
+      expect(mockMkdirSync).not.toHaveBeenCalled()
     })
 
     it('uses "good" quality format string', async () => {
@@ -450,24 +439,59 @@ describe('ytdlp/resolver', () => {
     })
   })
 
-  describe('getAudioStreamUrl - edge cases', () => {
-    it('falls back to download when no direct URLs exist at all', async () => {
-      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(12345)
+  describe('the download fallback for a recording', () => {
+    it('downloads a link\'s audio into the cache and answers the file, or says nothing came out', async () => {
+      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(77777)
       const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const mockDl = vi.fn().mockResolvedValue(undefined)
+      mockGetYtDl.mockResolvedValue(mockDl)
+      mockReaddirSync.mockReturnValue(['other.opus', 'molex-77777-i.opus'])
+      const file = await getAudioFile('https://vimeo.example/1')
+      expect(file).toMatch(/molex-audio-cache[\\/]molex-77777-i\.opus$/)
+      expect(mockDl.mock.calls[0][1]).toMatchObject({ format: 'bestaudio/best', extractAudio: true, audioFormat: 'opus', noPlaylist: true })
+      mockReaddirSync.mockReturnValue([])
+      await expect(getAudioFile('https://vimeo.example/1')).rejects.toThrow('produced no output file')
+      mockNow.mockRestore()
+      mockRandom.mockRestore()
+    })
+
+    it('downloads a link\'s merged video with its progress, skipping partial files', async () => {
+      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(88888)
+      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const listeners: Array<(chunk: string) => void> = []
+      const run = Object.assign(Promise.resolve(), { stdout: { on: (_: string, fn: (chunk: string) => void) => listeners.push(fn) } })
+      const exec = vi.fn(() =>
+      {
+        queueMicrotask(() => listeners.forEach((fn) => fn('[download]  12.5% of 10MiB\n[download] 100% of 10MiB\n[Merger] done\n')))
+        return run
+      })
+      mockGetYtDl.mockResolvedValue(Object.assign(vi.fn(), { exec }))
+      mockReaddirSync.mockReturnValue(['molex-video-88888-i.mp4.part', 'molex-video-88888-i.mp4'])
+      const progress: number[] = []
+      const file = await downloadLinkVideo('https://vimeo.example/2', 720, (percent) => progress.push(percent))
+      expect(file).toMatch(/molex-video-88888-i\.mp4$/)
+      expect(exec.mock.calls[0][1]).toMatchObject({ mergeOutputFormat: 'mp4', newline: true, noPlaylist: true })
+      expect(progress).toEqual([12.5, 100])
+      listeners.length = 0
+      mockReaddirSync.mockReturnValue([])
+      await expect(downloadLinkVideo('https://vimeo.example/2', 720, vi.fn())).rejects.toThrow('produced no output file')
+      mockNow.mockRestore()
+      mockRandom.mockRestore()
+    })
+  })
+
+  describe('getAudioStreamUrl - edge cases', () => {
+    it('streams when no direct URLs exist at all', async () => {
       const mockDl = vi.fn()
         .mockResolvedValueOnce({
           title: 'No Direct', duration: 60,
           url: 'https://cdn.example.com/manifest.m3u8', protocol: 'm3u8_native',
           formats: []
         })
-        .mockResolvedValueOnce(undefined)
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockMkdirSync.mockReturnValue(undefined)
-      mockReaddirSync.mockReturnValue(['molex-12345-i.opus'])
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
-      expect(track.audioUrl).toContain('file:///')
-      mockNow.mockRestore()
-      mockRandom.mockRestore()
+      expect(track.stream).toEqual({ live: false })
+      expect(track.audioUrl).toBe('')
     })
 
     it('handles no formats array at all', async () => {
@@ -534,9 +558,7 @@ describe('ytdlp/resolver', () => {
       expect(track.audioUrl).toBe('https://cdn.example.com/av.mp4')
     })
 
-    it('handles formats with only HLS a/v (no direct at all)', async () => {
-      const mockNow = vi.spyOn(Date, 'now').mockReturnValue(55555)
-      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    it('handles formats with only HLS a/v (no direct at all) by streaming', async () => {
       const mockDl = vi.fn()
         .mockResolvedValueOnce({
           title: 'All HLS',
@@ -547,14 +569,9 @@ describe('ytdlp/resolver', () => {
             { acodec: 'aac', vcodec: 'h264', url: 'https://cdn.example.com/av.m3u8', protocol: 'm3u8', abr: 128 }
           ]
         })
-        .mockResolvedValueOnce(undefined)
       mockGetYtDl.mockResolvedValue(mockDl)
-      mockMkdirSync.mockReturnValue(undefined)
-      mockReaddirSync.mockReturnValue(['molex-55555-i.opus'])
       const track = await getAudioStreamUrl('https://www.youtube.com/watch?v=abc')
-      expect(track.audioUrl).toContain('file:///')
-      mockNow.mockRestore()
-      mockRandom.mockRestore()
+      expect(track.stream).toEqual({ live: false })
     })
 
     it('handles playlist entries with only url, no id', async () => {

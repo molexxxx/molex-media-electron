@@ -1,16 +1,17 @@
 /**
  * @module main/ipc/player
  * @description The media player's channels: inspecting a file, serving the chosen audio track, serving the picture
- * as it is, remuxed, or converted while it plays, text subtitles as WebVTT, and a link's picture stream.
+ * as it is, remuxed, or converted while it plays (with a picture subtitle drawn on), text subtitles as WebVTT, a
+ * link's picture stream, and live or HLS-only links streamed through FFmpeg.
  */
 
 import { ipcMain } from 'electron'
 import { logger } from '../logger'
-import { DEFAULT_DISPLAY_BOX, extractSubtitles, inspectForPlayback, pictureDecodeCommand, prepareForPlayback, prepareForPlaybackAt, prepareRemuxedPicture, PICTURE_STREAM_TYPE } from '../ffmpeg/playback'
-import { downloadLinkVideo, getLinkVideo, type VideoCodecFamily } from '../ytdlp/resolver'
-import { registerLiveStream, registerPreviewPath, registerStreamProxy, startPreviewServer } from '../preview-server'
+import { DEFAULT_DISPLAY_BOX, extractSubtitles, inspectForPlayback, linkStreamCommand, pictureDecodeCommand, prepareForPlayback, prepareForPlaybackAt, prepareRemuxedPicture, probeStreamInput, PICTURE_STREAM_TYPE, STREAM_SOUND_TYPE } from '../ffmpeg/playback'
+import { downloadLinkVideo, getLinkData, getLinkVideo, planLinkStream, rememberLinkData, withProbedFormats, withProbedSound, type VideoCodecFamily } from '../ytdlp/resolver'
+import { registerLiveSession, registerLiveStream, registerPreviewPath, registerStreamProxy, startPreviewServer } from '../preview-server'
 import type { PlayRoute } from '../../shared/player/media'
-import type { LinkProgress, PictureOptions, PictureSource, PlayerResult } from '../../shared/ipc/api'
+import type { LinkProgress, LinkStreamRequest, PictureOptions, PictureSource, PictureSubtitle, PlayerResult } from '../../shared/ipc/api'
 
 function failure(err: unknown): { ok: false, error: string }
 {
@@ -20,6 +21,25 @@ function failure(err: unknown): { ok: false, error: string }
 function positive(value: unknown, fallback: number): number
 {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+/** The codec families a renderer named, keeping only the known ones; H.264 when it named none. */
+function codecFamilies(codecs: unknown): VideoCodecFamily[]
+{
+  return Array.isArray(codecs) ? codecs.filter((c): c is VideoCodecFamily => c === 'avc1' || c === 'vp9' || c === 'av01') : ['avc1']
+}
+
+/** A picture subtitle from the renderer with whole, positive numbers, or null. */
+export function pictureSubtitleOf(value: unknown): PictureSubtitle | null
+{
+  const subtitle = value as Partial<PictureSubtitle> | null | undefined
+  if (typeof subtitle?.streamIndex !== 'number' || !Number.isInteger(subtitle.streamIndex) || subtitle.streamIndex < 0)
+  {
+    return null
+  }
+  const scale = subtitle.scaleTo
+  const scaleTo = scale && positive(scale.width, 0) > 0 && positive(scale.height, 0) > 0 ? { width: Math.round(scale.width), height: Math.round(scale.height) } : null
+  return { streamIndex: subtitle.streamIndex, scaleTo }
 }
 
 /** Register the player's channels. */
@@ -67,7 +87,8 @@ export function registerPlayerIPC(): void
           width: positive(options?.width, DEFAULT_DISPLAY_BOX.width),
           height: positive(options?.height, DEFAULT_DISPLAY_BOX.height),
           fps: typeof options?.fps === 'number' && options.fps > 0 ? options.fps : null,
-          software: options?.software === true
+          software: options?.software === true,
+          subtitle: pictureSubtitleOf(options?.subtitle)
         }
         const { command, args, encoder } = await pictureDecodeCommand(filePath, streamIndex, start, display)
         const picture: PictureSource = { url: `${base}/${registerLiveStream({ command, args, contentType: PICTURE_STREAM_TYPE })}`, live: true, offset: start, encoder }
@@ -94,10 +115,68 @@ export function registerPlayerIPC(): void
     }
   })
 
+  ipcMain.handle('player:linkStream', async (_, pageUrl: string, request: LinkStreamRequest): Promise<PlayerResult<'stream'>> =>
+  {
+    try
+    {
+      const codecs = codecFamilies(request?.codecs)
+      const want = {
+        sound: request?.sound !== false,
+        picture: request?.picture === true,
+        soundQuality: request?.soundQuality === 'good' || request?.soundQuality === 'low' ? request.soundQuality : 'best' as const,
+        maxHeight: positive(request?.maxHeight, 1080),
+        codecs
+      }
+      const data = await withProbedFormats(await getLinkData(pageUrl, request?.fresh === true), probeStreamInput)
+      rememberLinkData(pageUrl, data)
+      const plan = await withProbedSound(planLinkStream(data, want), probeStreamInput)
+      if (want.sound && plan.sound === null)
+      {
+        throw new Error('No sound format the player can stream')
+      }
+      if (plan.sound === null && plan.picture === null)
+      {
+        throw new Error('No picture format the player can stream')
+      }
+      const at = typeof request?.at === 'number' && Number.isFinite(request.at) && request.at > 0 ? request.at : null
+      const { command, args, outputs, encoder } = await linkStreamCommand(plan, {
+        at,
+        copyFamilies: codecs,
+        width: positive(request?.display?.width, DEFAULT_DISPLAY_BOX.width),
+        height: positive(request?.display?.height, DEFAULT_DISPLAY_BOX.height),
+        software: request?.display?.software === true
+      })
+      const base = await startPreviewServer()
+      const tokens = registerLiveSession({ command, args, outputs: outputs.map((part) => part === 'sound' ? STREAM_SOUND_TYPE : PICTURE_STREAM_TYPE) })
+      const urlOf = (part: 'sound' | 'picture'): string | null =>
+      {
+        const index = outputs.indexOf(part)
+        return index < 0 ? null : `${base}/${tokens[index]}`
+      }
+      const pictureUrl = urlOf('picture')
+      logger.info(`Player streams ${plan.live ? 'the live link' : 'the link'} ${pageUrl} through FFmpeg (${outputs.join(' and ')}${at === null ? '' : ` from ${at.toFixed(1)} s`}${encoder === null ? '' : `, picture through ${encoder}`})`)
+      return {
+        ok: true,
+        stream: {
+          live: plan.live,
+          sound: urlOf('sound'),
+          picture: pictureUrl === null ? null : { url: pictureUrl, live: true, offset: 0, encoder, shared: true },
+          hasPicture: plan.hasPicture,
+          duration: plan.duration
+        }
+      }
+    }
+    catch (err)
+    {
+      logger.warn(`Player could not stream ${pageUrl}: ${err instanceof Error ? err.message : String(err)}`)
+      return failure(err)
+    }
+  })
+
   ipcMain.handle('player:linkPicture', async (event, pageUrl: string, maxHeight: number, codecs?: VideoCodecFamily[], options?: { download?: boolean }): Promise<PlayerResult<'link'>> =>
   {
     const cap = Number.isFinite(maxHeight) && maxHeight > 0 ? maxHeight : 1080
-    const allowed: VideoCodecFamily[] = Array.isArray(codecs) ? codecs.filter((c): c is VideoCodecFamily => c === 'avc1' || c === 'vp9' || c === 'av01') : ['avc1']
+    const allowed = codecFamilies(codecs)
     const report = (progress: LinkProgress): void =>
     {
       if (!event.sender.isDestroyed())

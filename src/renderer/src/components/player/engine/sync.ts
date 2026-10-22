@@ -13,6 +13,8 @@ export interface SyncState
   live: boolean
   /** The clock's playback rate. */
   rate: number
+  /** True when the picture carries the clock's own times, so a picture ahead waits for the clock instead of restarting. */
+  shared?: boolean
 }
 
 /** What the picture does next. */
@@ -32,6 +34,8 @@ export const SYNC_LIMITS = Object.freeze({
   liveHold: 0.25,
   /** A live picture this far off restarts at the clock, since a rate nudge would take too long to catch up. */
   liveRestart: 1,
+  /** A picture on the clock's own times waits this far ahead for the clock before it restarts instead. */
+  sharedHold: 8,
   /** The largest rate change, as a fraction of the clock's rate. */
   maxNudge: 0.08,
   /** The rate change per second of drift. */
@@ -47,6 +51,10 @@ function clamp(value: number, low: number, high: number): number
 export function syncAction(state: SyncState): SyncAction
 {
   const drift = state.picture - state.master
+  if (state.live && state.shared === true && drift > SYNC_LIMITS.liveHold && drift <= SYNC_LIMITS.sharedHold)
+  {
+    return { kind: 'hold' }
+  }
   if (state.live)
   {
     if (Math.abs(drift) > SYNC_LIMITS.liveRestart)
@@ -78,6 +86,8 @@ export interface FollowSource
   offset: number
   /** The encoder of a picture FFmpeg decodes; null or absent when Chromium reads the stream. */
   encoder?: string | null
+  /** True when the picture carries the clock's own times, as a link stream does, so they are compared as they are. */
+  shared?: boolean
 }
 
 /** What the follower reads from the clock. */
@@ -87,6 +97,28 @@ export interface Clock
   time(): number
   playing(): boolean
   rate(): number
+}
+
+/** Resolves once the picture can play, fails to load, or the wait runs out, so a stream's sound can start with it. */
+export function whenPlayable(video: HTMLMediaElement, timeoutMs: number): Promise<void>
+{
+  if (video.readyState >= 3)
+  {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) =>
+  {
+    const done = (): void =>
+    {
+      clearTimeout(timer)
+      video.removeEventListener('canplay', done)
+      video.removeEventListener('error', done)
+      resolve()
+    }
+    const timer = setTimeout(done, timeoutMs)
+    video.addEventListener('canplay', done)
+    video.addEventListener('error', done)
+  })
 }
 
 /** The lead a restarted conversion starts ahead of the clock, learned from how long the last start took. */
@@ -107,7 +139,7 @@ export class PictureFollower
   private readonly onLoadedData = (): void =>
   {
     const video = this.video
-    this.lead = this.source?.live && video.buffered.length > 0 ? video.buffered.start(0) : 0
+    this.lead = this.source?.live && this.source.shared !== true && video.buffered.length > 0 ? video.buffered.start(0) : 0
     if (this.restartRequested > 0)
     {
       const took = (performance.now() - this.restartRequested) / 1000
@@ -198,7 +230,7 @@ export class PictureFollower
       return
     }
     const playing = this.clock.playing()
-    const action = syncAction({ master: this.clock.time(), picture: this.pictureTime(), playing, live: source.live, rate: this.clock.rate() })
+    const action = syncAction({ master: this.clock.time(), picture: this.pictureTime(), playing, live: source.live, rate: this.clock.rate(), shared: source.shared === true })
     switch (action.kind)
     {
       case 'restart':

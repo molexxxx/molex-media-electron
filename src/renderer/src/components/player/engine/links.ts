@@ -59,6 +59,7 @@ export interface LinkFailure
 }
 
 const FAILURES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/live stream cannot be downloaded/i, 'This live stream could not be played. It may have ended, or the site refused the request. Try again later.'],
   [/unsupported url/i, 'yt-dlp cannot read this site. Check the address, or paste a direct link to a media file.'],
   [/private video/i, 'This video is private, so it cannot be played.'],
   [/confirm (?:you(?:'|’)re|you are) not a bot/i, 'The site asked to confirm you are not a bot. Choose a browser to sign in with under Settings, then try again.'],
@@ -68,7 +69,7 @@ const FAILURES: ReadonlyArray<readonly [RegExp, string]> = [
   [/http error 404|not found/i, 'Nothing was found at this address. Check the link and try again.'],
   [/http error 429|too many requests/i, 'The site is limiting requests. Wait a few minutes, then try again.'],
   [/http error 403|forbidden/i, 'The site refused the request. Try again later.'],
-  [/requested format is not available|no (?:video|picture) format/i, 'The link offers no format the player can play.'],
+  [/requested format is not available|no (?:video|picture|sound) format/i, 'The link offers no format the player can play.'],
   [/getaddrinfo|enotfound|unable to download webpage|failed to resolve|timed out|econnreset|network/i, 'Could not reach the site. Check the internet connection, then try again.'],
   [/enoent|spawn/i, 'yt-dlp is not ready yet. Restart molexMedia, then try again.'],
   [/no tracks|playlist is empty|no entries/i, 'This link has no tracks to play.']

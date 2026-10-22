@@ -5,7 +5,7 @@ import { afterEnd, dropTracks, moveTracks, nextRepeat, reorderTracks, stepTrack 
 import { cueTextAt, parseVtt, parseVttTime, plainCueText } from '@renderer/components/player/engine/vtt'
 import { portableTracks, readSnapshot } from '@renderer/components/player/engine/snapshot'
 import { codecQueryFor, depthOf, pictureVerdict } from '@renderer/components/player/engine/decode'
-import { PictureFollower, START_LEAD, SYNC_LIMITS, syncAction } from '@renderer/components/player/engine/sync'
+import { PictureFollower, START_LEAD, SYNC_LIMITS, syncAction, whenPlayable } from '@renderer/components/player/engine/sync'
 import { audioTrackName, channelWords, containerName, decodeNote, encoderName, languageName, mediaInfo, pictureLine, pictureRouteSentence, routeName, soundLine, soundRouteSentence, subtitleTrackName, trackFacts } from '@renderer/components/player/engine/describe'
 import { keyTargetOf, PLAYER_SHORTCUTS, playerKeyCommand } from '@renderer/components/player/hooks/usePlayerKeys'
 import { fileNameOf, formatTime, isMediaPath, totalDuration, trackFromAddress, trackFromPath, type Track } from '@renderer/components/player/types'
@@ -75,6 +75,18 @@ describe('links', () =>
     expect(describeLinkError('')).toEqual({ message: expect.stringContaining('could not read this link'), detail: null })
     expect(describeLinkError(undefined).detail).toBeNull()
     expect(describeLinkError('WARNING: something\nERROR: [generic] x: Premieres in 3 hours').detail).toBe('Premieres in 3 hours')
+    expect(describeLinkError('A live stream cannot be downloaded').message).toContain('This live stream could not be played')
+    expect(describeLinkError('No sound format the player can stream').message).toBe('The link offers no format the player can play.')
+  })
+
+  it('names a live link, and says a picture subtitle is one', () =>
+  {
+    const base = { id: 'l', name: 'Live', src: '', isBlob: false }
+    expect(trackFacts({ ...base, videoUrl: 'https://www.youtube.com/watch?v=L1', live: true })).toBe('YouTube live stream')
+    expect(trackFacts({ ...base, videoUrl: 'https://news.example/live', live: true })).toBe('Live stream from news.example')
+    expect(trackFacts({ ...base, videoUrl: 'https://news.example/live' })).toBe('Link from news.example')
+    expect(subtitleTrackName(stream({ index: 4, kind: 'subtitle', codec: 'hdmv_pgs_subtitle', language: 'eng' }), 0)).toBe('English, picture')
+    expect(subtitleTrackName(stream({ index: 5, kind: 'subtitle', codec: 'dvd_subtitle', language: null, title: 'Commentary' }), 1)).toBe('Commentary, picture')
   })
 
   it('words the lookup and the result', () =>
@@ -224,6 +236,16 @@ describe('picture sync', () =>
     expect(syncAction({ master: 10, picture: 9.8, playing: true, live: true, rate: 1 })).toEqual({ kind: 'rate', rate: 1 + SYNC_LIMITS.maxNudge })
   })
 
+  it('holds a picture on the sound\'s own clock that arrives ahead, and restarts one that falls behind', () =>
+  {
+    expect(syncAction({ master: 100, picture: 103, playing: true, live: true, rate: 1, shared: true })).toEqual({ kind: 'hold' })
+    expect(syncAction({ master: 100, picture: 100 + SYNC_LIMITS.sharedHold, playing: true, live: true, rate: 1, shared: true })).toEqual({ kind: 'hold' })
+    expect(syncAction({ master: 100, picture: 109, playing: true, live: true, rate: 1, shared: true })).toEqual({ kind: 'restart', at: 100 })
+    expect(syncAction({ master: 100, picture: 98, playing: true, live: true, rate: 1, shared: true })).toEqual({ kind: 'restart', at: 100 })
+    expect(syncAction({ master: 100, picture: 100.02, playing: true, live: true, rate: 1, shared: true })).toEqual({ kind: 'rate', rate: 1 })
+    expect(syncAction({ master: 100, picture: 103, playing: true, live: true, rate: 1 })).toEqual({ kind: 'restart', at: 100 })
+  })
+
   it('follows the clock: loads, seeks, restarts a live picture ahead of the clock, and clears', () =>
   {
     const video = document.createElement('video')
@@ -257,6 +279,52 @@ describe('picture sync', () =>
     expect(video.hasAttribute('src')).toBe(false)
     expect(follower.current()).toBeNull()
     follower.dispose()
+  })
+
+  it('reads a stream picture on the sound\'s own clock, with no lead taken off its first frame', () =>
+  {
+    const video = document.createElement('video')
+    vi.spyOn(video, 'play').mockResolvedValue(undefined)
+    vi.spyOn(video, 'pause').mockImplementation(() => undefined)
+    vi.spyOn(video, 'load').mockImplementation(() => undefined)
+    Object.defineProperty(video, 'buffered', { value: { length: 1, start: () => 7662.564, end: () => 7664 }, configurable: true })
+    Object.defineProperty(video, 'currentTime', { value: 7662.6, configurable: true, writable: true })
+    const follower = new PictureFollower(video, { time: () => 7662.6, playing: () => false, rate: () => 1 }, vi.fn())
+    follower.load({ url: 'http://x/m2', live: true, offset: 0, shared: true })
+    video.dispatchEvent(new Event('loadeddata'))
+    expect(follower.pictureTime()).toBeCloseTo(7662.6, 6)
+    follower.load({ url: 'http://x/l2', live: true, offset: 12 })
+    video.dispatchEvent(new Event('loadeddata'))
+    expect(follower.pictureTime()).toBeCloseTo(7662.6 - 7662.564 + 12, 6)
+    follower.dispose()
+  })
+
+  it('waits for a picture to be playable, its failure, or the time limit', async () =>
+  {
+    vi.useFakeTimers()
+    try
+    {
+      const video = document.createElement('video')
+      let ready = false
+      const waiting = whenPlayable(video, 1000).then(() => { ready = true })
+      await vi.advanceTimersByTimeAsync(10)
+      expect(ready).toBe(false)
+      video.dispatchEvent(new Event('canplay'))
+      await waiting
+      expect(ready).toBe(true)
+      const failed = whenPlayable(video, 1000)
+      video.dispatchEvent(new Event('error'))
+      await failed
+      const late = whenPlayable(video, 1000)
+      await vi.advanceTimersByTimeAsync(1000)
+      await late
+      Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
+      await whenPlayable(video, 1000)
+    }
+    finally
+    {
+      vi.useRealTimers()
+    }
   })
 })
 

@@ -11,6 +11,8 @@ import { PLAYLIST_COLUMNS, PlaylistPanel, targetIds } from '@renderer/components
 import { CompactTransport, positionText, Transport } from '@renderer/components/player/components/Transport'
 import { MediaInfoDialog } from '@renderer/components/player/components/MediaInfoDialog'
 import { moreEntries } from '@renderer/components/player/components/PlayerHeader'
+import { AddLinkPopover } from '@renderer/components/player/components/AddLinkPopover'
+import { keyTargetOf, playerKeyCommand } from '@renderer/components/player/hooks/usePlayerKeys'
 import { EmptyStage, NOTE_MS, showsPicture, useFreshNote } from '@renderer/components/player/components/Stage'
 import { PopoutShell, presetFor, sizeEntries } from '@renderer/components/layout/components/PopoutShell'
 import type { PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
@@ -99,6 +101,7 @@ function fakeEngine(over: Partial<PlayerEngine> = {}): PlayerEngine
     subtitleText: '',
     poppedOut: false,
     canShowPicture: true,
+    live: false,
     addPaths: vi.fn(() => 0),
     addLink: vi.fn(async () => ({ ok: true as const, count: 1 })),
     playId: vi.fn(),
@@ -193,6 +196,67 @@ describe('Player components', () =>
     expect(screen.getByText(/Picture and sound decoded by FFmpeg/)).toBeInTheDocument()
   })
 
+  it('reads Live in place of a live stream\'s length and keeps its seek bar still', () =>
+  {
+    const base = fakeEngine()
+    const liveTrack = { ...base.tracks[2], live: true }
+    const player = fakeEngine({ live: true, current: liveTrack, tracks: [base.tracks[0], base.tracks[1], liveTrack], time: 75, duration: 0 })
+    render(<Transport player={player} fullScreen={{ on: false, toggle: vi.fn() }} />)
+    expect(screen.getByText('Live').className).toContain('type-readout')
+    expect(screen.getByText('1:15')).toBeInTheDocument()
+    const bar = screen.getByRole('slider', { name: 'Position (a live stream cannot be moved)' })
+    expect(bar).toBeDisabled()
+    expect(bar).toHaveAttribute('aria-valuetext', 'Live, 1:15 since joining')
+    expect(screen.getByText('YouTube live stream')).toBeInTheDocument()
+    expect(document.querySelector('[data-part="seek"]')).toHaveAttribute('data-live', 'true')
+  })
+
+  it('offers picture subtitles in the Subtitles menu and says the picture is decoded to show them', () =>
+  {
+    const pgs = { ...media.streams[3], index: 4, codec: 'hdmv_pgs_subtitle', width: 1920, height: 1080 }
+    const picture = { ...media, streams: [media.streams[0], media.streams[1], pgs], picture: { route: 'direct' as const, streamIndex: 0, reason: null } }
+    const track = { id: 'p', name: 'p.mkv', src: '', isBlob: false, filePath: 'C:/m/p.mkv', media: picture }
+    const player = fakeEngine({ current: track, tracks: [track], subtitleIndex: 4, picture: 'showing' })
+    render(<Transport player={player} fullScreen={{ on: false, toggle: vi.fn() }} />)
+    expect(screen.getByRole('button', { name: 'Subtitles' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText(/Picture and sound decoded by FFmpeg/)).toBeInTheDocument()
+    const shown = { ...picture, picture: { route: 'convert' as const, streamIndex: 0, reason: 'subtitles' as const, subtitleIndex: 4 } }
+    render(<MediaInfoDialog open onClose={vi.fn()} name="p.mkv" media={shown} audioIndex={0} pictureShown encoder="libx264" reading={false} />)
+    const dialog = screen.getByRole('dialog', { name: 'Media information' })
+    expect(within(dialog).getByText('Picture: decoded by FFmpeg to show image subtitles. It reaches the screen as H.264 through the x264 software encoder (libx264).')).toBeInTheDocument()
+  })
+
+  it('submits the Add link field with Enter exactly as the Add button does', async () =>
+  {
+    const onAdd = vi.fn(async () => ({ ok: true as const, count: 1 }))
+    render(<AddLinkPopover onAdd={onAdd} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }))
+    const field = await screen.findByLabelText('Link') as HTMLInputElement
+    fireEvent.change(field, { target: { value: 'youtu.be/abc123' } })
+    const form = field.form as HTMLFormElement
+    expect(form).not.toBeNull()
+    const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement
+    expect(submit).toHaveAccessibleName('Add')
+    expect(form.querySelectorAll('button[type="submit"]')).toHaveLength(1)
+    expect(fireEvent.keyDown(field, { key: 'Enter', code: 'Enter', keyCode: 13 })).toBe(true)
+    expect(playerKeyCommand({ key: 'Enter', code: 'Enter', altKey: false, ctrlKey: false, metaKey: false, shiftKey: false }, keyTargetOf(field))).toBeNull()
+    await act(async () =>
+    {
+      form.requestSubmit()
+    })
+    expect(onAdd).toHaveBeenCalledTimes(1)
+    expect(onAdd).toHaveBeenLastCalledWith('https://youtu.be/abc123', 'site')
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }))
+    const again = await screen.findByLabelText('Link') as HTMLInputElement
+    fireEvent.change(again, { target: { value: 'youtu.be/abc123' } })
+    await act(async () =>
+    {
+      fireEvent.click(again.form?.querySelector('button[type="submit"]') as HTMLButtonElement)
+    })
+    expect(onAdd).toHaveBeenCalledTimes(2)
+    expect(onAdd.mock.calls[1]).toEqual(onAdd.mock.calls[0])
+  })
+
   it('draws the compact transport with the title and no facts, and the muted state', () =>
   {
     render(<CompactTransport player={fakeEngine({ muted: true, status: 'paused' })} />)
@@ -225,6 +289,15 @@ describe('Player components', () =>
     expect(player.clear).toHaveBeenCalled()
     expect(targetIds('b', new Set(['a', 'b']), ['a', 'b', 'c'])).toEqual(['a', 'b'])
     expect(targetIds('c', new Set(['a', 'b']), ['a', 'b', 'c'])).toEqual(['c'])
+  })
+
+  it('reads Live in the length column for a live link', () =>
+  {
+    const base = fakeEngine()
+    const liveTrack = { ...base.tracks[2], live: true }
+    render(<PlaylistPanel player={fakeEngine({ tracks: [base.tracks[0], liveTrack] })} actions={{ onShowInfo: vi.fn(), onShowInFolder: vi.fn(), onCopyLink: vi.fn() }} />)
+    const rows = within(screen.getByRole('grid', { name: 'Playlist' })).getAllByRole('row').slice(1)
+    expect(within(rows[1]).getByText('Live')).toBeInTheDocument()
   })
 
   it('shows Media information with how it plays first and the values folded under each stream', () =>

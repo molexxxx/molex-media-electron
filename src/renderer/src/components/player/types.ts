@@ -22,6 +22,8 @@ export interface Track
   media?: PlayerMedia | null
   /** The chosen audio track, N in 0:a:N; 0 by default. */
   audioIndex?: number
+  /** True once yt-dlp has said the link is live. */
+  live?: boolean
 }
 
 /** Every extension the player accepts from a drop, the file picker, or a folder. */

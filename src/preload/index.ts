@@ -11,7 +11,7 @@
 
 import { contextBridge, ipcRenderer, webFrame, webUtils, type IpcRendererEvent } from 'electron'
 import { JOB_CHANNELS, JOB_EVENT_CHANNEL, type JobEventBatch, type JobsApi } from '../shared/jobs/contract'
-import { clampZoomFactor, steppedZoomLevel, type LogEntry, type LogQuery, type LinkProgress, type PictureOptions, type VideoCodecFamily, type WindowApi, type YtDlpStatus } from '../shared/ipc/api'
+import { clampZoomFactor, steppedZoomLevel, type LogEntry, type LogQuery, type LinkProgress, type LinkStreamRequest, type PictureOptions, type VideoCodecFamily, type WindowApi, type YtDlpStatus } from '../shared/ipc/api'
 import type { PlayRoute } from '../shared/player/media'
 
 /** One wrapper per job command, each invoking its channel with the request object, plus the event subscription. */
@@ -119,6 +119,7 @@ const api: WindowApi = {
     ipcRenderer.on('player:linkProgress', listener)
     return () => ipcRenderer.removeListener('player:linkProgress', listener)
   },
+  getLinkStream: (pageUrl: string, request: LinkStreamRequest) => ipcRenderer.invoke('player:linkStream', pageUrl, request),
 
   // YouTube / yt-dlp
   resolvePlaylist: (url: string) => ipcRenderer.invoke('ytdlp:resolve', url),

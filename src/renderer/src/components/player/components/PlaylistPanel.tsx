@@ -118,7 +118,7 @@ export function PlaylistPanel({ player, actions, className, style }: { player: P
       case 'title':
         return <span className={cx('truncate text-body', isCurrent ? 'font-semibold text-accent-ink' : 'text-ink')}>{row.track.name}</span>
       case 'length':
-        return <span className={cx('text-label', isCurrent ? 'text-accent-ink' : 'text-ink-2')}>{typeof row.track.duration === 'number' ? formatTime(row.track.duration) : ''}</span>
+        return <span className={cx('text-label', isCurrent ? 'text-accent-ink' : 'text-ink-2')}>{row.track.live === true ? PLAYER_COPY.live : typeof row.track.duration === 'number' ? formatTime(row.track.duration) : ''}</span>
       default:
         return <ActionsCell name={row.track.name} button={context.menuButton} />
     }

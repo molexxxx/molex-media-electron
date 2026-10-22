@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
+import { mediaWithSubtitles } from '../../../../shared/player/media'
 import { useF6Region } from '../../hooks/useF6Region'
 import { Splitter } from '../../ui/Splitter'
 import { toast } from '../../ui/Toast'
@@ -321,7 +322,7 @@ function PlayerView({ player }: { player: PlayerEngine }): ReactElement
         open={infoTrack !== null}
         onClose={() => setInfoFor(null)}
         name={infoTrack?.name ?? ''}
-        media={infoTrack?.media ?? null}
+        media={infoTrack?.media ? mediaWithSubtitles(infoTrack.media, infoIsCurrent ? player.subtitleIndex : null) : null}
         audioIndex={infoTrack?.audioIndex ?? 0}
         pictureShown={infoIsCurrent && showsPicture(player)}
         encoder={infoIsCurrent ? player.pictureEncoder : null}

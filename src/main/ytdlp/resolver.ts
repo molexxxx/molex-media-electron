@@ -4,14 +4,14 @@
  *
  * Resolves YouTube (and other yt-dlp-supported) URLs into playlist
  * entries and direct audio stream URLs. Prefers non-HLS URLs for
- * instant `<audio>` playback; falls back to downloading via yt-dlp +
- * FFmpeg when only HLS streams are available.
+ * instant `<audio>` playback; a live link, or one offering only HLS,
+ * is planned as a stream FFmpeg reads, and downloading through yt-dlp
+ * stays the fallback for a recording.
  */
 
 import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
-import { pathToFileURL } from 'url'
 import { logger } from '../logger'
 import { getYtDl, baseFlags } from './binary'
 import { withCookieRetry } from './cookies'
@@ -57,6 +57,11 @@ export interface ResolvedTrack {
   duration: number | null
   /** The request headers yt-dlp sends for this format, which the proxy forwards. */
   httpHeaders: Record<string, string>
+  /**
+   * Set, with an empty `audioUrl`, when the link is live or offers only HLS: the player streams it through FFmpeg
+   * instead of downloading it first, which never finishes for a live stream.
+   */
+  stream?: { live: boolean }
 }
 
 /** Audio quality presets for stream selection. */
@@ -170,20 +175,62 @@ function isHlsProtocol(protocol: string | undefined): boolean {
   return /m3u8|hls/i.test(protocol)
 }
 
+/** The format a quality preset falls back to when no plain HTTPS audio exists, so a live or HLS-only link reads in one run. */
+const FORMAT_FALLBACKS: Record<AudioQuality, string> = {
+  best: 'bestaudio/best',
+  good: 'bestaudio/best',
+  low: 'worstaudio/worst'
+}
+
+/** True when yt-dlp reports the link as live now; a finished broadcast, even one still processing, is a recording. */
+export function isLiveData(data: any): boolean {
+  return data?.is_live === true || data?.live_status === 'is_live'
+}
+
+/** How long a link's yt-dlp reading is reused for its stream sessions; the stream URLs in it outlive this. */
+export const LINK_DATA_TTL_MS = 30 * 60 * 1000
+
+const linkData = new Map<string, { data: any, at: number }>()
+
+/** Keeps a link's yt-dlp reading for the stream sessions that follow: seeks, view changes, and restarts. */
+export function rememberLinkData(videoUrl: string, data: any): void {
+  linkData.set(videoUrl, { data, at: Date.now() })
+}
+
+/** True when the link's last reading said it is live, so nothing tries to download it. */
+export function knownLive(videoUrl: string): boolean {
+  const entry = linkData.get(videoUrl)
+  return entry !== undefined && Date.now() - entry.at < LINK_DATA_TTL_MS && isLiveData(entry.data)
+}
+
+/** A link's yt-dlp reading with every format, reused while fresh unless `fresh` asks yt-dlp again. */
+export async function getLinkData(videoUrl: string, fresh = false): Promise<any> {
+  const entry = linkData.get(videoUrl)
+  if (!fresh && entry !== undefined && Date.now() - entry.at < LINK_DATA_TTL_MS) return entry.data
+  const dl = await getYtDl()
+  const data = await cookieFreeFirst(async (cookieFlags) => await dl(videoUrl, {
+    dumpSingleJson: true,
+    noPlaylist: true,
+    ...baseFlags(),
+    ...cookieFlags
+  }) as any)
+  rememberLinkData(videoUrl, data)
+  return data
+}
+
 /**
  * Get a direct audio stream URL for a video.
  *
- * Tries the strict format filter first. If that fails (e.g. the site
- * only offers HLS), retries without a format restriction and attempts
- * to pick a direct URL manually.  As a last resort downloads the audio
- * to a local temp file.
+ * Asks for plain HTTPS audio first, falling back to any format so a live or HLS-only link reads in the same run;
+ * a failed run is retried without a format restriction. A link that is live, or offers no direct audio, answers
+ * `stream` instead of a URL: the player streams it through FFmpeg, and downloading it stays the fallback.
  */
 export async function getAudioStreamUrl(
   videoUrl: string,
   quality: AudioQuality = 'best'
 ): Promise<ResolvedTrack> {
   const dl = await getYtDl()
-  const fmt = FORMAT_STRINGS[quality] || FORMAT_STRINGS.best
+  const fmt = `${FORMAT_STRINGS[quality] || FORMAT_STRINGS.best}/${FORMAT_FALLBACKS[quality] || FORMAT_FALLBACKS.best}`
 
   return cookieFreeFirst(async (cookieFlags) => {
     let data: any
@@ -207,24 +254,28 @@ export async function getAudioStreamUrl(
 
     const title = data.title || data.id || 'Unknown'
     const duration = data.duration ?? null
+    const live = isLiveData(data)
 
-    const picked = pickDirectAudioUrl(data)
+    const picked = live ? null : pickDirectAudioUrl(data)
     if (picked) {
       logger.info(`Audio stream: direct URL (protocol=${data.protocol || '?'}, ext=${data.ext || '?'})`)
       return { audioUrl: picked.url, title, duration, httpHeaders: picked.headers }
     }
 
-    // All formats are HLS - download to a local temp file as fallback
-    logger.info(`All ${data.formats?.length || 0} formats are HLS for "${title}", downloading audio...`)
-    const localPath = await downloadAudioToFile(videoUrl, cookieFlags)
-    const fileUrl = pathToFileURL(localPath).href
-    logger.info(`Audio downloaded to temp file: ${localPath}`)
-    return { audioUrl: fileUrl, title, duration, httpHeaders: {} }
+    rememberLinkData(videoUrl, data)
+    logger.info(live
+      ? `"${title}" is live; it streams through FFmpeg`
+      : `All ${data.formats?.length || 0} formats are HLS for "${title}"; it streams through FFmpeg`)
+    return { audioUrl: '', title, duration, httpHeaders: {}, stream: { live } }
   })
 }
 
+/** The refusal for a download of a live link, which would never finish. */
+export const LIVE_DOWNLOAD_ERROR = 'A live stream cannot be downloaded'
+
 /** Downloads a link's best audio into the cache and answers its path, for a stream Chromium could not play. */
 export async function getAudioFile(videoUrl: string): Promise<string> {
+  if (knownLive(videoUrl)) throw new Error(LIVE_DOWNLOAD_ERROR)
   return cookieFreeFirst((cookieFlags) => downloadAudioToFile(videoUrl, cookieFlags))
 }
 
@@ -338,11 +389,11 @@ function finiteOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-/** The family of a yt-dlp codec string; null for one Chromium never decodes. */
+/** The family of a yt-dlp codec string, or of FFmpeg's codec name; null for one Chromium never decodes. */
 export function codecFamily(codec: string): VideoCodecFamily | null {
-  if (/^avc1/.test(codec)) return 'avc1'
+  if (/^(avc[13]|h264$)/.test(codec)) return 'avc1'
   if (/^vp0?9/.test(codec)) return 'vp9'
-  if (/^av01/.test(codec)) return 'av01'
+  if (/^(av01|av1$)/.test(codec)) return 'av01'
   return null
 }
 
@@ -411,6 +462,7 @@ export function mergedFormatSelector(maxHeight: number): string {
  * and answers the file's path. The route for links that offer only HLS or DASH segments.
  */
 export async function downloadLinkVideo(videoUrl: string, maxHeight: number, onProgress: (percent: number) => void): Promise<string> {
+  if (knownLive(videoUrl)) throw new Error(LIVE_DOWNLOAD_ERROR)
   const dl = await getYtDl()
   fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true })
   const id = `molex-video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
@@ -441,6 +493,246 @@ export async function downloadLinkVideo(videoUrl: string, maxHeight: number, onP
   if (files.length === 0) throw new Error('yt-dlp download produced no output file')
   logger.info(`Link picture: downloaded ${path.basename(files[0])}`)
   return files[0]
+}
+
+/* ------------------------------------------------------------------ */
+/*  Streams through FFmpeg - live and HLS-only links                   */
+/* ------------------------------------------------------------------ */
+
+/** One URL FFmpeg reads, with the request headers yt-dlp fetched it with. */
+export interface StreamInput {
+  url: string
+  headers: Record<string, string>
+}
+
+/** The sound of a stream session: its input, and its codec as FFmpeg names it, null when the site did not say. */
+export interface StreamSoundPart {
+  input: number
+  codec: string | null
+  channels: number | null
+  sampleRate: number | null
+  /** True when the format may carry no sound, so FFmpeg maps it only if it is there. */
+  optional: boolean
+}
+
+/** The picture of a stream session: its input, yt-dlp's codec string, and the family Chromium knows it by. */
+export interface StreamPicturePart {
+  input: number
+  codec: string | null
+  family: VideoCodecFamily | null
+  fps: number | null
+}
+
+/** Which formats a stream session reads and what it takes from each. */
+export interface LinkStreamPlan {
+  live: boolean
+  duration: number | null
+  inputs: StreamInput[]
+  sound: StreamSoundPart | null
+  picture: StreamPicturePart | null
+  /** True when the link offers a picture, whether or not the session takes it. */
+  hasPicture: boolean
+}
+
+/** What a stream session asks of the link. */
+export interface LinkStreamWant {
+  sound: boolean
+  picture: boolean
+  soundQuality: AudioQuality
+  maxHeight: number
+  codecs: readonly VideoCodecFamily[]
+}
+
+/** Whether a format carries a part: known yes or no, or maybe when yt-dlp could not tell. */
+export type Presence = 'yes' | 'no' | 'maybe'
+
+/** Protocols FFmpeg does not read from a single URL. */
+const UNSTREAMABLE = /dash|mhtml|f4m|ism/i
+
+/** The formats FFmpeg can read from one URL, in yt-dlp's order (worst first); the reading itself when it lists none. */
+export function streamFormats(data: any): any[] {
+  const list = Array.isArray(data?.formats) && data.formats.length > 0 ? data.formats : [data]
+  return list.filter((f: any) => f && typeof f.url === 'string' && f.url !== '' && !UNSTREAMABLE.test(String(f.protocol ?? '')))
+}
+
+/** Whether a format carries a picture: its codec decides, then yt-dlp's audio-only marks, then a height. */
+export function videoPresence(f: any): Presence {
+  if (f.vcodec === 'none') return 'no'
+  if (typeof f.vcodec === 'string' && f.vcodec !== '') return 'yes'
+  if (f.video_ext === 'none' || f.resolution === 'audio only') return 'no'
+  return typeof f.height === 'number' && f.height > 0 ? 'yes' : 'maybe'
+}
+
+/**
+ * Whether a format carries sound: its codec decides; with none named, an audio-only rendition does and any other
+ * format may. yt-dlp's `audio_ext` reads none for every format with a picture, sound or not, so it is not read.
+ */
+export function audioPresence(f: any): Presence {
+  if (f.acodec === 'none') return 'no'
+  if (typeof f.acodec === 'string' && f.acodec !== '') return 'yes'
+  return videoPresence(f) === 'no' ? 'yes' : 'maybe'
+}
+
+/** yt-dlp's or FFmpeg's audio codec string as FFmpeg's codec name, such as aac for mp4a.40.2; null when unnamed. */
+export function audioCodecName(acodec: unknown): string | null {
+  if (typeof acodec !== 'string' || acodec === '' || acodec === 'none') return null
+  const c = acodec.toLowerCase()
+  if (c === 'mp4a.40.34' || c === 'mp4a.6b' || c.startsWith('mp3')) return 'mp3'
+  if (c.startsWith('mp4a') || c === 'aac') return 'aac'
+  if (c.startsWith('opus')) return 'opus'
+  if (c.startsWith('flac')) return 'flac'
+  if (c.startsWith('vorbis')) return 'vorbis'
+  if (c === 'ac-3' || c.startsWith('ac3')) return 'ac3'
+  if (c === 'ec-3' || c.startsWith('eac3')) return 'eac3'
+  return c
+}
+
+function heightOf(f: any): number {
+  return typeof f.height === 'number' && Number.isFinite(f.height) ? f.height : 0
+}
+
+/**
+ * How good a format's sound is: its audio bitrate, an audio-only format's total bitrate, else a hint from the codec
+ * (HE-AAC below other codecs), else 0 when nothing is known.
+ */
+function soundScore(f: any): number {
+  const abr = finiteOrNull(f.abr)
+  if (abr !== null && abr > 0) return abr
+  const tbr = finiteOrNull(f.tbr)
+  if (videoPresence(f) === 'no' && tbr !== null && tbr > 0) return tbr
+  const codec = typeof f.acodec === 'string' ? f.acodec.toLowerCase() : ''
+  if (codec === '' || codec === 'none') return 0
+  return /^mp4a\.40\.(5|29)$/.test(codec) ? 1 : 2
+}
+
+/**
+ * The format the sound comes from for a quality: an audio-only rendition first, else a format with a picture and
+ * sound. Among formats whose sound ranks the same, the one with the smallest picture costs the least to read; yt-dlp
+ * lists formats worst first, so a tie goes to the later one, or the earlier one for the low quality.
+ */
+export function pickSoundFormat(formats: readonly any[], quality: AudioQuality): any | null {
+  const order = new Map(formats.map((f, i) => [f, i]))
+  const audioOnly = formats.filter((f) => audioPresence(f) === 'yes' && videoPresence(f) === 'no')
+  const muxed = formats.filter((f) => audioPresence(f) === 'yes' && videoPresence(f) !== 'no')
+  const maybe = formats.filter((f) => audioPresence(f) === 'maybe')
+  const pool = audioOnly.length > 0 ? audioOnly : muxed.length > 0 ? muxed : maybe
+  if (pool.length === 0) return null
+  const scores = pool.map(soundScore)
+  const capped = scores.filter((score) => score > 0 && score <= 160)
+  const target = quality === 'low' ? Math.min(...scores) : quality === 'good' && capped.length > 0 ? Math.max(...capped) : Math.max(...scores)
+  const later = quality === 'low' ? -1 : 1
+  return pool
+    .filter((f) => soundScore(f) === target)
+    .sort((a, b) => (heightOf(a) - heightOf(b)) || later * ((order.get(b) ?? 0) - (order.get(a) ?? 0)))[0]
+}
+
+/** The picture format no taller than the cap, preferring one Chromium decodes as it is, then the tallest. */
+export function pickPictureFormat(pictures: readonly any[], maxHeight: number, codecs: readonly VideoCodecFamily[]): any | null {
+  if (pictures.length === 0) return null
+  const order = new Map(pictures.map((f, i) => [f, i]))
+  const within = pictures.filter((f) => heightOf(f) === 0 || heightOf(f) <= maxHeight)
+  const pool = within.length > 0 ? within : [[...pictures].sort((a, b) => heightOf(a) - heightOf(b))[0]]
+  const copyable = pool.filter((f) => {
+    const family = typeof f.vcodec === 'string' ? codecFamily(f.vcodec) : null
+    return family !== null && (family === 'avc1' || codecs.includes(family))
+  })
+  const choices = copyable.length > 0 ? copyable : pool
+  return [...choices].sort((a, b) => (heightOf(a) - heightOf(b)) || ((finiteOrNull(a.tbr) ?? 0) - (finiteOrNull(b.tbr) ?? 0)) || ((order.get(a) ?? 0) - (order.get(b) ?? 0)))[choices.length - 1]
+}
+
+/**
+ * The formats a stream session reads for a link's yt-dlp reading: the picture no taller than the cap when the
+ * picture is wanted, and the sound from the picture's own format when it carries sound, else from the best
+ * audio-only rendition for the quality. Each distinct URL is one FFmpeg input.
+ */
+export function planLinkStream(data: any, want: LinkStreamWant): LinkStreamPlan {
+  const formats = streamFormats(data)
+  const pictures = formats.filter((f) => videoPresence(f) === 'yes')
+  const inputs: StreamInput[] = []
+  const inputOf = (f: any): number => {
+    const found = inputs.findIndex((input) => input.url === f.url)
+    if (found >= 0) return found
+    inputs.push({ url: f.url, headers: headersOf(f) })
+    return inputs.length - 1
+  }
+  const pictureFormat = want.picture ? pickPictureFormat(pictures, want.maxHeight, want.codecs) : null
+  let picture: StreamPicturePart | null = null
+  if (pictureFormat !== null) {
+    const codec = typeof pictureFormat.vcodec === 'string' && pictureFormat.vcodec !== '' ? pictureFormat.vcodec : null
+    picture = { input: inputOf(pictureFormat), codec, family: codec === null ? null : codecFamily(codec), fps: finiteOrNull(pictureFormat.fps) }
+  }
+  let sound: StreamSoundPart | null = null
+  if (want.sound) {
+    const soundFormat = pictureFormat !== null && audioPresence(pictureFormat) === 'yes' ? pictureFormat : pickSoundFormat(formats, want.soundQuality)
+    if (soundFormat !== null) {
+      sound = {
+        input: inputOf(soundFormat),
+        codec: audioCodecName(soundFormat.acodec),
+        channels: finiteOrNull(soundFormat.audio_channels),
+        sampleRate: finiteOrNull(soundFormat.asr),
+        optional: audioPresence(soundFormat) === 'maybe'
+      }
+    }
+  }
+  const duration = finiteOrNull(data?.duration)
+  return { live: isLiveData(data), duration: duration !== null && duration > 0 ? duration : null, inputs, sound, picture, hasPicture: pictures.length > 0 }
+}
+
+/** What ffprobe found in a format yt-dlp could not describe. */
+export interface ProbedFormat {
+  video: { codec: string, width: number | null, height: number | null } | null
+  audio: { codec: string, channels: number | null, sampleRate: number | null } | null
+}
+
+/**
+ * A reading whose formats yt-dlp could not say carry a picture, such as a bare HLS playlist, filled in from
+ * ffprobe: the codecs, the size, and the sound's layout. At most three such formats are probed; a failed probe
+ * leaves its format as it was.
+ */
+export async function withProbedFormats(data: any, probe: (input: StreamInput) => Promise<ProbedFormat | null>): Promise<any> {
+  const formats = streamFormats(data)
+  const unknown = formats.filter((f) => videoPresence(f) === 'maybe').slice(0, 3)
+  if (unknown.length === 0) return data
+  const filled = new Map<any, any>()
+  for (const f of unknown) {
+    const found = await probe({ url: f.url, headers: headersOf(f) }).catch(() => null)
+    if (found === null) continue
+    filled.set(f, {
+      ...f,
+      vcodec: found.video?.codec ?? 'none',
+      width: found.video?.width ?? f.width ?? null,
+      height: found.video?.height ?? f.height ?? null,
+      acodec: found.audio?.codec ?? 'none',
+      audio_channels: found.audio?.channels ?? f.audio_channels ?? null,
+      asr: found.audio?.sampleRate ?? f.asr ?? null
+    })
+  }
+  if (filled.size === 0) return data
+  if (!Array.isArray(data?.formats) || data.formats.length === 0) return filled.get(data) ?? data
+  return { ...data, formats: data.formats.map((f: any) => filled.get(f) ?? f) }
+}
+
+/**
+ * A plan whose sound format may carry none, settled by probing that format before FFmpeg runs: FFmpeg refuses an
+ * output whose optional map finds nothing, which would end the picture with it. The probed sound brings its codec,
+ * so it can be copied; a format without sound leaves the plan without it. A failed probe leaves the plan as it was.
+ */
+export async function withProbedSound(plan: LinkStreamPlan, probe: (input: StreamInput) => Promise<ProbedFormat | null>): Promise<LinkStreamPlan> {
+  const sound = plan.sound
+  if (sound === null || !sound.optional) return plan
+  const found = await probe(plan.inputs[sound.input]).catch(() => null)
+  if (found === null) return plan
+  if (found.audio === null) return { ...plan, sound: null }
+  return {
+    ...plan,
+    sound: {
+      ...sound,
+      codec: audioCodecName(found.audio.codec),
+      channels: found.audio.channels ?? sound.channels,
+      sampleRate: found.audio.sampleRate ?? sound.sampleRate,
+      optional: false
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */

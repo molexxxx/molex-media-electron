@@ -44,9 +44,10 @@ export type PlayRoute = 'direct' | 'remux' | 'convert'
 
 /**
  * Why a picture is not played directly: its container is not one Chromium reads (repackaged), Chromium has no decoder
- * for its codec, or this computer cannot decode this stream although Chromium knows the codec (both decoded by FFmpeg).
+ * for its codec, this computer cannot decode this stream although Chromium knows the codec, or a picture subtitle is
+ * drawn onto it (all three decoded by FFmpeg).
  */
-export type PictureReason = 'container' | 'codec' | 'machine'
+export type PictureReason = 'container' | 'codec' | 'machine' | 'subtitles'
 
 /** What this renderer answered for a picture stream: it decodes it, it has no decoder for the codec, or not here. */
 export type DecodeVerdict = 'decodes' | 'no-decoder' | 'not-here'
@@ -57,6 +58,8 @@ export interface PicturePlan
   route: PlayRoute
   streamIndex: number
   reason: PictureReason | null
+  /** The picture subtitle stream FFmpeg draws onto the picture; absent when none is. */
+  subtitleIndex?: number
 }
 
 /** How one audio track plays: as it is, copied into a container, or converted to `target`. */
@@ -99,6 +102,9 @@ export const CHROMIUM_AUDIO_CODECS: ReadonlySet<string> = new Set(['aac', 'mp3',
 /** Text subtitle codecs FFmpeg turns into WebVTT; bitmap subtitles (PGS, DVD, DVB) cannot be. */
 export const TEXT_SUBTITLE_CODECS: ReadonlySet<string> = new Set(['subrip', 'srt', 'ass', 'ssa', 'mov_text', 'webvtt', 'text'])
 
+/** Picture subtitle codecs: bitmaps FFmpeg draws onto the decoded picture. */
+export const IMAGE_SUBTITLE_CODECS: ReadonlySet<string> = new Set(['hdmv_pgs_subtitle', 'dvd_subtitle', 'dvb_subtitle'])
+
 /** True when ffprobe's format name lists a container Chromium reads. */
 export function containerPlays(formatName: string): boolean
 {
@@ -137,16 +143,59 @@ export function planPicture(streams: readonly PlayerStream[], container: string,
   return { route: 'direct', streamIndex: stream.index, reason: null }
 }
 
+/** A probed file with its picture plan as the chosen subtitle makes it. */
+export function mediaWithSubtitles(media: PlayerMedia, subtitleIndex: number | null): PlayerMedia
+{
+  const picture = pictureWithSubtitles(media.picture, media.streams, subtitleIndex)
+  return picture === media.picture ? media : { ...media, picture }
+}
+
 /** A file's audio tracks in 0:a order. */
 export function audioTracks(streams: readonly PlayerStream[]): PlayerStream[]
 {
   return streams.filter((stream) => stream.kind === 'audio')
 }
 
-/** A file's text subtitle tracks, the ones the player can show. */
+/** A file's text subtitle tracks, shown as text over the stage. */
 export function textSubtitles(streams: readonly PlayerStream[]): PlayerStream[]
 {
   return streams.filter((stream) => stream.kind === 'subtitle' && isTextSubtitle(stream.codec))
+}
+
+/** True for a picture subtitle codec. */
+export function isImageSubtitle(codec: string): boolean
+{
+  return IMAGE_SUBTITLE_CODECS.has(codec)
+}
+
+/** A file's picture subtitle tracks, drawn onto the picture by FFmpeg. */
+export function imageSubtitles(streams: readonly PlayerStream[]): PlayerStream[]
+{
+  return streams.filter((stream) => stream.kind === 'subtitle' && isImageSubtitle(stream.codec))
+}
+
+/** Every subtitle track the player can show, text or picture, in file order. */
+export function shownSubtitles(streams: readonly PlayerStream[]): PlayerStream[]
+{
+  return streams.filter((stream) => stream.kind === 'subtitle' && (isTextSubtitle(stream.codec) || isImageSubtitle(stream.codec)))
+}
+
+/**
+ * The picture plan with the chosen subtitle: a picture subtitle is drawn by FFmpeg, so the picture moves to the
+ * decode route whatever its own plan; a text subtitle or none leaves the cheapest plan as it is.
+ */
+export function pictureWithSubtitles(plan: PicturePlan | null, streams: readonly PlayerStream[], subtitleIndex: number | null): PicturePlan | null
+{
+  if (plan === null || subtitleIndex === null)
+  {
+    return plan
+  }
+  const chosen = streams.find((stream) => stream.index === subtitleIndex && stream.kind === 'subtitle')
+  if (chosen === undefined || !isImageSubtitle(chosen.codec))
+  {
+    return plan
+  }
+  return { route: 'convert', streamIndex: plan.streamIndex, reason: 'subtitles', subtitleIndex }
 }
 
 /** A probe value as a finite number, or null. */
