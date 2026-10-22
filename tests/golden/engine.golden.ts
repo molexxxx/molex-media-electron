@@ -665,16 +665,22 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
   it('converts a source whose path is 316 characters long', async () =>
   {
     const h = await harness()
-    const name = 'clip.mkv'
+    const total = 316
+    const shortest = '/clip.mkv'.length
     let folder = h.media
-    const target = 316 - name.length - 1
-    while (folder.length < target)
+    // Whole segments while one more still leaves room for the name; the name's padding then lands the path on
+    // exactly 316, whatever the scratch folder's length. A loop that padded the last segment could stand still
+    // when the folder came out one short, since a lone separator is no step.
+    while (total - folder.length > 1 + 34 + shortest)
     {
-      const room = target - folder.length - 1
-      folder = join(folder, 'deep-folder-segment-of-a-long-path'.slice(0, Math.min(34, room)).replace(/-$/, 'x'))
+      folder = join(folder, 'deep-folder-segment-of-a-long-path')
     }
+    const remaining = total - folder.length
+    expect(remaining, `the scratch folder ${h.media} leaves no room for the name`).toBeGreaterThanOrEqual(shortest)
+    const base = `clip${'x'.repeat(remaining - shortest)}`
+    const name = `${base}.mkv`
     const source = join(folder, name)
-    expect(source.length).toBe(316)
+    expect(source.length).toBe(total)
     await mkdir(folder, { recursive: true })
     await copyFile(golden.corpus['video_multi.mkv'], source)
     const before = await sha256(source)
@@ -683,7 +689,7 @@ describe.skipIf(!runnable)('the job engine on real FFmpeg', () =>
     const done = await h.waitFor(id, TERMINAL_STATES)
     expect(done.state, h.lines.slice(-30).join('\n')).toBe('done')
     const output = (await h.detail(id)).result?.outputPath ?? ''
-    expect(output).toBe(join(folder, 'clip-convert.mkv'))
+    expect(output).toBe(join(folder, `${base}-convert.mkv`))
     expect((await oracle.decodeCheck(output)).errors).toEqual([])
     expect(await workDirsIn(folder)).toEqual([])
     expect(await sha256(source)).toBe(before)
