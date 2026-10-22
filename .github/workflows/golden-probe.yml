@@ -70,14 +70,17 @@ jobs:
           Start-Process pwsh -ArgumentList '-NoProfile', '-File', $script, $log -WindowStyle Hidden
           "Watchdog started, logging to $log"
 
-      - name: Run the file
-        timeout-minutes: 10
-        run: npm run test:golden -- --reporter=verbose "${{ inputs.file || 'tests/golden/engine.golden.ts' }}"
+      - name: Run the file with the inspector open
+        timeout-minutes: 7
+        run: |
+          node .github/scripts/stack-probe.mjs > "$RUNNER_TEMP/stack.log" 2>&1 &
+          npm run test:golden -- --reporter=verbose --inspect=127.0.0.1:9229 "${{ inputs.file || 'tests/golden/engine.golden.ts' }}"
 
-      - name: Watchdog log
+      - name: Stacks and watchdog log
         if: always()
         shell: pwsh
         run: |
+          $stack = Join-Path $env:RUNNER_TEMP 'stack.log'
+          if (Test-Path $stack) { Get-Content $stack } else { 'no stack log' }
           $log = Join-Path $env:RUNNER_TEMP 'watchdog.log'
-          if (Test-Path $log) { Get-Content $log }
-          Get-Job | Stop-Job -ErrorAction SilentlyContinue
+          if (Test-Path $log) { Get-Content $log | Select-Object -Last 40 }
