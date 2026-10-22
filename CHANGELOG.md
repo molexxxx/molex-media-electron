@@ -2,7 +2,7 @@
 
 All notable changes to the audio normalization tool are documented here.
 
-## [Unreleased]
+## [5.1.0] - 2026-10-22 - Live streams and picture subtitles in the Player
 
 ### Added
 
@@ -11,7 +11,8 @@ All notable changes to the audio normalization tool are documented here.
   picture on the stream's own clock. A live stream reads Live in place of
   its length, counts from when you joined, and cannot be moved; the
   playlist marks it Live. A recording seeks by opening a new session
-  from that point.
+  from that point, and one that stops before its end, after a dropped
+  connection for example, picks up again just past where it stopped.
 - **Picture subtitles in the Player.** PGS (Blu-ray), DVD, and DVB
   subtitles appear in the subtitle menu next to the text ones. FFmpeg
   draws the chosen one onto the picture, and a subtitle already on screen
