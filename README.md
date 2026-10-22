@@ -10,11 +10,11 @@
 
 **A desktop toolkit for loudness, conversion, compression, extraction, editing, and playback, built on FFmpeg.**
 
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=22056855" alt="CI" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=2e9321a1" alt="build" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=cd144dc0" alt="release" /></a>
-<a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=36fef762" alt="license" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=7ff1e815" alt="downloads" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=34c0c530" alt="CI" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=7c9c6e65" alt="build" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=559f0bce" alt="release" /></a>
+<a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=8413dcb4" alt="license" /></a>
+<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=1c958454" alt="downloads" /></a>
 
 <br/>
 
