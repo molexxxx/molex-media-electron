@@ -305,21 +305,21 @@ describe('picture sync', () =>
     try
     {
       const video = document.createElement('video')
-      let ready = false
-      const waiting = whenPlayable(video, 1000).then(() => { ready = true })
+      let ready: boolean | null = null
+      const waiting = whenPlayable(video, 1000).then((playable) => { ready = playable })
       await vi.advanceTimersByTimeAsync(10)
-      expect(ready).toBe(false)
+      expect(ready).toBeNull()
       video.dispatchEvent(new Event('canplay'))
       await waiting
       expect(ready).toBe(true)
       const failed = whenPlayable(video, 1000)
       video.dispatchEvent(new Event('error'))
-      await failed
+      expect(await failed).toBe(false)
       const late = whenPlayable(video, 1000)
       await vi.advanceTimersByTimeAsync(1000)
-      await late
+      expect(await late).toBe(false)
       Object.defineProperty(video, 'readyState', { value: 4, configurable: true })
-      await whenPlayable(video, 1000)
+      expect(await whenPlayable(video, 1000)).toBe(true)
     }
     finally
     {

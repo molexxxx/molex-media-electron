@@ -99,25 +99,30 @@ export interface Clock
   rate(): number
 }
 
-/** Resolves once the picture can play, fails to load, or the wait runs out, so a stream's sound can start with it. */
-export function whenPlayable(video: HTMLMediaElement, timeoutMs: number): Promise<void>
+/**
+ * Resolves once the picture can play (true), or fails to load or the wait runs out (false), so a stream's sound can
+ * start with it and a picture that never arrived can be started again.
+ */
+export function whenPlayable(video: HTMLMediaElement, timeoutMs: number): Promise<boolean>
 {
   if (video.readyState >= 3)
   {
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
   return new Promise((resolve) =>
   {
-    const done = (): void =>
+    const finish = (playable: boolean): void =>
     {
       clearTimeout(timer)
-      video.removeEventListener('canplay', done)
-      video.removeEventListener('error', done)
-      resolve()
+      video.removeEventListener('canplay', ready)
+      video.removeEventListener('error', failed)
+      resolve(playable)
     }
-    const timer = setTimeout(done, timeoutMs)
-    video.addEventListener('canplay', done)
-    video.addEventListener('error', done)
+    const ready = (): void => finish(true)
+    const failed = (): void => finish(false)
+    const timer = setTimeout(failed, timeoutMs)
+    video.addEventListener('canplay', ready)
+    video.addEventListener('error', failed)
   })
 }
 

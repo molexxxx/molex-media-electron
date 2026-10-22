@@ -6,7 +6,7 @@
 import React, { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, waitFor } from '@testing-library/react'
-import { PICTURE_JOIN_LEAD, usePlayer, type PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
+import { PICTURE_JOIN_LEAD, PICTURE_WAIT_MS, STREAM_RESUME_STEP, usePlayer, type PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
 
 const api = vi.hoisted(() => ({
   resolvePlaylist: vi.fn(),
@@ -647,6 +647,156 @@ describe('usePlayer', () =>
     await waitFor(() => expect(api.getStreamUrl).toHaveBeenLastCalledWith('https://vimeo.example/1', 'best', { download: true }))
     await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/file'))
     expect(current().soundNote).toContain('downloaded first')
+  })
+
+  it('starts a recording\'s stream again where it stopped short of its length, then downloads it, and moves on at the real end', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'a1', title: 'Bipbop', url: 'https://apple.example/1' }, { id: 'a2', title: 'Next', url: 'https://apple.example/2' }] })
+    api.getStreamUrl
+      .mockResolvedValueOnce({ success: true, streamed: true, live: false, duration: 600 })
+      .mockResolvedValueOnce({ success: true, mediaUrl: 'http://127.0.0.1:1/file', downloaded: true })
+    api.getLinkStream.mockImplementation(async () => ({ ok: true, stream: { live: false, sound: `http://127.0.0.1:1/s${api.getLinkStream.mock.calls.length}`, picture: null, hasPicture: false, duration: 600 } }))
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://apple.example/1', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1'))
+    const endAt = async (seconds: number): Promise<void> =>
+    {
+      Object.defineProperty(audio, 'currentTime', { value: seconds, configurable: true, writable: true })
+      await act(async () =>
+      {
+        audio.dispatchEvent(new Event('ended'))
+      })
+    }
+    for (const [round, stop] of [[2, 5.97], [3, 12.5], [4, 18]] as const)
+    {
+      await endAt(stop)
+      await waitFor(() => expect(api.getLinkStream).toHaveBeenLastCalledWith('https://apple.example/1', expect.objectContaining({ at: stop + STREAM_RESUME_STEP, sound: true })))
+      await waitFor(() => expect(audio.getAttribute('src')).toBe(`http://127.0.0.1:1/s${round}`))
+    }
+    expect(current().current?.name).toBe('Bipbop')
+    await endAt(24)
+    await waitFor(() => expect(api.getStreamUrl).toHaveBeenLastCalledWith('https://apple.example/1', 'best', { download: true }))
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/file'))
+    expect(api.getLinkStream).toHaveBeenCalledTimes(4)
+  })
+
+  it('keeps playing through a second seek that lands while the first one still opens its stream', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'a1', title: 'Bipbop', url: 'https://apple.example/1' }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: false, duration: 600 })
+    api.getLinkStream.mockResolvedValueOnce({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/s1', picture: null, hasPicture: false, duration: 600 } })
+    const { container } = render(<Harness />)
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    const state = { paused: true }
+    Object.defineProperty(audio, 'paused', { get: () => state.paused, configurable: true })
+    vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(async function (this: HTMLMediaElement)
+    {
+      if (this === audio)
+      {
+        state.paused = false
+      }
+    })
+    vi.mocked(HTMLMediaElement.prototype.pause).mockImplementation(function (this: HTMLMediaElement)
+    {
+      if (this === audio)
+      {
+        state.paused = true
+      }
+    })
+    await act(async () =>
+    {
+      await current().addLink('https://apple.example/1', 'site')
+    })
+    await waitFor(() => expect(current().status).toBe('playing'))
+    const opens: Array<(value: unknown) => void> = []
+    api.getLinkStream.mockImplementation(() => new Promise((resolve) => { opens.push(resolve) }))
+    await act(async () =>
+    {
+      current().seek(139.8)
+    })
+    await act(async () =>
+    {
+      current().seek(402.2)
+    })
+    expect(api.getLinkStream).toHaveBeenLastCalledWith('https://apple.example/1', expect.objectContaining({ at: 402.2 }))
+    await act(async () =>
+    {
+      opens[0]({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/s2', picture: null, hasPicture: false, duration: 600 } })
+      opens[1]({ ok: true, stream: { live: false, sound: 'http://127.0.0.1:1/s3', picture: null, hasPicture: false, duration: 600 } })
+    })
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s3'))
+    await waitFor(() => expect(current().status).toBe('playing'))
+    expect(state.paused).toBe(false)
+    expect(current().time).toBe(402.2)
+  })
+
+  it('starts the picture again on its own when a stream\'s picture never arrives', async () =>
+  {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try
+    {
+      api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'a1', title: 'Bipbop', url: 'https://apple.example/1' }] })
+      api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: false, duration: 600 })
+      api.getLinkStream.mockImplementation(async (_url: string, request: { sound: boolean, picture: boolean }) => ({
+        ok: true,
+        stream: {
+          live: false,
+          sound: request.sound ? `http://127.0.0.1:1/s${api.getLinkStream.mock.calls.length}` : null,
+          picture: request.picture ? { url: `http://127.0.0.1:1/p${api.getLinkStream.mock.calls.length}`, live: true, offset: 0, encoder: null, shared: true } : null,
+          hasPicture: true,
+          duration: 600
+        }
+      }))
+      const { container } = render(<Harness />)
+      await act(async () =>
+      {
+        current().setView('video')
+      })
+      await act(async () =>
+      {
+        await current().addLink('https://apple.example/1', 'site')
+      })
+      const audio = container.querySelector('audio') as HTMLAudioElement
+      const video = container.querySelector('video') as HTMLVideoElement
+      await waitFor(() => expect(video.getAttribute('src')).toBe('http://127.0.0.1:1/p1'))
+      Object.defineProperty(audio, 'currentTime', { value: 6.5, configurable: true, writable: true })
+      await act(async () =>
+      {
+        await vi.advanceTimersByTimeAsync(PICTURE_WAIT_MS)
+      })
+      await waitFor(() => expect(api.getLinkStream).toHaveBeenLastCalledWith('https://apple.example/1', expect.objectContaining({ at: 6.5 + PICTURE_JOIN_LEAD, sound: false, picture: true })))
+      await waitFor(() => expect(video.getAttribute('src')).toBe('http://127.0.0.1:1/p2'))
+      expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1')
+    }
+    finally
+    {
+      vi.useRealTimers()
+    }
+  })
+
+  it('moves to the next track when a recording\'s stream ends at its length', async () =>
+  {
+    api.resolvePlaylist.mockResolvedValue({ success: true, entries: [{ id: 'a1', title: 'Bipbop', url: 'https://apple.example/1' }, { id: 'a2', title: 'Next', url: 'https://apple.example/2' }] })
+    api.getStreamUrl.mockResolvedValue({ success: true, streamed: true, live: false, duration: 600 })
+    api.getLinkStream.mockImplementation(async () => ({ ok: true, stream: { live: false, sound: `http://127.0.0.1:1/s${api.getLinkStream.mock.calls.length}`, picture: null, hasPicture: false, duration: 600 } }))
+    const { container } = render(<Harness />)
+    await act(async () =>
+    {
+      await current().addLink('https://apple.example/1', 'site')
+    })
+    const audio = container.querySelector('audio') as HTMLAudioElement
+    await waitFor(() => expect(audio.getAttribute('src')).toBe('http://127.0.0.1:1/s1'))
+    Object.defineProperty(audio, 'currentTime', { value: 599, configurable: true, writable: true })
+    await act(async () =>
+    {
+      audio.dispatchEvent(new Event('ended'))
+    })
+    await waitFor(() => expect(current().current?.name).toBe('Next'))
+    expect(api.getLinkStream).toHaveBeenLastCalledWith('https://apple.example/2', expect.objectContaining({ at: null }))
   })
 
   it('draws a picture subtitle on the decode route, and returns to the cheapest route without it', async () =>

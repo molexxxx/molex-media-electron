@@ -49,6 +49,23 @@ export const MAX_PICTURE_RESTARTS = 5
  */
 export const PICTURE_JOIN_LEAD = 2
 
+/**
+ * A recording's stream that ends more than this many seconds before its known length stopped short: a dropped
+ * connection, or FFmpeg 9.0.2 ending a byte-range playlist after its first segment. It starts again just past where
+ * it stopped, at most `MAX_STREAM_RESUMES` times a track, then the track plays from a download.
+ */
+export const STREAM_SHORT_END = 2
+
+/**
+ * How far past the stop a stream that stopped short starts again, in seconds. FFmpeg 9.0.2 stops a frame before the
+ * first segment's end and fails the same way when started inside it, and seeks a picture with B-frames about 0.13 s
+ * early, so the restart has to land clearly past the boundary.
+ */
+export const STREAM_RESUME_STEP = 0.5
+
+/** How many times a recording's stream that stopped short starts again before the download takes over. */
+export const MAX_STREAM_RESUMES = 3
+
 /** A link streamed through FFmpeg: its page, whether it is live, and the picture its session carries. */
 interface StreamState
 {
@@ -63,6 +80,8 @@ interface StreamState
   hasPicture: boolean
   /** When the picture last restarted, for the limit on restarts. */
   pictureRestarts: number[]
+  /** How many times the stream stopped short and started again. */
+  resumes: number
 }
 
 /** What a lookup of a site link reports to the Add link popover. */
@@ -217,7 +236,7 @@ function shownPlan(media: PlayerMedia | null | undefined, subtitleIndex: number 
 /** A new stream state for an opened session of a link. */
 function startStream(trackId: string, pageUrl: string, stream: LinkStream): StreamState
 {
-  return { trackId, pageUrl, live: stream.live, base: null, picture: stream.picture, hasPicture: stream.hasPicture, pictureRestarts: [] }
+  return { trackId, pageUrl, live: stream.live, base: null, picture: stream.picture, hasPicture: stream.hasPicture, pictureRestarts: [], resumes: 0 }
 }
 
 /** True when two plans play the picture the same way. */
@@ -332,6 +351,8 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
   const linkPictureRef = useRef<{ pageUrl: string, kind: 'progressive' | 'dash' | 'download' } | null>(null)
   const streamRef = useRef<StreamState | null>(null)
   const sessionRef = useRef(0)
+  /** Whether the stream restart in progress plays once it opens; null while none is in progress. */
+  const restartPlaysRef = useRef<boolean | null>(null)
   /** The sound source the clock reads; null while a new one is chosen, so the old source's last times are ignored. */
   const clockSrcRef = useRef<string | null>(null)
   const streamPictureRef = useRef<(at: number) => Promise<void>>(async () => undefined)
@@ -765,7 +786,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       clockSrcRef.current = url
       audio.src = url
       void loadSubtitles(track, media, subtitleRef.current, token)
-      const pictureFirst = streamRef.current?.trackId === track.id && streamRef.current.picture !== null && viewRef.current === 'video'
+      const firstPicture = streamRef.current?.trackId === track.id && viewRef.current === 'video' ? streamRef.current.picture : null
       void startPicture(track, media, token)
       if (options.paused)
       {
@@ -774,9 +795,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
         setLoadingSince(null)
         return
       }
-      if (pictureFirst && videoRef.current !== null)
+      let pictureStuck = false
+      if (firstPicture !== null && videoRef.current !== null)
       {
-        await whenPlayable(videoRef.current, PICTURE_WAIT_MS)
+        pictureStuck = !await whenPlayable(videoRef.current, PICTURE_WAIT_MS) && followerRef.current?.current() === firstPicture
         if (tokenRef.current !== token)
         {
           return
@@ -785,6 +807,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       await audio.play()
       if (tokenRef.current === token)
       {
+        if (pictureStuck)
+        {
+          void streamPictureRef.current(clockTime() + PICTURE_JOIN_LEAD)
+        }
         setLoadingLabel(null)
         setLoadingSince(null)
         setStatus('playing')
@@ -806,7 +832,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       }
       setProblem((previous) => previous ?? fileProblem(errorText(err)))
     }
-  }, [ensureGraph, inspectTrack, loadSubtitles, patchTrack, requestStream, skipAfterFailure, startPicture])
+  }, [clockTime, ensureGraph, inspectTrack, loadSubtitles, patchTrack, requestStream, skipAfterFailure, startPicture])
 
   playTrackRef.current = playTrack
 
@@ -826,6 +852,14 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     const session = ++sessionRef.current
     const wantPicture = viewRef.current === 'video' && stream.hasPicture
     const start = stream.live ? null : Math.max(0, at ?? 0)
+    restartPlaysRef.current = options.play
+    const settled = (): void =>
+    {
+      if (sessionRef.current === session)
+      {
+        restartPlaysRef.current = null
+      }
+    }
     setStatus('loading')
     setLoadingSince(Date.now())
     setLoadingLabel(stream.live ? PLAYER_COPY.startingLive : PLAYER_COPY.startingStream)
@@ -845,6 +879,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     }
     if (!opened.ok || opened.stream.sound === null)
     {
+      settled()
       setLoadingLabel(null)
       setLoadingSince(null)
       setStatus('paused')
@@ -868,14 +903,16 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     }
     if (!options.play)
     {
+      settled()
       setStatus('paused')
       setLoadingLabel(null)
       setLoadingSince(null)
       return
     }
+    let pictureStuck = false
     if (picture !== null && wantPicture && videoRef.current !== null)
     {
-      await whenPlayable(videoRef.current, PICTURE_WAIT_MS)
+      pictureStuck = !await whenPlayable(videoRef.current, PICTURE_WAIT_MS) && followerRef.current?.current() === picture
     }
     if (tokenRef.current !== token || sessionRef.current !== session)
     {
@@ -887,6 +924,10 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       if (tokenRef.current === token && sessionRef.current === session)
       {
         setStatus('playing')
+        if (pictureStuck)
+        {
+          void streamPictureRef.current(clockTime() + PICTURE_JOIN_LEAD)
+        }
       }
     }
     catch
@@ -898,13 +939,14 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     }
     finally
     {
+      settled()
       if (tokenRef.current === token && sessionRef.current === session)
       {
         setLoadingLabel(null)
         setLoadingSince(null)
       }
     }
-  }, [requestStream, streamed])
+  }, [clockTime, requestStream, streamed])
 
   /**
    * Starts the current stream's picture again on its own session, trimmed to `at` on the sound's clock, so it joins
@@ -1153,6 +1195,21 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
     }
     const onEnded = (): void =>
     {
+      const stream = streamed()
+      const length = stream === null || stream.live ? undefined : tracksRef.current.find((track) => track.id === stream.trackId)?.duration
+      if (stream !== null && typeof length === 'number' && audio.currentTime < length - STREAM_SHORT_END)
+      {
+        const at = audio.currentTime + STREAM_RESUME_STEP
+        if (stream.resumes < MAX_STREAM_RESUMES)
+        {
+          stream.resumes += 1
+          void restartStream(at, { play: true })
+          return
+        }
+        streamRef.current = null
+        void playTrackRef.current(stream.trackId, { at, download: true })
+        return
+      }
       const ids = tracksRef.current.map((track) => track.id)
       const next = afterEnd(ids, currentRef.current, repeatRef.current, shuffleRef.current)
       if (next === null)
@@ -1398,7 +1455,7 @@ export function usePlayer({ popout }: { popout: boolean }): PlayerEngine
       const length = tracksRef.current.find((track) => track.id === stream.trackId)?.duration ?? null
       const target = Math.max(0, length !== null && length > 1 ? Math.min(seconds, length - 1) : seconds)
       setTime(target)
-      void restartStream(target, { play: !audio.paused })
+      void restartStream(target, { play: restartPlaysRef.current ?? !audio.paused })
       return
     }
     const end = Number.isFinite(audio.duration) ? audio.duration : Number.POSITIVE_INFINITY
