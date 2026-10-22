@@ -474,7 +474,7 @@ export class WorkDirRegistry
         try
         {
           await this.files.removeEmpty(path)
-          this.forget(entry)
+          await this.forget(entry)
         }
         catch (err)
         {
@@ -490,8 +490,11 @@ export class WorkDirRegistry
     }
   }
 
-  /** Drops an entry whose folder is gone; the `deleted` line is not fsynced, since a lost one only repeats a delete. */
-  private forget(entry: WorkDirEntry): void
+  /**
+   * Drops an entry whose folder is gone and writes its `deleted` line before resolving, so no registry write outlives
+   * the sweep or create that caused it. The line is not fsynced, since a lost one only repeats a delete.
+   */
+  private async forget(entry: WorkDirEntry): Promise<void>
   {
     const key = this.key(entry.path)
     if (this.entries.get(key) === entry)
@@ -500,10 +503,14 @@ export class WorkDirRegistry
     }
     this.pending.delete(key)
     this.sessionKept.delete(key)
-    this.o.writer.appendLines(this.o.path, [{ op: 'deleted', path: entry.path }]).catch((err: unknown) =>
+    try
+    {
+      await this.o.writer.appendLines(this.o.path, [{ op: 'deleted', path: entry.path }])
+    }
+    catch (err)
     {
       this.o.log?.warn(`Could not record the deletion of ${entry.path}: ${messageOf(err)}`)
-    })
+    }
   }
 
   /**
@@ -512,7 +519,7 @@ export class WorkDirRegistry
    * `protect` is asked again right before each deletion, and the marker must carry the registered token; a folder
    * that is not registered or whose marker disagrees is never touched. A folder that cannot be deleted within the
    * cleanup budget stays registered and pending for the next sweep. Sweeps run one at a time, so a caller never
-   * needs to await one before a command.
+   * needs to await one before a command, and a sweep resolves only after its `deleted` lines are written.
    */
   sweep(protect: (entry: WorkDirEntry) => boolean, only?: (entry: WorkDirEntry) => boolean): Promise<SweepReport>
   {
@@ -563,7 +570,7 @@ export class WorkDirRegistry
         {
           return settled('unreachable')
         }
-        this.forget(entry)
+        await this.forget(entry)
         return settled('missing')
       }
       if (kind === 'other')
@@ -610,7 +617,7 @@ export class WorkDirRegistry
       this.o.log?.warn(`Could not delete the work folder ${entry.path} yet: ${messageOf(err)}`)
       return settled('pending', errorCode(err))
     }
-    this.forget(entry)
+    await this.forget(entry)
     this.o.log?.info(`Deleted the work folder ${entry.path}`)
     return settled('deleted')
   }

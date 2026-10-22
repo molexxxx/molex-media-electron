@@ -519,7 +519,7 @@ describe('create', () =>
     expect(result).toMatchObject({ status: 'folder-failed', error: { code: 'EACCES' } })
     expect(existsSync(folder(A, 1, 1))).toBe(false)
     expect(registry.list()).toEqual([])
-    await vi.waitFor(() => expect(registryLines()).toHaveLength(2))
+    expect(registryLines()).toHaveLength(2)
     expect(registryLines()[1]).toEqual({ op: 'deleted', path: folder(A, 1, 1) })
   })
 
@@ -624,9 +624,10 @@ function workFolders(): string[]
   return readdirSync(env.dest).filter((name) => name.startsWith('.molex-'))
 }
 
-async function deletedLines(count: number): Promise<void>
+/** The `deleted` lines are on disk by the time a sweep or create resolves, so they are read without waiting. */
+function expectDeletedLines(count: number): void
 {
-  await vi.waitFor(() => expect(registryLines().filter((line) => (line as { op: string }).op === 'deleted')).toHaveLength(count))
+  expect(registryLines().filter((line) => (line as { op: string }).op === 'deleted')).toHaveLength(count)
 }
 
 const C = 'MM-0003' as JobId
@@ -651,7 +652,7 @@ describe('sweep', () =>
     expect(existsSync(ended.path)).toBe(false)
     expect([active.path, held.path, forged.path, stranger].every((path) => existsSync(path))).toBe(true)
     expect(registry.list()).toEqual([active, held, forged])
-    await deletedLines(1)
+    expectDeletedLines(1)
     expect(registryLines()).toContainEqual({ op: 'deleted', path: ended.path })
     expect(env.log.info).toHaveBeenCalledWith(expect.stringContaining('Deleted the work folder'))
   })
@@ -743,6 +744,7 @@ describe('sweep', () =>
     expect(outcomes(await registry.sweep(() => false))).toEqual({ [held.path]: 'deleted' })
     expect(registry.pendingEntries()).toEqual([])
     expect(existsSync(held.path)).toBe(false)
+    expectDeletedLines(1)
   })
 
   it('takes no retry for a failure that is not a lock', async () =>
@@ -808,7 +810,7 @@ describe('sweep', () =>
     await make(registry, A, 1)
     env.writer.failPlain = true
     expect((await registry.sweep(() => false)).deleted).toBe(1)
-    await vi.waitFor(() => expect(env.log.warn).toHaveBeenCalledWith(expect.stringContaining('Could not record the deletion')))
+    expect(env.log.warn).toHaveBeenCalledWith(expect.stringContaining('Could not record the deletion'))
   })
 })
 
@@ -822,7 +824,7 @@ describe('across sessions', () =>
     expect(outcomes(await registry.sweep(protecting(running)))).toEqual({ [running.path]: 'protected', [released.path]: 'deleted' })
     expect(outcomes(await registry.sweep(() => false))).toEqual({ [running.path]: 'deleted' })
     expect(workFolders()).toEqual([])
-    await deletedLines(2)
+    expectDeletedLines(2)
     expect((await makeRegistry().load()).entries).toEqual([])
   })
 
@@ -840,12 +842,12 @@ describe('across sessions', () =>
     expect(outcomes(report)).toEqual({ [a.path]: 'session', [b.path]: 'session', [fresh.path]: 'deleted' })
     expect(report.kept).toBe(2)
     expect(workFolders().sort()).toEqual(['.molex-MM-0001-a1-x1.partial', '.molex-MM-0002-a1-x1.partial'])
-    await deletedLines(1)
+    expectDeletedLines(1)
 
     const next = await started()
     expect(outcomes(await next.sweep(() => false))).toEqual({ [a.path]: 'deleted', [b.path]: 'deleted' })
     expect(workFolders()).toEqual([])
-    await deletedLines(3)
+    expectDeletedLines(3)
     expect((await makeRegistry().load()).entries).toEqual([])
   })
 
@@ -861,7 +863,7 @@ describe('across sessions', () =>
     expect(second.nextExecution(A, 1)).toBe(3)
     await expect(second.create({ jobId: A, attempt: 1, execution: 2, source: 's', finalPath: join(env.dest, 'a.mp4') })).rejects.toBeInstanceOf(RangeError)
     expect((await second.sweep(() => false)).deleted).toBe(2)
-    await deletedLines(2)
+    expectDeletedLines(2)
 
     const third = makeRegistry()
     const reloaded = await third.load({ knownJob: (jobId) => jobId === A })
