@@ -1,0 +1,78 @@
+name: Golden probe
+
+# Runs one golden file on one runner with a process watchdog, for a leg that stalls without a trace.
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: The golden file to run
+        default: tests/golden/engine.golden.ts
+        required: true
+      runner:
+        description: The runner label
+        default: windows-2025
+        required: true
+
+jobs:
+  probe:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 14
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Keep golden outputs in the runner temp folder
+        run: echo "MOLEX_GOLDEN_OUT=$RUNNER_TEMP/molex-golden" >> "$GITHUB_ENV"
+
+      - name: Fetch the pinned FFmpeg
+        run: |
+          log="$RUNNER_TEMP/fetch-ffmpeg.log"
+          dir=$(node tests/golden/fetch-ffmpeg.mjs 2> "$log") || { cat "$log"; exit 1; }
+          echo "MOLEX_FFMPEG_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Start the watchdog
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'watchdog.log'
+          $script = Join-Path $env:RUNNER_TEMP 'watchdog.ps1'
+          @'
+          param($log)
+          while ($true) {
+            $stamp = Get-Date -Format 'HH:mm:ss'
+            $rows = Get-CimInstance Win32_Process |
+              Where-Object { $_.Name -match '^(node|ffmpeg|ffprobe)\.exe$' } |
+              ForEach-Object {
+                $cpu = ($_.KernelModeTime + $_.UserModeTime) / 10000000
+                $cmd = if ($_.CommandLine) { ($_.CommandLine -replace '\s+', ' ') } else { '' }
+                if ($cmd.Length -gt 160) { $cmd = $cmd.Substring(0, 160) }
+                '{0} pid={1} ppid={2} cpu={3:N1}s mem={4}MB {5}' -f $stamp, $_.ProcessId, $_.ParentProcessId, $cpu, [int]($_.WorkingSetSize / 1MB), $cmd
+              }
+            Add-Content -Path $log -Value ("--- $stamp") -Encoding utf8
+            if ($rows) { Add-Content -Path $log -Value $rows -Encoding utf8 }
+            Start-Sleep -Seconds 30
+          }
+          '@ | Set-Content -Path $script -Encoding utf8
+          Start-Process pwsh -ArgumentList '-NoProfile', '-File', $script, $log -WindowStyle Hidden
+          "Watchdog started, logging to $log"
+
+      - name: Run the file
+        timeout-minutes: 10
+        run: npm run test:golden -- --reporter=verbose "${{ inputs.file }}"
+
+      - name: Watchdog log
+        if: always()
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'watchdog.log'
+          if (Test-Path $log) { Get-Content $log }
+          Get-Job | Stop-Job -ErrorAction SilentlyContinue
