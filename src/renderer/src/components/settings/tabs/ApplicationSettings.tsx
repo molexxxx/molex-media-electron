@@ -5,7 +5,7 @@
  * save; the update actions go to the updater, whose status the app store follows.
  */
 import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
-import type { CookieBrowser, CookieInfo } from '../../../../../shared/ipc/api'
+import type { CookieBrowser, CookieInfo, UpdateInstallResult } from '../../../../../shared/ipc/api'
 import { countOf } from '../../../copy/batch'
 import { useAppStore, type AppConfig } from '../../../stores/appStore'
 import { Button, InlineConfirm, ProgressBar, Select, Switch, type SelectOption } from '../../../ui'
@@ -109,11 +109,9 @@ export function updateLine(status: UpdateStatus, version: string | null): string
 }
 
 /** The message of an install the updater held back or could not start, or null when it went ahead. */
-export function installRefusal(result: unknown): string | null
+export function installRefusal(result: UpdateInstallResult | undefined): string | null
 {
-  if (typeof result !== 'object' || result === null || !('ok' in result) || result.ok !== false) return null
-  const message = (result as { message?: unknown }).message
-  return typeof message === 'string' ? message : null
+  return result !== undefined && !result.ok ? result.message : null
 }
 
 /** How long ago, in plain words: "less than a minute ago", "12 minutes ago", "3 hours ago", "2 days ago". */

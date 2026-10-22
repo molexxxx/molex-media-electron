@@ -141,7 +141,7 @@ describe('the words', () =>
       .toBe('An update is ready. It installs when the current jobs finish.')
     expect(installRefusal({ ok: true })).toBeNull()
     expect(installRefusal(undefined)).toBeNull()
-    expect(installRefusal({ ok: false })).toBeNull()
+    expect(installRefusal({ ok: false, reason: 'failed', message: 'The installer could not start.' })).toBe('The installer could not start.')
   })
 
   it('says how long ago in minutes, hours, or days', () =>

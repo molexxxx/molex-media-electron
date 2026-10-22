@@ -321,6 +321,12 @@ export function steppedZoomLevel(level: number, direction: 1 | -1): number
   return Math.min(zoomLevelOf(ZOOM_FACTOR_MAX), Math.max(zoomLevelOf(ZOOM_FACTOR_MIN), next))
 }
 
+/** What `updater:install` answers: installing, or held back while a batch runs, or failed to start. */
+export type UpdateInstallResult =
+  | { ok: true }
+  | { ok: false; reason: 'batch-running'; message: string; whenIdle: boolean }
+  | { ok: false; reason: 'failed'; message: string }
+
 /** Everything the preload exposes on `window.api`. */
 export interface WindowApi
 {
@@ -453,7 +459,7 @@ export interface WindowApi
 
   checkForUpdates: () => Promise<{ success: boolean; version?: string; error?: string }>
   downloadUpdate: () => Promise<{ success: boolean; error?: string }>
-  installUpdate: () => Promise<void>
+  installUpdate: () => Promise<UpdateInstallResult>
   getUpdaterStatus: () => Promise<{ status: string; version?: string; error?: string; percent?: number }>
   onUpdaterStatus: (cb: (status: any) => void) => () => void
 

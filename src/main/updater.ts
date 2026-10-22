@@ -15,6 +15,7 @@ import { logger } from './logger'
 import { sendToAll } from './ipc/helpers'
 import { APP_NAME, updateWaitingText } from './jobs/status'
 import type { RunId } from '../shared/jobs/ids'
+import type { UpdateInstallResult } from '../shared/ipc/api'
 
 /** How often an install armed for when the engine is idle checks again. */
 export const IDLE_INSTALL_POLL_MS = 5_000
@@ -23,10 +24,7 @@ export const IDLE_INSTALL_POLL_MS = 5_000
 export const STARTUP_CHECK_DELAY_MS = 5_000
 
 /** What `updater:install` returns: installing, or refused while the engine is busy. */
-export type InstallResult =
-  | { ok: true }
-  | { ok: false; reason: 'batch-running'; message: string; whenIdle: boolean }
-  | { ok: false; reason: 'failed'; message: string }
+export type InstallResult = UpdateInstallResult
 
 /** What the updater reads from the app lifecycle. */
 export interface UpdaterOptions {
