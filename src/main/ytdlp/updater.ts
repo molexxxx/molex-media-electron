@@ -143,10 +143,14 @@ export function readStored(value: unknown): YtDlpConfig
   }
 }
 
-/** The first file named `name` in an absolute PATH folder that can be run. */
-export async function findOnPath(envPath: string | undefined, name: string, delimiter: string): Promise<string | null>
+/**
+ * The first file named `name` in an absolute PATH folder that can be run. Windows runs any file with the right
+ * name, so only existence counts there; elsewhere the file needs the execute bit.
+ */
+export async function findOnPath(envPath: string | undefined, name: string, platform: NodeJS.Platform): Promise<string | null>
 {
-  for (const entry of (envPath ?? '').split(delimiter))
+  const windows = platform === 'win32'
+  for (const entry of (envPath ?? '').split(windows ? ';' : ':'))
   {
     const dir = entry.trim().replace(/^"(.*)"$/, '$1')
     if (dir === '' || !path.isAbsolute(dir))
@@ -156,7 +160,7 @@ export async function findOnPath(envPath: string | undefined, name: string, deli
     const full = path.join(dir, name)
     try
     {
-      await fs.promises.access(full, fs.constants.X_OK)
+      await fs.promises.access(full, windows ? fs.constants.F_OK : fs.constants.X_OK)
       if ((await fs.promises.stat(full)).isFile())
       {
         return full
@@ -197,7 +201,6 @@ export function createYtDlpUpdater(deps: UpdaterDeps): YtDlpUpdater
 {
   const exe = executableName(deps.platform)
   const asset = assetFor(deps.platform, deps.arch)
-  const delimiter = deps.platform === 'win32' ? ';' : ':'
   const listeners = new Set<(status: YtDlpStatus) => void>()
   let state: YtDlpUpdateState | null = null
   let latest: LatestRelease | null = null
@@ -257,7 +260,7 @@ export function createYtDlpUpdater(deps: UpdaterDeps): YtDlpUpdater
 
   function systemCopy(): Promise<string | null>
   {
-    return findOnPath(deps.pathEnv(), exe, delimiter)
+    return findOnPath(deps.pathEnv(), exe, deps.platform)
   }
 
   /** The copy in use: the one on PATH while the owner chose it and it exists, else the app's own copy. */

@@ -697,9 +697,18 @@ describe('findOnPath', () =>
     fs.mkdirSync(b, { recursive: true })
     fs.writeFileSync(path.join(b, 'yt-dlp.exe'), 'x')
     const env = ['', 'relative', a, `"${b}"`].join(';')
-    expect(await findOnPath(env, 'yt-dlp.exe', ';')).toBe(path.join(b, 'yt-dlp.exe'))
-    expect(await findOnPath(undefined, 'yt-dlp.exe', ';')).toBeNull()
-    expect(await findOnPath(a, 'yt-dlp.exe', ';')).toBeNull()
+    expect(await findOnPath(env, 'yt-dlp.exe', 'win32')).toBe(path.join(b, 'yt-dlp.exe'))
+    expect(await findOnPath(undefined, 'yt-dlp.exe', 'win32')).toBeNull()
+    expect(await findOnPath(a, 'yt-dlp.exe', 'win32')).toBeNull()
+    if (process.platform !== 'win32')
+    {
+      const posix = path.join(root, 'posix')
+      fs.mkdirSync(posix, { recursive: true })
+      fs.writeFileSync(path.join(posix, 'yt-dlp'), 'x', { mode: 0o644 })
+      expect(await findOnPath(posix, 'yt-dlp', 'linux')).toBeNull()
+      fs.chmodSync(path.join(posix, 'yt-dlp'), 0o755)
+      expect(await findOnPath(posix, 'yt-dlp', 'linux')).toBe(path.join(posix, 'yt-dlp'))
+    }
   })
 })
 
