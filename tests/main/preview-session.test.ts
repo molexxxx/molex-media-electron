@@ -96,6 +96,34 @@ describe('preview server: stream sessions', () =>
     expect(Date.now() - started).toBeLessThan(5000)
   })
 
+  it('keeps the command writing while a client that stopped reading has a backlog, so the other output still arrives', async () =>
+  {
+    const { command, args } = child("const fs = require('fs'); const big = Buffer.alloc(12 * 1024 * 1024, 97); let at = 0; while (at < big.length) at += fs.writeSync(1, big, at, Math.min(65536, big.length - at)); fs.writeSync(3, 'picture-bytes'); setTimeout(() => {}, 20000)")
+    const [sound, picture] = registerLiveSession({ command, args, outputs: ['audio/mp4', 'video/mp4'] })
+    const base = await startPreviewServer()
+    const firstData = (url: string, stop: boolean): Promise<{ text: string, res: http.IncomingMessage }> => new Promise((resolve, reject) =>
+    {
+      const req = http.request(url, (res) =>
+      {
+        res.once('data', (chunk: Buffer) =>
+        {
+          if (stop)
+          {
+            res.pause()
+          }
+          resolve({ text: chunk.toString('latin1', 0, 13), res })
+        })
+      })
+      req.on('error', reject)
+      req.end()
+    })
+    const stalled = await firstData(`${base}/${sound}`, true)
+    expect(stalled.text).toBe('aaaaaaaaaaaaa')
+    const shown = await Promise.race([firstData(`${base}/${picture}`, false).then((answer) => answer.text), sleep(6000).then(() => 'never')])
+    expect(shown).toBe('picture-bytes')
+    stalled.res.destroy()
+  }, 20000)
+
   it('drops a session nobody asked for', async () =>
   {
     vi.useFakeTimers({ toFake: ['setTimeout'] })

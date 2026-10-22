@@ -128,6 +128,14 @@ export interface LiveSession {
 /** The most output a session holds for a client that has not connected yet. */
 export const SESSION_HOLD_BYTES = 64 * 1024 * 1024
 
+/**
+ * The unread output a session queues for a connected client before the command waits for it. One command writes
+ * every output, so waiting on one output stops the others: a paused audio element reads only a few seconds of
+ * sound, while the picture's first keyframe after a seek can lie further on, and the player starts the sound once
+ * the picture is ready.
+ */
+export const SESSION_BACKLOG_BYTES = 16 * 1024 * 1024
+
 interface SessionOutput {
   contentType: string
   held: Buffer[]
@@ -199,9 +207,11 @@ function startSession(state: SessionState): void {
     source.on('data', (chunk: Buffer) => {
       if (output.dropped) return
       if (output.client !== null) {
-        if (!output.client.write(chunk)) {
+        const client = output.client
+        client.write(chunk)
+        if (client.writableLength > SESSION_BACKLOG_BYTES && !source.isPaused()) {
           source.pause()
-          output.client.once('drain', () => source.resume())
+          client.once('drain', () => source.resume())
         }
         return
       }
