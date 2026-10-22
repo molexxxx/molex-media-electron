@@ -4,36 +4,59 @@ All notable changes to the audio normalization tool are documented here.
 
 ## [5.0.0] - 2026-10-22 - UI 2.0 and the loudness pipeline rebuilt
 
-Every view is rebuilt on one design system, and the audio pipeline behind
-the batch processor is replaced by one measured against the standards it
-names. The two land together because the old batch flow could not express
-the new pipeline: presets had to be chosen before files were added, and a
-job carried no record of what it ran with. A golden suite now runs every
-chain on real FFmpeg builds (2022-10-13, 5.1.2, 7.1.1, and 9.0.2) locally
-and in CI, and releases are gated on it.
+UI 2.0 rebuilds every view of the app on one design system: ice blue on
+neutral graphite, the platform's own type, a quieter layout that puts the
+work first, and keyboard paths for every action. Behind the batch view, the
+audio pipeline is replaced by one measured against the standards it names.
+The two land together because the old batch flow could not express the new
+pipeline: presets had to be chosen before files were added, and a job
+carried no record of what it ran with.
+
+### The new interface
+
+- **Batch** is one queue with Queue, Review, Run, and History tabs. Add
+  files, then pick each job's operation and preset in the inspector beside
+  the queue; every job keeps its own settings. Review shows what each job
+  will write (output file, encoder, streams kept, the planned FFmpeg
+  command) before anything runs. Run shows progress per job and per
+  operation with time left and speed. History keeps each batch with its
+  settings, the measured result of every job, and reports to export.
+- **Presets** are named after the standards they meet (EBU R 128, ATSC
+  A/85, Apple Podcasts, Spotify, and more) and explained at three depths:
+  what each is best for, how it works, and the technical values. A goal
+  finder answers common goals, such as quiet dialogue next to loud action.
+- **Dashboard** is a front panel: what is waiting, running, and done, the
+  machine's readiness (FFmpeg build, GPU, CPU, memory), keys that add files
+  with each operation, and the latest jobs with their measured stamps.
+- **Settings** has Batch, Presets, FFmpeg, and Application tabs: output and
+  worker defaults, your presets, the FFmpeg build with its self-test, and
+  app and yt-dlp updates.
+- **Logs** is a searchable grid with levels in words, a source filter,
+  follow new lines, and a details pane with the full FFmpeg command and
+  output. Show log from any job jumps straight to its lines.
+- **First run** is one screen that says what the app needs, downloads and
+  verifies FFmpeg with live progress, or uses an FFmpeg already on the
+  computer.
+- **Editor** opens straight into Trim, Timeline, or Inspect. Trim has in
+  and out readouts and an export panel like the batch inspector; Timeline
+  keeps every edit, snap, and shortcut; Inspect reads the file's ffprobe
+  report in plain words and measures its real keyframes.
+- **Player** shows the video or a visualization, plays files Chromium
+  cannot decode by repackaging or decoding them with FFmpeg on the GPU,
+  offers audio track and subtitle choice, plays links with video through
+  yt-dlp, goes truly full screen, pops out into a small window, and says
+  in Media information exactly how a file is being played.
+- Every list shares one row menu (More actions, right click, Shift+F10),
+  menus and selects stay inside the window, scrollbars are thin and never
+  shift the content, and F6 moves between the regions of each view.
 
 ### Added
 
-- **A job engine in the main process.** Each job is a source plus a
-  snapshot of its settings, with Review before anything runs, a Run view
-  with published progress, and History where every finished job carries
-  what was measured in its output. The queue survives a restart.
-- **Presets named after the standards they meet**, each explained in plain
-  words with what it is best for, how it works, and the technical values
-  folded underneath, plus a goal finder ("quiet dialogue, loud action").
-- **Dashboard, Settings, Logs, first-run setup, Editor, and Player**
-  rebuilt: Settings with batch defaults, presets, the FFmpeg build and its
-  self-test, and app and yt-dlp updates; Logs as a grid with levels in
-  words, a source filter, and a details pane; setup as one screen with
-  verified downloads; the Editor opening straight into Trim, Timeline, or
-  Inspect, with Inspect reading ffprobe's report and measuring keyframes;
-  the Player showing video or a visualization, with Media information
-  that says how a file is being played.
-- **Player codec breadth.** Files Chromium cannot play are repackaged or
-  decoded by FFmpeg through the detected hardware encoder, with audio
-  track and subtitle choice. Links play video through yt-dlp with a
-  quality cap and fall back to a cached download. Full screen is the
-  window's own state with only the stage shown.
+- **A job engine in the main process.** Jobs survive a restart, and every
+  finished job carries what was measured in its output.
+- **A golden suite** that runs every audio chain on real FFmpeg builds
+  (2022-10-13, 5.1.2, 7.1.1, and 9.0.2) locally and in CI; releases are
+  gated on it.
 - **yt-dlp kept current by the app** from signed GitHub releases, with the
   checksum file's signature verified against yt-dlp's key, a swap deferred
   until no yt-dlp process of ours runs, and the old copy kept on failure.
