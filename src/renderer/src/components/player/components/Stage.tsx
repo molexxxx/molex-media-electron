@@ -29,6 +29,26 @@ export function useElapsed(since: number | null): number
   return since === null ? 0 : Math.max(0, Math.floor((now - since) / 1000))
 }
 
+/** How long a route note stays on the stage; Media information keeps the reason afterward. */
+export const NOTE_MS = 6000
+
+/** The note while it is fresh: each new note shows for {@link NOTE_MS}, then gives way to the picture. */
+export function useFreshNote(note: string | null): string | null
+{
+  const [fresh, setFresh] = useState(note)
+  useEffect(() =>
+  {
+    setFresh(note)
+    if (note === null)
+    {
+      return undefined
+    }
+    const timer = setTimeout(() => setFresh(null), NOTE_MS)
+    return () => clearTimeout(timer)
+  }, [note])
+  return fresh
+}
+
 /** A loading label with its elapsed time once it has taken a while: "Getting the sound stream through yt-dlp… (12 s)". */
 export function timedLabel(label: string, elapsed: number): string
 {
@@ -45,11 +65,11 @@ export function showsPicture(player: Pick<PlayerEngine, 'view' | 'picture' | 'po
 export function EmptyStage({ onAddFiles, onAddLink, compact = false }: { onAddFiles: () => void, onAddLink?: () => void, compact?: boolean }): ReactElement
 {
   return (
-    <div className="absolute inset-0 flex items-center justify-center px-6 py-6" data-empty-state="player">
-      <div className="flex w-full max-w-2xl flex-col gap-3">
+    <div className="absolute inset-0 flex items-center justify-center px-6 pt-6 pb-[min(22vh,11rem)]" data-empty-state="player">
+      <div className="flex w-full max-w-2xl flex-col items-center gap-3 text-center">
         <h2 className="text-section text-ink">{PLAYER_COPY.emptyHeading}</h2>
         {!compact && <p className="max-w-[65ch] text-body text-ink-2">{PLAYER_COPY.emptyLine}</p>}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <Button variant="primary" icon="action.addFiles" onClick={onAddFiles}>{PLAYER_COPY.addFiles}</Button>
           {onAddLink !== undefined && <Button icon="player.addLink" onClick={onAddLink}>{PLAYER_COPY.addLink}</Button>}
           {!compact && (
@@ -111,6 +131,8 @@ export function Stage({ player, canvasRef, dragging, onAddFiles, onAddLink, onBr
   const empty = player.tracks.length === 0 && !player.poppedOut
   const loading = player.status === 'loading' || (player.view === 'video' && player.picture === 'loading')
   const elapsed = useElapsed(loading ? player.loadingSince : null)
+  const soundNote = useFreshNote(player.soundNote)
+  const pictureNote = useFreshNote(player.view === 'video' ? player.pictureNote : null)
   return (
     <section
       aria-label={PLAYER_COPY.stage}
@@ -140,10 +162,10 @@ export function Stage({ player, canvasRef, dragging, onAddFiles, onAddLink, onBr
           <span>{timedLabel(player.loadingLabel ?? player.pictureProgress ?? 'Preparing the picture…', elapsed)}</span>
         </div>
       )}
-      {(player.soundNote !== null || (player.pictureNote !== null && player.view === 'video')) && !loading && (
+      {(soundNote !== null || pictureNote !== null) && !loading && (
         <div className="pointer-events-none absolute top-3 left-3 flex max-w-[32rem] flex-col gap-0.5 rounded-sm bg-scrim px-3 py-1.5 text-label text-ink-2" role="status">
-          {player.soundNote !== null && <span>{player.soundNote}</span>}
-          {player.pictureNote !== null && player.view === 'video' && <span>{player.pictureNote}</span>}
+          {soundNote !== null && <span>{soundNote}</span>}
+          {pictureNote !== null && <span>{pictureNote}</span>}
         </div>
       )}
       <Problem player={player} />

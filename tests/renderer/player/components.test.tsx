@@ -4,14 +4,14 @@
  */
 import React from 'react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import type { PlayerMedia } from '../../../src/shared/player/media'
 import MediaPlayer from '@renderer/components/player/MediaPlayer'
 import { PLAYLIST_COLUMNS, PlaylistPanel, targetIds } from '@renderer/components/player/components/PlaylistPanel'
 import { CompactTransport, positionText, Transport } from '@renderer/components/player/components/Transport'
 import { MediaInfoDialog } from '@renderer/components/player/components/MediaInfoDialog'
 import { moreEntries } from '@renderer/components/player/components/PlayerHeader'
-import { EmptyStage, showsPicture } from '@renderer/components/player/components/Stage'
+import { EmptyStage, NOTE_MS, showsPicture, useFreshNote } from '@renderer/components/player/components/Stage'
 import { PopoutShell, presetFor, sizeEntries } from '@renderer/components/layout/components/PopoutShell'
 import type { PlayerEngine } from '@renderer/components/player/hooks/usePlayer'
 import { dropKind, droppedLink } from '@renderer/components/player/hooks/usePlayerDrop'
@@ -317,5 +317,30 @@ describe('Player components', () =>
     await vi.advanceTimersByTimeAsync(0)
     expect(state!.on).toBe(false)
     vi.useRealTimers()
+  })
+})
+
+describe('useFreshNote', () =>
+{
+  it('shows each new note for a while, then gives way, and clears at once with the note', () =>
+  {
+    vi.useFakeTimers()
+    try
+    {
+      const { result, rerender } = renderHook(({ note }: { note: string | null }) => useFreshNote(note), { initialProps: { note: 'Sound downloaded first.' } })
+      expect(result.current).toBe('Sound downloaded first.')
+      act(() => { vi.advanceTimersByTime(NOTE_MS - 1) })
+      expect(result.current).toBe('Sound downloaded first.')
+      act(() => { vi.advanceTimersByTime(1) })
+      expect(result.current).toBeNull()
+      rerender({ note: 'Video downloaded first.' })
+      expect(result.current).toBe('Video downloaded first.')
+      rerender({ note: null })
+      expect(result.current).toBeNull()
+    }
+    finally
+    {
+      vi.useRealTimers()
+    }
   })
 })
