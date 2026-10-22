@@ -84,6 +84,9 @@ and in CI, and releases are gated on it.
   preset built on EBU R 128 s2 that compresses above the program loudness;
   home playback and media servers are sent to Streaming.
 - The package carries only the built output and resources.
+- Electron 44 (Chromium 152). Copied files paste in full on every platform
+  through the file list Electron now reads natively; Windows no longer
+  needs a PowerShell query that the old clipboard API forced.
 
 ## [4.7.1] - 2026-08-25 - GPU, editor, and encoder-quality audit
 
