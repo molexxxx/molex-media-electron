@@ -160,7 +160,7 @@ export function PlaylistPanel({ player, actions, className, style }: { player: P
             <>
               <div className="flex min-w-0 items-baseline gap-2">
                 <h2 className="text-body font-semibold text-ink">{PLAYER_COPY.playlist}</h2>
-                <span className="truncate text-label text-ink-3 tabular-nums">{playlistSummary(player.tracks.length, formatTime(total.seconds), total.complete)}</span>
+                <span className="truncate text-label text-ink-3 tabular-nums">{playlistSummary(player.tracks.length, total.seconds > 0 ? formatTime(total.seconds) : null, total.complete)}</span>
               </div>
               <Button variant="ghost" size="sm" icon="action.clearFinished" disabled={player.tracks.length === 0} onClick={() => setConfirming(true)}>{PLAYER_COPY.clear}</Button>
             </>

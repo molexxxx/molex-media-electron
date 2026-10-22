@@ -9,6 +9,7 @@ import { PictureFollower, START_LEAD, SYNC_LIMITS, syncAction, whenPlayable } fr
 import { audioTrackName, channelWords, containerName, decodeNote, encoderName, languageName, mediaInfo, pictureLine, pictureRouteSentence, routeName, soundLine, soundRouteSentence, subtitleTrackName, trackFacts } from '@renderer/components/player/engine/describe'
 import { keyTargetOf, PLAYER_SHORTCUTS, playerKeyCommand } from '@renderer/components/player/hooks/usePlayerKeys'
 import { fileNameOf, formatTime, isMediaPath, totalDuration, trackFromAddress, trackFromPath, type Track } from '@renderer/components/player/types'
+import { playlistSummary } from '@renderer/components/player/copy'
 
 function stream(over: Partial<PlayerStream>): PlayerStream
 {
@@ -481,5 +482,10 @@ describe('track helpers', () =>
     expect(trackFromAddress('https://h/%E0%A4%A').name).toBe('%E0%A4%A')
     expect(totalDuration(tracks)).toEqual({ seconds: 210, complete: false })
     expect(totalDuration(tracks.slice(0, 2))).toEqual({ seconds: 180, complete: true })
+    expect(totalDuration([...tracks.slice(0, 2), { ...tracks[2], duration: undefined, live: true }])).toEqual({ seconds: 180, complete: true })
+    expect(playlistSummary(3, '3:00', true)).toBe('3 tracks · 3:00')
+    expect(playlistSummary(2, '3:00', false)).toBe('2 tracks · 3:00+')
+    expect(playlistSummary(1, null, true)).toBe('1 track')
+    expect(playlistSummary(0, '0:00', true)).toBe('0 tracks')
   })
 })

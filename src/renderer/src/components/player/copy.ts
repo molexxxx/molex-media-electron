@@ -117,11 +117,11 @@ export const PICTURE_QUALITY_NAMES: Readonly<Record<PictureQuality, string>> = {
 /** The repeat button's name for each mode, which is also its state. */
 export const REPEAT_NAMES = Object.freeze({ off: 'Repeat: off', all: 'Repeat: all tracks', one: 'Repeat: this track' })
 
-/** "4 tracks · 12:31", with "+" when a length is still unknown; "1 track" for one. */
-export function playlistSummary(count: number, total: string, complete: boolean): string
+/** "4 tracks · 12:31", with "+" when a length is still unknown; the count alone while no length is known. */
+export function playlistSummary(count: number, total: string | null, complete: boolean): string
 {
   const tracks = count === 1 ? '1 track' : `${count.toLocaleString('en-US')} tracks`
-  return count === 0 ? tracks : `${tracks} · ${total}${complete ? '' : '+'}`
+  return count === 0 || total === null ? tracks : `${tracks} · ${total}${complete ? '' : '+'}`
 }
 
 /** "Volume 80 percent" for the slider's spoken value. */

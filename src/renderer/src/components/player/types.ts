@@ -125,13 +125,17 @@ export function trackFromAddress(url: string): Track
   return { id: newTrackId(), name, src: url, isBlob: false }
 }
 
-/** The total of the known durations, and whether any track's length is still unknown. */
+/** The total of the known durations, and whether any track's length is still unknown; a live stream has none to learn. */
 export function totalDuration(tracks: readonly Track[]): { seconds: number, complete: boolean }
 {
   let seconds = 0
   let complete = true
   for (const track of tracks)
   {
+    if (track.live === true)
+    {
+      continue
+    }
     if (typeof track.duration === 'number' && Number.isFinite(track.duration))
     {
       seconds += track.duration
