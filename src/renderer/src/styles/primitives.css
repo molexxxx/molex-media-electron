@@ -1094,6 +1094,31 @@
     block-size: 30px;
   }
 
+  /* A row tone washes the whole row from beneath its cells, so the hover and selection washes still layer over it. */
+  .ui-grid-row[data-tone]
+  {
+    isolation: isolate;
+  }
+
+  .ui-grid-row[data-tone]::after
+  {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .ui-grid-row[data-tone='error']::after
+  {
+    background-color: var(--color-wash-error);
+  }
+
+  .ui-grid-row[data-tone='warning']::after
+  {
+    background-color: var(--color-wash-warning);
+  }
+
   .ui-grid-row:hover
   {
     background-color: var(--color-wash-hover);

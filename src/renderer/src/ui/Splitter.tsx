@@ -15,28 +15,46 @@ export interface SplitterProps
   onCommit?(value: number): void
   /** The size a double-click restores; without it a double-click does nothing. */
   defaultValue?: number
-  /** Which pane `value` sizes: `before` grows as the line moves right, `after` grows as it moves left. */
+  /**
+   * Which pane `value` sizes: `before` (left, or above) grows as the line moves right or down, `after` (right, or
+   * below) grows as it moves left or up.
+   */
   pane?: 'before' | 'after'
+  /** `vertical` (the default) splits side by side; `horizontal` stacks the panes and moves with Up and Down. */
+  orientation?: 'vertical' | 'horizontal'
   /** The key step in px. */
   step?: number
   className?: string
 }
 
-/** How far Left and Right move the line, in px. */
+/** How far the arrow keys move the line, in px. */
 export const SPLITTER_STEP = 16
 
 interface Drag
 {
   pointerId: number
-  startX: number
+  start: number
   startValue: number
   last: number
 }
 
+const LAYOUT = {
+  vertical: {
+    box: 'w-(--size-target-min) cursor-col-resize self-stretch before:inset-y-0 before:border-s',
+    before: '-ms-[21px] -me-[2px] before:start-[21px]',
+    after: '-ms-[2px] -me-[21px] before:start-[2px]'
+  },
+  horizontal: {
+    box: 'h-(--size-target-min) cursor-row-resize before:inset-x-0 before:border-t',
+    before: '-mt-[21px] -mb-[2px] before:top-[21px]',
+    after: '-mt-[2px] -mb-[21px] before:top-[2px]'
+  }
+} as const
+
 /**
- * A vertical window splitter: a 1 px line with a 24 px hit area, focusable with an inset ring. Drag it, press
- * Left and Right to step, Home and End to reach the limits, or double-click to reset. Its layout slot stays 1 px
- * wide; the hit area reaches 2 px over the other pane and the rest over the pane it sizes, whose padding takes
+ * A window splitter: a 1 px line with a 24 px hit area, focusable with an inset ring. Drag it, press Left and Right
+ * (Up and Down when horizontal) to step, Home and End to reach the limits, or double-click to reset. Its layout slot
+ * stays 1 px; the hit area reaches 2 px over the other pane and the rest over the pane it sizes, whose padding takes
  * it, so the scrollbar and edge controls of the other pane stay reachable.
  * Dragging needs a single-pointer alternative in the view, such as a menu of fixed sizes.
  */
@@ -49,6 +67,7 @@ export function Splitter({
   onCommit,
   defaultValue,
   pane = 'before',
+  orientation = 'vertical',
   step = SPLITTER_STEP,
   className
 }: SplitterProps): ReactElement
@@ -57,6 +76,8 @@ export function Splitter({
   const [dragging, setDragging] = useState(false)
   const clamp = (next: number): number => Math.min(max, Math.max(min, Math.round(next)))
   const direction = pane === 'before' ? 1 : -1
+  const along = (event: PointerEvent<HTMLDivElement>): number => (orientation === 'vertical' ? event.clientX : event.clientY)
+  const layout = LAYOUT[orientation]
 
   const settle = (next: number): void =>
   {
@@ -70,13 +91,14 @@ export function Splitter({
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>): void =>
   {
+    const [back, forward] = orientation === 'vertical' ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown']
     let next: number
     switch (event.key)
     {
-      case 'ArrowLeft':
+      case back:
         next = value - step * direction
         break
-      case 'ArrowRight':
+      case forward:
         next = value + step * direction
         break
       case 'Home':
@@ -100,7 +122,7 @@ export function Splitter({
     }
     event.preventDefault()
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startValue: value, last: value }
+    dragRef.current = { pointerId: event.pointerId, start: along(event), startValue: value, last: value }
     setDragging(true)
   }
 
@@ -111,7 +133,7 @@ export function Splitter({
     {
       return
     }
-    const next = clamp(drag.startValue + (event.clientX - drag.startX) * direction)
+    const next = clamp(drag.startValue + (along(event) - drag.start) * direction)
     if (next !== drag.last)
     {
       drag.last = next
@@ -143,7 +165,7 @@ export function Splitter({
   return (
     <div
       role="separator"
-      aria-orientation="vertical"
+      aria-orientation={orientation}
       aria-label={label}
       aria-valuenow={value}
       aria-valuemin={min}
@@ -153,9 +175,10 @@ export function Splitter({
       data-focus="inset"
       data-dragging={dragging || undefined}
       className={cx(
-        'relative z-(--z-index-splitter) w-(--size-target-min) shrink-0 cursor-col-resize touch-none self-stretch select-none',
-        pane === 'after' ? '-ms-[2px] -me-[21px] before:start-[2px]' : '-ms-[21px] -me-[2px] before:start-[21px]',
-        'before:pointer-events-none before:absolute before:inset-y-0 before:border-s before:border-line-strong before:transition-colors before:duration-fast before:ease-out',
+        'relative z-(--z-index-splitter) shrink-0 touch-none select-none',
+        layout.box,
+        pane === 'after' ? layout.after : layout.before,
+        'before:pointer-events-none before:absolute before:border-line-strong before:transition-colors before:duration-fast before:ease-out',
         'hover:before:border-line-control-hover data-dragging:before:border-line-control-hover',
         className
       )}

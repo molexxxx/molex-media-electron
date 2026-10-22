@@ -202,6 +202,38 @@ describe('Splitter', () =>
     expect(line).not.toHaveAttribute('data-dragging')
   })
 
+  it('stacks the panes when horizontal: Up and Down step, the pointer moves it vertically', () =>
+  {
+    const onChange = vi.fn()
+    const onCommit = vi.fn()
+    render(<Controlled orientation="horizontal" pane="after" onChange={onChange} onCommit={onCommit} />)
+    const line = separator()
+    expect(line).toHaveAttribute('aria-orientation', 'horizontal')
+    fireEvent.keyDown(line, { key: 'ArrowUp' })
+    expect(line).toHaveAttribute('aria-valuenow', String(360 + SPLITTER_STEP))
+    fireEvent.keyDown(line, { key: 'ArrowDown' })
+    expect(line).toHaveAttribute('aria-valuenow', '360')
+    fireEvent.keyDown(line, { key: 'ArrowLeft' })
+    fireEvent.keyDown(line, { key: 'ArrowRight' })
+    expect(line).toHaveAttribute('aria-valuenow', '360')
+    fireEvent.pointerDown(line, { button: 0, pointerId: 1, clientX: 50, clientY: 600 })
+    fireEvent.pointerMove(line, { pointerId: 1, clientX: 400, clientY: 560 })
+    expect(line).toHaveAttribute('aria-valuenow', '400')
+    fireEvent.pointerUp(line, { pointerId: 1 })
+    expect(onCommit).toHaveBeenLastCalledWith(400)
+    expect(classesOf(line)).toEqual(expect.arrayContaining(['h-(--size-target-min)', 'cursor-row-resize', '-mt-[2px]', '-mb-[21px]', 'before:top-[2px]', 'before:border-t']))
+    expect(classesOf(line)).not.toContain('cursor-col-resize')
+  })
+
+  it('leans a horizontal hit area into the pane above when it sizes that pane', () =>
+  {
+    render(<Controlled orientation="horizontal" />)
+    const line = separator()
+    fireEvent.keyDown(line, { key: 'ArrowDown' })
+    expect(line).toHaveAttribute('aria-valuenow', String(360 + SPLITTER_STEP))
+    expect(classesOf(line)).toEqual(expect.arrayContaining(['-mt-[21px]', '-mb-[2px]', 'before:top-[21px]']))
+  })
+
   it('owns a 24 px hit area that leans into the pane it sizes, around a 1 px line that lights on hover and drag', () =>
   {
     const { unmount } = render(<Controlled pane="after" />)

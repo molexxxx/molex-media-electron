@@ -984,6 +984,14 @@ describe('DataGrid row menu', () =>
     await announced('2 jobs moved to positions 4 to 5 of 5.')
   })
 
+  it('marks a row with the tone the view gives it and leaves the rest plain', () =>
+  {
+    setup({ grid: { rowTone: (job) => (job.id === 'j2' ? 'error' : job.id === 'j4' ? 'warning' : null) } })
+    expect(row('j2')).toHaveAttribute('data-tone', 'error')
+    expect(row('j4')).toHaveAttribute('data-tone', 'warning')
+    expect(row('j1')).not.toHaveAttribute('data-tone')
+  })
+
   it('selects an unselected row on right click and acts on it alone', () =>
   {
     setup()

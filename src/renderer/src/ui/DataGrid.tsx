@@ -30,6 +30,9 @@ export type GridMoveTo = 'up' | 'down' | 'top' | 'bottom'
 /** Row height: 36 px by default, 30 px compact. */
 export type GridDensity = 'default' | 'compact'
 
+/** A status wash under a whole row, such as a failed line in a log; selection and hover still read over it. */
+export type GridRowTone = 'error' | 'warning'
+
 /** What a grid row needs: a stable id, such as a job id. */
 export interface GridRowBase
 {
@@ -131,6 +134,8 @@ export interface DataGridProps<T extends GridRowBase>
   ownMoveItems?: boolean
   /** The row's tooltip, such as a truncated file name; an empty string shows none. */
   rowTooltip?: (row: T) => string
+  /** A status wash for the row; none when it returns null or undefined. */
+  rowTone?: (row: T) => GridRowTone | null | undefined
   /** Shows skeleton rows and marks the grid busy. */
   loading?: boolean
   /** Above this many rows only the rows near the viewport mount, plus the focused row. */
@@ -1234,6 +1239,7 @@ export function DataGrid<T extends GridRowBase>(props: DataGridProps<T>): ReactE
         aria-rowindex={virtual ? index + 2 : undefined}
         tabIndex={row.id === tabStop ? 0 : -1}
         data-row-id={row.id}
+        data-tone={props.rowTone?.(row) ?? undefined}
         data-dragging={drag !== null && drag.ids.includes(row.id) ? '' : undefined}
         data-drop-before={drag !== null && drag.before === row.id ? '' : undefined}
         data-drop-after={drag !== null && drag.before === null && index === displayed.length - 1 ? '' : undefined}

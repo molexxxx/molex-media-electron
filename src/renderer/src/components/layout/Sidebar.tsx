@@ -194,13 +194,16 @@ function UpdateBadge({ collapsed }: { collapsed: boolean }): React.JSX.Element
   )
 }
 
-/** The unseen-error count on Logs, unchanged in look until the Logs view moves it to the engine. */
+/** The unseen-error count on Logs, drawn as Batch draws its attention count: the octagon and the number in error ink. */
 function LogsBadge({ count, collapsed }: { count: number, collapsed: boolean }): React.JSX.Element
 {
   return collapsed ? (
-    <span aria-hidden="true" data-part="errors" className="absolute inset-e-0.5 top-0.5 size-2 rounded-full bg-red-500" />
+    <span aria-hidden="true" data-part="errors" className="absolute inset-e-0.5 top-0.5 rounded-full bg-rail text-error">
+      <Icon name="status.failed" size="sm" />
+    </span>
   ) : (
-    <span aria-hidden="true" data-part="errors" className="min-w-5 rounded-full bg-red-500/20 px-1.5 py-0.5 text-center text-2xs font-bold text-red-200">
+    <span aria-hidden="true" data-part="errors" className="flex shrink-0 items-center gap-1 text-label tabular-nums text-error">
+      <Icon name="status.failed" size="sm" />
       {count > 99 ? '99+' : count}
     </span>
   )

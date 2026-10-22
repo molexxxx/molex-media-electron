@@ -1,6 +1,6 @@
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LogViewer, {
   FullOutputPanel,
   LOG_FILTER_WORDS,
@@ -12,6 +12,7 @@ import LogViewer, {
   type JobLogResult,
   type LogViewerApi
 } from '../../src/renderer/src/components/logs/LogViewer'
+import { LOG_WORDS, NO_NARROWING } from '../../src/renderer/src/components/logs/logModel'
 import { useAppStore, type LogEntry } from '../../src/renderer/src/stores/appStore'
 import type { CommandResult } from '../../src/shared/jobs/contract'
 import type { JobId } from '../../src/shared/jobs/ids'
@@ -122,10 +123,10 @@ describe('visibleLogEntries', () =>
 
   it('narrows by level and by case-insensitive search', () =>
   {
-    expect(visibleLogEntries(entries, 'all', '')).toHaveLength(3)
-    expect(visibleLogEntries(entries, 'warn', '').map((e) => e.id)).toEqual([2])
-    expect(visibleLogEntries(entries, 'all', 'ENCODING').map((e) => e.id)).toEqual([1])
-    expect(visibleLogEntries(entries, 'ffmpeg', 'disk')).toEqual([])
+    expect(visibleLogEntries(entries, NO_NARROWING)).toHaveLength(3)
+    expect(visibleLogEntries(entries, { ...NO_NARROWING, level: 'warning' }).map((e) => e.id)).toEqual([2])
+    expect(visibleLogEntries(entries, { ...NO_NARROWING, search: 'ENCODING' }).map((e) => e.id)).toEqual([1])
+    expect(visibleLogEntries(entries, { ...NO_NARROWING, level: 'info', search: 'disk' })).toEqual([])
   })
 })
 
@@ -191,7 +192,7 @@ describe('LogViewer with a job or batch filter', () =>
     render(React.createElement(LogViewer, { api }))
     expect(api.getLogBuffer).toHaveBeenCalledWith({ jobId: 'MM-0142' })
     const chip = document.querySelector('[data-part="log-filter"]') as HTMLElement
-    expect(chip.textContent).toContain('Filtered to MM-0142')
+    expect(chip.textContent).toContain(`${LOG_FILTER_WORDS.filteredTo} MM-0142`)
     expect(await screen.findByText('Measured -23.1 LUFS')).toBeInTheDocument()
     expect(screen.getByText('Dispatched')).toBeInTheDocument()
     expect(screen.queryByText('Unrelated')).toBeNull()
@@ -204,7 +205,7 @@ describe('LogViewer with a job or batch filter', () =>
     render(React.createElement(LogViewer, { api: fakeApi() }))
     fireEvent.click(screen.getByRole('button', { name: LOG_FILTER_WORDS.clear }))
     expect(useAppStore.getState().logFilter).toBeNull()
-    expect(document.activeElement).toBe(screen.getByPlaceholderText('Search logs...'))
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(LOG_WORDS.searchPlaceholder))
     expect(screen.getByText('App started')).toBeInTheDocument()
   })
 
@@ -231,7 +232,8 @@ describe('LogViewer with a job or batch filter', () =>
   {
     useAppStore.setState({ logFilter: { jobId: 'MM-0999' } })
     render(React.createElement(LogViewer, { api: fakeApi() }))
-    expect(await screen.findByText('No entries for MM-0999 yet')).toBeInTheDocument()
+    const empty = await waitFor(() => document.querySelector('[data-part="log-empty"]') as HTMLElement)
+    expect(within(empty).getByText('No lines for MM-0999 yet')).toBeInTheDocument()
   })
 
   it('empties a filtered view on Clear', async () =>
@@ -240,7 +242,8 @@ describe('LogViewer with a job or batch filter', () =>
     useAppStore.setState({ logFilter: { jobId: 'MM-0142' } })
     render(React.createElement(LogViewer, { api }))
     expect(await screen.findByText('Older job line')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    fireEvent.click(screen.getByRole('button', { name: LOG_WORDS.clear }))
+    fireEvent.click(screen.getByRole('button', { name: LOG_WORDS.clearLines }))
     expect(screen.queryByText('Older job line')).toBeNull()
     expect(screen.queryByText('Dispatched')).toBeNull()
     expect(api.clearLogs).toHaveBeenCalled()
@@ -250,9 +253,10 @@ describe('LogViewer with a job or batch filter', () =>
   {
     const api = fakeApi()
     render(React.createElement(LogViewer, { api }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Log Dir' }))
+    fireEvent.click(screen.getByRole('button', { name: LOG_WORDS.openFolder }))
     expect(api.openLogDir).toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    fireEvent.click(screen.getByRole('button', { name: LOG_WORDS.clear }))
+    fireEvent.click(screen.getByRole('button', { name: LOG_WORDS.clearLines }))
     expect(useAppStore.getState().logs).toEqual([])
     expect(api.getLogBuffer).not.toHaveBeenCalled()
   })

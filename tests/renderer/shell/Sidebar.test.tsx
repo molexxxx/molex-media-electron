@@ -340,9 +340,16 @@ describe('Sidebar', () =>
     })
     render(<Sidebar />)
     expect(navButton('logs').getAttribute('aria-label')).toBe('Logs, 2 new errors')
-    expect(navButton('logs').querySelector('[data-part="errors"]')?.textContent).toBe('2')
+    const badge = navButton('logs').querySelector('[data-part="errors"]') as HTMLElement
+    expect(badge.textContent).toBe('2')
+    expect(badge.className).toContain('text-error')
+    expect(badge.querySelector('svg')).not.toBeNull()
     act(() => useAppStore.setState({ lastSeenErrorCount: 1 }))
     expect(navButton('logs').getAttribute('aria-label')).toBe('Logs, 1 new error')
+    act(() => useAppStore.setState({ sidebarCollapsed: true }))
+    const mark = navButton('logs').querySelector('[data-part="errors"]') as HTMLElement
+    expect(mark.className).toContain('absolute')
+    expect(mark.className).toContain('text-error')
   })
 
   it('is the first F6 stop and enters at the current page', () =>

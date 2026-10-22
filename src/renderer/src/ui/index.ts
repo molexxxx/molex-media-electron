@@ -31,6 +31,7 @@ export {
   type GridDensity,
   type GridMoveTo,
   type GridRowBase,
+  type GridRowTone,
   type GridSort,
   type GridSortDirection,
   type GridSortValue
