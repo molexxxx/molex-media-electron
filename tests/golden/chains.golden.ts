@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createExec } from '../../src/main/ffmpeg/exec'
 import { realTimers } from '../../src/main/timers'
-import { encodeParts, exportLimiterTail, filterComplex } from '../../src/main/ffmpeg/audio/chains'
+import { encodeParts, exportLimiterTail, filterComplex, meterOutputArgs } from '../../src/main/ffmpeg/audio/chains'
 import type { ChainOutput, ChainSpec } from '../../src/main/ffmpeg/audio/chains'
 import { compressorStage, NIGHT } from '../../src/main/ffmpeg/audio/dynamics'
 import { resolveCeiling } from '../../src/main/ffmpeg/audio/ceilings'
@@ -12,7 +12,7 @@ import { LAYOUT_CHANNELS } from '../../src/main/ffmpeg/audio/downmix'
 const golden = inject('golden')
 const enabled = !golden.skip && golden.meetsMinimum && (golden.only === null || golden.only.includes('G16'))
 
-/** One graph run: lavfi inputs, a filter graph, and the output encoder into the null muxer. */
+/** One graph run: lavfi inputs, a filter graph, the output encoder into the null muxer, and the meter output, if any. */
 interface ChainCase
 {
   name: string
@@ -20,6 +20,8 @@ interface ChainCase
   graph: string
   encoder: string
   codecArgs: string[]
+  /** The second output that drains the meter branch [p0], or empty. */
+  outputs: string[]
 }
 
 interface ChainRun
@@ -66,7 +68,10 @@ function spec(inputLayout: string, processRate: number, output: ChainOutput, o: 
 
 function production(name: string, inputLayout: string, rate: number, s: ChainSpec, encoder: string, codecArgs: string[] = []): ChainCase
 {
-  return { name, inputs: [tone(inputLayout, rate)], graph: filterComplex(encodeParts(s, '0:a:0', 0)), encoder, codecArgs }
+  return {
+    name, inputs: [tone(inputLayout, rate)], graph: filterComplex(encodeParts(s, '0:a:0', 0)), encoder, codecArgs,
+    outputs: meterOutputArgs(s.preEncodeMeter === null ? [] : [0])
+  }
 }
 
 const AC3_LEVELS = { centerLoRo: 0.594604, surroundLoRo: 0.5, preferred: 'unknown' as const }
@@ -121,7 +126,8 @@ const PRODUCTION: ChainCase[] = [
     inputs: [tone('stereo', 48000), tone('stereo', 48000)],
     graph: `[0:a][1:a]amix=inputs=2:normalize=0,volume=2,${exportLimiterTail(resolveCeiling('aac', 128, -1), 48000, 'stereo').join(',')}[a0]`,
     encoder: 'aac',
-    codecArgs: ['-b:a', '256k', '-aac_coder', 'fast']
+    codecArgs: ['-b:a', '256k', '-aac_coder', 'fast'],
+    outputs: []
   }
 ]
 
@@ -132,7 +138,8 @@ const LEGACY: ChainCase[] = (['pcm_s16le', 'flac', 'aac', 'alac'] as const).map(
   inputs: [tone('stereo', 44100)],
   graph: `[0:a]${LEGACY_FILTER}[a0]`,
   encoder,
-  codecArgs: []
+  codecArgs: [],
+  outputs: []
 }))
 
 const exec = createExec(golden.ffmpeg, { timers: realTimers })
@@ -145,7 +152,7 @@ async function runCase(c: ChainCase): Promise<ChainRun>
   }
   const errors: string[] = []
   const args = ['-loglevel', 'level+error', ...c.inputs.flatMap((input) => ['-f', 'lavfi', '-i', input]),
-    '-filter_complex', c.graph, '-map', '[a0]', '-c:a', c.encoder, ...c.codecArgs, '-f', 'null', '-']
+    '-filter_complex', c.graph, '-map', '[a0]', '-c:a', c.encoder, ...c.codecArgs, '-f', 'null', '-', ...c.outputs]
   const r = await exec.run(args, { signal: new AbortController().signal, stop: 'kill', onStderrLine: (line) => errors.push(line) })
   return { name: c.name, encoder: c.encoder, code: r.code, stopped: r.stopped, skipped: null, errors: errors.filter((line) => line.trim() !== ''), ms: r.ms }
 }

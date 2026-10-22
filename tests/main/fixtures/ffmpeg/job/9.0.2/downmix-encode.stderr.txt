@@ -10,13 +10,21 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (ac3) -> aformat:default
 [info]   asplit -> Stream #0:0 (ac3)
+[info]   astats:default -> Stream #1:0 (pcm_s16le)
 [info] Output #0, matroska, to 'OUT/downmix-pass1.mkv.part':
 [info]   Metadata:
 [info]     encoder         : Lavf63.1.102
 [info]   Stream #0:0: Audio: ac3 ([0] [0][0] / 0x2000), 48000 Hz, stereo, fltp, 192 kb/s
 [info]     Metadata:
 [info]       encoder         : Lavc63.1.102 ac3
-[astats@p0 @ 0000024eda0bcd00] [info] Overall
-[astats@p0 @ 0000024eda0bcd00] [info] Peak level dB: -11.205867
-[out#0/matroska @ 0000024eda14fc40] [info] video:0KiB audio:188KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.221354%
-[info] size=     190KiB time=00:00:07.99 bitrate= 194.5kbits/s speed= 138x elapsed=0:00:00.05    
+[info] Output #1, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #1:0: Audio: pcm_s16le, 384000 Hz, stereo, s16, 12288 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[astats@p0 @ 0000015472348b00] [info] Overall
+[astats@p0 @ 0000015472348b00] [info] Peak level dB: -11.205867
+[out#0/matroska @ 0000015472362180] [info] video:0KiB audio:188KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.221354%
+[out#1/null @ 0000015472361700] [info] video:0KiB audio:11992KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=     190KiB time=00:00:07.99 bitrate= 194.5kbits/s speed= 118x elapsed=0:00:00.06    

@@ -3,7 +3,7 @@
  * cases, and downmix.test.ts and chains.test.ts check that every recorded run still carries the arguments the
  * builders produce, so a builder change shows until the fixtures are captured again on both builds.
  */
-import { encodeParts, exportLimiterTail, filterComplex, pinStages } from '../../../../../src/main/ffmpeg/audio/chains'
+import { encodeParts, exportLimiterTail, filterComplex, meterOutputArgs, pinStages } from '../../../../../src/main/ffmpeg/audio/chains'
 import type { ChainSpec } from '../../../../../src/main/ffmpeg/audio/chains'
 import { DOWNMIX_LAYOUTS, LAYOUT_CHANNELS, buildDownmixProbeArgs, monoFoldStage } from '../../../../../src/main/ffmpeg/audio/downmix'
 import type { DownmixLevels } from '../../../../../src/main/ffmpeg/audio/downmix'
@@ -30,6 +30,8 @@ export interface ChainCase
   graph: string
   map: string
   codec: string[]
+  /** The second output that drains the meter branch [p0], or empty. */
+  outputs: string[]
 }
 
 /** The exec prefix of a killable run, as execArgv([], 'kill') builds it. */
@@ -146,7 +148,10 @@ export const EXPORT_CEILING: Ceiling =
 
 function encodeCase(name: string, input: string, spec: ChainSpec, codec: string[]): ChainCase
 {
-  return { name, inputs: [input], graph: filterComplex(encodeParts(spec, '0:a:0', 0)), map: '[a0]', codec }
+  return {
+    name, inputs: [input], graph: filterComplex(encodeParts(spec, '0:a:0', 0)), map: '[a0]', codec,
+    outputs: meterOutputArgs(spec.preEncodeMeter === null ? [] : [0])
+  }
 }
 
 const SURROUND_48K = { processRate: 48000 }
@@ -188,7 +193,8 @@ const ENCODE_CASES: ChainCase[] =
     inputs: ['stereo-44k.flac', 'stereo-44k.flac'],
     graph: `[0:a][1:a]amix=inputs=2:normalize=0[mix];${filterComplex([{ input: 'mix', stages: exportLimiterTail(EXPORT_CEILING, 44100, 'stereo'), output: 'aout' }])}`,
     map: '[aout]',
-    codec: ['-c:a:0', 'aac', '-b:a:0', '192k', '-aac_coder:a:0', 'fast']
+    codec: ['-c:a:0', 'aac', '-b:a:0', '192k', '-aac_coder:a:0', 'fast'],
+    outputs: []
   }
 ]
 
@@ -206,7 +212,7 @@ function foldCase(layout: string, input: string, sampleRate: number, levels: Dow
 {
   const fold = monoFoldStage(layout, levels)
   const stages = [...(fold === null ? [] : fold.stages), ...pinStages({ sampleRate, layout: 'mono', pin: 'encoder' })]
-  return { name, inputs: [input], graph: filterComplex([{ input: '0:a:0', stages, output: 'a0' }]), map: '[a0]', codec: ['-c:a:0', 'pcm_f32le'] }
+  return { name, inputs: [input], graph: filterComplex([{ input: '0:a:0', stages, output: 'a0' }]), map: '[a0]', codec: ['-c:a:0', 'pcm_f32le'], outputs: [] }
 }
 
 const FOLD_CASES: ChainCase[] =
@@ -222,7 +228,7 @@ export function chainRunArgs(chain: ChainCase): string[]
 {
   return [
     ...chain.inputs.flatMap((input) => ['-i', `IN/${input}`]),
-    '-filter_complex', chain.graph, '-map', chain.map, ...chain.codec, '-f', 'null', '-'
+    '-filter_complex', chain.graph, '-map', chain.map, ...chain.codec, '-f', 'null', '-', ...chain.outputs
   ]
 }
 

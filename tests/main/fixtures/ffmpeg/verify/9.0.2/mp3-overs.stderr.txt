@@ -9,17 +9,25 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (mp3float) -> asplit:default
 [info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info]   astats:default -> Stream #0:1 (pcm_s16le)
+[info]   astats:default -> Stream #0:2 (pcm_s16le)
 [info] Output #0, null, to 'pipe:':
 [info]   Metadata:
 [info]     encoder         : Lavf63.1.102
-[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s (default)
 [info]     Metadata:
 [info]       encoder         : Lavc63.1.102 pcm_s16le
-[astats@s0 @ 00000242877bcc00] [info] Overall
-[astats@s0 @ 00000242877bcc00] [info] Peak level dB: -0.456459
-[astats@t0 @ 00000242877bc900] [info] Overall
-[astats@t0 @ 00000242877bc900] [info] Peak level dB: 0.119464
-[ebur128@v0 @ 00000242877bd200] [info] Summary:
+[info]   Stream #0:1: Audio: pcm_s16le, 352800 Hz, stereo, s16, 11289 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]   Stream #0:2: Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[astats@s0 @ 000001ebf94449c0] [info] Overall
+[astats@s0 @ 000001ebf94449c0] [info] Peak level dB: -0.456459
+[astats@t0 @ 000001ebf94448c0] [info] Overall
+[astats@t0 @ 000001ebf94448c0] [info] Peak level dB: 0.119464
+[ebur128@v0 @ 000001ebf94458c0] [info] Summary:
 
   Integrated loudness:
     I:          -1.4 LUFS
@@ -30,5 +38,5 @@
     Threshold: -21.4 LUFS
     LRA low:    -1.4 LUFS
     LRA high:   -1.4 LUFS
-[out#0/null @ 000002428783b880] [info] video:0KiB audio:689KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
-[info] size=N/A time=00:00:04.00 bitrate=N/A speed= 186x elapsed=0:00:00.02    
+[out#0/null @ 000001ebf94566c0] [info] video:0KiB audio:6891KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:04.00 bitrate=N/A speed= 173x elapsed=0:00:00.02    

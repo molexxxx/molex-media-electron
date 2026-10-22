@@ -10,7 +10,7 @@ import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 import {
   LIMITER, OVERSAMPLE_MIN_RATE, encodeChain, encodeParts, exportLimiterTail, filterComplex, formatDb, limiterStages,
-  duplicatedPinStages, meterPrefix, oversampleRate, pinStages, preEncodeMeterStages
+  duplicatedPinStages, meterOutputArgs, meterPrefix, oversampleRate, pinStages, preEncodeMeterStages
 } from '../../../src/main/ffmpeg/audio/chains'
 import type { ChainOutput, ChainSpec } from '../../../src/main/ffmpeg/audio/chains'
 import { LIMITER_MARGIN_DB } from '../../../src/main/ffmpeg/audio/ceilings'
@@ -25,7 +25,7 @@ const BUILDS = ['2022-10-13', '9.0.2'] as const
 const LIMITER_15 = 'alimiter=limit=-1.50dB:attack=20:release=200:level=disabled:latency=1'
 const LIMITER_25 = 'alimiter=limit=-2.50dB:attack=20:release=200:level=disabled:latency=1'
 const SOXR_METER_0 = '[q0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,' +
-  'astats@p0=measure_perchannel=none:measure_overall=Peak_level,anullsink'
+  'astats@p0=measure_perchannel=none:measure_overall=Peak_level[p0]'
 
 function graph(spec: ChainSpec, k = 0, input = `0:a:${k}`): string
 {
@@ -436,7 +436,7 @@ describe('documented encode commands', () =>
       `[0:a:1]aformat=sample_fmts=dbl,volume=-2.10dB:precision=double,aresample=192000,${LIMITER_25},` +
       'aformat=sample_rates=48000:channel_layouts=5.1(side),asplit=2[a1][q1];' +
       '[q1]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,' +
-      'astats@p1=measure_perchannel=none:measure_overall=Peak_level,anullsink')
+      'astats@p1=measure_perchannel=none:measure_overall=Peak_level[p1]')
   })
 
   it('the startup self-test chains are the builders\' output', () =>
@@ -461,8 +461,15 @@ describe('pre-encode meter', () =>
   {
     expect(preEncodeMeterStages('soxr', 48000, 3)).toEqual([
       'aformat=sample_fmts=dbl', 'aresample=resampler=soxr:precision=33:osr=384000:osf=dbl',
-      'astats@p3=measure_perchannel=none:measure_overall=Peak_level', 'anullsink'
+      'astats@p3=measure_perchannel=none:measure_overall=Peak_level'
     ])
+  })
+
+  it('never ends a meter branch in anullsink and drains every [p<k>] through a second null output', () =>
+  {
+    expect(preEncodeMeterStages('swr', 48000, 0)).not.toContain('anullsink')
+    expect(meterOutputArgs([])).toEqual([])
+    expect(meterOutputArgs([0, 2])).toEqual(['-map', '[p0]', '-map', '[p2]', '-f', 'null', '-'])
   })
 
   it('falls back to the default resampler without libsoxr', () =>
@@ -476,7 +483,7 @@ describe('pre-encode meter', () =>
     const parts = encodeParts(spec, '0:a:2', 1)
     expect(parts).toEqual([
       { input: '0:a:2', stages: [...encodeChain(spec), 'asplit=2[a1][q1]'], output: '' },
-      { input: 'q1', stages: preEncodeMeterStages('swr', 44100, 1), output: '' }
+      { input: 'q1', stages: preEncodeMeterStages('swr', 44100, 1), output: 'p1' }
     ])
   })
 

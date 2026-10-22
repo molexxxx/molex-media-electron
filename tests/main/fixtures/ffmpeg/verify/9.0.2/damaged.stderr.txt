@@ -7,29 +7,37 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (mp3float) -> asplit:default
 [info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info]   astats:default -> Stream #0:1 (pcm_s16le)
+[info]   astats:default -> Stream #0:2 (pcm_s16le)
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -4 -4
 [info] Output #0, null, to 'pipe:':
 [info]   Metadata:
 [info]     encoder         : Lavf63.1.102
-[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s (default)
 [info]     Metadata:
 [info]       encoder         : Lavc63.1.102 pcm_s16le
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -4 -4
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -4 -4
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -3 -3
-[mp3float @ 00000171b752da80] [info] overread, skip -4 enddists: -1 -1
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -3 -3
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -3 -3
-[mp3float @ 00000171b752da80] [info] overread, skip -8 enddists: -4 -4
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
-[astats@s0 @ 00000171b751f840] [info] Overall
-[astats@s0 @ 00000171b751f840] [info] Peak level dB: -13.609268
-[astats@t0 @ 00000171b751f140] [info] Overall
-[astats@t0 @ 00000171b751f140] [info] Peak level dB: -13.606153
-[ebur128@v0 @ 00000171b751e840] [info] Summary:
+[info]   Stream #0:1: Audio: pcm_s16le, 352800 Hz, mono, s16, 5644 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[info]   Stream #0:2: Audio: pcm_s16le, 44100 Hz, mono, s16, 705 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -4 -4
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -3 -3
+[mp3float @ 000001c8ec74a800] [info] overread, skip -4 enddists: -1 -1
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -3 -3
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -3 -3
+[mp3float @ 000001c8ec74a800] [info] overread, skip -8 enddists: -4 -4
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
+[astats@s0 @ 000001c8ec72ecc0] [info] Overall
+[astats@s0 @ 000001c8ec72ecc0] [info] Peak level dB: -13.609268
+[astats@t0 @ 000001c8ec72dcc0] [info] Overall
+[astats@t0 @ 000001c8ec72dcc0] [info] Peak level dB: -13.606153
+[ebur128@v0 @ 000001c8ec72d3c0] [info] Summary:
 
   Integrated loudness:
     I:         -22.4 LUFS
@@ -40,11 +48,11 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
-[mp3float @ 00000171b752da80] [info] overread, skip -8 enddists: -6 -6
-[astats@s0 @ 00000171b751eb40] [info] Overall
-[astats@s0 @ 00000171b751eb40] [info] Peak level dB: -16.308136
-[ebur128@v0 @ 00000171b7520040] [info] Summary:
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
+[mp3float @ 000001c8ec74a800] [info] overread, skip -8 enddists: -6 -6
+[astats@s0 @ 000001c8ec72e7c0] [info] Overall
+[astats@s0 @ 000001c8ec72e7c0] [info] Peak level dB: -16.308136
+[ebur128@v0 @ 000001c8ec72dcc0] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -55,44 +63,44 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -2 -2
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -4 -4
-[mp3float @ 00000171b752da80] [info] overread, skip -9 enddists: -2 -2
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [error] invalid block type
-[mp3float @ 00000171b752da80] [error] Error while decoding MPEG audio frame.
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -6 -6
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -1 -1
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -3 -3
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -5 -5
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -2 -2
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -1 -1
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -4 -4
-[mp3float @ 00000171b752da80] [error] big_values too big
-[mp3float @ 00000171b752da80] [error] Error while decoding MPEG audio frame.
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -6 -6
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -2 -2
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -2 -2
-[mp3float @ 00000171b752da80] [error] big_values too big
-[mp3float @ 00000171b752da80] [error] Error while decoding MPEG audio frame.
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -2 -2
-[mp3float @ 00000171b752da80] [info] overread, skip -5 enddists: -3 -3
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -1 -1
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -6 enddists: -1 -1
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
-[astats@s0 @ 00000171b751ef40] [info] Overall
-[astats@s0 @ 00000171b751ef40] [info] Peak level dB: -9.682910
-[astats@t0 @ 00000171b751ec40] [info] Overall
-[astats@t0 @ 00000171b751ec40] [info] Peak level dB: -9.682905
-[ebur128@v0 @ 00000171b751ea40] [info] Summary:
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -4 -4
+[mp3float @ 000001c8ec74a800] [info] overread, skip -9 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [error] invalid block type
+[mp3float @ 000001c8ec74a800] [error] Error while decoding MPEG audio frame.
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -6 -6
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -3 -3
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -5 -5
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -1 -1
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -4 -4
+[mp3float @ 000001c8ec74a800] [error] big_values too big
+[mp3float @ 000001c8ec74a800] [error] Error while decoding MPEG audio frame.
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -6 -6
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [error] big_values too big
+[mp3float @ 000001c8ec74a800] [error] Error while decoding MPEG audio frame.
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [info] overread, skip -5 enddists: -3 -3
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -1 -1
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -6 enddists: -1 -1
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
+[astats@s0 @ 000001c8ec72dfc0] [info] Overall
+[astats@s0 @ 000001c8ec72dfc0] [info] Peak level dB: -9.682910
+[astats@t0 @ 000001c8ec72e4c0] [info] Overall
+[astats@t0 @ 000001c8ec72e4c0] [info] Peak level dB: -9.682905
+[ebur128@v0 @ 000001c8ec72d3c0] [info] Summary:
 
   Integrated loudness:
     I:         -22.4 LUFS
@@ -103,10 +111,10 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
-[astats@s0 @ 00000171b751fa40] [info] Overall
-[astats@s0 @ 00000171b751fa40] [info] Peak level dB: -16.993169
-[ebur128@v0 @ 00000171b751e940] [info] Summary:
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
+[astats@s0 @ 000001c8ec72ddc0] [info] Overall
+[astats@s0 @ 000001c8ec72ddc0] [info] Peak level dB: -16.993169
+[ebur128@v0 @ 000001c8ec72e8c0] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -117,18 +125,18 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
-[astats@s0 @ 00000171b751e540] [info] Overall
-[astats@s0 @ 00000171b751e540] [info] Peak level dB: -16.605511
-[astats@t0 @ 00000171b751f540] [info] Overall
-[astats@t0 @ 00000171b751f540] [info] Peak level dB: -16.605508
-[ebur128@v0 @ 00000171b751fd40] [info] Summary:
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 32000 Hz, mono, fltp
+[astats@s0 @ 000001c8ec72e0c0] [info] Overall
+[astats@s0 @ 000001c8ec72e0c0] [info] Peak level dB: -16.605511
+[astats@t0 @ 000001c8ec72d2c0] [info] Overall
+[astats@t0 @ 000001c8ec72d2c0] [info] Peak level dB: -16.605508
+[ebur128@v0 @ 000001c8ec72d6c0] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -139,10 +147,10 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[fc#0 @ 00000171b74a3d40] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
-[astats@s0 @ 00000171b751e940] [info] Overall
-[astats@s0 @ 00000171b751e940] [info] Peak level dB: -16.337841
-[ebur128@v0 @ 00000171b751f540] [info] Summary:
+[fc#0 @ 000001c8ec6b2e80] [info] Reconfiguring filter graph because audio parameters changed to 44100 Hz, mono, fltp
+[astats@s0 @ 000001c8ec72e1c0] [info] Overall
+[astats@s0 @ 000001c8ec72e1c0] [info] Peak level dB: -16.337841
+[ebur128@v0 @ 000001c8ec72d2c0] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -153,23 +161,23 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -5 -5
-[mp3float @ 00000171b752da80] [info] overread, skip -8 enddists: -6 -6
-[mp3float @ 00000171b752da80] [error] Header missing
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -9 enddists: -1 -1
-[mp3float @ 00000171b752da80] [error] big_values too big
-[mp3float @ 00000171b752da80] [error] Error while decoding MPEG audio frame.
-[aist#0:0/mp3 @ 00000171b752bc00] [dec:mp3float @ 00000171b752b000] [error] Error submitting packet to decoder: Invalid data found when processing input
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -2 -2
-[mp3float @ 00000171b752da80] [info] overread, skip -7 enddists: -2 -2
-[astats@s0 @ 00000171b751f940] [info] Overall
-[astats@s0 @ 00000171b751f940] [info] Peak level dB: -11.074883
-[astats@t0 @ 00000171b751f440] [info] Overall
-[astats@t0 @ 00000171b751f440] [info] Peak level dB: -11.069397
-[ebur128@v0 @ 00000171b751fd40] [info] Summary:
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -5 -5
+[mp3float @ 000001c8ec74a800] [info] overread, skip -8 enddists: -6 -6
+[mp3float @ 000001c8ec74a800] [error] Header missing
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -9 enddists: -1 -1
+[mp3float @ 000001c8ec74a800] [error] big_values too big
+[mp3float @ 000001c8ec74a800] [error] Error while decoding MPEG audio frame.
+[aist#0:0/mp3 @ 000001c8ec73ab80] [dec:mp3float @ 000001c8ec74a240] [error] Error submitting packet to decoder: Invalid data found when processing input
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -2 -2
+[mp3float @ 000001c8ec74a800] [info] overread, skip -7 enddists: -2 -2
+[astats@s0 @ 000001c8ec72e9c0] [info] Overall
+[astats@s0 @ 000001c8ec72e9c0] [info] Peak level dB: -11.074883
+[astats@t0 @ 000001c8ec72ddc0] [info] Overall
+[astats@t0 @ 000001c8ec72ddc0] [info] Peak level dB: -11.069397
+[ebur128@v0 @ 000001c8ec72e5c0] [info] Summary:
 
   Integrated loudness:
     I:         -22.7 LUFS
@@ -180,5 +188,5 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[out#0/null @ 00000171b7534340] [info] video:0KiB audio:475KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
-[info] size=N/A time=00:00:05.85 bitrate=N/A speed= 186x elapsed=0:00:00.03    
+[out#0/null @ 000001c8ec71f100] [info] video:0KiB audio:4633KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=N/A time=00:00:05.85 bitrate=N/A speed= 197x elapsed=0:00:00.02    

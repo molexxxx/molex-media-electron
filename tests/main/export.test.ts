@@ -147,7 +147,7 @@ describe('runExportJob', () =>
     const verify = exec.calls[1].args
     expect(verify.slice(0, 4)).toEqual(['-loglevel', 'level+info', '-i', '/work/export.m4a'])
     expect(verify[verify.indexOf('-filter_complex') + 1]).toContain('aresample=resampler=soxr:precision=33:osr=384000:osf=dbl')
-    expect(verify.slice(-4)).toEqual(['[v0]', '-f', 'null', '-'])
+    expect(verify.slice(-9)).toEqual(['-map', '[v0]', '-map', '[t0]', '-map', '[s0]', '-f', 'null', '-'])
     if (result.status !== 'done')
     {
       throw new Error('expected done')

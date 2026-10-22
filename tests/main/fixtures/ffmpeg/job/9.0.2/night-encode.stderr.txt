@@ -10,13 +10,21 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (ac3) -> aformat:default
 [info]   asplit -> Stream #0:0 (ac3)
+[info]   astats:default -> Stream #1:0 (pcm_s16le)
 [info] Output #0, matroska, to 'OUT/night-pass1.mkv.part':
 [info]   Metadata:
 [info]     encoder         : Lavf63.1.102
 [info]   Stream #0:0: Audio: ac3 ([0] [0][0] / 0x2000), 48000 Hz, 5.1(side), fltp, 448 kb/s
 [info]     Metadata:
 [info]       encoder         : Lavc63.1.102 ac3
-[astats@p0 @ 0000015da1126a40] [info] Overall
-[astats@p0 @ 0000015da1126a40] [info] Peak level dB: -12.317745
-[out#0/matroska @ 0000015da1128bc0] [info] video:0KiB audio:438KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.523438%
-[info] size=     440KiB time=00:00:07.99 bitrate= 450.6kbits/s speed=51.1x elapsed=0:00:00.15    
+[info] Output #1, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #1:0: Audio: pcm_s16le, 384000 Hz, 5.1(side), s16, 36864 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[astats@p0 @ 00000195ddef0e00] [info] Overall
+[astats@p0 @ 00000195ddef0e00] [info] Peak level dB: -12.317745
+[out#0/matroska @ 00000195ddeef680] [info] video:0KiB audio:438KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.523438%
+[out#1/null @ 00000195ddeef380] [info] video:0KiB audio:35976KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=     440KiB time=00:00:07.99 bitrate= 450.6kbits/s speed=40.6x elapsed=0:00:00.19    

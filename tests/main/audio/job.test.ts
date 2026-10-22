@@ -242,7 +242,8 @@ describe('runAudioJob on the recorded music job', () =>
     expect(correcting).toMatchObject({ reasons: ['loudness-off'] })
     const progress = h.events.filter((e) => e.type === 'audio.progress')
     expect(progress.length).toBeGreaterThan(0)
-    expect(progress.every((e) => e.type === 'audio.progress' && e.fraction !== null && e.fraction >= 0 && e.fraction <= 1)).toBe(true)
+    expect(progress.every((e) => e.type === 'audio.progress' && (e.fraction === null || (e.fraction >= 0 && e.fraction <= 1)))).toBe(true)
+    expect(progress.some((e) => e.type === 'audio.progress' && e.fraction !== null)).toBe(true)
   })
 
   it('writes only paths from deps.output and touches the file system only through them', async () =>
@@ -251,8 +252,9 @@ describe('runAudioJob on the recorded music job', () =>
     const sized: string[] = []
     const h = harness(exec, { size: async (p) => { sized.push(p); return 1000 } })
     await runAudioJob(job(EBU_AAC), h.deps, new AbortController().signal)
-    const written = exec.calls.filter((args) => kinds([args])[0] === 'encode').map((args) => args[args.length - 1])
+    const written = exec.calls.filter((args) => kinds([args])[0] === 'encode').map((args) => args[args.indexOf('-f') + 2])
     expect(written).toEqual(h.outputs)
+    expect(exec.calls.filter((args) => kinds([args])[0] === 'encode').every((args) => args.slice(-5).join(' ') === '-map [p0] -f null -')).toBe(true)
     expect([...sized, ...h.removed].every((p) => h.outputs.includes(p))).toBe(true)
   })
 
@@ -655,6 +657,8 @@ describe('other recipes', () =>
     const graph = exec.calls[1][exec.calls[1].indexOf('-filter_complex') + 1]
     expect(graph).toContain('highpass=f=20:poles=2,volume=2.00dB:precision=double')
     expect(graph).toContain('alimiter=limit=-3.50dB')
+    expect(graph).not.toContain('anullsink')
+    expect(exec.calls[1].slice(-5)).toEqual(['-map', '[p0]', '-f', 'null', '-'])
     expect(result.streams[0].plan.targetLufs).toBeCloseTo(-23.2, 6)
     expect(result).toMatchObject({ outcome: 'verified', encodePasses: 1 })
   })

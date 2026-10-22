@@ -97,7 +97,7 @@ describe('planAudio', () =>
     expect(command?.placeholders).toEqual([GAIN_PLACEHOLDER, OUTPUT_PLACEHOLDER])
     const argv = command?.argv ?? []
     expect(argv.slice(0, 2)).toEqual(['-hide_banner', '-nostdin'])
-    expect(argv.slice(-3)).toEqual(['-f', 'ipod', OUTPUT_PLACEHOLDER])
+    expect(argv.slice(-8)).toEqual(['-f', 'ipod', OUTPUT_PLACEHOLDER, '-map', '[p0]', '-f', 'null', '-'])
     const graph = argv[argv.indexOf('-filter_complex') + 1]
     expect(graph).toContain(`volume=${GAIN_PLACEHOLDER}:precision=double`)
     expect(graph).not.toMatch(/volume=-?\d/)
@@ -453,12 +453,15 @@ describe('run on the recorded music job', () =>
     const exec = fakeExec(MUSIC())
     const h = harness(exec)
     await runAudio(h, runnable(EBU_AAC))
-    const encodes = exec.calls.filter((args) => h.outputs.includes(args[args.length - 1]))
+    const writes = (args: string[]): number => args.findIndex((arg, i) => arg === '-f' && h.outputs.includes(args[i + 2])) + 2
+    const encodes = exec.calls.filter((args) => writes(args) >= 2)
     expect(encodes).toHaveLength(2)
     for (const args of encodes)
     {
-      expect(args.slice(-3, -1)).toEqual(['-f', 'ipod'])
-      expect(args[args.length - 1].startsWith('W/')).toBe(true)
+      const at = writes(args)
+      expect(args.slice(at - 2, at)).toEqual(['-f', 'ipod'])
+      expect(args[at].startsWith('W/')).toBe(true)
+      expect(args.slice(at + 1)).toEqual(['-map', '[p0]', '-f', 'null', '-'])
     }
     expect(h.outputs).toEqual(['W/out-1.m4a.part', 'W/out-2.m4a.part'])
     expect(h.checked).toEqual(h.outputs)
@@ -676,7 +679,7 @@ describe('verdicts and failures', () =>
     const { error } = expectFailed(await runAudio(harness(exec), runnable(EBU_AAC)))
     expect(error).toMatchObject({ code: 'ffmpeg-failed', short: 'Encode failed', stage: 'encode', encodePass: 1, exitCode: -22, exitName: 'EINVAL', attempt: 1, at: 4000 })
     expect(error.message).toContain('ended with exit code -22 (EINVAL).')
-    expect(error.command?.argv.slice(-3)).toEqual(['-f', 'ipod', 'W/out-1.m4a.part'])
+    expect(error.command?.argv.slice(-8)).toEqual(['-f', 'ipod', 'W/out-1.m4a.part', '-map', '[p0]', '-f', 'null', '-'])
     expect(error.command?.argv.slice(0, 2)).toEqual(['-hide_banner', '-nostdin'])
     expect(error.stderrTail).toContain('Output #0, ipod')
   })

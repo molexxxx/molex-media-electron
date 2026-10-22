@@ -48,10 +48,14 @@ function referenceStages(meter: 'soxr' | 'swr', sampleRate: number, label: strin
 {
   const rate = sampleRate * 8
   const resampler = meter === 'soxr' ? `aresample=resampler=soxr:precision=33:osr=${rate}:osf=dbl` : `aresample=osr=${rate}:osf=dbl`
-  return ['aformat=sample_fmts=dbl', resampler, `astats@${label}=measure_perchannel=none:measure_overall=Peak_level`, 'anullsink']
+  return ['aformat=sample_fmts=dbl', resampler, `astats@${label}=measure_perchannel=none:measure_overall=Peak_level`]
 }
 
-/** Output stream N split three ways: loudness into [v<N>], the 8x reference into astats@t<N>, the samples into astats@s<N>. */
+/**
+ * Output stream N split three ways: loudness into [v<N>], the 8x reference through astats@t<N> into [t<N>], the
+ * samples through astats@s<N> into [s<N>]. Every branch is a graph output, never an in-graph sink: FFmpeg 7.x
+ * aborts on a rate-changing aresample that ends in anullsink (see chains.ts).
+ */
 function verifyParts(spec: VerifySpec, meter: 'soxr' | 'swr'): FilterPart[]
 {
   const n = spec.outIndex
@@ -64,20 +68,25 @@ function verifyParts(spec: VerifySpec, meter: 'soxr' | 'swr'): FilterPart[]
   return [
     { input: `0:a:${n}`, stages: [`asplit=3[x${n}][y${n}][z${n}]`], output: '' },
     { input: `x${n}`, stages: loudness, output: `v${n}` },
-    { input: `y${n}`, stages: referenceStages(meter, spec.sampleRate, `t${n}`), output: '' },
-    { input: `z${n}`, stages: [`astats@s${n}=measure_perchannel=none:measure_overall=Peak_level`, 'anullsink'], output: '' }
+    { input: `y${n}`, stages: referenceStages(meter, spec.sampleRate, `t${n}`), output: `t${n}` },
+    { input: `z${n}`, stages: [`astats@s${n}=measure_perchannel=none:measure_overall=Peak_level`], output: `s${n}` }
   ]
 }
 
 /**
- * The verify argv after exec's prefix. Measured streams map [v<N>]; passthrough streams map 0:a:<N> straight to
- * the null muxer, and with no measured stream the graph is left out, since 9.0.2 refuses a graph without outputs.
+ * The verify argv after exec's prefix. Measured streams map [v<N>], [t<N>], and [s<N>]; passthrough streams map
+ * 0:a:<N> straight to the null muxer, and with no measured stream the graph is left out, since 9.0.2 refuses a
+ * graph without outputs.
  */
 export function buildVerifyArgs(output: string, specs: readonly VerifySpec[], meter: 'soxr' | 'swr'): string[]
 {
   const parts = specs.filter((spec) => !spec.passthrough).flatMap((spec) => verifyParts(spec, meter))
   const graph = parts.length === 0 ? [] : ['-filter_complex', filterComplex(parts)]
-  const maps = specs.flatMap((spec) => ['-map', spec.passthrough ? `0:a:${spec.outIndex}` : `[v${spec.outIndex}]`])
+  const maps = specs.flatMap((spec) =>
+  {
+    const n = spec.outIndex
+    return spec.passthrough ? ['-map', `0:a:${n}`] : ['-map', `[v${n}]`, '-map', `[t${n}]`, '-map', `[s${n}]`]
+  })
   return ['-loglevel', 'level+info', '-i', output, ...graph, ...maps, '-f', 'null', '-']
 }
 

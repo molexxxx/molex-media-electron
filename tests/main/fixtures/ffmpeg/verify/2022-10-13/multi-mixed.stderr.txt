@@ -15,7 +15,7 @@
 [info]     Metadata:
 [info]       ENCODER         : Lavc59.50.100 flac
 [info]       DURATION        : 00:00:06.000000000
-[ebur128@v1 @ 000001d7e0f57dc0] [info] Summary:
+[ebur128@v1 @ 000001388697c4c0] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -26,7 +26,7 @@
     Threshold:   0.0 LUFS
     LRA low:     0.0 LUFS
     LRA high:    0.0 LUFS
-[ebur128@v0 @ 000001d7e0b9d540] [info] Summary:
+[ebur128@v0 @ 000001388697ac40] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -41,148 +41,164 @@
 [info]   Stream #0:0 (flac) -> asplit:default (graph 0)
 [info]   Stream #0:1 (flac) -> asplit:default (graph 0)
 [info]   ebur128:out0 (graph 0) -> Stream #0:0 (pcm_s16le)
-[info]   ametadata:default (graph 0) -> Stream #0:1 (pcm_s16le)
-[info]   Stream #0:2 -> #0:2 (flac (native) -> pcm_s16le (native))
+[info]   astats:default (graph 0) -> Stream #0:1 (pcm_s16le)
+[info]   astats:default (graph 0) -> Stream #0:2 (pcm_s16le)
+[info]   ametadata:default (graph 0) -> Stream #0:3 (pcm_s16le)
+[info]   astats:default (graph 0) -> Stream #0:4 (pcm_s16le)
+[info]   astats:default (graph 0) -> Stream #0:5 (pcm_s16le)
+[info]   Stream #0:2 -> #0:6 (flac (native) -> pcm_s16le (native))
 [info] Output #0, null, to 'pipe:':
 [info]   Metadata:
 [info]     encoder         : Lavf59.34.101
 [info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, 7.1, s16, 6144 kb/s (default)
 [info]     Metadata:
 [info]       encoder         : Lavc59.50.100 pcm_s16le
-[info]   Stream #0:1: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]   Stream #0:1: Audio: pcm_s16le, 384000 Hz, 7.1, s16, 49152 kb/s
 [info]     Metadata:
 [info]       encoder         : Lavc59.50.100 pcm_s16le
-[info]   Stream #0:2: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]   Stream #0:2: Audio: pcm_s16le, 48000 Hz, 7.1, s16, 6144 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:3: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:4: Audio: pcm_s16le, 384000 Hz, stereo, s16, 12288 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:5: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:6: Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s
 [info]     Metadata:
 [info]       DURATION        : 00:00:06.000000000
 [info]       encoder         : Lavc59.50.100 pcm_s16le
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:0    pts:0       pts_time:0
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:1    pts:4800    pts_time:0.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:2    pts:9600    pts_time:0.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:3    pts:14400   pts_time:0.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:4    pts:19200   pts_time:0.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:5    pts:24000   pts_time:0.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:6    pts:28800   pts_time:0.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:7    pts:33600   pts_time:0.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:8    pts:38400   pts_time:0.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:9    pts:43200   pts_time:0.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:10   pts:48000   pts_time:1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:11   pts:52800   pts_time:1.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:12   pts:57600   pts_time:1.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:13   pts:62400   pts_time:1.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:14   pts:67200   pts_time:1.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:15   pts:72000   pts_time:1.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:16   pts:76800   pts_time:1.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:17   pts:81600   pts_time:1.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:18   pts:86400   pts_time:1.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:19   pts:91200   pts_time:1.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:20   pts:96000   pts_time:2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:21   pts:100800  pts_time:2.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:22   pts:105600  pts_time:2.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:23   pts:110400  pts_time:2.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:24   pts:115200  pts_time:2.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:25   pts:120000  pts_time:2.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:26   pts:124800  pts_time:2.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:27   pts:129600  pts_time:2.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:28   pts:134400  pts_time:2.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-120.691
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:29   pts:139200  pts_time:2.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.604
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:30   pts:144000  pts_time:3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.606
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:31   pts:148800  pts_time:3.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.603
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:32   pts:153600  pts_time:3.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.608
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:33   pts:158400  pts_time:3.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.606
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:34   pts:163200  pts_time:3.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.590
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:35   pts:168000  pts_time:3.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.591
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:36   pts:172800  pts_time:3.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.578
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:37   pts:177600  pts_time:3.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.581
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:38   pts:182400  pts_time:3.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.588
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:39   pts:187200  pts_time:3.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.593
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:40   pts:192000  pts_time:4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.580
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:41   pts:196800  pts_time:4.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.578
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:42   pts:201600  pts_time:4.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.584
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:43   pts:206400  pts_time:4.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.590
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:44   pts:211200  pts_time:4.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.598
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:45   pts:216000  pts_time:4.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.596
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:46   pts:220800  pts_time:4.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.599
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:47   pts:225600  pts_time:4.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.613
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:48   pts:230400  pts_time:4.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.611
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:49   pts:235200  pts_time:4.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.618
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:50   pts:240000  pts_time:5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.612
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:51   pts:244800  pts_time:5.1
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.616
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:52   pts:249600  pts_time:5.2
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.605
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:53   pts:254400  pts_time:5.3
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.590
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:54   pts:259200  pts_time:5.4
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.588
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:55   pts:264000  pts_time:5.5
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.599
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:56   pts:268800  pts_time:5.6
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.598
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:57   pts:273600  pts_time:5.7
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.592
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:58   pts:278400  pts_time:5.8
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.587
-[ametadata@s1 @ 000001d7e0f590c0] [info] frame:59   pts:283200  pts_time:5.9
-[ametadata@s1 @ 000001d7e0f590c0] [info] lavfi.r128.S=-25.571
-[info] size=N/A time=00:00:05.95 bitrate=N/A speed=37.5x    
-[info] video:0kB audio:6750kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
-[astats@s1 @ 000001d7e0f592c0] [info] Overall
-[astats@s1 @ 000001d7e0f592c0] [info] Peak level dB: -15.348135
-[astats@t1 @ 000001d7e0f584c0] [info] Overall
-[astats@t1 @ 000001d7e0f584c0] [info] Peak level dB: -14.884291
-[ebur128@v1 @ 000001d7e0f58cc0] [info] Summary:
+[ametadata@s1 @ 000001388697bfc0] [info] frame:0    pts:0       pts_time:0
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:1    pts:4800    pts_time:0.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:2    pts:9600    pts_time:0.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:3    pts:14400   pts_time:0.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:4    pts:19200   pts_time:0.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:5    pts:24000   pts_time:0.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:6    pts:28800   pts_time:0.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:7    pts:33600   pts_time:0.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:8    pts:38400   pts_time:0.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:9    pts:43200   pts_time:0.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:10   pts:48000   pts_time:1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:11   pts:52800   pts_time:1.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:12   pts:57600   pts_time:1.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:13   pts:62400   pts_time:1.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:14   pts:67200   pts_time:1.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:15   pts:72000   pts_time:1.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:16   pts:76800   pts_time:1.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:17   pts:81600   pts_time:1.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:18   pts:86400   pts_time:1.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:19   pts:91200   pts_time:1.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:20   pts:96000   pts_time:2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:21   pts:100800  pts_time:2.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:22   pts:105600  pts_time:2.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:23   pts:110400  pts_time:2.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:24   pts:115200  pts_time:2.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:25   pts:120000  pts_time:2.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:26   pts:124800  pts_time:2.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:27   pts:129600  pts_time:2.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:28   pts:134400  pts_time:2.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-120.691
+[ametadata@s1 @ 000001388697bfc0] [info] frame:29   pts:139200  pts_time:2.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.604
+[ametadata@s1 @ 000001388697bfc0] [info] frame:30   pts:144000  pts_time:3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.606
+[ametadata@s1 @ 000001388697bfc0] [info] frame:31   pts:148800  pts_time:3.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.603
+[ametadata@s1 @ 000001388697bfc0] [info] frame:32   pts:153600  pts_time:3.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.608
+[ametadata@s1 @ 000001388697bfc0] [info] frame:33   pts:158400  pts_time:3.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.606
+[ametadata@s1 @ 000001388697bfc0] [info] frame:34   pts:163200  pts_time:3.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.590
+[ametadata@s1 @ 000001388697bfc0] [info] frame:35   pts:168000  pts_time:3.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.591
+[ametadata@s1 @ 000001388697bfc0] [info] frame:36   pts:172800  pts_time:3.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.578
+[ametadata@s1 @ 000001388697bfc0] [info] frame:37   pts:177600  pts_time:3.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.581
+[ametadata@s1 @ 000001388697bfc0] [info] frame:38   pts:182400  pts_time:3.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.588
+[ametadata@s1 @ 000001388697bfc0] [info] frame:39   pts:187200  pts_time:3.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.593
+[ametadata@s1 @ 000001388697bfc0] [info] frame:40   pts:192000  pts_time:4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.580
+[ametadata@s1 @ 000001388697bfc0] [info] frame:41   pts:196800  pts_time:4.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.578
+[ametadata@s1 @ 000001388697bfc0] [info] frame:42   pts:201600  pts_time:4.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.584
+[ametadata@s1 @ 000001388697bfc0] [info] frame:43   pts:206400  pts_time:4.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.590
+[ametadata@s1 @ 000001388697bfc0] [info] frame:44   pts:211200  pts_time:4.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.598
+[ametadata@s1 @ 000001388697bfc0] [info] frame:45   pts:216000  pts_time:4.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.596
+[ametadata@s1 @ 000001388697bfc0] [info] frame:46   pts:220800  pts_time:4.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.599
+[ametadata@s1 @ 000001388697bfc0] [info] frame:47   pts:225600  pts_time:4.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.613
+[ametadata@s1 @ 000001388697bfc0] [info] frame:48   pts:230400  pts_time:4.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.611
+[ametadata@s1 @ 000001388697bfc0] [info] frame:49   pts:235200  pts_time:4.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.618
+[ametadata@s1 @ 000001388697bfc0] [info] frame:50   pts:240000  pts_time:5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.612
+[ametadata@s1 @ 000001388697bfc0] [info] frame:51   pts:244800  pts_time:5.1
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.616
+[ametadata@s1 @ 000001388697bfc0] [info] frame:52   pts:249600  pts_time:5.2
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.605
+[ametadata@s1 @ 000001388697bfc0] [info] frame:53   pts:254400  pts_time:5.3
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.590
+[ametadata@s1 @ 000001388697bfc0] [info] frame:54   pts:259200  pts_time:5.4
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.588
+[ametadata@s1 @ 000001388697bfc0] [info] frame:55   pts:264000  pts_time:5.5
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.599
+[ametadata@s1 @ 000001388697bfc0] [info] frame:56   pts:268800  pts_time:5.6
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.598
+[ametadata@s1 @ 000001388697bfc0] [info] frame:57   pts:273600  pts_time:5.7
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.592
+[ametadata@s1 @ 000001388697bfc0] [info] frame:58   pts:278400  pts_time:5.8
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.587
+[ametadata@s1 @ 000001388697bfc0] [info] frame:59   pts:283200  pts_time:5.9
+[ametadata@s1 @ 000001388697bfc0] [info] lavfi.r128.S=-25.571
+[info] size=N/A time=00:00:05.99 bitrate=N/A speed=42.8x    
+[info] video:0kB audio:57375kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[astats@s1 @ 000001388697b1c0] [info] Overall
+[astats@s1 @ 000001388697b1c0] [info] Peak level dB: -15.348135
+[astats@t1 @ 000001388697cdc0] [info] Overall
+[astats@t1 @ 000001388697cdc0] [info] Peak level dB: -14.884291
+[ebur128@v1 @ 000001388697b0c0] [info] Summary:
 
   Integrated loudness:
     I:         -25.6 LUFS
@@ -193,11 +209,11 @@
     Threshold: -45.6 LUFS
     LRA low:   -25.6 LUFS
     LRA high:  -25.6 LUFS
-[astats@s0 @ 000001d7e0f58bc0] [info] Overall
-[astats@s0 @ 000001d7e0f58bc0] [info] Peak level dB: -15.603266
-[astats@t0 @ 000001d7e0f582c0] [info] Overall
-[astats@t0 @ 000001d7e0f582c0] [info] Peak level dB: -15.654295
-[ebur128@v0 @ 000001d7e0f581c0] [info] Summary:
+[astats@s0 @ 000001388697b5c0] [info] Overall
+[astats@s0 @ 000001388697b5c0] [info] Peak level dB: -15.603266
+[astats@t0 @ 000001388697cac0] [info] Overall
+[astats@t0 @ 000001388697cac0] [info] Peak level dB: -15.654295
+[ebur128@v0 @ 000001388697bac0] [info] Summary:
 
   Integrated loudness:
     I:         -19.6 LUFS

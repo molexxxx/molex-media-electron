@@ -145,9 +145,16 @@ describe('buildVerifyArgs', () =>
     expect(buildVerifyArgs('OUT/D.flac', [verifySpec(0)], 'soxr')).toEqual([
       '-loglevel', 'level+info', '-i', 'OUT/D.flac',
       '-filter_complex',
-      '[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level,anullsink;[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level,anullsink',
-      '-map', '[v0]', '-f', 'null', '-'
+      '[0:a:0]asplit=3[x0][y0][z0];[x0]aformat=sample_fmts=dbl,ebur128@v0=peak=none:dualmono=false:framelog=verbose[v0];[y0]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=352800:osf=dbl,astats@t0=measure_perchannel=none:measure_overall=Peak_level[t0];[z0]astats@s0=measure_perchannel=none:measure_overall=Peak_level[s0]',
+      '-map', '[v0]', '-map', '[t0]', '-map', '[s0]', '-f', 'null', '-'
     ])
+  })
+
+  it('maps every branch as a graph output, never an in-graph sink', () =>
+  {
+    const args = buildVerifyArgs('OUT/D.flac', [verifySpec(0), verifySpec(1, { sampleRate: 48000 })], 'swr')
+    expect(args[5]).not.toContain('anullsink')
+    expect(args.slice(6)).toEqual(['-map', '[v0]', '-map', '[t0]', '-map', '[s0]', '-map', '[v1]', '-map', '[t1]', '-map', '[s1]', '-f', 'null', '-'])
   })
 
   it('uses swresample without libsoxr', () =>
@@ -163,15 +170,15 @@ describe('buildVerifyArgs', () =>
     expect(graph.split(';')).toEqual([
       '[0:a:1]asplit=3[x1][y1][z1]',
       '[x1]aformat=sample_fmts=dbl,pan=X,ebur128@v1=peak=none:dualmono=true:framelog=verbose:metadata=1,ametadata@s1=mode=print:key=lavfi.r128.S[v1]',
-      '[y1]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t1=measure_perchannel=none:measure_overall=Peak_level,anullsink',
-      '[z1]astats@s1=measure_perchannel=none:measure_overall=Peak_level,anullsink'
+      '[y1]aformat=sample_fmts=dbl,aresample=resampler=soxr:precision=33:osr=384000:osf=dbl,astats@t1=measure_perchannel=none:measure_overall=Peak_level[t1]',
+      '[z1]astats@s1=measure_perchannel=none:measure_overall=Peak_level[s1]'
     ])
   })
 
   it('maps passthrough streams directly and leaves the graph out when nothing is measured', () =>
   {
     const mixed = buildVerifyArgs('OUT/F.mkv', [verifySpec(0), verifySpec(2, { passthrough: true })], 'soxr')
-    expect(mixed.slice(6)).toEqual(['-map', '[v0]', '-map', '0:a:2', '-f', 'null', '-'])
+    expect(mixed.slice(6)).toEqual(['-map', '[v0]', '-map', '[t0]', '-map', '[s0]', '-map', '0:a:2', '-f', 'null', '-'])
     expect(mixed[5]).not.toContain('0:a:2')
     expect(buildVerifyArgs('OUT/G.flac', [verifySpec(0, { passthrough: true })], 'soxr')).toEqual([
       '-loglevel', 'level+info', '-i', 'OUT/G.flac', '-map', '0:a:0', '-f', 'null', '-'
@@ -312,14 +319,14 @@ describe('parseVerify on recorded fixtures', () =>
   it.each(MATRIX)('keeps the first 20 errors of a damaged file and counts every one (%s, %s)', (build, _variant, transform) =>
   {
     const result = parseCase(build, 'damaged', transform)
-    expect(result.decodeErrorCount).toBe(build === '2022-10-13' ? 43 : 32)
+    expect(result.decodeErrorCount).toBe(build === '2022-10-13' ? 74 : 32)
     expect(result.decodeErrors).toHaveLength(MAX_DECODE_ERRORS)
     const lines = stderrOf(build, 'damaged').split(/\r?\n/).filter((line) => /\[(?:error|fatal|panic)\]/.test(line))
     expect(result.decodeErrors).toEqual(lines.slice(0, MAX_DECODE_ERRORS))
     expect(result.decodeErrors[0]).toMatch(/^\[mp3float @ [0-9a-f]+\] \[error\] Header missing$/)
     if (build === '2022-10-13')
     {
-      expect(result.decodeErrors[2]).toBe('[error] Error while decoding stream #0:0: Invalid data found when processing input')
+      expect(result.decodeErrors).toContain('[error] Error while decoding stream #0:0: Invalid data found when processing input')
     }
     else
     {

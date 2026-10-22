@@ -17,7 +17,7 @@ import type {
 import { execArgv, exitName, signedExitCode } from '../exec'
 import type { Exec, ExecResult, FfmpegProgress } from '../exec'
 import { isLosslessEncoder, presetMaxFor, resolveCeiling } from './ceilings'
-import { encodeParts, filterComplex, meterPrefix } from './chains'
+import { encodeParts, filterComplex, meterOutputArgs, meterPrefix } from './chains'
 import type { ChainSpec, FilterPart } from './chains'
 import { codecOfEncoder, containerFor } from './containers'
 import { buildDownmixProbeArgs, DOWNMIX_LAYOUTS, DOWNMIX_LEVEL_CODECS, downmixStage, LAYOUT_CHANNELS, parseDownmixInfo } from './downmix'
@@ -718,7 +718,8 @@ export function encoderChoices(facts: MediaFacts, recipe: AudioRecipe, caps: Bui
 
 /**
  * The encode argv after exec's prefix: one chain per processed stream (labeled [a<k>], metered on [q<k>] for lossy
- * outputs), the explicit stream map, codec and metadata args, and -f with the output container's muxer.
+ * outputs), the explicit stream map, codec and metadata args, -f with the output container's muxer, and, when any
+ * output is metered, a second output that drains the meter branches [p<k>] into the null muxer.
  */
 export function buildEncodeArgs(input: EncodeInputs, plans: readonly GainPlan[], outputPath: string): EncodeLayout
 {
@@ -777,7 +778,8 @@ export function buildEncodeArgs(input: EncodeInputs, plans: readonly GainPlan[],
     ...ENCODE_INPUT_ARGS, '-i', job.sourcePath,
     ...(parts.length > 0 ? ['-filter_complex', filterComplex(parts)] : []),
     ...streamPlan.mapArgs, ...streamPlan.codecArgs, ...streamPlan.metadataArgs,
-    '-f', muxer, outputPath
+    '-f', muxer, outputPath,
+    ...meterOutputArgs(verify.filter((v) => v.metered).map((v) => v.spec.outIndex))
   ]
   return { args, verify }
 }

@@ -5,7 +5,7 @@
 [info]     encoder         : Lavf59.34.101
 [info]   Duration: 00:00:03.00, start: 0.000000, bitrate: 126 kb/s
 [info]   Stream #0:0: Audio: flac, 48000 Hz, mono, s16
-[ebur128@v0 @ 000001cc996a9880] [info] Summary:
+[ebur128@v0 @ 000001b541764a80] [info] Summary:
 
   Integrated loudness:
     I:         -70.0 LUFS
@@ -19,20 +19,28 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (flac) -> asplit:default
 [info]   ebur128:out0 -> Stream #0:0 (pcm_s16le)
+[info]   astats:default -> Stream #0:1 (pcm_s16le)
+[info]   astats:default -> Stream #0:2 (pcm_s16le)
 [info] Output #0, null, to 'pipe:':
 [info]   Metadata:
 [info]     title           : [error] live take
 [info]     encoder         : Lavf59.34.101
-[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]   Stream #0:0: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s (default)
 [info]     Metadata:
 [info]       encoder         : Lavc59.50.100 pcm_s16le
-[info] size=N/A time=00:00:02.97 bitrate=N/A speed=83.5x    
-[info] video:0kB audio:281kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
-[astats@s0 @ 000001cc997fef80] [info] Overall
-[astats@s0 @ 000001cc997fef80] [info] Peak level dB: -18.063656
-[astats@t0 @ 000001cc9970de00] [info] Overall
-[astats@t0 @ 000001cc9970de00] [info] Peak level dB: -18.062339
-[ebur128@v0 @ 000001cc9971c480] [info] Summary:
+[info]   Stream #0:1: Audio: pcm_s16le, 384000 Hz, mono, s16, 6144 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info]   Stream #0:2: Audio: pcm_s16le, 48000 Hz, mono, s16, 768 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc59.50.100 pcm_s16le
+[info] size=N/A time=00:00:02.99 bitrate=N/A speed= 322x    
+[info] video:0kB audio:2812kB subtitle:0kB other streams:0kB global headers:0kB muxing overhead: unknown
+[astats@s0 @ 000001b54178e380] [info] Overall
+[astats@s0 @ 000001b54178e380] [info] Peak level dB: -18.063656
+[astats@t0 @ 000001b5417c3900] [info] Overall
+[astats@t0 @ 000001b5417c3900] [info] Peak level dB: -18.062339
+[ebur128@v0 @ 000001b5417977c0] [info] Summary:
 
   Integrated loudness:
     I:         -21.8 LUFS

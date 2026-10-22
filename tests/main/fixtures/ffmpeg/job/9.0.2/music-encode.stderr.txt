@@ -7,15 +7,23 @@
 [info] Stream mapping:
 [info]   Stream #0:0 (flac) -> aformat:default
 [info]   asplit -> Stream #0:0 (aac)
-[ipod @ 0000026452a98100] [warning] Warning, extension is not .m4a nor .m4v Quicktime/Ipod might not play the file
+[info]   astats:default -> Stream #1:0 (pcm_s16le)
+[ipod @ 0000024819f1b200] [warning] Warning, extension is not .m4a nor .m4v Quicktime/Ipod might not play the file
 [info] Output #0, ipod, to 'OUT/music-pass1.m4a.part':
 [info]   Metadata:
 [info]     encoder         : Lavf63.1.102
 [info]   Stream #0:0: Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 128 kb/s
 [info]     Metadata:
 [info]       encoder         : Lavc63.1.102 aac
-[astats@p0 @ 0000026452aa09c0] [info] Overall
-[astats@p0 @ 0000026452aa09c0] [info] Peak level dB: -12.324909
-[out#0/ipod @ 0000026452a81880] [info] video:0KiB audio:126KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.699756%
-[info] size=     128KiB time=00:00:08.00 bitrate= 131.0kbits/s speed= 135x elapsed=0:00:00.05    
-[aac @ 0000026452a9d340] [info] Qavg: 251.386
+[info] Output #1, null, to 'pipe:':
+[info]   Metadata:
+[info]     encoder         : Lavf63.1.102
+[info]   Stream #1:0: Audio: pcm_s16le, 352800 Hz, stereo, s16, 11289 kb/s
+[info]     Metadata:
+[info]       encoder         : Lavc63.1.102 pcm_s16le
+[astats@p0 @ 0000024819f12b40] [info] Overall
+[astats@p0 @ 0000024819f12b40] [info] Peak level dB: -12.324909
+[out#0/ipod @ 0000024819f0ee40] [info] video:0KiB audio:126KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.699756%
+[out#1/null @ 0000024819f0f180] [info] video:0KiB audio:11025KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: unknown
+[info] size=     128KiB time=00:00:08.00 bitrate= 131.0kbits/s speed= 113x elapsed=0:00:00.07    
+[aac @ 0000024819f205c0] [info] Qavg: 251.386

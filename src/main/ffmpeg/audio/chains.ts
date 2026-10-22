@@ -2,6 +2,11 @@
  * Stage builders for the measure and encode graphs. Every chain processes in double precision, applies its gain
  * in dB, limits at L = C - 0.5 on a signal oversampled to at least 192 kHz, and ends with an aformat pin that
  * carries the output rate and layout, so FFmpeg never picks either on its own (D1).
+ *
+ * No branch that resamples ends in anullsink: FFmpeg 7.0 and 7.1 abort with `Assertion best_input >= 0 failed`
+ * (fftools/ffmpeg_filter.c, choose_input) when a rate-changing aresample feeds an in-graph sink, because the
+ * sink's EOF arrives inside avfilter_graph_request_oldest and the graph answers EAGAIN after every input has
+ * ended. Meter branches are therefore graph outputs, drained by a second output into the null muxer.
  */
 import { LIMITER_MARGIN_DB } from './ceilings'
 import { downmixStage } from './downmix'
@@ -160,17 +165,17 @@ export function pinStages(out: ChainOutput): string[]
   return [`aformat=${rateAndLayout}`]
 }
 
-/** The pre-encode meter branch of output k: 8x oversampled in float, read from astats@p<k>, into a sink. */
+/** The pre-encode meter branch of output k: 8x oversampled in float, read from astats@p<k>, ending in [p<k>]. */
 export function preEncodeMeterStages(meter: 'soxr' | 'swr', sampleRate: number, k: number): string[]
 {
   const rate = sampleRate * 8
   const resampler = meter === 'soxr' ? `aresample=resampler=soxr:precision=33:osr=${rate}:osf=dbl` : `aresample=osr=${rate}:osf=dbl`
-  return [FLOAT, resampler, `astats@p${k}=measure_perchannel=none:measure_overall=Peak_level`, 'anullsink']
+  return [FLOAT, resampler, `astats@p${k}=measure_perchannel=none:measure_overall=Peak_level`]
 }
 
 /**
  * The graph parts of output k read from input: the chain into [a<k>], or, with a pre-encode meter, the chain
- * split into [a<k>] for the encoder and [q<k>] for the meter (stage 9).
+ * split into [a<k>] for the encoder and [q<k>] for the meter, whose branch ends in [p<k>] (stage 9).
  */
 export function encodeParts(spec: ChainSpec, input: string, k: number): FilterPart[]
 {
@@ -181,8 +186,14 @@ export function encodeParts(spec: ChainSpec, input: string, k: number): FilterPa
   }
   return [
     { input, stages: [...chain, `asplit=2[a${k}][q${k}]`], output: '' },
-    { input: `q${k}`, stages: preEncodeMeterStages(spec.preEncodeMeter, spec.out.sampleRate, k), output: '' }
+    { input: `q${k}`, stages: preEncodeMeterStages(spec.preEncodeMeter, spec.out.sampleRate, k), output: `p${k}` }
   ]
+}
+
+/** The second output of an encode: every meter branch [p<k>] of the given outputs into the null muxer; empty with none. */
+export function meterOutputArgs(metered: readonly number[]): string[]
+{
+  return metered.length === 0 ? [] : [...metered.flatMap((k) => ['-map', `[p${k}]`]), '-f', 'null', '-']
 }
 
 /** The timeline export tail after amix: float, the oversampled limiter at the export ceiling, and the encoder pin. */

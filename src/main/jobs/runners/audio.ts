@@ -167,7 +167,7 @@ export function failureError(job: Pick<RunnableJob, 'attempt'>, platform: Platfo
   }
   if (f.exitCode === 0 && f.exitName === 'EEXIST')
   {
-    const file = f.argv.length > 0 ? f.argv[f.argv.length - 1] : 'the work file'
+    const file = writtenFile(f.argv) ?? 'the work file'
     return jobError(job, platform, at, { ...base, code: 'internal', short: 'Work file exists', message: `FFmpeg found the work file ${file} already there and wrote nothing.` })
   }
   if (f.decodeErrorCount > 0)
@@ -469,6 +469,23 @@ function messageOf(err: unknown): string
 }
 
 /**
+ * The file an argv writes: the path of its first `-f <muxer> <path>` output that is not the null muxer. The encode's
+ * meter output (`-f null -`) follows the work file, and a measure or verify run only reads a work file through -i,
+ * so neither answers here.
+ */
+export function writtenFile(argv: readonly string[]): string | null
+{
+  for (let i = 0; i + 2 < argv.length; i++)
+  {
+    if (argv[i] === '-f' && argv[i + 1] !== 'null' && argv[i + 1] !== 'lavfi')
+    {
+      return argv[i + 2]
+    }
+  }
+  return null
+}
+
+/**
  * The context's exec with the command and stderr in the job log, and every write to a work path from output()
  * checked to be absent right before the spawn; a present or uncheckable path rejects as a spawn failure.
  */
@@ -478,7 +495,7 @@ export function guardedExec(ctx: Pick<RunContext, 'exec' | 'log'>, deps: Pick<Au
   return {
     async run(args, o)
     {
-      const target = args.length >= 3 && args[args.length - 3] === '-f' ? args[args.length - 1] : null
+      const target = writtenFile(args)
       if (target !== null && issued.has(target))
       {
         let present: boolean
