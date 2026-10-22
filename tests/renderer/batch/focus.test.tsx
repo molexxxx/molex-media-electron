@@ -361,8 +361,9 @@ describe('useFocusRescue', () =>
     fix.focus()
     await act(async () =>
     {
-      fix.hidden = true
+      // A browser drops focus from a control it stops rendering; jsdom ignores blur() on one, so blur first.
       fix.blur()
+      fix.hidden = true
       await Promise.resolve()
       await Promise.resolve()
     })

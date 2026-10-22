@@ -30,6 +30,11 @@ if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.sho
 
 if (!('showPopover' in HTMLElement.prototype))
 {
+  // jsdom's default stylesheet hides every [popover], and jsdom will not focus an element that is not rendered, so a
+  // popover the shim shows must render as one shown by a browser does. Only an important author rule outranks it.
+  const shown = document.createElement('style')
+  shown.textContent = '[popover][data-popover-open] { display: block !important; }'
+  document.head.append(shown)
   Object.assign(HTMLElement.prototype, {
     showPopover(this: HTMLElement): void
     {

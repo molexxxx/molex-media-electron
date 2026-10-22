@@ -59,18 +59,16 @@ export function Dialog({
 
   const closeAndReturnFocus = (dialog: HTMLDialogElement): void =>
   {
-    closeDialog(dialog)
     const opener = openerRef.current
     openerRef.current = null
     const focused = document.activeElement
-    if (opener?.isConnected && (dialog.contains(focused) || isNowhere(focused)))
-    {
-      opener.focus()
-    }
-    else if (focused instanceof HTMLElement && dialog.contains(focused))
+    const returnTo = opener?.isConnected && (dialog.contains(focused) || isNowhere(focused)) ? opener : null
+    if (returnTo === null && focused instanceof HTMLElement && dialog.contains(focused))
     {
       focused.blur()
     }
+    closeDialog(dialog)
+    returnTo?.focus()
   }
 
   useLayoutEffect(() =>
