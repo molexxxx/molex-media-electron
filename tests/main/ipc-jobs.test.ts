@@ -18,7 +18,7 @@ const m = vi.hoisted(() => ({
   blockerStopped: [] as number[],
   trashed: [] as string[],
   revealed: [] as string[],
-  clipboard: { formats: [] as string[], text: '', buffers: new Map<string, Buffer>(), reads: new Map<string, string>() },
+  clipboard: { text: '', entries: [] as Array<Record<string, unknown>> },
   inspect: (..._a: unknown[]): Promise<unknown> => Promise.resolve(null),
   inspectCalls: [] as unknown[][],
   download: (..._a: unknown[]): Promise<unknown> => Promise.resolve({ ffmpeg: '', ffprobe: '' }),
@@ -88,10 +88,11 @@ vi.mock('electron', () =>
       showSaveDialog: vi.fn()
     },
     clipboard: {
-      availableFormats: () => m.clipboard.formats,
-      read: (format: string) => m.clipboard.reads.get(format) ?? '',
-      readBuffer: (format: string) => m.clipboard.buffers.get(format) ?? Buffer.alloc(0),
-      readText: () => m.clipboard.text
+      readText: async () => m.clipboard.text,
+      read: async () => m.clipboard.entries.map((entry) => ({
+        types: Object.keys(entry),
+        getType: async (type: string) => (typeof entry[type] === 'string' ? new Blob([entry[type] as string]) : entry[type])
+      }))
     },
     nativeImage: { createFromPath: vi.fn(() => ({ icon: true })) },
     Notification: FakeNotification,
@@ -354,72 +355,58 @@ describe('dialogs', () =>
 
 describe('clipboard', () =>
 {
-  function source(o: Partial<{ formats: string[]; reads: Record<string, string>; buffers: Record<string, Buffer>; text: string; drop: () => Promise<string> }>): host.ClipboardSource
+  function source(o: { text?: string; types?: Record<string, string> } = {}): host.ClipboardSource & { readType: ReturnType<typeof vi.fn> }
   {
     return {
-      formats: () => o.formats ?? [],
-      read: (f) => o.reads?.[f] ?? '',
-      readBuffer: (f) => o.buffers?.[f] ?? Buffer.alloc(0),
-      readText: () => o.text ?? '',
-      windowsDropList: o.drop ?? (async () => '')
+      readText: async () => o.text ?? '',
+      readType: vi.fn(async (type: string) => o.types?.[type] ?? null)
     }
   }
 
-  it('reads the whole Windows file-drop list', async () =>
+  it('reads every copied file from the file list Electron maps to text/uri-list, on each platform', async () =>
   {
-    const drop = async (): Promise<string> => 'C:\\a\\one file.txt\r\nC:\\a\\two \u00e9.txt\r\n'
-    expect(await host.readClipboardContent('win32', source({ formats: ['text/uri-list'], drop, text: 'x' }))).toEqual({ files: ['C:\\a\\one file.txt', 'C:\\a\\two \u00e9.txt'], text: 'x' })
+    const windows = 'file:///C:/a/one%20file.txt\r\nfile:///C:/a/two%20%C3%A9.txt\r\n'
+    expect(await host.readClipboardContent('win32', source({ types: { 'text/uri-list': windows }, text: 'x' }))).toEqual({ files: ['C:\\a\\one file.txt', 'C:\\a\\two \u00e9.txt'], text: 'x' })
+    const mac = 'file:///Users/a/A%20%26%20B.wav\r\nfile:///Users/a/c.mp3'
+    expect((await host.readClipboardContent('darwin', source({ types: { 'text/uri-list': mac } }))).files).toEqual(['/Users/a/A & B.wav', '/Users/a/c.mp3'])
+    const linux = '# comment\r\nfile:///home/a/x.mkv\r\nhttps://example.com/y\r\n'
+    expect((await host.readClipboardContent('linux', source({ types: { 'text/uri-list': linux } }))).files).toEqual(['/home/a/x.mkv'])
   })
 
-  it('falls back to the first Windows file when the list query fails', async () =>
+  it('reads only text when no files were copied', async () =>
   {
-    const buffers = { FileNameW: Buffer.from('C:\\a\\one.txt\0', 'utf16le') }
-    const drop = async (): Promise<string> =>
-    {
-      throw new Error('no powershell')
-    }
-    expect(await host.readClipboardContent('win32', source({ formats: ['text/uri-list'], buffers, drop }))).toEqual({ files: ['C:\\a\\one.txt'], text: '' })
-    expect(await host.readClipboardContent('win32', source({ formats: ['text/uri-list'], drop }))).toEqual({ files: [], text: '' })
+    expect(await host.readClipboardContent('win32', source({ text: '"C:\\a.mp3"' }))).toEqual({ files: [], text: '"C:\\a.mp3"' })
   })
 
-  it('reads only text when Windows holds no file list', async () =>
+  it('falls back to the GNOME copied-files list on Linux only', async () =>
   {
-    const drop = vi.fn(async () => 'C:\\x')
-    expect(await host.readClipboardContent('win32', source({ formats: ['text/plain'], text: '"C:\\a.mp3"', drop }))).toEqual({ files: [], text: '"C:\\a.mp3"' })
-    expect(drop).not.toHaveBeenCalled()
-  })
-
-  it('reads the Finder list, then a single file URL', async () =>
-  {
-    const plist = '<?xml version="1.0"?><plist><array><string>/Users/a/A &amp; B.wav</string><string>/Users/a/c.mp3</string></array></plist>'
-    expect((await host.readClipboardContent('darwin', source({ reads: { NSFilenamesPboardType: plist } }))).files).toEqual(['/Users/a/A & B.wav', '/Users/a/c.mp3'])
-    expect((await host.readClipboardContent('darwin', source({ reads: { 'public.file-url': 'file:///Users/a/d%20e.flac' } }))).files).toEqual(['/Users/a/d e.flac'])
-  })
-
-  it('reads text/uri-list on Linux, then the GNOME copied-files list', async () =>
-  {
-    const uris = '# comment\r\nfile:///home/a/x.mkv\r\nhttps://example.com/y\r\n'
-    expect((await host.readClipboardContent('linux', source({ reads: { 'text/uri-list': uris } }))).files).toEqual(['/home/a/x.mkv'])
     const gnome = 'copy\nfile:///home/a/z%20y.wav'
-    expect((await host.readClipboardContent('linux', source({ reads: { 'x-special/gnome-copied-files': gnome } }))).files).toEqual(['/home/a/z y.wav'])
+    expect((await host.readClipboardContent('linux', source({ types: { [host.GNOME_COPIED_FILES]: gnome } }))).files).toEqual(['/home/a/z y.wav'])
+    const windows = source({ types: { [host.GNOME_COPIED_FILES]: gnome } })
+    expect((await host.readClipboardContent('win32', windows)).files).toEqual([])
+    expect(windows.readType).toHaveBeenCalledTimes(1)
+    expect(windows.readType).toHaveBeenCalledWith('text/uri-list')
   })
 
-  it('decodes the helpers on their own', () =>
+  it('decodes URI lists on their own', () =>
   {
-    expect(host.fileNameWPath(Buffer.alloc(0))).toBeNull()
-    expect(host.dropListPaths('\r\n  C:\\a  \r\n')).toEqual(['C:\\a'])
-    expect(host.plistPaths('<plist></plist>')).toEqual([])
     expect(host.uriListPaths('file://bad host/x', 'linux')).toEqual([])
     expect(host.uriListPaths('file:///C:/a/b%20c.wav', 'win32')).toEqual(['C:\\a\\b c.wav'])
-    expect(host.windowsPowerShell('D:\\Win')).toBe('D:\\Win\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
   })
 
-  it('reads through Electron with the PowerShell list query', async () =>
+  it('reads through Electron, taking the first entry that carries the type as text', async () =>
   {
-    m.clipboard.formats = ['text/plain']
     m.clipboard.text = 'C:\\x.mp3'
-    expect(await host.readClipboardContent('win32', host.electronClipboard())).toEqual({ files: [], text: 'C:\\x.mp3' })
-    expect(host.DROP_LIST_SCRIPT).toContain('Get-Clipboard -Format FileDropList')
+    m.clipboard.entries = [
+      { 'text/plain': 'C:\\x.mp3' },
+      { 'electron application/bookmark': { title: 'A', url: 'https://example.com' } },
+      { 'text/uri-list': 'file:///C:/clip/a.wav' }
+    ]
+    const reader = host.electronClipboard()
+    expect(await host.readClipboardContent('win32', reader)).toEqual({ files: ['C:\\clip\\a.wav'], text: 'C:\\x.mp3' })
+    expect(await reader.readType('text/html')).toBeNull()
+    expect(await reader.readType('electron application/bookmark')).toBeNull()
+    m.clipboard.entries = []
   })
 })
 
@@ -970,7 +957,7 @@ describe('createEngineRuntime', () =>
 
   it('reads the clipboard through the platform reader', async () =>
   {
-    m.clipboard.formats = []
+    m.clipboard.entries = []
     m.clipboard.text = 'D:\\clip.wav'
     const runtime = await host.createEngineRuntime({ mainWindow: () => null })
     const content = await runtime.deps.shell.readClipboard()

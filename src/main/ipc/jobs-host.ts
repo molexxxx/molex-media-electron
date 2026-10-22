@@ -7,7 +7,6 @@
 import { app, BrowserWindow, clipboard, dialog, nativeImage, Notification, powerSaveBlocker, shell, webContents } from 'electron'
 import type { FileFilter, WebContents } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { execFile } from 'child_process'
 import { randomBytes, randomUUID } from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
@@ -170,111 +169,48 @@ export function uriListPaths(text: string, platform: Platform): string[]
   })
 }
 
-/** The paths of a macOS `NSFilenamesPboardType` property list. */
-export function plistPaths(xml: string): string[]
-{
-  const decode = (s: string): string => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
-  return [...xml.matchAll(/<string>([^<]*)<\/string>/g)].map((m) => decode(m[1])).filter(Boolean)
-}
+/** GNOME's copied-files list, which some Linux file managers offer beside or instead of `text/uri-list`. */
+export const GNOME_COPIED_FILES = 'electron application/osclipboard;format="x-special/gnome-copied-files"'
 
-/** The lines of the Windows file-drop list query, one full path per line. */
-export function dropListPaths(stdout: string): string[]
-{
-  return stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-}
-
-/** The first path of a Windows `FileNameW` buffer, which holds only the first file of a copied list. */
-export function fileNameWPath(buffer: Buffer): string | null
-{
-  const text = buffer.toString('utf16le').replace(/\0[\s\S]*$/, '')
-  return text.length > 0 ? text : null
-}
-
-/** The PowerShell query that prints the Windows clipboard's whole file-drop list as UTF-8, one path per line. */
-export const DROP_LIST_SCRIPT = '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Clipboard -Format FileDropList | ForEach-Object { $_.FullName }'
-
-/** What the clipboard reader reads through; Electron's clipboard and a child process in the app. */
+/** What the clipboard reader reads through: the copied text, and the payload of one MIME type as text. */
 export interface ClipboardSource
 {
-  formats(): string[]
-  read(format: string): string
-  readBuffer(format: string): Buffer
-  readText(): string
-  /** The Windows file-drop list query's output; rejects when PowerShell cannot run. */
-  windowsDropList(): Promise<string>
+  readText(): Promise<string>
+  /** The first clipboard entry's payload for `type` as text, or null when no entry carries it. */
+  readType(type: string): Promise<string | null>
 }
 
 /**
- * The clipboard as the paste command reads it: the platform's file list first, then text. Electron exposes only
- * the first file of a Windows file-drop list (`FileNameW`), so Windows reads the whole list through PowerShell and
- * falls back to that first file when the query fails.
+ * The clipboard as the paste command reads it: the copied files first, then text. Electron maps `text/uri-list` to
+ * each platform's own copied-files format (CF_HDROP on Windows, NSFilenamesPboardType on macOS, `text/uri-list` on
+ * Linux) as a `file://` URI list, so one read holds every copied file; Linux falls back to GNOME's list.
  */
 export async function readClipboardContent(platform: Platform, source: ClipboardSource): Promise<ClipboardContent>
 {
-  const text = source.readText()
-  const formats = source.formats()
-  if (platform === 'win32')
+  const text = await source.readText()
+  const files = uriListPaths((await source.readType('text/uri-list')) ?? '', platform)
+  if (files.length > 0 || platform !== 'linux')
   {
-    if (!formats.includes('text/uri-list'))
-    {
-      return { files: [], text }
-    }
-    try
-    {
-      return { files: dropListPaths(await source.windowsDropList()), text }
-    }
-    catch (err)
-    {
-      logger.warn(`Could not read the copied file list: ${err instanceof Error ? err.message : String(err)}`)
-      const first = fileNameWPath(source.readBuffer('FileNameW'))
-      return { files: first === null ? [] : [first], text }
-    }
+    return { files, text }
   }
-  if (platform === 'darwin')
-  {
-    const listed = plistPaths(source.read('NSFilenamesPboardType'))
-    if (listed.length > 0)
-    {
-      return { files: listed, text }
-    }
-    return { files: uriListPaths(source.read('public.file-url'), platform), text }
-  }
-  const uris = uriListPaths(source.read('text/uri-list'), platform)
-  return { files: uris.length > 0 ? uris : uriListPaths(source.read('x-special/gnome-copied-files'), platform), text }
+  return { files: uriListPaths((await source.readType(GNOME_COPIED_FILES)) ?? '', platform), text }
 }
 
-/** Runs a program without a shell and hidden, resolving its stdout; rejects on a spawn failure, a nonzero exit, or the timeout. */
-export function runHidden(file: string, args: readonly string[], timeoutMs: number): Promise<string>
-{
-  return new Promise((resolve, reject) =>
-  {
-    execFile(file, [...args], { windowsHide: true, timeout: timeoutMs, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }, (err, stdout) =>
-    {
-      if (err)
-      {
-        reject(err)
-        return
-      }
-      resolve(stdout)
-    })
-  })
-}
-
-/** The Windows PowerShell executable under `%SystemRoot%`. */
-export function windowsPowerShell(systemRoot: string | undefined = process.env['SystemRoot']): string
-{
-  return path.win32.join(systemRoot ?? 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-}
-
-/** Electron's clipboard, with the Windows file-drop list read through PowerShell. */
+/** Electron's clipboard as the paste command reads it. */
 export function electronClipboard(): ClipboardSource
 {
   return {
-    formats: () => clipboard.availableFormats(),
-    read: (format) => clipboard.read(format),
-    readBuffer: (format) => clipboard.readBuffer(format),
     readText: () => clipboard.readText(),
-    windowsDropList: () => runHidden(windowsPowerShell(), ['-NoProfile', '-NonInteractive', '-STA', '-Command', DROP_LIST_SCRIPT], 10000)
+    async readType(type)
+    {
+      const item = (await clipboard.read()).find((entry) => entry.types.includes(type))
+      if (item === undefined)
+      {
+        return null
+      }
+      const payload = await item.getType(type)
+      return payload instanceof Blob ? payload.text() : null
+    }
   }
 }
 

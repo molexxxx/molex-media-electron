@@ -35,7 +35,7 @@ vi.mock('electron', () => ({
     showMessageBox: vi.fn(),
     showSaveDialog: vi.fn()
   },
-  clipboard: { availableFormats: () => [], read: () => '', readBuffer: () => Buffer.alloc(0), readText: () => '' },
+  clipboard: { read: async () => [], readText: async () => '' },
   nativeImage: { createFromPath: vi.fn() },
   Notification: class
   {
