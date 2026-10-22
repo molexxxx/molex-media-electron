@@ -199,7 +199,7 @@ jobs:
           ffmpeg -hide_banner -version
 
       - name: Golden suite
-        run: npm run test:golden
+        run: npm run test:golden -- --reporter=verbose
 
       - name: Upload the oracle report
         if: failure()
@@ -247,7 +247,7 @@ jobs:
         run: echo "MOLEX_GOLDEN_OUT=$RUNNER_TEMP/molex-golden" >> "$GITHUB_ENV"
 
       - name: Golden suite
-        run: npm run test:golden
+        run: npm run test:golden -- --reporter=verbose
 
       - name: Upload the oracle report
         if: failure()
