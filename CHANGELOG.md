@@ -2,6 +2,89 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [5.0.0] - 2026-10-22 - UI 2.0 and the loudness pipeline rebuilt
+
+Every view is rebuilt on one design system, and the audio pipeline behind
+the batch processor is replaced by one measured against the standards it
+names. The two land together because the old batch flow could not express
+the new pipeline: presets had to be chosen before files were added, and a
+job carried no record of what it ran with. A golden suite now runs every
+chain on real FFmpeg builds (2022-10-13, 5.1.2, 7.1.1, and 9.0.2) locally
+and in CI, and releases are gated on it.
+
+### Added
+
+- **A job engine in the main process.** Each job is a source plus a
+  snapshot of its settings, with Review before anything runs, a Run view
+  with published progress, and History where every finished job carries
+  what was measured in its output. The queue survives a restart.
+- **Presets named after the standards they meet**, each explained in plain
+  words with what it is best for, how it works, and the technical values
+  folded underneath, plus a goal finder ("quiet dialogue, loud action").
+- **Dashboard, Settings, Logs, first-run setup, Editor, and Player**
+  rebuilt: Settings with batch defaults, presets, the FFmpeg build and its
+  self-test, and app and yt-dlp updates; Logs as a grid with levels in
+  words, a source filter, and a details pane; setup as one screen with
+  verified downloads; the Editor opening straight into Trim, Timeline, or
+  Inspect, with Inspect reading ffprobe's report and measuring keyframes;
+  the Player showing video or a visualization, with Media information
+  that says how a file is being played.
+- **Player codec breadth.** Files Chromium cannot play are repackaged or
+  decoded by FFmpeg through the detected hardware encoder, with audio
+  track and subtitle choice. Links play video through yt-dlp with a
+  quality cap and fall back to a cached download. Full screen is the
+  window's own state with only the stage shown.
+- **yt-dlp kept current by the app** from signed GitHub releases, with the
+  checksum file's signature verified against yt-dlp's key, a swap deferred
+  until no yt-dlp process of ours runs, and the old copy kept on failure.
+- **A surround metering self-test** that refuses multichannel loudness
+  jobs on a build whose meter misreads them, and a workflow that checks
+  candidate FFmpeg builds on Apple Silicon.
+
+### Fixed
+
+- **Normalization was too loud and could distort.** Loudness is now
+  measured with `ebur128` and the gain planned from it, with no `loudnorm`;
+  the limiter runs with `level=disabled` and `latency=1`, oversampled for a
+  true-peak ceiling; timeline exports are limited at -1 dBTP; AAC exports
+  use `-aac_coder fast`, since the default coder let an abrupt start decode
+  above the ceiling.
+- **FLAC was written into MP4**, which the FFmpeg 5.1 muxer refuses; FLAC
+  outputs now go to Matroska or a `.flac` file.
+- **A mono source sent to two speakers got separate dither noise per
+  channel**, so left minus right was no longer silence; the chain now
+  dithers in mono and duplicates last. Loudness range is reported only
+  for a minute or more of material, as measurement already required.
+- **Apple Silicon builds of FFmpeg 8.0 through 9.0.2 read surround audio
+  16 to 33 LU too loud**, which would have turned 5.1 films down by about
+  30 dB and called them verified. Apple Silicon is held at 7.1.1, which
+  measures correctly, and every build is self-tested at startup.
+- **FFmpeg 7.1 aborted on the metering graphs** with an internal assertion
+  when a resampled branch ended in `anullsink`; those branches are now
+  mapped to the null output on every build.
+- **Choosing Download in setup still used the FFmpeg found on PATH.** The
+  downloaded build is adopted, and a PATH build is offered rather than
+  used unasked.
+- **Links stopped playing when a browser's cookies had been exported**:
+  yt-dlp then returned session-bound URLs that answer 403 to any player.
+  Links resolve without cookies first and ask for them only on a sign-in
+  error.
+- **Two-pass statistics failed from deep folders** on Windows; they move to
+  a short temporary folder past 240 characters.
+- **A file another program held open was reported as a drive without a
+  recycle bin**; the engine now checks the lock first and waits on it. The
+  work-folder journal could also be written after a sweep had resolved.
+
+### Changed
+
+- The palette is ice blue on neutral graphite, the type is the platform
+  face with nothing bundled, and the app icon, tray icons, and logos are
+  redrawn to match. The old batch UI and pipeline are removed.
+- "Night listening" is now "Clear dialogue (movies and shows)", an app
+  preset built on EBU R 128 s2 that compresses above the program loudness;
+  home playback and media servers are sent to Streaming.
+- The package carries only the built output and resources.
+
 ## [4.7.1] - 2026-08-25 - GPU, editor, and encoder-quality audit
 
 Completes the sweep started in 4.6.0 by covering what the previous two
