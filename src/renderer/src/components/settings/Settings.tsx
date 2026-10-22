@@ -34,7 +34,9 @@ export const APPLICATION_DEFAULTS: Partial<AppConfig> = {
   showTrayNotification: true,
   sidebarCollapsed: false,
   interfaceScale: 100,
-  announceProgress: false
+  announceProgress: false,
+  ytdlpAutoUpdate: true,
+  ytdlpUseSystem: false
 }
 
 const SAVED_MS = 1500

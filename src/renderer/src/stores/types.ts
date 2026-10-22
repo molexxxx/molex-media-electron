@@ -41,6 +41,10 @@ export interface AppConfig {
   autoUpdate: boolean
   gpuAcceleration: 'off' | 'auto' | 'nvenc' | 'qsv' | 'amf'
   ytdlpBrowser: string
+  /** Checks for a new yt-dlp once a day and installs it; defaults to true and never applies to a copy on PATH. */
+  ytdlpAutoUpdate: boolean
+  /** Runs the yt-dlp found on PATH instead of the app's own copy; defaults to false. */
+  ytdlpUseSystem: boolean
   sidebarCollapsed: boolean
   /** Interface size in percent, 90 to 200; main clamps it on load. */
   interfaceScale: number

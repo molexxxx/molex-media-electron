@@ -4,7 +4,7 @@
  * read from the engine snapshot and changed only through engine commands.
  */
 
-import React, { useCallback, useEffect, useId, useState, type KeyboardEvent, type ReactNode } from 'react'
+import React, { useCallback, useEffect, useId, useState, type KeyboardEvent } from 'react'
 import { useStore, type StoreApi } from 'zustand'
 import { ACTIVE_STATES, DEFAULT_TEMPLATES, TEMPLATE_TOKENS } from '../../../../../shared/jobs/types'
 import type { BatchPolicy, CapabilitySummary, ConflictRule, Destination, RunSettings, RunState } from '../../../../../shared/jobs/types'
@@ -25,6 +25,7 @@ import {
   workersText
 } from '../../batch/header/WorkersPopover'
 import { Button, InlineConfirm, NumberField, RadioList, SegmentedControl, Select, Switch, type RadioOption, type SegmentOption } from '../../../ui'
+import { Row, Section } from '../Section'
 
 /** The engine commands the Batch tab sends. */
 export type BatchSettingsApi = Pick<JobsApi, 'setPolicy' | 'setWorkers' | 'setSettings' | 'listRuns' | 'deleteRuns' | 'forgetFolder' | 'clearRecentFolders'>
@@ -174,47 +175,6 @@ const FIELD_FRAME = [
   'h-(--size-control-md) w-full min-w-0 rounded-sm border border-line-control bg-sunken px-2 text-body text-ink',
   'hover:border-line-control-hover read-only:border-line read-only:text-ink-2'
 ].join(' ')
-
-function Section({ id, title, lead, children }: { id: string; title: string; lead?: ReactNode; children: ReactNode }): React.JSX.Element
-{
-  return (
-    <section aria-labelledby={id} className="flex flex-col gap-1 border-t border-line pt-5 first:border-t-0 first:pt-0">
-      <h2 id={id} className="type-legend text-accent-ink">{title}</h2>
-      {lead !== undefined && <div className="text-label text-ink-2">{lead}</div>}
-      <div className="flex flex-col">{children}</div>
-    </section>
-  )
-}
-
-interface RowProps
-{
-  /** The label's id, which names a group control through `labelledBy`. */
-  id: string
-  label: string
-  /** Names a single control through `<label for>`. */
-  htmlFor?: string
-  hint?: ReactNode
-  error?: string
-  children: ReactNode
-}
-
-function Row({ id, label, htmlFor, hint, error, children }: RowProps): React.JSX.Element
-{
-  return (
-    <div className="grid gap-x-6 gap-y-2 py-3 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        {htmlFor === undefined
-          ? <span id={id} className="text-body text-ink">{label}</span>
-          : <label id={id} htmlFor={htmlFor} className="text-body text-ink">{label}</label>}
-        {hint !== undefined && <p id={`${id}-hint`} className="text-label text-ink-3">{hint}</p>}
-      </div>
-      <div className="flex min-w-0 flex-col gap-1.5">
-        {children}
-        {error !== undefined && <p role="alert" className="text-label text-error">{error}</p>}
-      </div>
-    </div>
-  )
-}
 
 /** A text field that commits on Enter or when focus leaves it, and drops the draft on Escape. */
 function CommitField({ id, value, readOnly, describedBy, label, onCommit }: { id: string; value: string; readOnly: boolean; describedBy?: string; label?: string; onCommit(next: string): void }): React.JSX.Element

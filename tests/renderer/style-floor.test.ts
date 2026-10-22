@@ -37,14 +37,23 @@ const SHELL_SCOPES = [
   'hooks/useAppZoomKeys.ts'
 ]
 
-/** Settings tabs rebuilt on the primitives. */
-const SETTINGS_SCOPES = [
-  'components/settings/tabs/BatchSettings.tsx',
-  'components/settings/tabs/AudioSettings.tsx'
-]
+/** Settings: its page frame, the shared section and row, and every tab, all built on the primitives. */
+const SETTINGS_SCOPES = ['components/settings/']
+
+/** The Logs view, rebuilt on the primitives. */
+const LOGS_SCOPES = ['components/logs/']
+
+/** First-run setup and the startup check before it, built on the primitives. */
+const SETUP_SCOPES = ['components/setup/']
+
+/** The media editor (Trim, Timeline, Inspect), rebuilt on the primitives; its canvases read their colors from tokens. */
+const EDITOR_SCOPES = ['components/editor/']
+
+/** The Player, its pop-out window, and the visualizations it draws, whose colors all come from tokens. */
+const PLAYER_SCOPES = ['components/player/', 'components/layout/components/PopoutShell.tsx', 'visualizations/']
 
 /** Folders and files held to the strict rules; a folder joins once its components are built on the primitives. */
-const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES, ...SHELL_SCOPES, ...SETTINGS_SCOPES]
+const STRICT_SCOPES = ['ui/', 'styles/primitives.css', ...BATCH_SCOPES, ...SHELL_SCOPES, ...SETTINGS_SCOPES, ...LOGS_SCOPES, ...SETUP_SCOPES, ...EDITOR_SCOPES, ...PLAYER_SCOPES]
 
 /** Legacy sliders that draw a fake track over a native range at opacity 0; the count may only fall. */
 const LEGACY_RANGE_BASELINE = 6
@@ -118,19 +127,7 @@ const EXEMPTIONS: Exemption[] = [
     file: 'components/layout/Sidebar.tsx',
     rule: 'radius',
     match: /^rounded-full$/,
-    reason: 'Round backings: the collapsed rail cuts its attention and update glyphs out of the item with a circle, and the Logs error badge keeps its earlier pill until the Logs view takes its count from the engine.'
-  },
-  {
-    file: 'components/layout/Sidebar.tsx',
-    rule: 'palette',
-    match: /^(?:bg-red-500|text-red-200)$/,
-    reason: 'The Logs error badge keeps its earlier colors until the Logs view takes its count from the engine and draws it with the error tokens.'
-  },
-  {
-    file: 'components/layout/Sidebar.tsx',
-    rule: 'text-2xs',
-    match: /^text-2xs$/,
-    reason: 'The Logs error badge keeps its earlier count size until the Logs view takes its count from the engine and sets it on the type scale.'
+    reason: 'Round backings: the collapsed rail cuts its attention, update, and Logs error glyphs out of the item with a circle.'
   },
   {
     file: 'visualizations/rain.ts',
@@ -678,23 +675,39 @@ describe('style floor', () =>
       expect(isStrict(rel), rel).toBe(true)
       expect(SOURCES.map((f) => f.rel), rel).toContain(rel)
     }
-    for (const rel of ['hooks/useIPC.ts', 'App.tsx', 'hooks/useF6Region.test.ts', 'components/layout/components/PopoutShell.tsx'])
+    for (const rel of ['hooks/useIPC.ts', 'App.tsx', 'hooks/useF6Region.test.ts'])
     {
       expect(isStrict(rel), rel).toBe(false)
     }
   })
 
-  it('holds the rebuilt Settings tabs to the strict rules', () =>
+  it('holds the Player, its pop-out, and the visualizations to the strict rules', () =>
   {
-    for (const rel of SETTINGS_SCOPES)
+    const rels = SOURCES.map((f) => f.rel)
+    for (const rel of ['components/player/MediaPlayer.tsx', 'components/player/components/Transport.tsx', 'components/layout/components/PopoutShell.tsx', 'visualizations/palette.ts', 'visualizations/dmt.ts'])
     {
       expect(isStrict(rel), rel).toBe(true)
-      expect(SOURCES.map((f) => f.rel), rel).toContain(rel)
+      expect(rels, rel).toContain(rel)
     }
-    for (const rel of ['components/settings/Settings.tsx', 'components/settings/tabs/ApplicationSettings.tsx'])
+    expect(isStrict('components/layout/Other.tsx')).toBe(false)
+  })
+
+  it('holds the whole Settings folder to the strict rules', () =>
+  {
+    const rels = SOURCES.map((f) => f.rel)
+    for (const rel of [
+      'components/settings/Settings.tsx',
+      'components/settings/Section.tsx',
+      'components/settings/tabs/BatchSettings.tsx',
+      'components/settings/tabs/AudioSettings.tsx',
+      'components/settings/tabs/YtDlpSettings.tsx',
+      'components/settings/tabs/ApplicationSettings.tsx'
+    ])
     {
-      expect(isStrict(rel), rel).toBe(false)
+      expect(isStrict(rel), rel).toBe(true)
+      expect(rels, rel).toContain(rel)
     }
+    expect(isStrict('components/shared/ui.tsx')).toBe(false)
   })
 
   it('finds no violation outside the listed exemptions', () =>

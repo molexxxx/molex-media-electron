@@ -1,379 +1,474 @@
 /**
- * @module components/settings/tabs/ApplicationSettings
- * @description Application tab - updates, window behavior, accessibility,
- * notifications, paths, and reset.
+ * The Application section of Settings: app updates with the yt-dlp section under them, what the close button does
+ * and how the window opens, interface size and spoken batch progress, the browser YouTube cookies come from, the
+ * project page, and the reset to defaults. Each switch and choice writes its config key through Settings' debounced
+ * save; the update actions go to the updater, whose status the app store follows.
  */
+import { useEffect, useId, useRef, useState, type ReactElement } from 'react'
+import type { CookieBrowser, CookieInfo } from '../../../../../shared/ipc/api'
+import { countOf } from '../../../copy/batch'
+import { useAppStore, type AppConfig } from '../../../stores/appStore'
+import { Button, InlineConfirm, ProgressBar, Select, Switch, type SelectOption } from '../../../ui'
+import { Row, Section } from '../Section'
+import { YtDlpSettings } from './YtDlpSettings'
 
-import React, { useState, useEffect, useCallback, useId } from 'react'
-import type { AppConfig } from '../../../stores/appStore'
-import { useAppStore } from '../../../stores/appStore'
-import { SettingGroup, SettingRow, Toggle, Select } from '../../shared/ui'
-import { Select as SizeSelect, Switch } from '../../../ui'
-import type { SelectOption } from '../../../ui'
+/** The words of the Application section. */
+export const APPLICATION_WORDS = {
+  updates: 'Updates',
+  updatesLead: 'molexMedia looks for new versions on GitHub Releases. Nothing downloads or installs until you choose to.',
+  autoLabel: 'Check for updates when molexMedia starts',
+  autoHint: 'Looks once, a few seconds after launch. A version you can download shows in the sidebar.',
+  check: 'Check for updates',
+  checking: 'Checking',
+  downloading: 'Downloading',
+  install: 'Install and restart',
+  latest: 'You have the latest version.',
+  available: 'A new version is available.',
+  ready: 'Update ready. Installing restarts molexMedia.',
+  manual: 'This copy is updated by your package manager, or with the latest .deb or .rpm from GitHub Releases.',
+  checkFailed: 'The update check did not finish.',
+  downloadFailed: 'The download did not finish.',
+  window: 'Window',
+  windowLead: 'What the close button does and how the window opens.',
+  trayLabel: 'Minimize to the tray instead of quitting',
+  trayHint: 'The close button hides molexMedia in the system tray, and a running batch carries on. Restore it from the tray icon, or quit from the tray menu.',
+  askLabel: 'Ask before closing',
+  askHint: 'Each time you close the window, choose between minimizing to the tray and quitting.',
+  sidebarLabel: 'Start with the sidebar collapsed',
+  sidebarHint: 'Opens with the sidebar as a narrow rail of icons. Expand or collapse it any time from the sidebar.',
+  accessibility: 'Accessibility',
+  sizeLabel: 'Interface size',
+  sizeHint: 'Scales text and controls in every window. Ctrl+Plus and Ctrl+Minus change it for this session; Ctrl+0 returns to this size.',
+  announceLabel: 'Announce batch progress every 30 seconds',
+  announceHint: 'While a batch runs and focus is in Batch, a screen reader hears how many jobs finished and the time left, when the counts change.',
+  cookies: 'YouTube cookies',
+  cookiesLead: 'Age-restricted and private videos play only with the login cookies of a browser you are signed in to. yt-dlp exports them once, and molexMedia keeps the copy for 7 days.',
+  browserLabel: 'Browser',
+  browserHint: 'Detect automatically tries the browsers installed on this computer and keeps the first one that works.',
+  autoDetect: 'Detect automatically',
+  cancel: 'Cancel',
+  continue: 'Continue',
+  exported: 'Cookies exported.',
+  exportFailed: 'The cookies could not be exported.',
+  savedLabel: 'Saved cookies',
+  none: 'None yet. They are exported on the first YouTube link that needs them.',
+  clear: 'Clear cookies',
+  about: 'About',
+  aboutLead: 'A media processing toolkit powered by FFmpeg.',
+  projectLabel: 'Project page',
+  projectHint: 'Release notes, the source code, and where to report a problem.',
+  openGitHub: 'Open GitHub',
+  defaults: 'Defaults',
+  resetLabel: 'Reset app settings',
+  resetHint: 'Restores the Application and Batch settings to the values a new install starts with. Presets, history, recent folders, and FFmpeg stay.',
+  reset: 'Reset settings',
+  resetQuestion: 'Reset the Application and Batch settings to their defaults?',
+  resetConfirm: 'Reset',
+  keep: 'Keep'
+} as const
+
+/** The project's page on GitHub. */
+export const PROJECT_URL = 'https://github.com/molexxxx/molex-media-electron'
 
 /** The Interface size choices in percent; main clamps the stored value to 90 to 200. */
 export const INTERFACE_SIZES = [90, 100, 110, 125, 150, 175, 200] as const
 
+/** The Select value that stands for an empty `ytdlpBrowser`, since a Select value is never the empty string. */
+export const AUTO_BROWSER = 'auto'
+
 /** The Interface size options, with a stored size outside the list kept as its own choice. */
-export function interfaceSizeOptions(current: number): SelectOption[] {
+export function interfaceSizeOptions(current: number): SelectOption[]
+{
   const sizes: number[] = [...INTERFACE_SIZES]
-  if (Number.isFinite(current) && !sizes.includes(current)) {
+  if (Number.isFinite(current) && !sizes.includes(current))
+  {
     sizes.push(current)
     sizes.sort((a, b) => a - b)
   }
   return sizes.map((size) => ({ value: String(size), label: `${size}%` }))
 }
 
-interface AccessibilityGroupProps {
-  interfaceScale: number
-  announceProgress: boolean
-  onUpdate: ApplicationSettingsProps['onUpdate']
+type UpdateStatus = ReturnType<typeof useAppStore.getState>['updateStatus']
+
+/** What the update row reports after a check, or null while there is nothing to report or the bar shows progress. */
+export function updateLine(status: UpdateStatus, version: string | null): string | null
+{
+  switch (status)
+  {
+    case 'up-to-date':
+      return APPLICATION_WORDS.latest
+    case 'available':
+      return version === null ? APPLICATION_WORDS.available : `molexMedia ${version} is available.`
+    case 'downloaded':
+      return APPLICATION_WORDS.ready
+    case 'manual':
+      return APPLICATION_WORDS.manual
+    default:
+      return null
+  }
 }
 
-/** Interface size for every window and the opt-in spoken batch progress. */
-export function AccessibilityGroup({ interfaceScale, announceProgress, onUpdate }: AccessibilityGroupProps): React.JSX.Element {
-  const id = useId()
-  const sizeId = `${id}-size`
-  const sizeHint = `${id}-size-hint`
-  const announceId = `${id}-announce`
-  const announceHint = `${id}-announce-hint`
-  return (
-    <section aria-labelledby={`${id}-title`} className="rounded-md border border-line bg-panel p-3 sm:p-5 space-y-4">
-      <h3 id={`${id}-title`} className="type-legend text-accent-ink">Accessibility</h3>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <label htmlFor={sizeId} className="text-body font-semibold text-ink">Interface size</label>
-          <p id={sizeHint} className="text-label text-ink-2 mt-0.5">
-            Scales text and controls in every window. Ctrl+Plus and Ctrl+Minus change it for this session; Ctrl+0 returns to this size.
-          </p>
-        </div>
-        <SizeSelect
-          id={sizeId}
-          describedBy={sizeHint}
-          value={String(interfaceScale)}
-          options={interfaceSizeOptions(interfaceScale)}
-          onChange={(value) => onUpdate('interfaceScale', Number(value))}
-          className="w-28 shrink-0"
-        />
-      </div>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <label htmlFor={announceId} className="text-body font-semibold text-ink">Announce batch progress every 30 seconds</label>
-          <p id={announceHint} className="text-label text-ink-2 mt-0.5">
-            While a batch runs and focus is in Batch, a screen reader hears how many jobs finished and the time left, when the counts change.
-          </p>
-        </div>
-        <Switch
-          id={announceId}
-          describedBy={announceHint}
-          checked={announceProgress}
-          onChange={(next) => onUpdate('announceProgress', next)}
-          className="shrink-0"
-        />
-      </div>
-    </section>
-  )
+/** The message of an install the updater held back or could not start, or null when it went ahead. */
+export function installRefusal(result: unknown): string | null
+{
+  if (typeof result !== 'object' || result === null || !('ok' in result) || result.ok !== false) return null
+  const message = (result as { message?: unknown }).message
+  return typeof message === 'string' ? message : null
 }
 
-interface BrowserOption { name: string; label: string }
-type CookieStatus = 'idle' | 'confirming' | 'exporting' | 'success' | 'error'
-
-function formatAge(ms: number | null): string {
-  if (ms == null || ms < 0) return 'unknown time'
-  const mins = Math.floor(ms / 60000)
-  if (mins < 1) return 'less than a minute'
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ${mins % 60}m`
-  return `${Math.floor(hrs / 24)}d ${hrs % 24}h`
+/** How long ago, in plain words: "less than a minute ago", "12 minutes ago", "3 hours ago", "2 days ago". */
+export function agoWords(ms: number | null): string
+{
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return 'some time ago'
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 1) return 'less than a minute ago'
+  if (minutes < 60) return `${countOf(minutes, 'minute')} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${countOf(hours, 'hour')} ago`
+  return `${countOf(Math.floor(hours / 24), 'day')} ago`
 }
 
-interface ApplicationSettingsProps {
+/** The saved cookies row's hint: when and from which browser they were exported, or that there are none yet. */
+export function cookiesLine(info: CookieInfo | null, browsers: readonly CookieBrowser[]): string
+{
+  if (info === null || !info.exists) return APPLICATION_WORDS.none
+  const from = info.browser ? ` from ${browserLabel(browsers, info.browser)}` : ''
+  return `Exported ${agoWords(info.age)}${from}. Exported again after 7 days.`
+}
+
+/** A browser's label, or its name while the list has not loaded. */
+export function browserLabel(browsers: readonly CookieBrowser[], name: string): string
+{
+  return browsers.find((browser) => browser.name === name)?.label ?? name
+}
+
+/** Props for {@link ApplicationSettings}. */
+export interface ApplicationSettingsProps
+{
   config: AppConfig
   onUpdate: <K extends keyof AppConfig>(key: K, val: AppConfig[K]) => void
   onResetDefaults: () => void
 }
 
-export function ApplicationSettings({ config, onUpdate, onResetDefaults }: ApplicationSettingsProps): React.JSX.Element {
+type Update = ApplicationSettingsProps['onUpdate']
+
+function UpdatesSection({ config, onUpdate }: { config: AppConfig; onUpdate: Update }): ReactElement
+{
+  const base = useId()
   const updateStatus = useAppStore((s) => s.updateStatus)
   const updateVersion = useAppStore((s) => s.updateVersion)
   const updateError = useAppStore((s) => s.updateError)
   const downloadPercent = useAppStore((s) => s.updateDownloadPercent)
   const setUpdateStatus = useAppStore((s) => s.setUpdateStatus)
   const setUpdateError = useAppStore((s) => s.setUpdateError)
+  const [refusal, setRefusal] = useState<string | null>(null)
 
-  const [browsers, setBrowsers] = useState<BrowserOption[]>([])
-  const [cookieStatus, setCookieStatus] = useState<CookieStatus>('idle')
-  const [cookieError, setCookieError] = useState<string | null>(null)
-  const [pendingBrowser, setPendingBrowser] = useState<string | null>(null)
-  const [cookieInfo, setCookieInfo] = useState<{ exists: boolean; age: number | null; browser: string } | null>(null)
-
-  useEffect(() => {
-    window.api.getInstalledBrowsers?.().then(setBrowsers).catch(() => {})
-    window.api.getCookieInfo?.().then(setCookieInfo).catch(() => {})
-  }, [])
-
-  const checkNow = useCallback(async () => {
+  async function checkNow(): Promise<void>
+  {
+    setRefusal(null)
     setUpdateStatus('checking')
     setUpdateError(null)
     const result = await window.api.checkForUpdates()
-    if (!result.success) {
+    if (!result.success && result.error)
+    {
       setUpdateStatus('error')
-      setUpdateError(result.error || 'Check failed')
+      setUpdateError(result.error)
     }
-  }, [])
+  }
 
-  const downloadNow = useCallback(async () => {
+  async function downloadNow(): Promise<void>
+  {
+    setRefusal(null)
     const result = await window.api.downloadUpdate()
-    if (!result.success) {
+    if (!result.success)
+    {
       setUpdateStatus('error')
-      setUpdateError(result.error || 'Download failed')
+      setUpdateError(result.error || APPLICATION_WORDS.downloadFailed)
     }
-  }, [])
+  }
 
-  const installNow = useCallback(() => {
-    window.api.installUpdate()
-  }, [])
+  async function installNow(): Promise<void>
+  {
+    setRefusal(installRefusal(await window.api.installUpdate()))
+  }
 
-  const handleBrowserSelect = useCallback((browserName: string) => {
-    if (!browserName) {
-      onUpdate('ytdlpBrowser', '')
-      return
-    }
-    setPendingBrowser(browserName)
-    setCookieStatus('confirming')
-    setCookieError(null)
-  }, [onUpdate])
-
-  const confirmCookieExport = useCallback(async () => {
-    if (!pendingBrowser) return
-    setCookieStatus('exporting')
-    setCookieError(null)
-    try {
-      const result = await window.api.setCookieBrowser(pendingBrowser)
-      if (result.success) {
-        onUpdate('ytdlpBrowser', pendingBrowser)
-        setCookieStatus('success')
-        window.api.getCookieInfo?.().then(setCookieInfo).catch(() => {})
-      } else {
-        setCookieError(result.error || 'Export failed')
-        setCookieStatus('error')
-      }
-    } catch (err: any) {
-      setCookieError(err.message || 'Export failed')
-      setCookieStatus('error')
-    }
-    setPendingBrowser(null)
-  }, [pendingBrowser, onUpdate])
-
-  const cancelCookieExport = useCallback(() => {
-    setPendingBrowser(null)
-    setCookieStatus('idle')
-    setCookieError(null)
-  }, [])
-
-  const handleClearCookies = useCallback(async () => {
-    await window.api.clearCookies()
-    onUpdate('ytdlpBrowser', '' as any)
-    setCookieInfo({ exists: false, age: null, browser: '' })
-    setCookieStatus('idle')
-    setCookieError(null)
-  }, [onUpdate])
+  const line = refusal ?? updateLine(updateStatus, updateVersion)
+  const error = updateStatus === 'error' ? updateError ?? APPLICATION_WORDS.checkFailed : undefined
+  let action: ReactElement
+  if (updateStatus === 'downloaded')
+  {
+    action = <Button variant="primary" icon="action.export" onClick={() => void installNow()}>{APPLICATION_WORDS.install}</Button>
+  }
+  else if (updateStatus === 'available' || updateStatus === 'downloading')
+  {
+    action = (
+      <Button variant="primary" icon="action.export" loading={updateStatus === 'downloading'} loadingLabel={APPLICATION_WORDS.downloading} onClick={() => void downloadNow()}>
+        {updateVersion === null ? 'Download' : `Download ${updateVersion}`}
+      </Button>
+    )
+  }
+  else
+  {
+    action = (
+      <Button icon="action.retry" loading={updateStatus === 'checking'} loadingLabel={APPLICATION_WORDS.checking} onClick={() => void checkNow()}>
+        {APPLICATION_WORDS.check}
+      </Button>
+    )
+  }
 
   return (
-    <div className="space-y-5">
-      <SettingGroup title="Updates">
-        <SettingRow label="Automatic Updates" description="Check for updates when the app starts">
-          <Toggle checked={config.autoUpdate} onChange={(v) => onUpdate('autoUpdate', v)} />
-        </SettingRow>
-        <div className="pb-3 space-y-2">
-          <div className="flex items-center gap-3">
-            {updateStatus === 'downloaded' ? (
-              <button
-                onClick={installNow}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
-              >
-                Install & Restart
-              </button>
-            ) : updateStatus === 'available' ? (
-              <button
-                onClick={downloadNow}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
-              >
-                Download v{updateVersion}
-              </button>
-            ) : (
-              <button
-                onClick={checkNow}
-                disabled={updateStatus === 'checking' || updateStatus === 'downloading'}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-surface-200 border border-white/[0.08] hover:border-white/[0.15] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {updateStatus === 'checking' ? 'Checking…' : 'Check for Updates'}
-              </button>
-            )}
-            <span className="text-2xs text-surface-500">
-              {updateStatus === 'checking' && 'Looking for new releases…'}
-              {updateStatus === 'up-to-date' && 'You\'re on the latest version'}
-              {updateStatus === 'available' && `v${updateVersion} is available`}
-              {updateStatus === 'downloading' && `Downloading… ${downloadPercent}%`}
-              {updateStatus === 'downloaded' && `v${updateVersion} ready to install`}
-              {updateStatus === 'manual' && 'Update via your package manager or download the latest .deb / .rpm from Releases'}
-              {updateStatus === 'error' && (
-                <span className="text-red-400">{updateError}</span>
-              )}
-            </span>
-          </div>
-          {updateStatus === 'downloading' && (
-            <div className="h-1 rounded-full bg-surface-700 overflow-hidden">
-              <div
-                className="h-full bg-accent-500 rounded-full transition-all duration-300"
-                style={{ width: `${downloadPercent}%` }}
-              />
-            </div>
-          )}
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.updates} lead={APPLICATION_WORDS.updatesLead}>
+      <Row id={`${base}-auto`} label={APPLICATION_WORDS.autoLabel} htmlFor={`${base}-auto-switch`} hint={APPLICATION_WORDS.autoHint}>
+        <Switch id={`${base}-auto-switch`} describedBy={`${base}-auto-hint`} checked={config.autoUpdate} onChange={(next) => onUpdate('autoUpdate', next)} />
+      </Row>
+      <Row id={`${base}-version`} label={`molexMedia ${__APP_VERSION__}`} error={error}>
+        <div className="flex flex-wrap items-center gap-3">
+          {action}
+          <p role="status" className="text-label text-ink-2 empty:hidden">{line ?? ''}</p>
         </div>
-      </SettingGroup>
-      <SettingGroup title="Window Behavior">
-        <SettingRow label="Minimize to Tray" description="Close button hides to system tray instead of quitting">
-          <Toggle checked={config.minimizeToTray} onChange={(v) => {
-            onUpdate('minimizeToTray', v)
-            if (!v) onUpdate('showTrayNotification', false)
-          }} />
-        </SettingRow>
-        {config.minimizeToTray && (
-          <SettingRow label="Confirm on Close" description="Ask whether to minimize or quit each time you close">
-            <Toggle checked={config.showTrayNotification} onChange={(v) => onUpdate('showTrayNotification', v)} />
-          </SettingRow>
+        {updateStatus === 'downloading' && (
+          <ProgressBar label={updateVersion === null ? 'Downloading the update' : `Downloading molexMedia ${updateVersion}`} value={downloadPercent / 100} className="max-w-sm" />
         )}
-        <SettingRow label="Sidebar Collapsed" description="Start with the sidebar collapsed on launch">
-          <Toggle checked={config.sidebarCollapsed ?? false} onChange={(v) => {
-            onUpdate('sidebarCollapsed', v as any)
-            useAppStore.setState({ sidebarCollapsed: v })
-          }} />
-        </SettingRow>
-      </SettingGroup>
-      <AccessibilityGroup
-        interfaceScale={config.interfaceScale ?? 100}
-        announceProgress={config.announceProgress ?? false}
-        onUpdate={onUpdate}
-      />
-      <SettingGroup title="Notifications">
-        <SettingRow label="Desktop Notifications" description="Show a system notification when batch processing completes">
-          <Toggle checked={config.showNotifications} onChange={(v) => onUpdate('showNotifications', v)} />
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup title="Paths">
-        <SettingRow label="FFmpeg" description="Auto-detected or downloaded on first launch">
-          <span className="text-xs text-surface-500 font-mono max-w-[300px] truncate block" title={config.ffmpegPath || 'Not set'}>
-            {config.ffmpegPath || 'Not set'}
-          </span>
-        </SettingRow>
-        <SettingRow label="FFprobe" description="Used for media analysis and probing">
-          <span className="text-xs text-surface-500 font-mono max-w-[300px] truncate block" title={config.ffprobePath || 'Not set'}>
-            {config.ffprobePath || 'Not set'}
-          </span>
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup title="YouTube Cookies">
-        <SettingRow label="Cookie Source Browser" description="Browser to extract YouTube login cookies from for age-restricted or private content">
-          <Select
-            value={config.ytdlpBrowser || ''}
-            onChange={(v) => handleBrowserSelect(v)}
-            disabled={cookieStatus === 'exporting'}
-            options={[
-              { value: '', label: 'Auto-detect' },
-              ...browsers.map((b) => ({ value: b.name, label: b.label }))
-            ]}
+      </Row>
+    </Section>
+  )
+}
+
+function WindowSection({ config, onUpdate }: { config: AppConfig; onUpdate: Update }): ReactElement
+{
+  const base = useId()
+  const setTray = (next: boolean): void =>
+  {
+    onUpdate('minimizeToTray', next)
+    if (!next) onUpdate('showTrayNotification', false)
+  }
+  const setSidebar = (next: boolean): void =>
+  {
+    onUpdate('sidebarCollapsed', next)
+    useAppStore.setState({ sidebarCollapsed: next })
+  }
+  return (
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.window} lead={APPLICATION_WORDS.windowLead}>
+      <Row id={`${base}-tray`} label={APPLICATION_WORDS.trayLabel} htmlFor={`${base}-tray-switch`} hint={APPLICATION_WORDS.trayHint}>
+        <Switch id={`${base}-tray-switch`} describedBy={`${base}-tray-hint`} checked={config.minimizeToTray} onChange={setTray} />
+      </Row>
+      {config.minimizeToTray && (
+        <Row id={`${base}-ask`} label={APPLICATION_WORDS.askLabel} htmlFor={`${base}-ask-switch`} hint={APPLICATION_WORDS.askHint}>
+          <Switch id={`${base}-ask-switch`} describedBy={`${base}-ask-hint`} checked={config.showTrayNotification} onChange={(next) => onUpdate('showTrayNotification', next)} />
+        </Row>
+      )}
+      <Row id={`${base}-sidebar`} label={APPLICATION_WORDS.sidebarLabel} htmlFor={`${base}-sidebar-switch`} hint={APPLICATION_WORDS.sidebarHint}>
+        <Switch id={`${base}-sidebar-switch`} describedBy={`${base}-sidebar-hint`} checked={config.sidebarCollapsed ?? false} onChange={setSidebar} />
+      </Row>
+    </Section>
+  )
+}
+
+/** Props for {@link AccessibilityGroup}. */
+export interface AccessibilityGroupProps
+{
+  interfaceScale: number
+  announceProgress: boolean
+  onUpdate: Update
+}
+
+/** Interface size for every window and the opt-in spoken batch progress. */
+export function AccessibilityGroup({ interfaceScale, announceProgress, onUpdate }: AccessibilityGroupProps): ReactElement
+{
+  const base = useId()
+  return (
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.accessibility}>
+      <Row id={`${base}-size`} label={APPLICATION_WORDS.sizeLabel} htmlFor={`${base}-size-select`} hint={APPLICATION_WORDS.sizeHint}>
+        <Select
+          id={`${base}-size-select`}
+          describedBy={`${base}-size-hint`}
+          value={String(interfaceScale)}
+          options={interfaceSizeOptions(interfaceScale)}
+          onChange={(value) => onUpdate('interfaceScale', Number(value))}
+          className="w-28"
+        />
+      </Row>
+      <Row id={`${base}-announce`} label={APPLICATION_WORDS.announceLabel} htmlFor={`${base}-announce-switch`} hint={APPLICATION_WORDS.announceHint}>
+        <Switch id={`${base}-announce-switch`} describedBy={`${base}-announce-hint`} checked={announceProgress} onChange={(next) => onUpdate('announceProgress', next)} />
+      </Row>
+    </Section>
+  )
+}
+
+type CookieStep =
+  | { kind: 'idle' }
+  | { kind: 'confirming'; browser: string }
+  | { kind: 'exporting'; browser: string }
+  | { kind: 'exported' }
+  | { kind: 'failed'; message: string }
+
+function CookiesSection({ config, onUpdate }: { config: AppConfig; onUpdate: Update }): ReactElement
+{
+  const base = useId()
+  const [browsers, setBrowsers] = useState<CookieBrowser[]>([])
+  const [info, setInfo] = useState<CookieInfo | null>(null)
+  const [step, setStep] = useState<CookieStep>({ kind: 'idle' })
+  const mounted = useRef(true)
+
+  useEffect(() =>
+  {
+    mounted.current = true
+    window.api.getInstalledBrowsers?.().then((list) => mounted.current && setBrowsers(list)).catch(() => undefined)
+    window.api.getCookieInfo?.().then((next) => mounted.current && setInfo(next)).catch(() => undefined)
+    return () =>
+    {
+      mounted.current = false
+    }
+  }, [])
+
+  function choose(value: string): void
+  {
+    if (value === AUTO_BROWSER)
+    {
+      onUpdate('ytdlpBrowser', '')
+      setStep({ kind: 'idle' })
+      return
+    }
+    setStep({ kind: 'confirming', browser: value })
+  }
+
+  async function exportFrom(browser: string): Promise<void>
+  {
+    setStep({ kind: 'exporting', browser })
+    try
+    {
+      const result = await window.api.setCookieBrowser(browser)
+      if (!mounted.current) return
+      if (result.success)
+      {
+        onUpdate('ytdlpBrowser', browser)
+        setStep({ kind: 'exported' })
+        window.api.getCookieInfo?.().then((next) => mounted.current && setInfo(next)).catch(() => undefined)
+      }
+      else
+      {
+        setStep({ kind: 'failed', message: result.error || APPLICATION_WORDS.exportFailed })
+      }
+    }
+    catch (error)
+    {
+      if (mounted.current) setStep({ kind: 'failed', message: error instanceof Error && error.message ? error.message : APPLICATION_WORDS.exportFailed })
+    }
+  }
+
+  async function clear(): Promise<void>
+  {
+    await window.api.clearCookies()
+    if (!mounted.current) return
+    onUpdate('ytdlpBrowser', '')
+    setInfo({ exists: false, age: null, browser: '' })
+    setStep({ kind: 'idle' })
+  }
+
+  const options: SelectOption[] = [
+    { value: AUTO_BROWSER, label: APPLICATION_WORDS.autoDetect },
+    ...browsers.map((browser) => ({ value: browser.name, label: browser.label }))
+  ]
+  const status = step.kind === 'exporting'
+    ? `Exporting cookies from ${browserLabel(browsers, step.browser)}.`
+    : step.kind === 'exported' ? APPLICATION_WORDS.exported : null
+
+  return (
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.cookies} lead={APPLICATION_WORDS.cookiesLead}>
+      <Row id={`${base}-browser`} label={APPLICATION_WORDS.browserLabel} htmlFor={`${base}-browser-select`} hint={APPLICATION_WORDS.browserHint} error={step.kind === 'failed' ? step.message : undefined}>
+        <Select
+          id={`${base}-browser-select`}
+          describedBy={`${base}-browser-hint`}
+          value={config.ytdlpBrowser || AUTO_BROWSER}
+          options={options}
+          disabled={step.kind === 'exporting'}
+          onChange={choose}
+          className="w-64"
+        />
+        {step.kind === 'confirming' && (
+          <InlineConfirm
+            question={`Close ${browserLabel(browsers, step.browser)}, then continue. yt-dlp can read its cookies only while the browser is closed.`}
+            safeLabel={APPLICATION_WORDS.cancel}
+            confirmLabel={APPLICATION_WORDS.continue}
+            size="sm"
+            onResolve={(confirmed) =>
+            {
+              if (confirmed) void exportFrom(step.browser)
+              else setStep({ kind: 'idle' })
+            }}
           />
-        </SettingRow>
-        {/* Confirm dialog */}
-        {cookieStatus === 'confirming' && pendingBrowser && (
-          <div className="mx-4 mb-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] space-y-2 animate-fade-in">
-            <div className="flex items-start gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0 mt-0.5">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              <div className="text-xs text-surface-300 space-y-1">
-                <p className="font-medium text-surface-200">Close {browsers.find((b) => b.name === pendingBrowser)?.label || pendingBrowser} first</p>
-                <p>The browser must be completely closed before cookies can be extracted. This is a one-time process - cookies are cached for 7 days after export.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={confirmCookieExport}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20 hover:border-accent-500/30 transition-colors"
-              >
-                Browser is closed - continue
-              </button>
-              <button
-                onClick={cancelCookieExport}
-                className="px-4 py-2 text-sm text-surface-500 hover:text-surface-300 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
         )}
-        {cookieStatus === 'exporting' && (
-          <div className="mx-4 mb-3 flex items-center gap-2 text-xs text-surface-400 animate-fade-in">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-              <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" />
-            </svg>
-            Extracting cookies…
-          </div>
-        )}
-        {cookieStatus === 'success' && (
-          <div className="mx-4 mb-3 text-xs text-green-400 animate-fade-in">
-            Cookies exported successfully
-          </div>
-        )}
-        {cookieStatus === 'error' && cookieError && (
-          <div className="mx-4 mb-3 text-xs text-red-400 animate-fade-in">
-            {cookieError}
-          </div>
-        )}
-        <SettingRow
-          label="Cached Cookies"
-          description={cookieInfo?.exists
-            ? `Exported ${formatAge(cookieInfo.age)} ago${cookieInfo.browser ? ` from ${cookieInfo.browser}` : ''} - refreshes every 7 days`
-            : 'No cookies cached - will export on next YouTube request'}
-        >
-          <button
-            onClick={handleClearCookies}
-            disabled={!cookieInfo?.exists}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-surface-200 border border-white/[0.08] hover:border-white/[0.15] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Clear Cookies
-          </button>
-        </SettingRow>
-      </SettingGroup>
-      <SettingGroup title="About">
-        <div className="space-y-3">
-          <div className="text-xs text-surface-400 space-y-1">
-            <p><span className="text-surface-300 font-medium">molexMedia</span> v{__APP_VERSION__}</p>
-            <p>Media processing toolkit powered by FFmpeg</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => window.api.openExternal('https://github.com/molexxxx/molex-media-electron')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-surface-200 border border-white/[0.08] hover:border-white/[0.15] transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              GitHub
-            </button>
-            <button
-              onClick={onResetDefaults}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-surface-200 border border-white/[0.08] hover:border-white/[0.15] transition-colors"
-            >
-              Reset to Defaults
-            </button>
-          </div>
+        <p role="status" className="text-label text-ink-2 empty:hidden">{status ?? ''}</p>
+      </Row>
+      <Row id={`${base}-saved`} label={APPLICATION_WORDS.savedLabel} hint={cookiesLine(info, browsers)}>
+        <div>
+          <Button size="sm" disabled={!info?.exists} onClick={() => void clear()}>{APPLICATION_WORDS.clear}</Button>
         </div>
-      </SettingGroup>
+      </Row>
+    </Section>
+  )
+}
+
+function AboutSection(): ReactElement
+{
+  const base = useId()
+  return (
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.about} lead={APPLICATION_WORDS.aboutLead}>
+      <Row id={`${base}-project`} label={APPLICATION_WORDS.projectLabel} hint={APPLICATION_WORDS.projectHint}>
+        <div>
+          <Button size="sm" icon="action.external" onClick={() => void window.api.openExternal(PROJECT_URL)}>{APPLICATION_WORDS.openGitHub}</Button>
+        </div>
+      </Row>
+    </Section>
+  )
+}
+
+function DefaultsSection({ onResetDefaults }: { onResetDefaults: () => void }): ReactElement
+{
+  const base = useId()
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <Section id={`${base}-title`} title={APPLICATION_WORDS.defaults}>
+      <Row id={`${base}-reset`} label={APPLICATION_WORDS.resetLabel} hint={APPLICATION_WORDS.resetHint}>
+        <div>
+          {confirming
+            ? (
+              <InlineConfirm
+                question={APPLICATION_WORDS.resetQuestion}
+                safeLabel={APPLICATION_WORDS.keep}
+                confirmLabel={APPLICATION_WORDS.resetConfirm}
+                size="sm"
+                onResolve={(confirmed) =>
+                {
+                  setConfirming(false)
+                  if (confirmed) onResetDefaults()
+                }}
+              />
+            )
+            : <Button size="sm" onClick={() => setConfirming(true)}>{APPLICATION_WORDS.reset}</Button>}
+        </div>
+      </Row>
+    </Section>
+  )
+}
+
+/** Settings, Application: updates and yt-dlp, the window, accessibility, YouTube cookies, the project page, and the reset. */
+export function ApplicationSettings({ config, onUpdate, onResetDefaults }: ApplicationSettingsProps): ReactElement
+{
+  return (
+    <div className="flex flex-col gap-6">
+      <UpdatesSection config={config} onUpdate={onUpdate} />
+      <YtDlpSettings
+        autoUpdate={config.ytdlpAutoUpdate ?? true}
+        onAutoUpdateChange={(next) => onUpdate('ytdlpAutoUpdate', next)}
+        useSystem={config.ytdlpUseSystem ?? false}
+        onUseSystemChange={(next) => onUpdate('ytdlpUseSystem', next)}
+      />
+      <WindowSection config={config} onUpdate={onUpdate} />
+      <AccessibilityGroup interfaceScale={config.interfaceScale ?? 100} announceProgress={config.announceProgress ?? false} onUpdate={onUpdate} />
+      <CookiesSection config={config} onUpdate={onUpdate} />
+      <AboutSection />
+      <DefaultsSection onResetDefaults={onResetDefaults} />
     </div>
   )
 }
