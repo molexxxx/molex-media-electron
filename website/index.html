@@ -4,19 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <base href="/">
-  <title>molexMedia: batch, edit, and play media on FFmpeg</title>
+  <title>molexMedia: batch, trim, and play media on FFmpeg</title>
   <link rel="stylesheet" href="global.css">
-  <meta name="description" content="molexMedia is a free desktop app for Windows, macOS, and Linux with a batch processor, a multi-track timeline editor, and a media player, built on FFmpeg.">
-  <meta name="theme-color" content="#080b14">
+  <meta name="description" content="molexMedia is a free desktop app for Windows, macOS, and Linux. It normalizes, converts, and compresses batches of media to named standards, trims and edits on a timeline, and plays files and links, all on FFmpeg.">
+  <meta name="theme-color" content="#0d0e10">
   <meta property="og:title" content="molexMedia">
-  <meta property="og:description" content="Batch, edit, and play media on FFmpeg, in one window. Free and open source for Windows, macOS, and Linux.">
+  <meta property="og:description" content="Batch, trim, and play media on FFmpeg, in one window. Free and open source for Windows, macOS, and Linux.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://media.molex.cloud/">
   <meta property="og:image" content="https://media.molex.cloud/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="molexMedia: the app window with a batch of six files, next to the download button.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://media.molex.cloud/assets/og.png">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="preload" href="fonts/big-shoulders-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
   <script src="zquery.min.js"></script>
   <script type="module" src="app/app.js"></script>
 </head>
@@ -26,8 +29,8 @@
   <header class="nav" id="nav">
     <div class="wrap nav-row">
       <a class="brand" href="/" z-link="/" z-to-top>
-        <img src="assets/mark.svg" alt="" width="28" height="28">
-        <span>molexMedia</span>
+        <img src="assets/mark.svg" alt="" width="26" height="26">
+        <span>molex<em>Media</em></span>
       </a>
       <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links">
         <svg class="ico" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
@@ -52,17 +55,17 @@
       <div class="foot-grid">
         <div class="foot-brand">
           <a class="brand" href="/" z-link="/" z-to-top>
-            <img src="assets/mark.svg" alt="" width="28" height="28">
-            <span>molexMedia</span>
+            <img src="assets/mark.svg" alt="" width="26" height="26">
+            <span>molex<em>Media</em></span>
           </a>
-          <p class="foot-about">A batch processor, timeline editor, and media player built on FFmpeg. Free and open source under the MIT license.</p>
+          <p class="foot-about">A batch processor, an editor, and a player built on FFmpeg. Free and open source under the MIT license.</p>
         </div>
         <div>
           <h2>Product</h2>
           <ul>
-            <li><a href="/features/batch" z-link="/features/batch" z-to-top>Batch Processor</a></li>
-            <li><a href="/features/editor" z-link="/features/editor" z-to-top>Media Editor</a></li>
-            <li><a href="/features/player" z-link="/features/player" z-to-top>Media Player</a></li>
+            <li><a href="/features/batch" z-link="/features/batch" z-to-top>Batch</a></li>
+            <li><a href="/features/editor" z-link="/features/editor" z-to-top>Editor</a></li>
+            <li><a href="/features/player" z-link="/features/player" z-to-top>Player</a></li>
             <li><a href="/download" z-link="/download" z-to-top>Download</a></li>
           </ul>
         </div>

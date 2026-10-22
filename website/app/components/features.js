@@ -4,43 +4,39 @@ import { link } from '../parts.js';
 const COLUMNS = [
     {
         path: '/features/batch',
-        title: 'Batch Processor',
-        color: 'var(--normalize)',
+        title: 'Batch',
         items: [
-            ['Five operations in one queue', 'Normalize, boost, convert, compress, and extract, set per file.'],
-            ['Two-pass loudness normalization', 'ITU-R BS.1770-4 with eight presets and manual targets.'],
-            ['29 conversion presets', 'From MP4 H.264 to ProRes, FFV1, and audio-only formats.'],
-            ['Five compression encoders', 'x264, x265, VP9, SVT-AV1, and aom AV1, by quality or target size.'],
-            ['18 extraction presets', 'Audio, silent video, GIF, frames, and subtitles.'],
-            ['All tracks kept', 'Convert and compress map each audio and subtitle track that the target container can hold.'],
-            ['Parallel workers', 'One per CPU core by default, adjustable during a batch.'],
+            ['Queue, Review, Run, History', 'Four views of one batch. Review lists every output path, encoder, and warning before anything runs.'],
+            ['Normalize to a standard', 'EBU R 128, ATSC A/85, Apple Podcasts, Spotify, EBU R 128 s2 and s4, AES TD1004, or your own target.'],
+            ['Measured stamps', 'Every finished job is measured again and stamped Verified, or Returned with the reason.'],
+            ['28 convert and 11 compress presets', 'From MP4 to ProRes and FFV1; x264, x265, VP9, AOM AV1, and SVT-AV1.'],
+            ['GPU encoding', 'NVENC, Quick Sync, and AMF for H.264 and HEVC, found with a test encode.'],
+            ['Every stream kept', 'Convert and compress map each stream the target container can hold.'],
+            ['Originals untouched', 'Outputs go next to each source or to a folder you choose. Replace originals is chosen per batch.'],
         ],
     },
     {
         path: '/features/editor',
-        title: 'Media Editor',
-        color: 'var(--convert)',
+        title: 'Editor',
         items: [
-            ['Multi-track timeline', 'Video tracks for cutting and layering, plus audio tracks.'],
-            ['Four edit types', 'Insert, Overwrite, Append, and On Top.'],
-            ['Ripple, roll, slip, and slide', 'Picked by which clip edge you drag and which keys you hold.'],
-            ['Transforms and keyframes', 'Position, scale, rotation, anchor, and opacity per clip.'],
-            ['Eight blend modes', 'Rendered in the preview and in the FFmpeg export.'],
-            ['Clip mode', 'Trim a single file with a fast lossless cut or a precise re-encode.'],
-            ['Stream inspector', 'Streams, metadata, keyframes, and remux without re-encoding.'],
+            ['Trim', 'Cut one file between in and out points, then export video, audio, or a GIF.'],
+            ['Timeline', 'Clips from several files on video and audio tracks, exported as one file.'],
+            ['Inspect', 'The streams and tags of a file, and a copy without the ones you remove.'],
+            ['Lit readouts', 'In, out, and length in timecode, with frame stepping on the arrow keys.'],
+            ['Export choices', 'MP4, WebM, MOV, or MKV at four CRF tiers and up to 4K.'],
+            ['GPU where it fits', 'Exports encode with NVENC, Quick Sync, or AMF where the codec allows.'],
         ],
     },
     {
         path: '/features/player',
-        title: 'Media Player',
-        color: 'var(--extract)',
+        title: 'Player',
         items: [
-            ['Local playback', 'Audio and video files, with a folder browser and drag and drop.'],
-            ['URL streaming', 'YouTube videos and playlists through yt-dlp, and direct audio links.'],
-            ['Eight visualizations', 'DMT, Space, Milkdrop, Plasma, Bars, Waveform, Horizon, and Rain.'],
-            ['Beat detection', 'Six Bark-aligned frequency bands drive the visuals.'],
-            ['Playlist', 'Reorder by dragging, shuffle, and repeat one or all.'],
-            ['Popout player', 'A small always-on-top window in three sizes or your own.'],
+            ['Files and folders', 'Drop them anywhere on the page, or add them from the toolbar.'],
+            ['Links through yt-dlp', 'YouTube and many other sites; a playlist or a direct media link.'],
+            ['Video or visualization', 'The picture when there is one, or eight canvas visualizations.'],
+            ['Subtitles and audio tracks', 'Chosen from the transport, with real full screen on F11.'],
+            ['Playlist', 'Shuffle, repeat off, all, or one, and keyboard shortcuts for every action.'],
+            ['Pop out', 'A small always-on-top window with its own compact transport.'],
         ],
     },
 ];
@@ -49,7 +45,7 @@ $.component('features-page', {
     render()
     {
         const cols = COLUMNS.map((c) => `
-            <section class="index-col" style="--c:${c.color}" aria-labelledby="idx-${c.path.split('/').pop()}">
+            <section class="index-col" aria-labelledby="idx-${c.path.split('/').pop()}">
                 <h2 id="idx-${c.path.split('/').pop()}">${link(c.path, c.title)}<span class="more">${link(c.path, `Details ${icon('arrow', 14)}`)}</span></h2>
                 <ul>${c.items.map(([t, d]) => `<li><strong>${t}</strong>${d}</li>`).join('')}</ul>
             </section>`).join('');
@@ -58,7 +54,7 @@ $.component('features-page', {
 <div class="wrap">
     <header class="page-head">
         <h1>Features</h1>
-        <p class="lead">molexMedia has three tools that share one FFmpeg install. Each tool's page lists its presets, encoders, and shortcuts.</p>
+        <p class="lead">molexMedia has three tools that share one FFmpeg install. Each tool's page lists its presets, settings, and shortcuts, taken from the app itself.</p>
     </header>
     <div class="index-grid">${cols}</div>
     <section class="sec sec-tight" aria-labelledby="idx-app">
@@ -66,13 +62,11 @@ $.component('features-page', {
             <div>
                 <h2 id="idx-app">The rest of the app</h2>
             </div>
-            <ul class="ops">
-                <li><strong>Setup</strong><span>Uses the FFmpeg and ffprobe on your PATH, or downloads them in a setup wizard with a retry and a manual fallback.</span></li>
-                <li><strong>Tray</strong><span>Keeps running in the system tray, shows batch progress in the tray tooltip and menu, and opens any tool from the menu.</span></li>
-                <li><strong>Notifications</strong><span>A desktop notification when a batch finishes, with how many files succeeded or failed.</span></li>
-                <li><strong>Logs</strong><span>Every FFmpeg command and result, filterable by level, searchable, and copyable.</span></li>
-                <li><strong>GPU</strong><span>NVENC, Quick Sync, and AMF for H.264 and HEVC, found with a one-frame test encode. Off by default.</span></li>
-                <li><strong>Formats</strong><span>21 video and 14 audio input extensions, from MP4 and MKV to DTS, APE, and WavPack.</span></li>
+            <ul class="rows">
+                <li><strong>Dashboard</strong><span>The front panel: recent files and folders, the last batch, and the state of FFmpeg, the GPU, and yt-dlp.</span></li>
+                <li><strong>Setup</strong><span>Uses the FFmpeg and ffprobe on your PATH when they are at least 5.1, or downloads a pinned build, checks its SHA-256, and runs a self-test. You can also point it at a folder of your own.</span></li>
+                <li><strong>Settings</strong><span>Batch defaults, presets, the FFmpeg and yt-dlp installs, and the application: start with the system, keep running in the tray, notifications, and updates.</span></li>
+                <li><strong>Logs</strong><span>Every FFmpeg command and its output, the job engine, hardware encoding, updates, the player, and the editor, filtered by level and source, searchable, and copyable line by line.</span></li>
                 <li><strong>Updates</strong><span>Windows and macOS builds update from GitHub Releases. Linux packages are updated by downloading the new release.</span></li>
             </ul>
         </div>

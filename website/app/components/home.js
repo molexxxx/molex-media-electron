@@ -1,5 +1,5 @@
 import { icon } from '../icons.js';
-import { opChip, link, logLine, NORMALIZE_LOG, CONVERT_LOG } from '../parts.js';
+import { link, stamp, statusLabel, MINUS } from '../parts.js';
 
 $.component('home-page', {
     render()
@@ -8,22 +8,22 @@ $.component('home-page', {
 <section class="hero" aria-labelledby="home-title">
     <div class="wrap hero-grid">
         <div class="hero-copy">
-            <h1 id="home-title">Batch, edit, and play media in one window</h1>
-            <p class="hero-pitch">molexMedia is a desktop app built on FFmpeg, with a batch processor, a multi-track timeline editor, and a media player. It uses the FFmpeg already on your system, or downloads a current build the first time it starts.</p>
+            <h1 id="home-title">Batch, trim, and play media on FFmpeg</h1>
+            <p class="hero-pitch">molexMedia normalizes whole folders to named loudness standards, converts and compresses with your GPU, trims and edits on a timeline, and plays files and links, in one desktop window. It downloads and verifies its own FFmpeg the first time it runs.</p>
             <get-block></get-block>
         </div>
         <div class="hero-demo">
             <app-window></app-window>
-            <p class="shot-note">An HTML mockup of the app. Click Batch, Editor, Player, or Logs to switch screens. File names are examples.</p>
+            <p class="shot-note">A recreation of the app in HTML. Switch between Batch, Editor, Player, and Logs, and press Start to run the queue. File names are examples.</p>
         </div>
     </div>
     <div class="wrap">
         <div class="steps steps-row">
-            <h2>What happens on first launch</h2>
+            <h2>What happens on the first run</h2>
             <ol>
-                <li>Run the installer for your system.</li>
-                <li>molexMedia looks for FFmpeg and ffprobe. If they are missing, the setup wizard downloads them, with a retry and a manual fallback.</li>
-                <li>Drop files on the queue, choose an operation, and press Process.</li>
+                <li>Run the installer for your system and open molexMedia.</li>
+                <li>It looks for FFmpeg and ffprobe on your computer. If they are missing or too old, it downloads a pinned build, checks the size and SHA-256, and runs a self-test before it installs them.</li>
+                <li>Drop files on Batch, choose an operation, read the Review, and press Start.</li>
             </ol>
         </div>
     </div>
@@ -32,109 +32,78 @@ $.component('home-page', {
 <section class="sec band" aria-labelledby="h-batch">
     <div class="wrap split">
         <div>
-            <h2 id="h-batch">Batch Processor</h2>
-            <p class="lead">Set an operation in the panel and every queued file uses it. If you change the settings on one file, that file keeps them, so one batch can normalize a podcast and compress a clip for Discord.</p>
-            <ul class="ops">
-                <li>${opChip('normalize')}<span>Two-pass loudness normalization to ITU-R BS.1770-4, with eight presets from <code>-14 LUFS</code> for streaming to <code>-23 LUFS</code> for broadcast.</span></li>
-                <li>${opChip('boost')}<span>Gain from -50% to +200%, an optional high-pass filter, and a true-peak limiter that oversamples 2x.</span></li>
-                <li>${opChip('convert')}<span>29 presets for general use, web and social, devices, production, and audio only, with codec and container conflict checks.</span></li>
-                <li>${opChip('compress')}<span>Quality-based encoding with H.264, H.265, VP9, and two AV1 encoders, or a target file size with optional two-pass.</span></li>
-                <li>${opChip('extract')}<span>Pull out audio, silent video, a GIF, still frames, or subtitles, from 18 presets.</span></li>
+            <h2 id="h-batch">Batch</h2>
+            <p class="lead">Add files, give each job an operation, and read the Review before anything runs: every output path, encoder, and warning is listed, and originals are never touched unless you choose Replace originals for that batch. Each finished job is stamped with what was measured in its output.</p>
+            <ul class="rows ops-list">
+                <li><strong>Normalize</strong><span>To a named standard: EBU R 128, ATSC A/85, Apple Podcasts, Spotify, EBU R 128 s2 and s4, or AES TD1004. Loudness is measured with FFmpeg's ebur128 meter, the gain is planned from the measurement, and a true-peak limiter oversampled 2x holds the ceiling.</span></li>
+                <li><strong>Gain</strong><span>Plain gain in dB with an optional high-pass filter, from six app presets or your own numbers, limited at ${MINUS}1.0 dBTP.</span></li>
+                <li><strong>Convert</strong><span>28 presets from MP4 and MKV to ProRes, FFV1, and audio-only formats, or your own container, encoder, bitrate, frame size, and frame rate.</span></li>
+                <li><strong>Compress</strong><span>x264, x265, VP9, AOM AV1, or SVT-AV1 by quality tier, exact CRF, or a target file size with two-pass. NVENC, Quick Sync, and AMF take H.264 and HEVC when the GPU is on.</span></li>
+                <li><strong>Extract</strong><span>Audio, silent video, a GIF, still frames, or text subtitles, from 18 presets.</span></li>
             </ul>
-            <p class="more-link">${link('/features/batch', `Presets, encoders, and formats ${icon('arrow', 16)}`)}</p>
+            <p class="more-link">${link('/features/batch', `Standards, presets, and encoders ${icon('arrow', 16)}`)}</p>
         </div>
-        <preset-card class="stick"></preset-card>
+        <div class="stampcase stick">
+            <h3>What a finished job says</h3>
+            <div class="stampcase-row"><span>podcast-ep41-master.wav</span>${stamp('verified', `${MINUS}16.0 LKFS · ${MINUS}1.6 dBTP`)}</div>
+            <div class="stampcase-row"><span>interview-cam-a.mkv</span>${stamp('verified', `${MINUS}23.0 LUFS · ${MINUS}1.4 dBTP`)}</div>
+            <div class="stampcase-row"><span>voice-memo-0412.mp3</span>${stamp('returned', `${MINUS}17.3 LKFS · 1.3 LU under`)}</div>
+            <div class="stampcase-row"><span>lecture-03.mkv</span>${statusLabel('done', 'Done')}</div>
+            <p>Verified means the output was measured again after encoding and sits inside the standard's tolerance. Returned means it does not, with the reason, and the job waits for your decision instead of being called finished.</p>
+        </div>
     </div>
 </section>
 
 <section class="sec" aria-labelledby="h-editor">
     <div class="wrap">
         <div class="sec-head">
-            <h2 id="h-editor">Media Editor</h2>
-            <p class="lead">A multi-track timeline. Cut on V1, layer on V2 with position, scale, rotation, opacity, and blend modes, and put music on A1. Drag across the timeline below or use the arrow keys to move the playhead.</p>
+            <h2 id="h-editor">Editor</h2>
+            <p class="lead">Three modes under one header, switched with the tabs or Ctrl+1 to Ctrl+3.</p>
         </div>
-        <tl-demo></tl-demo>
-        <div class="facts">
-            <div>
-                <h3>Edit and trim</h3>
-                <ul>
-                    <li>Insert, Overwrite, Append, and On Top edits</li>
-                    <li>Ripple, roll, slip, and slide trims</li>
-                    <li>Split at the playhead, snapping, and 100 levels of undo</li>
-                    <li>Export the timeline to MP4, WebM, MOV, or MKV</li>
-                </ul>
-            </div>
-            <div>
-                <h3>Composite</h3>
-                <ul>
-                    <li>Position, scale, rotation, anchor, and opacity per clip</li>
-                    <li>Keyframes on every transform property</li>
-                    <li>Normal, Multiply, Screen, Overlay, Darken, Lighten, Add, and Difference</li>
-                </ul>
-            </div>
-            <div>
-                <h3>Keyboard</h3>
-                <ul>
-                    <li><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> shuttle, doubling up to 8x</li>
-                    <li><kbd>I</kbd> <kbd>O</kbd> mark in and out</li>
-                    <li><kbd>S</kbd> split, <kbd>V</kbd> <kbd>T</kbd> <kbd>B</kbd> switch tools</li>
-                    <li><kbd>?</kbd> lists every shortcut</li>
-                </ul>
-            </div>
-        </div>
-        <p class="more-link">${link('/features/editor', `Trims, export settings, and all shortcuts ${icon('arrow', 16)}`)}</p>
+        <ul class="rows rows-wide">
+            <li><strong>Trim</strong><span>Cut one file between an in and an out point, then export video, audio, or a GIF. In, out, and length sit in lit readouts; a lossless cut copies the streams and lands on the nearest keyframe, while a CRF quality re-encodes on the exact frame. The cut can also go straight onto the timeline.</span></li>
+            <li><strong>Timeline</strong><span>Arrange clips from several files on video and audio tracks, then export one file as MP4, WebM, MOV, or MKV at CRF 28, 23, 18, or 10, in the source size or 720p, 1080p, or 4K, for the whole timeline, in to out, or the selected clips.</span></li>
+            <li><strong>Inspect</strong><span>See the streams and tags of a file, and save a copy without the ones you remove. The copy is remuxed with stream copy, so nothing is re-encoded.</span></li>
+        </ul>
+        <figure class="shot"><img src="assets/screens/editor.webp" width="1440" height="922" alt="The Editor in Trim: a video frame above lit In, Out, and Length readouts, a thumbnail strip, and the export panel." loading="lazy"><figcaption>Trim, with the export panel open. Video: Big Buck Bunny, Blender Foundation, CC BY 3.0.</figcaption></figure>
+        <p class="more-link">${link('/features/editor', `Export settings and every shortcut ${icon('arrow', 16)}`)}</p>
     </div>
 </section>
 
 <section class="sec band" aria-labelledby="h-player">
-    <div class="wrap split split-flip">
-        <div>
-            <h2 id="h-player">Media Player</h2>
-            <p class="lead">Plays local files and streams YouTube videos, YouTube playlists, and direct audio links. The popout player is a small window that stays on top of other windows.</p>
-            <ul class="ops">
-                <li><strong>Visualizations</strong><span>DMT, Space, Milkdrop, Plasma, Bars, Waveform, Horizon, and Rain, drawn on canvas from the Web Audio API.</span></li>
-                <li><strong>Beat detection</strong><span>Six bands aligned to the Bark scale, from sub-bass at 20 Hz to treble at 20 kHz.</span></li>
-                <li><strong>Streaming</strong><span>YouTube links resolve through yt-dlp, which molexMedia downloads the first time you paste a URL.</span></li>
-            </ul>
-            <p class="more-link">${link('/features/player', `Sources, visualizations, and popout sizes ${icon('arrow', 16)}`)}</p>
+    <div class="wrap">
+        <div class="sec-head">
+            <h2 id="h-player">Player</h2>
+            <p class="lead">Drop audio or video files anywhere on the page, or add a link. Links play through yt-dlp, from YouTube and many other sites, and molexMedia keeps its own copy of yt-dlp current.</p>
         </div>
-        <viz-demo class="stick"></viz-demo>
+        <ul class="rows rows-wide">
+            <li><strong>Video</strong><span>The picture when the track has one, with subtitle and audio track menus on the transport, and real full screen on F11 or a double-click.</span></li>
+            <li><strong>Visualization</strong><span>Eight canvas visualizations drawn from the audio: DMT, Space, Milkdrop, Plasma, Bars, Waveform, Horizon, and Rain. The Show control switches between the picture and the visualization.</span></li>
+            <li><strong>Links</strong><span>A video, a playlist, or a direct link to a media file. Sound and picture quality are chosen per link, and a stream that cannot be played directly is downloaded first.</span></li>
+            <li><strong>Pop out</strong><span>A small window that stays on top of other windows, with its own compact transport. Playback continues where it was.</span></li>
+        </ul>
+        <figure class="shot"><img src="assets/screens/player.webp" width="1440" height="922" alt="The Player showing a video with the playlist beside it and the transport below." loading="lazy"><figcaption>The Player with the playlist shown. Video: Big Buck Bunny, Blender Foundation, CC BY 3.0.</figcaption></figure>
+        <p class="more-link">${link('/features/player', `Sources, shortcuts, and the pop-out ${icon('arrow', 16)}`)}</p>
     </div>
 </section>
 
-<section class="sec" aria-labelledby="h-proof">
-    <div class="wrap">
-        <div class="split">
-            <div>
-                <h2 id="h-proof">Fixes in 4.6 and 4.7</h2>
-                <p class="lead">Versions 4.6.0 to 4.7.1 fixed a set of audio and encoding bugs, and each fix was measured with a real FFmpeg build before and after the change. The log shows what the app records for a two-pass normalize and for a convert that keeps all three audio tracks.</p>
-            </div>
-            <div class="log">
-                <div class="log-head" aria-hidden="true">
-                    <span class="log-filter">All</span><span class="log-filter">Info</span><span class="log-filter">Success</span><span class="log-filter" aria-current="true">FFmpeg</span>
-                </div>
-                <ol class="log-lines" aria-label="Example log">${[...NORMALIZE_LOG, ...CONVERT_LOG].map((l) => logLine(...l)).join('')}</ol>
-            </div>
+<section class="sec" aria-labelledby="h-under">
+    <div class="wrap split">
+        <div>
+            <h2 id="h-under">What runs underneath</h2>
+            <p class="lead">molexMedia does not bundle FFmpeg. It uses the FFmpeg and ffprobe already on your computer when they are at least version 5.1, and otherwise downloads a build pinned by version, size, and SHA-256. The download is verified before it is extracted, and the binaries run a self-test before they are used.</p>
+            <p class="lead">On Apple Silicon the pin is held at FFmpeg 7.1.1. The arm64 builds of 8.0 through 9.0.2 read the loudness of surround sound up to 33 LU too loud, which would turn 5.1 films down by about 30 dB and call them verified. 7.1.1 measures them correctly, and the app refuses multichannel loudness work on any build that fails its meter self-test.</p>
+            <p class="lead">yt-dlp is downloaded from its stable channel and replaced in place when a new version is out. Every install must match the release's signed SHA-256 list and must start and report its version before it takes over, so a failed update keeps the working copy.</p>
         </div>
-        <ol class="audits" aria-label="Audit results">
-            <li class="audit">
-                <div><h3>True-peak limiter (4.7.0)</h3><p>The limiter now runs on audio oversampled 2x, because FFmpeg's <code>alimiter</code> only detects sample peaks. Output true peak with the ceiling set to -1 dBTP:</p></div>
-                <dl class="audit-read"><div><dt>before</dt><dd><s>-0.3 dBTP</s></dd></div><div><dt>now</dt><dd><b>-1.0 dBTP</b></dd></div></dl>
-            </li>
-            <li class="audit">
-                <div><h3>Multiple audio tracks (4.7.0)</h3><p>Convert and compress used to pass no <code>-map</code>, so FFmpeg kept only the audio track with the most channels. They now map each stream. For a film with a 5.1 mix, a commentary track, and a described-audio track:</p></div>
-                <dl class="audit-read"><div><dt>before</dt><dd><s>1 of 3 tracks</s></dd></div><div><dt>now</dt><dd><b>3 of 3 tracks</b></dd></div></dl>
-            </li>
-            <li class="audit">
-                <div><h3>Lossless encoding (4.7.1)</h3><p>The lossless tier used <code>-crf 0</code> for every encoder, which is only bit-exact for x264 and aom AV1. H.265 and VP9 now use their own lossless options. SVT-AV1 has no lossless mode, so the app encodes at CRF 0 and logs a warning. PSNR against the source, where <code>inf</code> means bit-exact:</p></div>
-                <dl class="audit-read"><div><dt>x265</dt><dd><s>61.99 dB</s> <b>lossless=1</b></dd></div><div><dt>VP9</dt><dd><s>85.56 dB</s> <b>-lossless 1</b></dd></div><div><dt>x264, aom</dt><dd><b>inf</b></dd></div></dl>
-            </li>
-            <li class="audit">
-                <div><h3>Loudness normalization (4.6.0)</h3><p>The analysis pass measured the untouched source while the second pass normalized a downmixed one. Both passes now run the same downmix. The output sample rate is also set explicitly, because <code>loudnorm</code> resamples to 192 kHz in dynamic mode. Output sample rate after a dynamic-mode fallback:</p></div>
-                <dl class="audit-read"><div><dt>before</dt><dd><s>192 kHz</s></dd></div><div><dt>now</dt><dd><b>source rate</b></dd></div></dl>
-            </li>
-        </ol>
-        <p class="more-link">${link('/changelog', `Full notes in the changelog ${icon('arrow', 16)}`)}</p>
+        <div class="spec-wrap stick"><table class="spec">
+            <thead><tr><th scope="col">System</th><th scope="col">FFmpeg</th><th scope="col">Build</th></tr></thead>
+            <tbody>
+                <tr><th scope="row">Windows x64 and arm64</th><td class="num">9.0.2</td><td>BtbN GPL build, Gyan full build as the fallback on x64</td></tr>
+                <tr><th scope="row">Linux x64 and arm64</th><td class="num">9.0.2</td><td>BtbN GPL build, Martin Riedl as the fallback</td></tr>
+                <tr><th scope="row">macOS Intel</th><td class="num">9.0.2</td><td>Martin Riedl</td></tr>
+                <tr><th scope="row">macOS Apple Silicon</th><td class="num">7.1.1</td><td>Martin Riedl, held for the surround meter</td></tr>
+            </tbody>
+        </table></div>
     </div>
 </section>
 
@@ -143,7 +112,7 @@ $.component('home-page', {
         <div>
             <h2 id="h-get">Download molexMedia</h2>
             <p class="lead">Free and open source under the MIT license, for Windows, macOS, and Linux. The Windows and macOS builds update themselves from GitHub Releases.</p>
-            <p class="lead">The source code, issue tracker, and every past release are on <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">GitHub</a>.</p>
+            <p class="lead">The source code, the issue tracker, and every past release are on <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">GitHub</a>.</p>
         </div>
         <platform-list></platform-list>
     </div>

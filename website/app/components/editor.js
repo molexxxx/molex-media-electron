@@ -1,40 +1,42 @@
-import { icon } from '../icons.js';
 import { link } from '../parts.js';
 
 const SHORTCUTS = [
-    ['Transport', [
+    ['Editor', [
+        [['Ctrl', 'O'], 'Open a file'],
+        [['Ctrl', '1'], 'Trim'],
+        [['Ctrl', '2'], 'Timeline'],
+        [['Ctrl', '3'], 'Inspect'],
+        [['?'], 'Keyboard shortcuts'],
+    ]],
+    ['Playback', [
         [['Space'], 'Play or pause'],
         [['←', '→'], 'Step one frame'],
         [['Shift', '←', '→'], 'Step ten frames'],
-        [['Home', 'End'], 'Go to start or end'],
-        [['↑', '↓'], 'Previous or next edit point'],
-        [['J', 'K', 'L'], 'Reverse, stop, forward, doubling up to 8x'],
+        [['Home', 'End'], 'Go to the start or the end'],
+        [['J', 'K', 'L'], 'Play backward, stop, play forward'],
     ]],
-    ['Tools and edits', [
+    ['Trim', [
+        [['I'], 'Mark in at the playhead'],
+        [['O'], 'Mark out at the playhead'],
+        [['Esc'], 'Reset in and out to the whole file'],
+    ]],
+    ['Timeline', [
         [['V'], 'Select tool'],
         [['T'], 'Trim tool'],
-        [['B'], 'Razor tool'],
-        [['N'], 'Toggle snap'],
+        [['B'], 'Split tool'],
+        [['N'], 'Snap to edges'],
         [['S'], 'Split at the playhead'],
-        [['I', 'O'], 'Mark in and out'],
-        [[','], 'Insert edit'],
-        [['.'], 'Overwrite edit'],
-        [['Del'], 'Delete selected clips'],
-        [['Shift', 'Del'], 'Ripple delete'],
-    ]],
-    ['Selection and history', [
-        [['Ctrl', 'A'], 'Select all clips'],
-        [['Ctrl', 'C'], 'Copy'],
-        [['Ctrl', 'X'], 'Cut'],
-        [['Ctrl', 'V'], 'Paste'],
+        [['Del'], 'Delete the selected clips'],
+        [['Shift', 'Del'], 'Delete and close the gap'],
+        [[','], 'Insert the source at the playhead'],
+        [['.'], 'Overwrite at the playhead'],
+        [['↑', '↓'], 'Previous or next edit point'],
+        [['Ctrl', 'A'], 'Select every clip'],
         [['Ctrl', 'Z'], 'Undo'],
         [['Ctrl', 'Shift', 'Z'], 'Redo'],
-    ]],
-    ['View', [
         [['Ctrl', '='], 'Zoom in'],
         [['Ctrl', '−'], 'Zoom out'],
         [['Ctrl', '0'], 'Fit the timeline to the view'],
-        [['?'], 'Show every shortcut'],
     ]],
 ];
 
@@ -48,101 +50,58 @@ $.component('editor-page', {
         return `
 <div class="wrap">
     <header class="page-head">
-        <p class="crumbs">${link('/features', 'Features')}<span aria-hidden="true">/</span><span>Media Editor</span></p>
-        <h1>Media Editor</h1>
-        <p class="lead">A multi-track timeline for cutting and layering, a clip mode for quick trims, and an inspector for streams and metadata. Drag across the timeline below, or focus it and use the arrow keys.</p>
-        <div class="doc-fig"><tl-demo></tl-demo></div>
+        <p class="crumbs">${link('/features', 'Features')}<span aria-hidden="true">/</span><span>Editor</span></p>
+        <h1>Editor</h1>
+        <p class="lead">Three modes under one header: Trim for one file, Timeline for several, and Inspect for what a file holds. Open a file with Ctrl+O, or drop it anywhere on the page.</p>
+        <figure class="shot"><img src="assets/screens/editor.webp" width="1440" height="922" alt="The Editor in Trim: a video frame above lit In, Out, and Length readouts, a thumbnail strip, and the export panel." loading="lazy"><figcaption>Trim, with the export panel open. Video: Big Buck Bunny, Blender Foundation, CC BY 3.0.</figcaption></figure>
     </header>
     <div class="doc">
         <nav class="toc" aria-label="On this page">
             <p class="toc-title">On this page</p>
-            <a href="/features/editor#timeline">Timeline and edits</a>
-            <a href="/features/editor#trims">Trims</a>
-            <a href="/features/editor#compositing">Compositing</a>
-            <a href="/features/editor#clip">Clip mode</a>
-            <a href="/features/editor#export">Export</a>
-            <a href="/features/editor#inspect">Inspect and remux</a>
+            <a href="/features/editor#trim">Trim</a>
+            <a href="/features/editor#timeline">Timeline</a>
+            <a href="/features/editor#inspect">Inspect</a>
             <a href="/features/editor#keys">Keyboard shortcuts</a>
         </nav>
         <div>
-            <section class="doc-sec" id="timeline" aria-labelledby="h-timeline">
-                <h2 id="h-timeline">Timeline and edits</h2>
-                <p>Import sources into the bin, drag them onto video or audio tracks, and cut with the Select, Trim, and Razor tools. Snapping pulls clips and trims to neighboring edges, and there are 100 levels of undo.</p>
-                <ul class="bullets" style="margin-top:16px">
-                    <li><strong>Insert</strong> pushes later clips along the track to make room.</li>
-                    <li><strong>Overwrite</strong> replaces whatever sits under the new clip.</li>
-                    <li><strong>Append</strong> adds the clip at the end of the track.</li>
-                    <li><strong>On Top</strong> places the clip on the next track above, for layering.</li>
-                    <li>Split at the playhead, or split at the in and out points.</li>
-                    <li>Speed changes above 2x chain FFmpeg's <code>atempo</code> in stages, so no stage skips samples.</li>
-                </ul>
-            </section>
-
-            <section class="doc-sec" id="trims" aria-labelledby="h-trims">
-                <h2 id="h-trims">Trims</h2>
-                <p>With the Trim tool, the edge you grab decides the trim.</p>
+            <section class="doc-sec" id="trim" aria-labelledby="h-trim">
+                <h2 id="h-trim">Trim</h2>
+                <p>Cut one file between an in and an out point, then export video, audio, or a GIF. In, out, and length sit in lit readouts above a thumbnail strip; the playhead steps a frame at a time and the strip scrubs with the pointer.</p>
                 <div class="spec-wrap"><table class="spec">
-                    <thead><tr><th scope="col">Trim</th><th scope="col">How</th><th scope="col">What moves</th></tr></thead>
                     <tbody>
-                        <tr><th scope="row">Roll</th><td>Drag an edit point between two clips</td><td>The cut moves; both clips change length and the track length stays the same.</td></tr>
-                        <tr><th scope="row">Ripple</th><td>Drag an edge with no neighbor</td><td>The clip changes length and everything after it shifts.</td></tr>
-                        <tr><th scope="row">Slip</th><td><kbd>Alt</kbd> and drag</td><td>The clip's content slides inside its fixed position and length.</td></tr>
-                        <tr><th scope="row">Slide</th><td><kbd>Alt</kbd> <kbd>Shift</kbd> and drag</td><td>The clip moves between its neighbors, which trim to fit.</td></tr>
+                        <tr><th scope="row">Formats</th><td>Video, audio, or GIF, chosen in the export panel</td></tr>
+                        <tr><th scope="row">Lossless</th><td>Copies the streams without re-encoding, so the cut lands on the nearest keyframe. MP4 always re-encodes.</td></tr>
+                        <tr><th scope="row">Quality</th><td>Re-encodes at the chosen CRF and cuts on the exact frame; audio exports re-encode the audio</td></tr>
+                        <tr><th scope="row">GIF</th><td>Width, frame rate, and dither, with more settings folded away</td></tr>
+                        <tr><th scope="row">Hardware</th><td>Video encodes with NVENC, Quick Sync, or AMF where the codec allows, when the GPU is on in Settings</td></tr>
+                        <tr><th scope="row">Add to timeline</th><td>Sends the cut to the Timeline as a clip instead of exporting it</td></tr>
                     </tbody>
                 </table></div>
             </section>
 
-            <section class="doc-sec" id="compositing" aria-labelledby="h-compositing">
-                <h2 id="h-compositing">Compositing</h2>
-                <p>Every clip has position, scale with a uniform lock, rotation, an anchor point, and opacity. Drag the handles in the preview or type values into the transform inspector, and add keyframes to animate any of them.</p>
-                <ul class="bullets" style="margin-top:16px">
-                    <li>Eight blend modes: Normal, Multiply, Screen, Overlay, Darken, Lighten, Add, and Difference.</li>
-                    <li>The preview composites every video layer on a canvas in real time.</li>
-                    <li>Export builds the same layers with FFmpeg's overlay and <code>blend</code> filters.</li>
-                </ul>
-            </section>
-
-            <section class="doc-sec" id="clip" aria-labelledby="h-clip">
-                <h2 id="h-clip">Clip mode</h2>
-                <p>For a single file, set in and out points and export. Lossless cuts copy the streams and are fast; High, Medium, and Low re-encode for a frame-accurate cut. Clip mode writes MP4, MKV, WebM, WAV, MP3, or GIF.</p>
-            </section>
-
-            <section class="doc-sec" id="export" aria-labelledby="h-export">
-                <h2 id="h-export">Export</h2>
+            <section class="doc-sec" id="timeline" aria-labelledby="h-timeline">
+                <h2 id="h-timeline">Timeline</h2>
+                <p>Arrange clips from several files on video and audio tracks, then export one file. Sources sit in a bin; the Select, Trim, and Split tools cut and move clips, snapping pulls edges together, and every clip has position, scale, rotation, anchor, and opacity that can be keyframed.</p>
                 <div class="spec-wrap"><table class="spec">
                     <tbody>
                         <tr><th scope="row">Formats</th><td>MP4 (H.264), WebM (VP9), MOV (H.264), MKV (H.264)</td></tr>
-                        <tr><th scope="row">Quality</th><td class="num">CRF 28, 23, 18, or 10</td></tr>
-                        <tr><th scope="row">Resolution</th><td>Source, 720p, 1080p, or 4K</td></tr>
-                        <tr><th scope="row">Range</th><td>The entire timeline, in to out, or the selected clips</td></tr>
+                        <tr><th scope="row">Quality</th><td class="num">Low (CRF 28), Medium (CRF 23), High (CRF 18), Very high (CRF 10)</td></tr>
+                        <tr><th scope="row">Audio</th><td class="num">128, 192, 256, or 320 kbps</td></tr>
+                        <tr><th scope="row">Frame size</th><td>Source, 720p, 1080p, or 4K</td></tr>
+                        <tr><th scope="row">Range</th><td>Whole timeline, in to out, or the selected clips</td></tr>
+                        <tr><th scope="row">Speed</th><td>Changes above 2x chain FFmpeg's <code>atempo</code> in stages, so no stage skips samples</td></tr>
                     </tbody>
                 </table></div>
             </section>
 
             <section class="doc-sec" id="inspect" aria-labelledby="h-inspect">
-                <h2 id="h-inspect">Inspect and remux</h2>
-                <p>Open any file to read what FFprobe sees, then keep or drop streams and edit metadata tags. Saving remuxes with stream copy, so nothing is re-encoded.</p>
-                <div class="doc-fig insp" aria-label="Example stream inspector">
-                    <div class="insp-stream">
-                        <p class="insp-title"><span class="insp-check">${icon('check', 11)}</span>Video · stream #0</p>
-                        <dl class="insp-kv"><dt>Codec</dt><dd>hevc (Main 10)</dd><dt>Resolution</dt><dd>3840x2160</dd><dt>Frame rate</dt><dd>23.976 fps</dd><dt>Pixel format</dt><dd>yuv420p10le</dd></dl>
-                    </div>
-                    <div class="insp-stream">
-                        <p class="insp-title"><span class="insp-check">${icon('check', 11)}</span>Audio · stream #1</p>
-                        <dl class="insp-kv"><dt>Codec</dt><dd>eac3</dd><dt>Channels</dt><dd>6 (5.1)</dd><dt>Sample rate</dt><dd>48000 Hz</dd><dt>Disposition</dt><dd>default</dd></dl>
-                    </div>
-                    <div class="insp-stream">
-                        <p class="insp-title"><span class="insp-check">${icon('check', 11)}</span>Audio · stream #2</p>
-                        <dl class="insp-kv"><dt>Codec</dt><dd>aac (LC)</dd><dt>Channels</dt><dd>2 (stereo)</dd><dt>Title</dt><dd>Commentary</dd></dl>
-                    </div>
-                    <p class="insp-map">-map 0:0 -map 0:1 -map 0:2 <span>-c copy</span></p>
-                </div>
-                <p style="margin-top:16px">The inspector also counts I, P, and B frames across the file, so you can see where keyframes land before a fast cut.</p>
+                <h2 id="h-inspect">Inspect</h2>
+                <p>See the streams and tags of a file as ffprobe reports them, keep or drop streams, and save a copy without the ones you remove. The copy is remuxed with stream copy, so nothing is re-encoded. The keyframe view shows where I, P, and B frames land, which is where a lossless trim will cut.</p>
             </section>
 
             <section class="doc-sec" id="keys" aria-labelledby="h-keys">
                 <h2 id="h-keys">Keyboard shortcuts</h2>
-                <p>Timeline shortcuts, as listed in the editor's own shortcut panel.</p>
+                <p>As listed in the editor's own shortcut panel. On macOS, Ctrl reads Cmd.</p>
                 ${keys}
             </section>
         </div>
