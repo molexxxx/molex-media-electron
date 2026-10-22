@@ -137,6 +137,24 @@ describe('Slider', () =>
     expect(onChange).toHaveBeenCalledWith(13, 'keyboard')
   })
 
+  it('steps by keyStep on the arrows, clamps at the limits, and leaves the arrows to the platform without it', () =>
+  {
+    const onChange = vi.fn()
+    render(<Slider label="Position" value={10} min={0} max={12} step={1} keyStep={5} valueText={(v) => `${v} seconds`} onChange={onChange} />)
+    const slider = screen.getByRole('slider', { name: 'Position' })
+    expect(fireEvent.keyDown(slider, { key: 'ArrowLeft' })).toBe(false)
+    expect(onChange).toHaveBeenLastCalledWith(5, 'keyboard')
+    fireEvent.keyDown(slider, { key: 'ArrowUp' })
+    expect(onChange).toHaveBeenLastCalledWith(10, 'keyboard')
+    fireEvent.keyDown(slider, { key: 'ArrowRight' })
+    expect(onChange).toHaveBeenLastCalledWith(12, 'keyboard')
+    expect(fireEvent.keyDown(slider, { key: 'ArrowRight', shiftKey: true })).toBe(true)
+    onChange.mockClear()
+    render(<Slider label="Plain" value={3} min={0} max={12} step={1} valueText={(v) => `${v}`} onChange={onChange} />)
+    expect(fireEvent.keyDown(screen.getByRole('slider', { name: 'Plain' }), { key: 'ArrowRight' })).toBe(true)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('leaves page keys to the platform without bigStep, and modified or other keys always', () =>
   {
     const { slider, onChange } = renderSlider()

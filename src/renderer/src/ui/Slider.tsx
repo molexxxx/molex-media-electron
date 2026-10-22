@@ -18,6 +18,8 @@ export interface SliderProps
   step: number
   /** The PageUp and PageDown step; without it the platform moves a tenth of the range. */
   bigStep?: number
+  /** The arrow key step, such as five seconds on a seek bar whose step is one; without it the arrows move by `step`. */
+  keyStep?: number
   label?: string
   labelledBy?: string
   describedBy?: string
@@ -64,6 +66,7 @@ export function Slider({
   max,
   step,
   bigStep,
+  keyStep,
   label,
   labelledBy,
   describedBy,
@@ -127,12 +130,14 @@ export function Slider({
   {
     sourceRef.current = 'keyboard'
     const page = event.key === 'PageUp' ? 1 : event.key === 'PageDown' ? -1 : 0
-    if (bigStep === undefined || page === 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+    const arrow = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -1 : 0
+    const amount = page !== 0 ? bigStep : arrow !== 0 ? keyStep : undefined
+    if (amount === undefined || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
     {
       return
     }
     event.preventDefault()
-    const next = Number(clamp(shown + page * bigStep, min, max).toFixed(placesOf(step)))
+    const next = Number(clamp(shown + (page || arrow) * amount, min, max).toFixed(placesOf(step)))
     if (next !== shown)
     {
       move(next)

@@ -1,208 +1,164 @@
 /**
- * @module components/player/components/PlayerHeader
- * @description Header bar with track info and control buttons for the media player.
+ * The Player's toolbar: Add files (with Add folder), Add link, the Video or Visualization choice, the visualization
+ * by name, the playlist toggle, Pop out, and the overflow menu with Media information, the link qualities, and the
+ * keyboard shortcuts. Labels fold into icons with tooltips when the view is narrow.
  */
 
-import React, { useState, useRef, useEffect } from 'react'
-import type { VisMode, AudioQuality } from '../../../visualizations'
-import { VIS_LABELS, QUALITY_LABELS } from '../../../visualizations'
-import { FixedTip as Tip } from '../../shared/ui'
+import { useLayoutEffect, useState, type ReactElement, type Ref, type RefObject } from 'react'
+import { Button } from '../../../ui/Button'
+import { cx } from '../../../ui/cx'
+import { IconButton } from '../../../ui/IconButton'
+import { Menu, type MenuEntry, type MenuRadioItem } from '../../../ui/Menu'
+import { SegmentedControl } from '../../../ui/SegmentedControl'
+import { Select } from '../../../ui/Select'
+import { SplitButton } from '../../../ui/SplitButton'
+import type { VisMode } from '../../../visualizations/types'
+import { PICTURE_QUALITY_NAMES, PLAYER_COPY, SOUND_QUALITY_NAMES, VIS_NAMES } from '../copy'
+import type { PictureQuality, SoundQuality } from '../engine/links'
+import type { StageView } from '../engine/snapshot'
+import { VIS_ORDER, type PlayerEngine } from '../hooks/usePlayer'
+import { AddLinkPopover } from './AddLinkPopover'
 
-interface PlayerHeaderProps {
-  track: { name: string } | null
-  popout: boolean
-  isPoppedOut: boolean
-  visMode: VisMode
-  audioQuality: AudioQuality
-  showPlaylist: boolean
-  playlistLength: number
-  hasYouTubeTracks: boolean
-  onCycleQuality: () => void
-  onCycleVisMode: () => void
-  onTogglePlaylist: () => void
-  onToggleUrlInput: () => void
-  onPopout: () => void
-  onFileSelect: () => void
-  onClearPlaylist?: () => void
-}
+/** Widths of the header, in px, below which its labels fold away. */
+export const HEADER_WIDTHS = Object.freeze({ labels: 900, caption: 1080 })
 
-/* -- Per-visualizer icons ------------------------------------------- */
-const VIS_ICONS: Record<VisMode, React.JSX.Element> = {
-  dmt: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      {/* Outer diamond / sacred geometry frame */}
-      <path d="M12 2 L22 12 L12 22 L2 12 Z" />
-      {/* Inner eye shape */}
-      <path d="M5 12c3-4 11-4 14 0c-3 4-11 4-14 0z" />
-      {/* Iris */}
-      <circle cx="12" cy="12" r="2.5" />
-      {/* Pupil */}
-      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  ),
-  space: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" />
-    </svg>
-  ),
-  milkdrop: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-    </svg>
-  ),
-  plasma: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-    </svg>
-  ),
-  bars: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="14" width="4" height="7" rx="1" /><rect x="10" y="8" width="4" height="13" rx="1" /><rect x="17" y="3" width="4" height="18" rx="1" />
-    </svg>
-  ),
-  wave: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M2 12c2-3 4-6 6-3s4 6 6 3 4-6 6-3" />
-    </svg>
-  ),
-  horizon: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M2 17l3-4 4 2 5-6 4 3 4-4" /><line x1="2" y1="20" x2="22" y2="20" />
-    </svg>
-  ),
-  rain: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M4 4v8M8 2v12M12 6v10M16 3v14M20 5v9" strokeLinecap="round" />
-    </svg>
-  ),
-}
-
-export function PlayerHeader({
-  track, popout, isPoppedOut, visMode, audioQuality, showPlaylist,
-  playlistLength, hasYouTubeTracks, onCycleQuality, onCycleVisMode, onTogglePlaylist,
-  onToggleUrlInput, onPopout, onFileSelect, onClearPlaylist
-}: PlayerHeaderProps): React.JSX.Element {
-  const [addOpen, setAddOpen] = useState(false)
-  const addRef = useRef<HTMLDivElement>(null)
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!addOpen) return
-    const onClick = (e: MouseEvent): void => {
-      if (addRef.current && !addRef.current.contains(e.target as Node)) setAddOpen(false)
+/** The width of an element, followed as it resizes. */
+export function useWidth(ref: RefObject<HTMLElement | null>): number | null
+{
+  const [width, setWidth] = useState<number | null>(null)
+  useLayoutEffect(() =>
+  {
+    const element = ref.current
+    if (element === null)
+    {
+      return undefined
     }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [addOpen])
+    setWidth(element.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined')
+    {
+      return undefined
+    }
+    const observer = new ResizeObserver((entries) => setWidth(entries[entries.length - 1].contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
 
-  const btnCls = 'w-8 h-8 rounded-lg flex items-center justify-center text-surface-400 hover:text-white hover:bg-surface-800 transition-colors'
-  const btnActiveCls = 'w-8 h-8 rounded-lg flex items-center justify-center text-accent-300 bg-accent-600/20 transition-colors'
+/** What the header calls on the page. */
+export interface PlayerHeaderActions
+{
+  onAddFiles: () => void
+  onAddFolder: () => void
+  onShowInfo: () => void
+  onShortcuts: () => void
+  onTogglePlaylist: () => void
+}
 
+/** Props of {@link PlayerHeader}. */
+export interface PlayerHeaderProps extends PlayerHeaderActions
+{
+  player: PlayerEngine
+  width: number | null
+  playlistShown: boolean
+  linkTriggerRef: Ref<HTMLButtonElement>
+  className?: string
+}
+
+/** The overflow menu's entries. */
+export function moreEntries(player: Pick<PlayerEngine, 'current' | 'pictureQuality' | 'soundQuality' | 'setPictureQuality' | 'setSoundQuality'>, actions: Pick<PlayerHeaderActions, 'onShowInfo' | 'onShortcuts'>): MenuEntry[]
+{
+  const pictures = (Object.keys(PICTURE_QUALITY_NAMES) as PictureQuality[]).map((quality): MenuRadioItem => ({
+    kind: 'radio',
+    group: 'picture-quality',
+    id: `picture-${quality}`,
+    label: PICTURE_QUALITY_NAMES[quality],
+    checked: player.pictureQuality === quality,
+    onSelect: () => player.setPictureQuality(quality)
+  }))
+  const sounds = (Object.keys(SOUND_QUALITY_NAMES) as SoundQuality[]).map((quality): MenuRadioItem => ({
+    kind: 'radio',
+    group: 'sound-quality',
+    id: `sound-${quality}`,
+    label: SOUND_QUALITY_NAMES[quality],
+    checked: player.soundQuality === quality,
+    onSelect: () => player.setSoundQuality(quality)
+  }))
+  const local = player.current?.filePath !== undefined
+  return [
+    {
+      id: 'info',
+      label: PLAYER_COPY.mediaInfo,
+      icon: 'player.mediaInfo',
+      shortcut: 'Mod+I',
+      disabled: !local,
+      disabledReason: player.current === null ? 'Play a file first.' : 'Media information is for local files.',
+      onSelect: actions.onShowInfo
+    },
+    'separator',
+    { kind: 'submenu', id: 'picture-quality', label: PLAYER_COPY.pictureQuality, items: pictures },
+    { kind: 'submenu', id: 'sound-quality', label: PLAYER_COPY.soundQuality, items: sounds },
+    'separator',
+    { id: 'shortcuts', label: PLAYER_COPY.shortcuts, icon: 'action.shortcuts', shortcut: 'F1', onSelect: actions.onShortcuts }
+  ]
+}
+
+/** The Player's toolbar. */
+export function PlayerHeader({ player, width, playlistShown, linkTriggerRef, className, onAddFiles, onAddFolder, onShowInfo, onShortcuts, onTogglePlaylist }: PlayerHeaderProps): ReactElement
+{
+  const labels = width === null || width >= HEADER_WIDTHS.labels
+  const caption = width === null || width >= HEADER_WIDTHS.caption
+  const empty = player.tracks.length === 0
   return (
-    <div className="flex items-center gap-2 shrink-0 min-w-0">
-      <div className="min-w-0 flex-1">
-        {!popout && <h2 className="text-lg font-medium text-surface-200 leading-tight tracking-tight truncate">Media Player</h2>}
-        <p className={`text-surface-500 truncate text-xs`} title={track ? track.name : undefined}>
-          {track ? track.name : 'Drop files, paste URLs, or browse'}
-        </p>
+    <header className={cx('flex h-12 shrink-0 items-center gap-2 border-b border-line bg-panel px-4', className)} data-region="player-toolbar">
+      <h1 className="sr-only">{PLAYER_COPY.page}</h1>
+      <SplitButton
+        icon="action.addFiles"
+        actionName={PLAYER_COPY.addFilesMore}
+        items={[{ id: 'folder', label: PLAYER_COPY.addFolder, icon: 'action.addFolder', shortcut: 'Mod+Shift+O', onSelect: onAddFolder }]}
+        onClick={onAddFiles}
+        aria-keyshortcuts="Control+O"
+      >
+        {PLAYER_COPY.addFiles}
+      </SplitButton>
+      <AddLinkPopover onAdd={player.addLink} triggerRef={linkTriggerRef} iconOnly={!labels} />
+      <div className="min-w-2 flex-1" />
+      <div className="flex items-center gap-2">
+        {caption && <span className="text-label text-ink-3" aria-hidden="true">{PLAYER_COPY.view}</span>}
+        <SegmentedControl<StageView>
+          label={PLAYER_COPY.view}
+          value={player.canShowPicture ? player.view : 'visualization'}
+          disabled={!player.canShowPicture}
+          onChange={(value) => player.setView(value)}
+          options={[
+            { value: 'video', label: PLAYER_COPY.video, icon: 'player.video', description: 'Shows the picture when the track has one.' },
+            { value: 'visualization', label: PLAYER_COPY.visualization, icon: 'player.visualization' }
+          ]}
+        />
       </div>
-      <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-        {/* Audio quality - only relevant for YouTube streams */}
-        {hasYouTubeTracks && <Tip label={`Quality: ${QUALITY_LABELS[audioQuality]}`}>
-          <button onClick={onCycleQuality} className={`${btnCls} hidden sm:flex`}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-              {audioQuality !== 'low' && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />}
-            </svg>
-          </button>
-        </Tip>}
-
-        {/* Visualizer mode - unique icon per mode */}
-        <Tip label={VIS_LABELS[visMode]}>
-          <button onClick={onCycleVisMode} className={`${btnCls} hidden sm:flex`}>
-            {VIS_ICONS[visMode]}
-          </button>
-        </Tip>
-
-        {/* Playlist toggle */}
-        <Tip label={`Playlist${playlistLength > 0 ? ` (${playlistLength})` : ''}`}>
-          <button onClick={onTogglePlaylist} className={showPlaylist ? btnActiveCls : btnCls}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </button>
-        </Tip>
-
-        {/* Pop out - separate */}
-        {!popout && !isPoppedOut && (
-          <Tip label="Pop out">
-            <button onClick={onPopout} className={btnCls}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-                <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
-              </svg>
-            </button>
-          </Tip>
-        )}
-
-        {/* Add dropdown - combines browse, file select, URL */}
-        <div ref={addRef} className="relative">
-          <Tip label="Add tracks">
-            <button
-              onClick={() => setAddOpen((v) => !v)}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                addOpen ? 'bg-accent-500/25 text-accent-200 border border-accent-500/30' : 'bg-accent-500/15 hover:bg-accent-500/25 text-accent-300 border border-accent-500/20'
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-          </Tip>
-          {addOpen && (
-            <div className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-surface-900/95 border border-surface-700/60 shadow-xl shadow-black/40 backdrop-blur-xl z-50 overflow-hidden animate-fade-in">
-              <button
-                onClick={() => { setAddOpen(false); onFileSelect() }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                  <polyline points="14,2 14,8 20,8" />
-                </svg>
-                Choose Files
-              </button>
-              <div className="border-t border-white/[0.06]" />
-              <button
-                onClick={() => { setAddOpen(false); onToggleUrlInput() }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-surface-300 hover:text-white hover:bg-white/[0.06] transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-400 shrink-0">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-                External Link
-              </button>
-              {onClearPlaylist && playlistLength > 0 && (
-                <>
-                  <div className="border-t border-white/[0.06]" />
-                  <button
-                    onClick={() => { setAddOpen(false); onClearPlaylist() }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                    Clear Playlist
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      <Select
+        label={PLAYER_COPY.visualization}
+        value={player.visMode}
+        onChange={(value) => player.setVisMode(value as VisMode)}
+        options={VIS_ORDER.map((mode) => ({ value: mode, label: VIS_NAMES[mode] }))}
+        className="w-36 shrink-0"
+      />
+      <IconButton
+        label={playlistShown ? PLAYER_COPY.hidePlaylist : PLAYER_COPY.showPlaylist}
+        icon="player.playlist"
+        pressed={playlistShown}
+        disabled={empty}
+        onClick={onTogglePlaylist}
+      />
+      {labels
+        ? <Button icon="player.popout" onClick={player.popOut}>{PLAYER_COPY.popOut}</Button>
+        : <IconButton label={PLAYER_COPY.popOut} icon="player.popout" onClick={player.popOut} />}
+      <Menu
+        label={PLAYER_COPY.more}
+        items={moreEntries(player, { onShowInfo, onShortcuts })}
+        align="end"
+        trigger={<IconButton label={PLAYER_COPY.more} icon="action.more" />}
+      />
+    </header>
   )
 }

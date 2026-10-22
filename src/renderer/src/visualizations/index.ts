@@ -1,11 +1,11 @@
 /**
  * @module visualizations
  * @description Barrel export for all visualization draw functions, types,
- * constants, and audio utilities.
+ * constants, the token palette they draw with, and audio utilities.
  *
  * Import everything from `'../visualizations'` in consuming components:
  * ```ts
- * import { drawDMT, drawBars, getBandEnergy, type AudioFeatures } from '../visualizations'
+ * import { drawDMT, readVizPalette, type AudioFeatures } from '../visualizations'
  * ```
  */
 
@@ -28,8 +28,8 @@ export type {
 
 export { VIS_LABELS, QUALITY_LABELS } from './types'
 
+export * from './palette'
 export { getBandEnergy, getAWeights, spectralFlux, spectralCentroid, rmsLevel, freqToBin } from './audio'
-export { drawIdle } from './idle'
 export { drawBars } from './bars'
 export { drawWave } from './wave'
 export { drawHorizon } from './horizon'

@@ -20,6 +20,9 @@ interface AppState {
   viewHistory: View[]
   setView: (view: View) => void
   goBack: () => void
+  /** True while the window is full screen for the Player: the shell hides and navigation is ignored. */
+  fullscreen: boolean
+  setFullscreen: (on: boolean) => void
 
   // FFmpeg setup
   ffmpegReady: boolean
@@ -83,9 +86,11 @@ function navigateTo(s: AppState, view: View): Partial<AppState> {
 export const useAppStore = create<AppState>((set) => ({
   currentView: 'dashboard',
   viewHistory: [],
-  setView: (view) => set((s) => navigateTo(s, view)),
+  setView: (view) => set((s) => s.fullscreen ? {} : navigateTo(s, view)),
+  fullscreen: false,
+  setFullscreen: (on) => set({ fullscreen: on }),
   goBack: () => set((s) => {
-    if (s.viewHistory.length === 0) return {}
+    if (s.viewHistory.length === 0 || s.fullscreen) return {}
     const prev = s.viewHistory[s.viewHistory.length - 1]
     return { currentView: prev, viewHistory: s.viewHistory.slice(0, -1) }
   }),

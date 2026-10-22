@@ -175,15 +175,17 @@ export interface ShortcutsPopoverProps
   platform?: Platform
   /** Where focus goes on close when the element focused before opening is gone, such as an overflow menu item. */
   fallbackFocus?: () => HTMLElement | null
+  /** Another view's keyboard map, such as the Player's; the Batch view's by default. */
+  groups?: readonly ShortcutGroup[]
 }
 
 /**
  * The Batch view's keyboard map in a non-modal popover, grouped by area and written in the platform's words. The
  * page opens it on Ctrl+/ or F1, on "?" from the table, and from the batch overflow menu. Escape, Close, and light
  * dismiss close it and return focus to the element focused before it opened (or `fallbackFocus`); Tab out of it
- * closes it and leaves focus where Tab put it.
+ * closes it and leaves focus where Tab put it. Another view passes its own `groups`.
  */
-export function ShortcutsPopover({ open, onClose, platform, fallbackFocus }: ShortcutsPopoverProps): ReactElement
+export function ShortcutsPopover({ open, onClose, platform, fallbackFocus, groups = SHORTCUT_GROUPS }: ShortcutsPopoverProps): ReactElement
 {
   const contextPlatform = usePlatform()
   const resolvedPlatform = platform ?? contextPlatform
@@ -267,7 +269,7 @@ export function ShortcutsPopover({ open, onClose, platform, fallbackFocus }: Sho
             <IconButton icon="action.close" label="Close" size="sm" onClick={onClose} />
           </div>
           <div className="gap-8 px-4 pt-3 @[44rem]:columns-2">
-            {SHORTCUT_GROUPS.map((group) => <ShortcutSection key={group.id} group={group} platform={resolvedPlatform} />)}
+            {groups.map((group) => <ShortcutSection key={group.id} group={group} platform={resolvedPlatform} />)}
           </div>
         </>
       )}
