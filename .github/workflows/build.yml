@@ -53,9 +53,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
+      # The runner image's packages.microsoft.com source is not needed here, and
+      # when it fails, apt-get update fails the build with it.
       - name: Install rpm tooling
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y rpm
+        run: |
+          sudo find /etc/apt/sources.list.d -type f -exec grep -q 'packages\.microsoft\.com' {} \; -delete
+          sudo apt-get update
+          sudo apt-get install -y rpm
 
       # macOS, signed + notarized: runs only when the Apple Developer ID cert
       # and notarization secrets are configured.

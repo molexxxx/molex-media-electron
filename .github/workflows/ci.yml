@@ -191,9 +191,12 @@ jobs:
           path: ${{ env.MOLEX_GOLDEN_OUT }}/ffmpeg
           key: ${{ steps.pin.outputs.key }}
 
+      # The runner image's packages.microsoft.com source is not needed here, and
+      # when it fails, apt-get update fails the job with it.
       - name: Install the Ubuntu FFmpeg package
         if: matrix.ffmpeg == 'apt'
         run: |
+          sudo find /etc/apt/sources.list.d -type f -exec grep -q 'packages\.microsoft\.com' {} \; -delete
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg
           ffmpeg -hide_banner -version

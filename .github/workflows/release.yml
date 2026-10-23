@@ -81,9 +81,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           YOUTUBE_DL_SKIP_DOWNLOAD: '1'
 
+      # The runner image's packages.microsoft.com source is not needed here, and
+      # when it fails, apt-get update fails the release with it.
       - name: Install rpm tooling
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm
+        run: |
+          sudo find /etc/apt/sources.list.d -type f -exec grep -q 'packages\.microsoft\.com' {} \; -delete
+          sudo apt-get update
+          sudo apt-get install -y rpm
 
       # macOS, signed: builds a signed (not-yet-notarized) .dmg/.zip. The next
       # step submits the .dmg to Apple without waiting; the notarize-macos job
