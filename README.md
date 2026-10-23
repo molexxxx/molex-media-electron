@@ -10,15 +10,15 @@
 
 **A desktop toolkit for loudness, conversion, compression, extraction, editing, and playback, built on FFmpeg.**
 
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=34c0c530" alt="CI" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=7c9c6e65" alt="build" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=042ba673" alt="release" /></a>
+<a href="https://github.com/molexxxx/molex-media-toolkit/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-ci-molex.svg?v=34c0c530" alt="CI" /></a>
+<a href="https://github.com/molexxxx/molex-media-toolkit/actions/workflows/build.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-build-molex.svg?v=7c9c6e65" alt="build" /></a>
+<a href="https://github.com/molexxxx/molex-media-toolkit/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-release-molex.svg?v=042ba673" alt="release" /></a>
 <a href="LICENSE"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-license-molex.svg?v=8413dcb4" alt="license" /></a>
-<a href="https://github.com/molexxxx/molex-media-electron/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=1abd174b" alt="downloads" /></a>
+<a href="https://github.com/molexxxx/molex-media-toolkit/releases"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/molex-media-downloads-molex.svg?v=1abd174b" alt="downloads" /></a>
 
 <br/>
 
-[Download](#install) · [Features](#features) · [FFmpeg and yt-dlp](#ffmpeg-and-yt-dlp) · [Development](#development) · [Changelog](CHANGELOG.md) · [Website](https://media.molex.cloud) · [Report a bug](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/molexxxx/molex-media-electron/issues/new?template=feature_request.yml)
+[Download](#install) · [Features](#features) · [FFmpeg and yt-dlp](#ffmpeg-and-yt-dlp) · [Development](#development) · [Changelog](CHANGELOG.md) · [Website](https://media.molex.cloud) · [Report a bug](https://github.com/molexxxx/molex-media-toolkit/issues/new?template=bug_report.yml) · [Request a feature](https://github.com/molexxxx/molex-media-toolkit/issues/new?template=feature_request.yml)
 
 </div>
 
@@ -115,7 +115,7 @@ yt-dlp is downloaded the first time you open a link, from the yt-dlp project's o
 
 ## Install
 
-Download the installer for your platform from the [latest release](https://github.com/molexxxx/molex-media-electron/releases/latest).
+Download the installer for your platform from the [latest release](https://github.com/molexxxx/molex-media-toolkit/releases/latest).
 
 | Platform | Package |
 |----------|---------|
@@ -130,8 +130,8 @@ Requirements: a 64-bit Windows, macOS, or Linux system, and a network connection
 ## Development
 
 ```bash
-git clone https://github.com/molexxxx/molex-media-electron.git
-cd molex-media-electron
+git clone https://github.com/molexxxx/molex-media-toolkit.git
+cd molex-media-toolkit
 npm install
 npm run dev
 ```

@@ -3,7 +3,7 @@ productName: molexMedia
 publish:
   provider: github
   owner: molexxxx
-  repo: molex-media-electron
+  repo: molex-media-toolkit
 directories:
   buildResources: build
   output: dist

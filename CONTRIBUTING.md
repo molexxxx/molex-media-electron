@@ -11,8 +11,8 @@
 ### Setup
 
 ```bash
-git clone https://github.com/molexxxx/molex-media-electron.git
-cd molex-media-electron
+git clone https://github.com/molexxxx/molex-media-toolkit.git
+cd molex-media-toolkit
 npm install
 npm run dev
 ```
@@ -92,7 +92,7 @@ npm run package:linux  # Linux (.deb and .rpm)
 
 ## Reporting Bugs
 
-Use the [Bug Report template](https://github.com/molexxxx/molex-media-electron/issues/new?template=bug_report.yml). Include:
+Use the [Bug Report template](https://github.com/molexxxx/molex-media-toolkit/issues/new?template=bug_report.yml). Include:
 
 - OS and version
 - App version

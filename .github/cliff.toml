@@ -28,7 +28,7 @@ trim = true
 
 [remote.github]
 owner = "molexxxx"
-repo = "molex-media-electron"
+repo = "molex-media-toolkit"
 
 [git]
 conventional_commits = true

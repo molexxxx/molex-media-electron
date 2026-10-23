@@ -112,7 +112,7 @@ $.component('home-page', {
         <div>
             <h2 id="h-get">Download molexMedia</h2>
             <p class="lead">Free and open source under the MIT license, for Windows, macOS, and Linux. The Windows and macOS builds update themselves from GitHub Releases.</p>
-            <p class="lead">The source code, the issue tracker, and every past release are on <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">GitHub</a>.</p>
+            <p class="lead">The source code, the issue tracker, and every past release are on <a href="https://github.com/molexxxx/molex-media-toolkit" rel="noopener">GitHub</a>.</p>
         </div>
         <platform-list></platform-list>
     </div>

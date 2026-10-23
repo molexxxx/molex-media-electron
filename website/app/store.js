@@ -1,10 +1,10 @@
 const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
 export const API_BASE = isLocal ? 'http://localhost:3610' : 'https://media-api.molex.cloud';
-export const REPO = 'https://github.com/molexxxx/molex-media-electron';
+export const REPO = 'https://github.com/molexxxx/molex-media-toolkit';
 export const RELEASES_URL = `${REPO}/releases`;
 export const LATEST_URL = `${REPO}/releases/latest`;
-const CHANGELOG_URL = 'https://raw.githubusercontent.com/molexxxx/molex-media-electron/main/CHANGELOG.md';
+const CHANGELOG_URL = 'https://raw.githubusercontent.com/molexxxx/molex-media-toolkit/main/CHANGELOG.md';
 
 export const store = $.store('app', {
     state: {

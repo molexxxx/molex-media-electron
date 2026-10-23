@@ -68,7 +68,7 @@ export const APPLICATION_WORDS = {
 } as const
 
 /** The project's page on GitHub. */
-export const PROJECT_URL = 'https://github.com/molexxxx/molex-media-electron'
+export const PROJECT_URL = 'https://github.com/molexxxx/molex-media-toolkit'
 
 /** The Interface size choices in percent; main clamps the stored value to 90 to 200. */
 export const INTERFACE_SIZES = [90, 100, 110, 125, 150, 175, 200] as const

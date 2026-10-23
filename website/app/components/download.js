@@ -27,8 +27,8 @@ $.component('download-page', {
             <div>
                 <h2>Other ways to get it</h2>
                 <ul class="bullets">
-                    <li>Every past version is on the <a href="https://github.com/molexxxx/molex-media-electron/releases" rel="noopener">GitHub releases page</a>.</li>
-                    <li>Build it yourself from the <a href="https://github.com/molexxxx/molex-media-electron" rel="noopener">source code</a> with Node.js: <code>npm install</code>, then <code>npm run package:win</code>, <code>package:mac</code>, or <code>package:linux</code>.</li>
+                    <li>Every past version is on the <a href="https://github.com/molexxxx/molex-media-toolkit/releases" rel="noopener">GitHub releases page</a>.</li>
+                    <li>Build it yourself from the <a href="https://github.com/molexxxx/molex-media-toolkit" rel="noopener">source code</a> with Node.js: <code>npm install</code>, then <code>npm run package:win</code>, <code>package:mac</code>, or <code>package:linux</code>.</li>
                     <li>See what changed in each release in the ${link('/changelog', 'changelog')}.</li>
                 </ul>
             </div>
