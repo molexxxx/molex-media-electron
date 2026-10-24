@@ -2,6 +2,25 @@
 
 All notable changes to the audio normalization tool are documented here.
 
+## [5.1.1] - 2026-10-24 - Frame rates in the Editor
+
+### Fixed
+
+- **Trim on files that are not 30 fps.** The In, Out, and Length readouts
+  on a 24, 25, or 60 fps file showed the wrong time (a 60 fps file read
+  twice its length), and dragging the in and out handles could export the
+  wrong part of the file. Trim now counts and exports in the file's own
+  frame rate, so it still steps one real frame at a time.
+- **Timeline clips from files that are not 30 fps.** A 60 fps clip took
+  twice its length on the timeline, previewed at half speed, and exported
+  with a gap after it; 24 and 25 fps clips were shown too short and
+  previewed too fast. Clips now keep their real length, and a range marked
+  in Trim keeps its length when it is added to the timeline.
+- MPEG Layer II (.mp2) sources are labeled MP2 instead of MP3 in the Batch
+  queue.
+- The Dashboard's Add files and Tools keys show their whole detail line
+  instead of cutting it off.
+
 ## [5.1.0] - 2026-10-22 - Live streams and picture subtitles in the Player
 
 ### Added
