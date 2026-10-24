@@ -6,6 +6,55 @@ import {
 import { link, notice, reducedMotion, statusLabel, stamp, timecode, clock, MINUS } from './parts.js';
 
 const PLATFORM_NAMES = { windows: 'Windows', mac: 'macOS', linux: 'Linux' };
+const DOWNLOAD_PAGE = 'https://media.molex.cloud/download';
+
+/**
+ * Hands the download page link to the phone's share sheet, or copies it where sharing is not offered.
+ * @returns {Promise<'shared'|'copied'|'canceled'|'failed'>}
+ */
+async function sendDownloadLink()
+{
+    if (navigator.share)
+    {
+        try
+        {
+            await navigator.share({ title: 'Download molexMedia', url: DOWNLOAD_PAGE });
+            return 'shared';
+        }
+        catch (err)
+        {
+            if (err?.name === 'AbortError')
+            {
+                return 'canceled';
+            }
+        }
+    }
+    try
+    {
+        await navigator.clipboard.writeText(DOWNLOAD_PAGE);
+        return 'copied';
+    }
+    catch
+    {
+        return 'failed';
+    }
+}
+
+/**
+ * The phone's send-to-computer button and, when copying is blocked, the link as text.
+ * @param {string} sent Last result of sendDownloadLink, or ''.
+ * @param {string} cls Button classes.
+ */
+function sendLinkControl(sent, cls)
+{
+    const share = 'share' in navigator;
+    const label = sent === 'copied' ? 'Link copied' : share ? 'Send this link' : 'Copy link';
+    const glyph = sent === 'copied' ? 'check' : share ? 'link' : 'copy';
+    const fallback = sent === 'failed'
+        ? '<p class="get-file">This browser blocked copying. The link is <b class="mono">media.molex.cloud/download</b>.</p>'
+        : '';
+    return { button: `<button type="button" class="${cls}" @click="sendLink">${icon(glyph, 18)}${label}</button>`, fallback };
+}
 
 /**
  * Subscribes a component to the release store for its lifetime.
@@ -38,7 +87,7 @@ function fileMeta(asset, extra)
 }
 
 $.component('get-block', {
-    state: () => ({ tick: 0, copied: false }),
+    state: () => ({ tick: 0, sent: '' }),
 
     mounted()
     {
@@ -56,17 +105,9 @@ $.component('get-block', {
         loadReleases(true);
     },
 
-    async copyLink()
+    async sendLink()
     {
-        try
-        {
-            await navigator.clipboard.writeText('https://media.molex.cloud/download');
-            this.state.copied = true;
-        }
-        catch
-        {
-            this.state.copied = false;
-        }
+        this.state.sent = await sendDownloadLink();
     },
 
     render()
@@ -81,12 +122,11 @@ $.component('get-block', {
 
         if (platform === 'mobile')
         {
+            const send = sendLinkControl(this.state.sent, 'btn btn-primary btn-lg');
             return `<div class="get">
-                <p class="get-note"><strong>molexMedia is a desktop app</strong> for Windows, macOS, and Linux. Open this page on your computer to download it, or keep the link for later.</p>
-                <p class="get-more">
-                    ${link('/download', `${icon('download', 16)} See every download`, 'btn btn-primary')}
-                    <button type="button" class="btn btn-secondary" @click="copyLink">${icon(this.state.copied ? 'check' : 'copy', 16)}${this.state.copied ? 'Link copied' : 'Copy link'}</button>
-                </p>
+                <p class="get-note"><strong>molexMedia is a desktop app</strong> for Windows, macOS, and Linux. Send this page to your computer and download it there.</p>
+                <p class="get-more get-phone">${send.button}${link('/download', 'See every download')}</p>
+                ${send.fallback}${terms}
             </div>`;
         }
 
@@ -132,7 +172,7 @@ $.component('get-block', {
 });
 
 $.component('platform-list', {
-    state: () => ({ tick: 0, copied: '' }),
+    state: () => ({ tick: 0, copied: '', sent: '' }),
 
     mounted()
     {
@@ -170,6 +210,11 @@ $.component('platform-list', {
         }
     },
 
+    async sendLink()
+    {
+        this.state.sent = await sendDownloadLink();
+    },
+
     render()
     {
         const detail = this.props.detail === true || this.props.detail === 'true';
@@ -197,7 +242,7 @@ $.component('platform-list', {
             row('windows', 'Windows',
                 spec(['x64', '.exe installer', size(files.windows)]),
                 'Choose the install folder. Updates itself from GitHub Releases.',
-                [button(files.windows, 'Download .exe', detected !== 'mac' && detected !== 'linux')],
+                [button(files.windows, 'Download .exe', detected === 'windows' || detected === 'unknown')],
                 `${file(files.windows)}<p>The installer is not code-signed, so Windows SmartScreen may say it protected your PC. Choose <strong>More info</strong>, then <strong>Run anyway</strong>.</p>`),
             row('mac', 'macOS',
                 spec(['Universal', '.dmg', size(files.mac)]),
@@ -214,9 +259,12 @@ $.component('platform-list', {
         const head = failed
             ? notice('Release details did not load.', 'The buttons below open the latest release on GitHub instead.', `<button type="button" class="link-btn" @click="retry">Try again</button><a href="${RELEASES_URL}" rel="noopener">All releases on GitHub</a>`)
             : '';
-        const mobile = detected === 'mobile'
-            ? '<p class="get-note"><strong>You are on a phone or tablet.</strong> molexMedia runs on Windows, macOS, and Linux desktops.</p>'
-            : '';
+        let mobile = '';
+        if (detected === 'mobile')
+        {
+            const send = sendLinkControl(this.state.sent, 'btn btn-primary');
+            mobile = `<div class="get-note phone-note"><p><strong>You are on a phone or tablet.</strong> molexMedia runs on Windows, macOS, and Linux desktops. Send this page to your computer and download it there.</p>${send.button}${send.fallback}</div>`;
+        }
 
         return `<div>${head}${mobile}<div class="platforms">${rows.join('')}</div></div>`;
     },
@@ -259,7 +307,9 @@ const LOG_LINES = [
     ['11:44:06', 'error', 'FFmpeg output', 'MM-0146 concert-cam-b.mp4: moov atom not found; the file ends early. Retry after the copy finishes.'],
 ];
 
-const freshRows = (done = false) => JOBS.map(() => ({ p: done ? 1 : 0, state: done ? 'done' : 'queued', landed: false }));
+const LANDING_MS = 400;
+
+const freshRows = (done = false) => JOBS.map(() => ({ p: done ? 1 : 0, state: done ? 'done' : 'queued', endedAt: 0 }));
 
 /**
  * The status word for a running job at a given progress, in the words the app's status column uses.
@@ -385,19 +435,18 @@ $.component('app-window', {
                 if (r.p >= 1)
                 {
                     r.state = 'done';
-                    r.landed = false;
                     r.ended = this._elapsed;
+                    r.endedAt = performance.now();
                 }
             }
         });
+        this.paint();
         if (rows.every((r) => r.state === 'done'))
         {
             clearInterval(this._timer);
             this._timer = null;
             this.state.phase = 'done';
-            return;
         }
-        this.paint();
     },
 
     counts()
@@ -407,14 +456,31 @@ $.component('app-window', {
         return { done, active, queued: this._rows.length - done - active, total: this._rows.length };
     },
 
+    /**
+     * Names what a row's status cell shows, so a paint only rebuilds the cell when this changes.
+     * @param {number} i Row index.
+     */
+    statusKey(i)
+    {
+        const r = this._rows[i];
+        if (r.state === 'running')
+        {
+            return runningWord(JOBS[i], r.p)[0];
+        }
+        if (r.state === 'done')
+        {
+            return 'done';
+        }
+        return this.state.phase === 'idle' ? 'ready' : 'queued';
+    },
+
     statusCell(i)
     {
         const r = this._rows[i];
         const job = JOBS[i];
         if (r.state === 'done')
         {
-            const landing = this.state.phase === 'running' && !r.landed;
-            r.landed = true;
+            const landing = r.endedAt > 0 && performance.now() - r.endedAt < LANDING_MS;
             return job.result.stamp ? stamp('verified', job.result.stamp, landing) : `${statusLabel('done', 'Done')}<span class="mono" style="margin-left:8px;color:var(--ink-3)">${job.result.done}</span>`;
         }
         if (r.state === 'running')
@@ -477,6 +543,10 @@ $.component('app-window', {
         return 'Writes next to each source · Renames if the name is taken · Originals are not touched';
     },
 
+    /**
+     * Updates the running rows in place. A status cell is rebuilt only when its key changes, and a running word
+     * change keeps its spinner element, so the spin never restarts; the bar fill moves through a CSS variable.
+     */
     paint()
     {
         const el = this._el;
@@ -488,15 +558,31 @@ $.component('app-window', {
                 return;
             }
             const status = row.querySelector('.c-status');
-            const html = this.statusCell(i);
-            if (status && status.innerHTML !== html)
+            const key = this.statusKey(i);
+            if (status && status.dataset.key !== key)
             {
-                status.innerHTML = html;
+                const label = status.querySelector('.status');
+                if (r.state === 'running' && label?.querySelector('.spin'))
+                {
+                    label.dataset.status = key;
+                    label.lastElementChild.textContent = runningWord(JOBS[i], r.p)[1];
+                }
+                else
+                {
+                    status.innerHTML = this.statusCell(i);
+                }
+                status.dataset.key = key;
             }
-            const progress = row.querySelector('.c-prog');
-            if (progress)
+            const bar = row.querySelector('.bar');
+            if (bar)
             {
-                progress.innerHTML = this.progressCell(i);
+                bar.style.setProperty('--p', String(r.p));
+                bar.toggleAttribute('data-done', r.state === 'done');
+            }
+            const pct = row.querySelector('.pct');
+            if (pct)
+            {
+                pct.textContent = `${Math.round(r.p * 100)}%`;
             }
             const time = row.querySelector('.c-time');
             if (time)
@@ -510,9 +596,11 @@ $.component('app-window', {
             }
         });
         const sentence = el.querySelector('[data-sentence]');
-        if (sentence)
+        const words = this.sentence();
+        if (sentence && sentence.dataset.words !== words)
         {
-            sentence.innerHTML = this.sentence();
+            sentence.innerHTML = words;
+            sentence.dataset.words = words;
         }
         const trail = el.querySelector('[data-trail]');
         if (trail)
@@ -544,10 +632,10 @@ $.component('app-window', {
             ? '<span class="c-no">#</span><span>File</span><span>Status</span><span>Progress</span><span class="end opt">Time</span><span class="end opt">Speed</span>'
             : '<span class="c-no">#</span><span>File</span><span class="opt">Operation</span><span>Status</span><span class="end opt">Size</span><span class="end opt">Duration</span>';
         const cols = runSet
-            ? '--cols: 52px minmax(0, 1.5fr) minmax(0, 2fr) minmax(0, 1fr) 64px 68px; --cols-narrow: 44px minmax(0, 1fr) minmax(0, 1.9fr) 56px'
+            ? '--cols: 48px minmax(0, 1.2fr) minmax(0, 2.1fr) minmax(0, 1.1fr) 60px 60px; --cols-narrow: 44px minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(96px, 1fr)'
             : '--cols: 52px minmax(0, 2fr) minmax(0, 1.7fr) minmax(0, 1.3fr) 72px 84px; --cols-narrow: 44px minmax(0, 1.5fr) minmax(0, 1fr)';
         const rows = JOBS.map((job, i) => runSet
-            ? `<div class="grid-row" data-row="${i}"><span class="c-no">${101 + i}</span><span class="c-file">${job.file}</span><span class="c-status">${this.statusCell(i)}</span><span class="c-prog">${this.progressCell(i)}</span><span class="end opt num c-time">${this.timeCell(i)}</span><span class="end opt num c-speed">${this.speedCell(i)}</span></div>`
+            ? `<div class="grid-row" data-row="${i}"><span class="c-no">${101 + i}</span><span class="c-file">${job.file}</span><span class="c-status" data-key="${this.statusKey(i)}">${this.statusCell(i)}</span><span class="c-prog">${this.progressCell(i)}</span><span class="end opt num c-time">${this.timeCell(i)}</span><span class="end opt num c-speed">${this.speedCell(i)}</span></div>`
             : `<div class="grid-row" data-row="${i}"${i === 0 ? ' aria-selected="true"' : ''}><span class="c-no">${101 + i}</span><span class="c-file">${job.file}</span><span class="opt">${job.op}</span><span class="c-status">${this.statusCell(i)}</span><span class="end opt num">${job.size}</span><span class="end opt num">${job.dur}</span></div>`).join('');
 
         return `<div class="scr" aria-label="Batch">
@@ -568,7 +656,7 @@ $.component('app-window', {
                 <span class="field-search">${icon('search', 14)}Filter by name or folder</span>
                 <span class="ub ub-ghost">${icon('filter', 14)}Filter${icon('chevron', 14)}</span>
             </div>
-            <div class="grid" style="${cols}" role="img" aria-label="The job table, ${JOBS.length} jobs">
+            <div class="grid jobs" style="${cols}" role="img" aria-label="The job table, ${JOBS.length} jobs">
                 <div class="grid-head">${head}</div>
                 ${rows}
             </div>

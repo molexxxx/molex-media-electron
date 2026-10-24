@@ -14,17 +14,31 @@ $.http.configure({ baseURL: API_BASE, timeout: 15000 });
 
 const nav = document.getElementById('nav');
 const toggle = document.getElementById('nav-toggle');
+const toggleLabel = toggle.querySelector('.sr');
+const menu = document.getElementById('nav-links');
+const narrow = window.matchMedia('(max-width: 760px)');
 const description = document.querySelector('meta[name="description"]');
 const defaults = { title: document.title, description: description?.content || '' };
 
 /**
- * Opens or closes the mobile menu.
- * @param {boolean} open Desired state.
+ * Opens or closes the mobile menu. While it is open the page behind it is inert and does not scroll.
+ * @param {boolean} open Desired state; ignored above the mobile breakpoint, where the links are always shown.
  */
 function setMenu(open)
 {
-    nav.dataset.open = String(open);
-    toggle.setAttribute('aria-expanded', String(open));
+    const on = open && narrow.matches;
+    if (!on && menu.contains(document.activeElement))
+    {
+        toggle.focus();
+    }
+    nav.dataset.open = String(on);
+    toggle.setAttribute('aria-expanded', String(on));
+    toggleLabel.textContent = on ? 'Close menu' : 'Open menu';
+    document.documentElement.classList.toggle('menu-open', on);
+    for (const el of document.querySelectorAll('#skip-link, main, .foot'))
+    {
+        el.inert = on;
+    }
 }
 
 /**
@@ -78,6 +92,8 @@ router.onChange((to) =>
 });
 
 toggle.addEventListener('click', () => setMenu(nav.dataset.open !== 'true'));
+document.getElementById('nav-scrim').addEventListener('click', () => setMenu(false));
+narrow.addEventListener('change', () => setMenu(false));
 
 document.addEventListener('keydown', (e) =>
 {

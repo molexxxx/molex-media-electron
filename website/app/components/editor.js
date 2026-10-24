@@ -53,7 +53,7 @@ $.component('editor-page', {
         <p class="crumbs">${link('/features', 'Features')}<span aria-hidden="true">/</span><span>Editor</span></p>
         <h1>Editor</h1>
         <p class="lead">Three modes under one header: Trim for one file, Timeline for several, and Inspect for what a file holds. Open a file with Ctrl+O, or drop it anywhere on the page.</p>
-        <figure class="shot"><img src="assets/screens/editor.webp" width="1440" height="922" alt="The Editor in Trim: a video frame above lit In, Out, and Length readouts, a thumbnail strip, and the export panel." loading="lazy"><figcaption>Trim, with the export panel open. Video: Big Buck Bunny, Blender Foundation, CC BY 3.0.</figcaption></figure>
+        <figure class="shot"><img src="assets/screens/editor.webp" width="1440" height="922" alt="The Editor in Trim: a video frame above the In, Out, and Length readouts, a thumbnail strip, and the export panel." loading="lazy"><figcaption>Trim, with the export panel open. Video: Big Buck Bunny, Blender Foundation, CC BY 3.0.</figcaption></figure>
     </header>
     <div class="doc">
         <nav class="toc" aria-label="On this page">
@@ -66,7 +66,7 @@ $.component('editor-page', {
         <div>
             <section class="doc-sec" id="trim" aria-labelledby="h-trim">
                 <h2 id="h-trim">Trim</h2>
-                <p>Cut one file between an in and an out point, then export video, audio, or a GIF. In, out, and length sit in lit readouts above a thumbnail strip; the playhead steps a frame at a time and the strip scrubs with the pointer.</p>
+                <p>Cut one file between an in and an out point, then export video, audio, or a GIF. In, out, and length are shown in timecode above a thumbnail strip; the playhead steps a frame at a time and the strip scrubs with the pointer.</p>
                 <div class="spec-wrap"><table class="spec">
                     <tbody>
                         <tr><th scope="row">Formats</th><td>Video, audio, or GIF, chosen in the export panel</td></tr>

@@ -319,9 +319,9 @@ kbd
     position: sticky;
     top: 0;
     z-index: 50;
-    background: color-mix(in srgb, var(--rail) 94%, transparent);
+    background: var(--rail);
     border-bottom: 1px solid var(--rail-edge);
-    backdrop-filter: blur(8px);
+    transition: background-color var(--move) var(--ease-out);
 }
 
 .nav-row
@@ -427,18 +427,53 @@ kbd
 .nav-toggle
 {
     display: none;
-    width: 40px;
-    height: 40px;
-    margin-left: auto;
+    width: 44px;
+    height: 44px;
+    margin: 0 -10px 0 auto;
     border-radius: var(--radius-sm);
     align-items: center;
     justify-content: center;
     color: var(--ink);
 }
 
-.nav-toggle:hover
+@media (hover: hover)
 {
-    background: var(--wash-hover);
+    .nav-toggle:hover
+    {
+        background: var(--wash-hover);
+    }
+}
+
+.burger line
+{
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform var(--move) var(--ease-out), opacity var(--fast) linear;
+}
+
+.nav[data-open='true'] .burger .b1
+{
+    transform: translateY(6px) rotate(45deg);
+}
+
+.nav[data-open='true'] .burger .b2
+{
+    opacity: 0;
+}
+
+.nav[data-open='true'] .burger .b3
+{
+    transform: translateY(-6px) rotate(-45deg);
+}
+
+.nav-scrim
+{
+    display: none;
+}
+
+html.menu-open
+{
+    overflow: hidden;
 }
 
 .btn
@@ -612,6 +647,20 @@ kbd
 .get-note strong
 {
     color: var(--ink);
+}
+
+.get-phone
+{
+    align-items: center;
+    margin-top: 16px;
+}
+
+.phone-note
+{
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+    margin: 0 0 20px;
 }
 
 .shot-note
@@ -853,6 +902,16 @@ kbd
     font-size: 0.8125rem;
 }
 
+.stampcase p + p
+{
+    margin-top: 6px;
+}
+
+.stampcase p strong
+{
+    color: var(--ink-2);
+}
+
 .close
 {
     display: grid;
@@ -925,6 +984,7 @@ kbd
 {
     grid-column: 1 / -1;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
     padding-top: 12px;
     border-top: 1px solid var(--line);
@@ -1145,6 +1205,14 @@ kbd
     overflow-x: auto;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-md);
+}
+
+.spec-note
+{
+    margin-top: 10px;
+    max-width: 52em;
+    color: var(--ink-3);
+    font-size: 0.8125rem;
 }
 
 .spec
@@ -1498,7 +1566,8 @@ kbd
 
 .nf
 {
-    padding: clamp(64px, 10vw, 140px) 0;
+    padding-top: clamp(64px, 10vw, 140px);
+    padding-bottom: clamp(64px, 10vw, 140px);
 }
 
 .nf p
@@ -1773,12 +1842,12 @@ h1[tabindex='-1']:focus
     font-weight: 600;
 }
 
-.ub-primary:hover
+button.ub-primary:hover
 {
     background: var(--accent-hover);
 }
 
-.ub-primary:active
+button.ub-primary:active
 {
     background: var(--accent-pressed);
 }
@@ -1789,7 +1858,7 @@ h1[tabindex='-1']:focus
     border-color: var(--line-strong);
 }
 
-.ub-secondary:hover
+button.ub-secondary:hover
 {
     background: var(--raised-hover);
 }
@@ -1799,7 +1868,7 @@ h1[tabindex='-1']:focus
     color: var(--ink-2);
 }
 
-.ub-ghost:hover
+button.ub-ghost:hover
 {
     background: var(--wash-hover);
     color: var(--ink);
@@ -1840,6 +1909,11 @@ h1[tabindex='-1']:focus
 .shot
 {
     margin-top: clamp(24px, 3vw, 36px);
+}
+
+.split > .shot
+{
+    margin-top: 6px;
 }
 
 .shot img
@@ -1889,7 +1963,7 @@ h1[tabindex='-1']:focus
     color: var(--ink-2);
 }
 
-.ib:hover
+button.ib:hover
 {
     background: var(--wash-hover);
     color: var(--ink);
@@ -1901,7 +1975,7 @@ h1[tabindex='-1']:focus
     color: var(--on-accent);
 }
 
-.ib-primary:hover
+button.ib-primary:hover
 {
     background: var(--accent-hover);
     color: var(--on-accent);
@@ -2154,11 +2228,6 @@ h1[tabindex='-1']:focus
     box-shadow: inset 0 -1px 0 var(--line);
 }
 
-.grid-row:hover
-{
-    background: var(--wash-hover);
-}
-
 .grid-row[aria-selected='true']
 {
     background: var(--wash-selected);
@@ -2327,10 +2396,11 @@ h1[tabindex='-1']:focus
     content: '';
     position: absolute;
     inset: 0;
-    width: calc(var(--p, 0) * 100%);
     border-radius: var(--radius-xs);
     background: var(--accent);
-    transition: width 0.12s linear;
+    transform: scaleX(var(--p, 0));
+    transform-origin: left center;
+    transition: transform 0.12s linear, background-color var(--move);
 }
 
 .bar[data-done]::before
@@ -2340,9 +2410,17 @@ h1[tabindex='-1']:focus
 
 .c-progress
 {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
+}
+
+.c-progress .bar
+{
+    flex: 1;
+    min-width: 0;
+    width: auto;
 }
 
 .c-progress .pct
@@ -3094,7 +3172,7 @@ h1[tabindex='-1']:focus
     font-variant-numeric: tabular-nums;
 }
 
-@container (max-width: 760px)
+@container (max-width: 640px)
 {
     .win-body
     {
@@ -3116,28 +3194,6 @@ h1[tabindex='-1']:focus
     .win-side::-webkit-scrollbar
     {
         display: none;
-    }
-
-    .win-run span,
-    .tb .ub-secondary,
-    .ph-bar .cap,
-    .ph-bar .ub-secondary:nth-child(2),
-    .ph-bar .ib,
-    .ph-bar .ub-secondary:nth-child(n + 3),
-    .c-progress .bar
-    {
-        display: none;
-    }
-
-    .c-progress .pct
-    {
-        width: auto;
-    }
-
-    .grid-head > span,
-    .grid-row > span
-    {
-        padding: 0 8px;
     }
 
     .win-side-top,
@@ -3162,6 +3218,58 @@ h1[tabindex='-1']:focus
     .win-tab .trail
     {
         margin-left: 2px;
+    }
+}
+
+@container (max-width: 520px)
+{
+    .win-ver,
+    .win-ctl span:nth-child(-n + 2)
+    {
+        display: none;
+    }
+
+    .rh-line
+    {
+        white-space: normal;
+    }
+
+    .grid.jobs .grid-head,
+    .grid.jobs .c-no
+    {
+        display: none;
+    }
+
+    .grid.jobs .grid-row
+    {
+        grid-template-columns: auto minmax(0, 1fr);
+        row-gap: 4px;
+        height: auto;
+        padding: 8px 4px;
+    }
+
+    .grid.jobs .c-file
+    {
+        grid-column: 1 / -1;
+    }
+}
+
+@container (max-width: 760px)
+{
+    .tb .ub-secondary,
+    .tb .sep,
+    .ph-bar .cap,
+    .ph-bar .ub-secondary:nth-child(2),
+    .ph-bar .ib,
+    .ph-bar .ub-secondary:nth-child(n + 3)
+    {
+        display: none;
+    }
+
+    .grid-head > span,
+    .grid-row > span
+    {
+        padding: 0 8px;
     }
 
     .rh
@@ -3302,30 +3410,74 @@ h1[tabindex='-1']:focus
         display: inline-flex;
     }
 
+    .nav[data-open='true']
+    {
+        background: var(--overlay);
+    }
+
     .nav-links
     {
-        display: none;
         position: absolute;
-        top: 56px;
+        top: 100%;
         left: 0;
         right: 0;
         flex-direction: column;
         align-items: stretch;
-        gap: 2px;
-        padding: 8px var(--gutter) 16px;
+        gap: 4px;
+        max-height: calc(100dvh - 56px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 8px var(--gutter) 20px;
         border-bottom: 1px solid var(--rail-edge);
-        background: var(--rail);
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        background: var(--overlay);
+        box-shadow: var(--shadow-overlay);
+        visibility: hidden;
+        opacity: 0;
+        transform: translateY(-8px);
+        transition: opacity 100ms linear, transform 100ms var(--ease-out), visibility 0s linear 100ms;
     }
 
     .nav[data-open='true'] .nav-links
     {
-        display: flex;
+        visibility: visible;
+        opacity: 1;
+        transform: none;
+        transition: opacity var(--move) var(--ease-out), transform var(--move) var(--ease-out), visibility 0s;
+    }
+
+    .nav-scrim
+    {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: var(--scrim);
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 100ms linear, visibility 0s linear 100ms;
+    }
+
+    .nav[data-open='true'] + .nav-scrim
+    {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity var(--move) var(--ease-out), visibility 0s;
     }
 
     .nav-links a
     {
-        height: 44px;
+        height: 48px;
+        padding: 0 14px;
+        border: 1px solid transparent;
         font-size: 1rem;
+        color: var(--ink);
+    }
+
+    .nav-links a[aria-current='page']:not(.nav-dl)
+    {
+        border-color: var(--accent);
+        background: var(--wash-selected);
     }
 
     .nav-links a[aria-current='page']:not(.nav-dl)::after
@@ -3335,7 +3487,7 @@ h1[tabindex='-1']:focus
 
     .nav-links .nav-dl
     {
-        margin: 8px 0 0;
+        margin: 12px 0 0;
         justify-content: center;
     }
 

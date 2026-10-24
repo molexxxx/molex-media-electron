@@ -22,7 +22,7 @@ const COLUMNS = [
             ['Trim', 'Cut one file between in and out points, then export video, audio, or a GIF.'],
             ['Timeline', 'Clips from several files on video and audio tracks, exported as one file.'],
             ['Inspect', 'The streams and tags of a file, and a copy without the ones you remove.'],
-            ['Lit readouts', 'In, out, and length in timecode, with frame stepping on the arrow keys.'],
+            ['Timecode readouts', 'In, out, and length in timecode, with frame stepping on the arrow keys.'],
             ['Export choices', 'MP4, WebM, MOV, or MKV at four CRF tiers and up to 4K.'],
             ['GPU where it fits', 'Exports encode with NVENC, Quick Sync, or AMF where the codec allows.'],
         ],
