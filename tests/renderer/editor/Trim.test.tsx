@@ -17,7 +17,7 @@ import {
 } from '../../../src/renderer/src/components/editor/clip/ClipExportAdvanced'
 import { audioLine } from '../../../src/renderer/src/components/editor/clip/ClipPreview'
 import { useEditorStore } from '../../../src/renderer/src/stores/editorStore'
-import { loadProject, resetEditor, stubApi } from './harness'
+import { loadProject, resetEditor, stubApi, videoSource } from './harness'
 
 let api: ReturnType<typeof stubApi>
 
@@ -98,6 +98,20 @@ describe('the Trim workspace', () =>
       videoOptions: { codec: 'libx264', crf: 23, preset: 'medium', maxHeight: 0, audioBitrate: '192k' }
     })
     expect(screen.getByText('Saved clip-a_trimmed.mp4')).toBeInTheDocument()
+  })
+
+  it('reads and exports a 60 fps file in its own frame rate, not the project rate', async () =>
+  {
+    loadProject('clip')
+    const fast = { ...videoSource('src-f', 'clip-60.mp4'), frameRate: 60, duration: 1800 }
+    useEditorStore.setState((s) => ({ sources: [...s.sources, fast], clipMode: { sourceId: 'src-f', inPoint: 60, outPoint: 180 } }))
+    render(<ClipEditor />)
+    expect(screen.getByText('00:00:03:00')).toBeInTheDocument()
+    await act(async () =>
+    {
+      fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    })
+    expect(api.cutMedia).toHaveBeenCalledWith('C:\\media\\clip-60.mp4', 1, 3, expect.anything())
   })
 
   it('says nothing when the save dialog is canceled, and names the problem and the way out on a failure', async () =>

@@ -40,7 +40,8 @@ function TrimWorkspace({ source }: { source: MediaSource }): ReactElement
   const outPoint = useEditorStore((s) => s.clipMode.outPoint)
   const currentFrame = useEditorStore((s) => s.playback.currentFrame)
   const isPlaying = useEditorStore((s) => s.playback.isPlaying)
-  const frameRate = useEditorStore((s) => s.project.frameRate)
+  const projectRate = useEditorStore((s) => s.project.frameRate)
+  const frameRate = source.frameRate || projectRate
   const setClipInPoint = useEditorStore((s) => s.setClipInPoint)
   const setClipOutPoint = useEditorStore((s) => s.setClipOutPoint)
   const mediaUrl = useEditorStore((s) => s.mediaPreviewUrl)

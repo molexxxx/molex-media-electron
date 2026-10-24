@@ -57,7 +57,8 @@ export function ClipExport({ source, width }: ClipExportProps): ReactElement
 {
   const inPoint = useEditorStore((s) => s.clipMode.inPoint)
   const outPoint = useEditorStore((s) => s.clipMode.outPoint)
-  const frameRate = useEditorStore((s) => s.project.frameRate)
+  const projectRate = useEditorStore((s) => s.project.frameRate)
+  const frameRate = source.frameRate || projectRate
   const gpuMode = useAppStore((s) => s.config?.gpuAcceleration)
   const headingId = useId()
   const formatId = useId()
