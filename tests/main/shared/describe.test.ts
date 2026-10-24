@@ -102,6 +102,8 @@ describe('sourceContainerLabel', () =>
     expect(sourceContainerLabel(mov, 'book.m4b')).toBe('M4B')
     expect(sourceContainerLabel('matroska,webm', 'Product loop.webm')).toBe('WebM')
     expect(sourceContainerLabel('matroska,webm', 'Harbor Lights (2019).mkv')).toBe('MKV')
+    expect(sourceContainerLabel('mp3', 'Radio archive 1987.mp2')).toBe('MP2')
+    expect(sourceContainerLabel('mp3', 'episode.mp3')).toBe('MP3')
   })
 
   it('names the first format when the extension is missing or not listed', () =>

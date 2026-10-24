@@ -93,7 +93,8 @@ const FORMAT_EXTENSIONS: Readonly<Record<string, readonly string[]>> =
   mpeg: ['mpg', 'mpeg'],
   asf: ['asf', 'wmv', 'wma'],
   aiff: ['aiff', 'aif', 'aifc'],
-  wav: ['wav', 'wave']
+  wav: ['wav', 'wave'],
+  mp3: ['mp3', 'mp2']
 }
 
 function formatExtensions(name: string): readonly string[]
