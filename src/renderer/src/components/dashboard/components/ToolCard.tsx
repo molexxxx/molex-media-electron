@@ -32,14 +32,14 @@ export function ToolKey({ icon, title, detail, name, onActivate, busy = false }:
         data-focus="inset"
         onClick={busy ? undefined : onActivate}
         className={cx(
-          'flex h-full min-h-22 w-full flex-col items-start justify-between gap-3 p-3 text-start',
+          'flex h-full min-h-22 w-full flex-col items-start justify-start gap-3 p-3 text-start',
           busy ? 'cursor-default' : 'hover:bg-wash-hover active:bg-wash-pressed'
         )}
       >
         <Icon name={icon} size="lg" className="text-ink-2" />
         <span className="flex w-full min-w-0 flex-col">
           <span className="truncate text-body font-semibold text-ink">{title}</span>
-          <span className="truncate text-label text-ink-3" title={detail}>{detail}</span>
+          <span className="line-clamp-2 text-label text-ink-3" title={detail}>{detail}</span>
         </span>
       </button>
     </li>
