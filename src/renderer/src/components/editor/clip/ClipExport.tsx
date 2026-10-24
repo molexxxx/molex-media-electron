@@ -29,6 +29,7 @@ import {
   type GifOptions,
   type VideoOptions
 } from './ClipExportAdvanced'
+import { toTimelineFrame, trimRate } from './trimRate'
 
 const GPU_NAMES: Readonly<Record<string, string>> = { nvenc: 'NVENC', qsv: 'Quick Sync', amf: 'AMF', auto: 'the GPU' }
 
@@ -57,8 +58,7 @@ export function ClipExport({ source, width }: ClipExportProps): ReactElement
 {
   const inPoint = useEditorStore((s) => s.clipMode.inPoint)
   const outPoint = useEditorStore((s) => s.clipMode.outPoint)
-  const projectRate = useEditorStore((s) => s.project.frameRate)
-  const frameRate = source.frameRate || projectRate
+  const frameRate = trimRate(source)
   const gpuMode = useAppStore((s) => s.config?.gpuAcceleration)
   const headingId = useId()
   const formatId = useId()
@@ -141,8 +141,8 @@ export function ClipExport({ source, width }: ClipExportProps): ReactElement
       sourceId: source.id,
       trackId: track.id,
       timelineStart: timeline.duration,
-      sourceIn: inPoint,
-      sourceOut: outPoint,
+      sourceIn: toTimelineFrame(inPoint, source),
+      sourceOut: toTimelineFrame(outPoint, source),
       name: source.fileName,
       color: '',
       muted: false,

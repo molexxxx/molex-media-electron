@@ -8,6 +8,7 @@ import { useEditorStore } from '../../../stores/editorStore'
 import { formatSampleRate } from '../shared/format'
 import { Waveform } from '../shared/Waveform'
 import type { MediaSource } from '../types'
+import { trimLength } from './trimRate'
 
 interface ClipPreviewProps
 {
@@ -82,7 +83,8 @@ export function ClipPreview({ source, mediaRef, mediaUrl }: ClipPreviewProps): R
 
   const waveHeight = 120
   const width = Math.min(Math.max(0, waveWidth - 48), 960)
-  const playheadLeft = source.duration > 0 ? (currentFrame / source.duration) * width : 0
+  const length = trimLength(source)
+  const playheadLeft = length > 0 ? (currentFrame / length) * width : 0
   return (
     <div ref={waveRef} className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
       <audio ref={mediaRef as RefObject<HTMLAudioElement>} preload="auto" />

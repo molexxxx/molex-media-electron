@@ -27,8 +27,9 @@ export interface MediaSource {
   id: string
   filePath: string
   fileName: string
-  duration: number // total frames
-  frameRate: number // source native fps
+  duration: number // total frames, counted at frameRate
+  frameRate: number // the rate duration and clip source frames are counted at (the project rate)
+  nativeFrameRate?: number // the file's own frame rate, which Trim counts in; absent for audio
   width: number
   height: number
   audioChannels: number

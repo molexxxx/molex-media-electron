@@ -10,6 +10,7 @@ import { Button } from '../../../ui/Button'
 import { IconButton } from '../../../ui/IconButton'
 import type { IconName } from '../../../ui/icons'
 import { Tooltip } from '../../../ui/Tooltip'
+import { toTimelineFrame } from '../clip/trimRate'
 import type { EditTool } from '../types'
 
 /** The tools, in toolbar order. */
@@ -40,7 +41,9 @@ export function placeSource(kind: PlaceKind): void
   {
     return
   }
-  const inOut: [number, number] = state.clipMode.sourceId === source.id ? [state.clipMode.inPoint, state.clipMode.outPoint] : [0, source.duration]
+  const inOut: [number, number] = state.clipMode.sourceId === source.id
+    ? [toTimelineFrame(state.clipMode.inPoint, source), toTimelineFrame(state.clipMode.outPoint, source)]
+    : [0, source.duration]
   const trackId = state.selectedTrackId || state.timeline.tracks.find((t) => t.type === 'video')?.id
   if (kind === 'placeOnTop')
   {

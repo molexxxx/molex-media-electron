@@ -103,7 +103,7 @@ describe('the Trim workspace', () =>
   it('reads and exports a 60 fps file in its own frame rate, not the project rate', async () =>
   {
     loadProject('clip')
-    const fast = { ...videoSource('src-f', 'clip-60.mp4'), frameRate: 60, duration: 1800 }
+    const fast = { ...videoSource('src-f', 'clip-60.mp4'), nativeFrameRate: 60 }
     useEditorStore.setState((s) => ({ sources: [...s.sources, fast], clipMode: { sourceId: 'src-f', inPoint: 60, outPoint: 180 } }))
     render(<ClipEditor />)
     expect(screen.getByText('00:00:03:00')).toBeInTheDocument()
@@ -183,5 +183,15 @@ describe('the Trim workspace', () =>
     expect(state.mode).toBe('edit')
     expect(state.timeline.clips).toHaveLength(before + 1)
     expect(state.timeline.clips.at(-1)).toMatchObject({ sourceIn: 60, sourceOut: 150, timelineStart: 540 })
+  })
+
+  it('adds a range marked on a 60 fps file to the timeline in project frames, keeping its length', () =>
+  {
+    loadProject('clip')
+    const fast = { ...videoSource('src-f', 'clip-60.mp4'), nativeFrameRate: 60 }
+    useEditorStore.setState((s) => ({ sources: [...s.sources, fast], clipMode: { sourceId: 'src-f', inPoint: 60, outPoint: 180 } }))
+    render(<ClipEditor />)
+    fireEvent.click(screen.getByRole('button', { name: 'Add to timeline' }))
+    expect(useEditorStore.getState().timeline.clips.at(-1)).toMatchObject({ sourceId: 'src-f', sourceIn: 30, sourceOut: 90 })
   })
 })

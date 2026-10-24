@@ -17,6 +17,7 @@ import type { MediaSource } from '../types'
 import { ClipExport } from './ClipExport'
 import { ClipPreview } from './ClipPreview'
 import { ClipTimeline } from './ClipTimeline'
+import { trimLength, trimRate } from './trimRate'
 
 /** The export panel's width limits in px. */
 export const TRIM_PANEL_WIDTH = { min: 260, default: 300, max: 440 } as const
@@ -40,12 +41,11 @@ function TrimWorkspace({ source }: { source: MediaSource }): ReactElement
   const outPoint = useEditorStore((s) => s.clipMode.outPoint)
   const currentFrame = useEditorStore((s) => s.playback.currentFrame)
   const isPlaying = useEditorStore((s) => s.playback.isPlaying)
-  const projectRate = useEditorStore((s) => s.project.frameRate)
-  const frameRate = source.frameRate || projectRate
+  const frameRate = trimRate(source)
   const setClipInPoint = useEditorStore((s) => s.setClipInPoint)
   const setClipOutPoint = useEditorStore((s) => s.setClipOutPoint)
   const mediaUrl = useEditorStore((s) => s.mediaPreviewUrl)
-  const totalFrames = source.duration
+  const totalFrames = trimLength(source)
   const [panelWidth, setPanelWidth] = useState<number>(TRIM_PANEL_WIDTH.default)
 
   const { mediaRef, togglePlayback, seekToFrame, stepFrames, handleJKL } = useEditorPlayback({ frameRate, totalFrames })

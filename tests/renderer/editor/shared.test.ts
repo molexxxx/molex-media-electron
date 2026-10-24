@@ -131,6 +131,24 @@ describe('opening files', () =>
     expect(useEditorStore.getState().sources).toHaveLength(3)
   })
 
+  it('counts a 60 fps file in project frames, so it keeps its real length on the timeline', async () =>
+  {
+    const base = stubApi().probeDetailed
+    stubApi({
+      probeDetailed: vi.fn(async (filePath: string) =>
+      {
+        const reply = await base(filePath)
+        reply.data.videoStreams[0].r_frame_rate = '60/1'
+        reply.data.format.duration = '10.000'
+        return reply
+      })
+    })
+    await openPaths(['C:\\media\\fast.mp4'], 'edit')
+    const state = useEditorStore.getState()
+    expect(state.sources[0]).toMatchObject({ frameRate: 30, duration: 300, nativeFrameRate: 60 })
+    expect(state.clipMode.outPoint).toBe(600)
+  })
+
   it('opens a file already among the sources again without listing it twice, keeping its id for the timeline', async () =>
   {
     stubApi()

@@ -1013,21 +1013,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       const video = info.videoStreams?.[0]
       const audio = info.audioStreams?.[0]
       const durationSec = parseFloat(info.format?.duration || '0')
-      const projectFps = get().project.frameRate
-      let fps = projectFps
+      // Source frames are counted at the project rate: the timeline maps them one to one onto its own frames.
+      // Trim counts in the file's own rate (nativeFps) so it steps one real frame. A variable-rate file can report a
+      // timebase such as 1000/1 as r_frame_rate; above 240 the project rate is used instead.
+      const fps = get().project.frameRate
+      const totalFrames = Math.round(durationSec * fps)
+      let nativeFps: number | undefined
       const rf = video?.r_frame_rate
       if (rf) {
         const parts = String(rf).split('/')
-        if (parts.length === 2) {
-          const n = parseFloat(parts[0])
-          const d = parseFloat(parts[1])
-          if (d > 0 && n > 0) fps = n / d
-        } else {
-          const p = parseFloat(rf)
-          if (p > 0) fps = p
-        }
+        const rate = parts.length === 2 ? parseFloat(parts[0]) / parseFloat(parts[1]) : parseFloat(rf)
+        if (Number.isFinite(rate) && rate > 0 && rate <= 240) nativeFps = rate
       }
-      const totalFrames = Math.round(durationSec * fps)
+      const trimFrames = Math.round(durationSec * (nativeFps ?? fps))
 
       const newSource: MediaSource = {
         id: `src-${Date.now().toString(36)}`,
@@ -1035,6 +1033,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         fileName: filePath.split(/[\\/]/).pop() || filePath,
         duration: totalFrames,
         frameRate: fps,
+        nativeFrameRate: nativeFps,
         width: video?.width ?? 0,
         height: video?.height ?? 0,
         audioChannels: audio?.channels ?? 0,
@@ -1055,7 +1054,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         return {
           sources: existing ? s.sources.map((src) => (src.id === existing.id ? newSource : src)) : [...s.sources, newSource],
           project: isFirst ? { ...s.project, name, modifiedAt: Date.now() } : s.project,
-          clipMode: { sourceId: newSource.id, inPoint: 0, outPoint: totalFrames }
+          clipMode: { sourceId: newSource.id, inPoint: 0, outPoint: trimFrames }
         }
       })
 
